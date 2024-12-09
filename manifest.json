@@ -1,0 +1,20 @@
+{
+  "id": "shift-frontend",
+  "name": "Shift",
+  "version": "0.1.0",
+  "description": "Shift is a plugin that allows you to query and utilize AI within Caido.",
+  "author": {
+    "name": "JThacker & Crit Software",
+    "email": "justin@rhynorater.com",
+    "url": "https://github.com/jthack/shift-extension"
+  },
+  "plugins": [
+    {
+      "kind": "frontend",
+      "id": "frontend",
+      "name": "Frontend",
+      "entrypoint": "frontend/script.js",
+      "style": "frontend/style.css"
+    }
+  ]
+}

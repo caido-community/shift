@@ -1,0 +1,6 @@
+node_modules
+dist
+dist-zip
+.DS_Store
+*Zone.Identifier
+.vscode
