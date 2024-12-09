@@ -98,11 +98,11 @@ const addPage = async (caido: Caido) => {
   });
 
   const container = document.createElement('div');
-  app.mount(container);
   app.use(PrimeVue, { unstyled: true, pt:Classic});
   const card = caido.ui.card({
     body: container,
   });
+  app.mount(container);
 
   // Create plugin page in left tab menu.
   caido.navigation.addPage(PAGE, {
