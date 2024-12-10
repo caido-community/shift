@@ -5,6 +5,9 @@
 
 This plugin is the Caido frontend for Shift AI. You can find more information about Shift here: https://shiftwaitlist.com.
 
+## Demo
+https://www.loom.com/share/ac132e7b4ab645fdaa67c8a34a818fb2
+
 ## Usage
 
 1. Install this plugin via the Caido Plugin Store
