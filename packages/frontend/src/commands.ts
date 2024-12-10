@@ -160,6 +160,7 @@ export const actionFunctions = {
       };
 
       const container = document.createElement('div');
+      container.id = "plugin--shift";
       document.body.appendChild(container);
       const app = createApp(ConfirmationModal, modalProps);
       app.mount(container);

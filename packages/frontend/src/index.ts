@@ -159,10 +159,12 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
       
       // Create container for toast
       const toastContainer = document.createElement('div');
+      toastContainer.id = "plugin--shift";
       document.body.appendChild(toastContainer);
       
       // Create toast instance with message in props
       if (response.actions.length > 0) {
+        logger.log("response.actions", response.actions);
         const toastApp = createApp(CustomToast, {
           variant: 'success',
           duration: 20000,
@@ -205,6 +207,7 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
     } catch (error) {
       // Create error toast
       const toastContainer = document.createElement('div');
+      toastContainer.id = "plugin--shift";
       document.body.appendChild(toastContainer);
       
       const toastApp = createApp(CustomToast, {

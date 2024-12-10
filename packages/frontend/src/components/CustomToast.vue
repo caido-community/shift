@@ -62,6 +62,8 @@ let timeout: number;
 const position = props.position || 20;
 
 onMounted(() => {
+  logger.log("CustomToast mounted");
+  logger.log("Server response", props.serverResponse);
   if (props.duration > 0) {
     timeout = window.setTimeout(() => {
       close();
