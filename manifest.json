@@ -1,8 +1,8 @@
 {
   "id": "shift",
   "name": "Shift",
-  "version": "0.1.0",
-  "description": "Shift is a plugin that allows you to query and utilize AI within Caido.",
+  "version": "0.1.1",
+  "description": "Seamless AI Integration into Caido.",
   "author": {
     "name": "JThacker & CRITSoftware",
     "email": "justin@criticalthinkingpodcast.io",
