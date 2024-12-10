@@ -134,6 +134,7 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
 
   logger.log("Creating new interface");
   const container = document.createElement('div');
+  container.id = "plugin--shift"; // Temporary fix for the plugin page not being found
   container.classList.add('shift-floating-interface');
   document.body.appendChild(container);
   logger.log("Container added to body");
