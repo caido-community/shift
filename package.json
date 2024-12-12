@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Plugin package template with frontend using VueJS",
   "author": "Caido Labs Inc. <dev@caido.io>",
-  "license": "CC0-1.0",
+  "license": "ELv2+Mod",
   "type": "module",
   "scripts": {
     "typecheck": "pnpm -r typecheck",
