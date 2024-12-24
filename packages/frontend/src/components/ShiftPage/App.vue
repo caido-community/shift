@@ -43,10 +43,20 @@ const component = computed(() => {
 onMounted(async () => {
   // Check if user has seen tutorial
   const storage = await getPluginStorage(props.caido);
-  if (!storage.hasSeenTutorial) {
+  if (!storage.apiKey && !storage.hasSeenTutorial) {
+    page.value = "Settings";
+  } else if (!storage.hasSeenTutorial) {
     page.value = "Tutorial";
   }
 });
+
+// Add handler function
+const handleAuthenticated = async () => {
+  const storage = await getPluginStorage(props.caido);
+  if (!storage.hasSeenTutorial) {
+    page.value = "Tutorial";
+  }
+};
 </script>
 
 <template>
@@ -66,6 +76,7 @@ onMounted(async () => {
           :apiEndpoint="apiEndpoint"
           :startRenameInterval="startRenameInterval"
           :updateMemory="updateMemory"
+          @authenticated="handleAuthenticated"
         />
       </div>
     </div>

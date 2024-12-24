@@ -129,6 +129,7 @@ interface ValidationResponse {
 
 export default defineComponent({
   name: 'ShiftUIComponent',
+  emits: ['authenticated'],
   props: {
     caido: {
       type: Object as () => Caido,
@@ -147,7 +148,7 @@ export default defineComponent({
       required: true
     }
   },
-  setup(props){
+  setup(props, { emit }) {
     const apiKey = ref('');
     const isApiKeyValid = ref(false);
     const tokensUsed = ref<number | null>(null);
@@ -238,6 +239,7 @@ export default defineComponent({
         storage.apiKey = apiKey.value;
         await setPluginStorage(props.caido, storage);
         eventBus.setAuthenticated(true);
+        emit('authenticated');
       } else {
         eventBus.setAuthenticated(false);
       }
