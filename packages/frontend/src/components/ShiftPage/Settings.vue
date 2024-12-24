@@ -34,19 +34,6 @@
         </div>
       </div>
     </div>
-    <div class="model-selector">
-      <label for="model">Model:</label>
-      <select 
-        id="model" 
-        v-model="settings.model"
-        :disabled="!isApiKeyValid"
-      >
-        <option value="auto">Auto</option>
-        <option value="sonnet">Sonnet</option>
-        <option value="flash">Flash</option>
-        <option value="white-rabbit-neo">White Rabbit Neo</option>
-      </select>
-    </div>
     <div class="settings-section" :class="{ 'disabled-section': !isApiKeyValid }">
       <div class="setting-row">
         <input
@@ -130,7 +117,7 @@
 import { defineComponent, ref, onMounted, watch } from 'vue';
 import type { Caido } from "@caido/sdk-frontend";
 import { getCurrentProjectName, getPluginStorage, setPluginStorage } from '../../utils/caidoUtils';
-import { PAGE, PluginStorage, DEFAULT_PLUGIN_STORAGE, PLACEHOLDER_AI_INSTRUCTIONS, PLACEHOLDER_MEMORY} from '../../constants';
+import { isDev, PAGE, PluginStorage, DEFAULT_PLUGIN_STORAGE, PLACEHOLDER_AI_INSTRUCTIONS, PLACEHOLDER_MEMORY} from '../../constants';
 import logger from "../../utils/logger";
 import { eventBus } from '../../utils/eventBus'
 
@@ -212,6 +199,13 @@ export default defineComponent({
 
     const validateApiKey = async (key: string): Promise<boolean> => {
       try {
+        logger.log("Validating API key", key);
+        logger.log("isDev", isDev);
+        if (isDev) {
+          tokensUsed.value = 0;
+          tokensLimit.value = 10000000;
+          return true;
+        }
         const response = await fetch(`${props.apiEndpoint}/validate`, {
           method: 'POST',
           headers: {

@@ -20,6 +20,19 @@ export const actionFunctions = {
       requestEditor.focus();
     }
   },
+  replayReplaceByString: (caido: any, { match, replace }: { match: string, replace: string }) => {
+    const { requestEditor } = getCurrentReplayEditors();
+    if (requestEditor) {
+      logger.log("replayReplaceByString", { match, replace });
+      logger.log("requestEditor", requestEditor);
+      const currentText = requestEditor.state.doc.toJSON().join("\r\n");
+      const newText = currentText.replace(match, replace);
+      requestEditor.dispatch({
+        changes: {from: 0, to: requestEditor.state.doc.length, insert: newText}
+      });
+      requestEditor.focus();
+    }
+  },
   replayRequestReplaceSelection: (caido: any, { text }: { text: string }) => {
     const { requestEditor } = getCurrentReplayEditors();
     if (requestEditor) {

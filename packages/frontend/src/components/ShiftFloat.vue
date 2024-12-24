@@ -52,6 +52,7 @@ import logger from "../utils/logger";
 import { getPluginStorage, setPluginStorage } from "../utils/caidoUtils";
 import { isAuthenticated, eventBus } from '../utils/eventBus'
 logger.log("ShiftFloat script setup started");
+logger.log("isAuthenticated", isAuthenticated.value);
 
 const props = defineProps<{
   onSubmit: (text: string, activeEntity: ActiveEntity, context: any) => Promise<string>;

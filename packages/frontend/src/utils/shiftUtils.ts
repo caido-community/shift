@@ -315,8 +315,7 @@ export const fetchShiftResponse = async (
   activeEntity: ActiveEntity,
   context: any,
   memory: string,
-  aiInstructions: string,
-  model: string,
+  aiInstructions: string
 ) => {
   try {
     const serverResponse = await fetch(API_ENDPOINT, {
@@ -330,8 +329,7 @@ export const fetchShiftResponse = async (
         activeEntity: activeEntity,
         context: context,
         memory: memory,
-        aiInstructions: aiInstructions,
-        model: model,
+        aiInstructions: aiInstructions
       }),
     });
     if (serverResponse.ok) {

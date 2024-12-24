@@ -154,7 +154,7 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
     const storage = await getPluginStorage(caido);
     const apiKey = storage.apiKey;
     try {
-      const response = await fetchShiftResponse(apiKey, text, activeEntity, context, storage?.settings?.memory||"", storage?.settings?.aiInstructions||"", storage?.settings?.model||"auto");
+      const response = await fetchShiftResponse(apiKey, text, activeEntity, context, storage?.settings?.memory||"", storage?.settings?.aiInstructions||"");
       logger.log("Shift response:", response);
       
       // Create container for toast
