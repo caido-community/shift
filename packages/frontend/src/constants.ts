@@ -1,3 +1,5 @@
+import manifest from '../../../manifest.json';
+
 export enum ActiveEntity {
   AutomateRequestPreLaunch = 'automateRequestPreLaunch',
   AutomateRequest = 'automateRequest',
@@ -30,7 +32,7 @@ export const QUERY_ENDPOINT = "/query";
 // Max size of request and response in bytes
 export const MAX_SIZE = 30 * 1024; // 30kb in bytes
 
-export const CURRENT_VERSION = "0.1.4";
+export const CURRENT_VERSION = manifest.version;
 
 export const MAX_UNDO_HISTORY = 15;
 
