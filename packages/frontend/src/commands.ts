@@ -11,6 +11,90 @@ export const actionFunctions = {
     caido.window.getActiveEditor()?.replaceSelectedText(text);
     caido.window.getActiveEditor()?.focus();
   },
+  activeEditorReplaceByString: (caido: any, { match, replace }: { match: string, replace: string }) => {
+    const editor = caido.window.getActiveEditor()?.getEditorView();
+    if (editor) {
+      logger.log("activeEditorReplaceByString", { match, replace });
+      logger.log("editor", editor);
+      const currentText = editor.state.doc.toJSON().join("\r\n");
+      const newText = currentText.replace(match, replace);
+      editor.dispatch({
+        changes: {from: 0, to: editor.state.doc.length, insert: newText}
+      });
+      editor.focus();
+    }
+  },
+  activeEditorReplaceBody: (caido: any, { body }: { body: string }) => {
+    const editor = caido.window.getActiveEditor()?.getEditorView();
+    if (editor) {
+      const lines = editor.state.doc.toJSON();
+      let bodyStartIndex = 0;
+      
+      // Find first empty line which delimits headers from body
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i] === '') {
+          bodyStartIndex = i;
+          break;
+        }
+      }
+
+      // Calculate the character position where body starts
+      // Using \n here because codemirror sees newlines as one char
+      const bodyStartPos = lines.slice(0, bodyStartIndex + 1).join('\n').length + 1;
+      
+      // Replace everything after headers with new body
+      editor.dispatch({
+        changes: {
+          from: bodyStartPos,
+          to: editor.state.doc.length,
+          insert: body
+        }
+      });
+      editor.focus();
+    }
+  },
+  activeEditorAddHeader: (caido: any, { header, replace = true }: { header: string, replace?: boolean }) => {
+    const editor = caido.window.getActiveEditor()?.getEditorView();
+    if (editor) {
+      const lines = editor.state.doc.toJSON();
+      const headerName = header.split(':')[0].trim().toLowerCase();
+      
+      // Find where headers end (first empty line)
+      let headerEndIndex = 0;
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i] === '') {
+          headerEndIndex = i;
+          break;
+        }
+      }
+      
+      // If replace is true, remove existing header if it exists and add new one in its place
+      if (replace) {
+        for (let i = 0; i < headerEndIndex; i++) {
+          if (lines[i].toLowerCase().startsWith(headerName + ':')) {
+            // Replace the existing header
+            // Using \n here because codemirror sees newlines as one char
+            const startOfLine = lines.slice(0, i).join('\n').length + (i > 0 ? 1 : 0);
+            const endOfLine = startOfLine + lines[i].length;
+            editor.dispatch({
+              changes: { from: startOfLine, to: endOfLine, insert: header }
+            });
+            editor.focus();
+            return;
+          }
+        }
+      }
+      
+      // If no existing header was found or replace is false, add at end of headers
+      // Using \n here because codemirror sees newlines as one char
+      const insertPos = lines.slice(0, headerEndIndex).join('\n').length;
+      const prefix = headerEndIndex > 0 ? '\r\n' : '';
+      editor.dispatch({
+        changes: { from: insertPos, insert: prefix + header }
+      });
+      editor.focus();
+    }
+  },
   replayRequestReplace: (caido: any, { text }: { text: string }) => {
     const { requestEditor } = getCurrentReplayEditors();
     if (requestEditor) {
@@ -20,6 +104,7 @@ export const actionFunctions = {
       requestEditor.focus();
     }
   },
+  //DEPRECATED
   replayReplaceByString: (caido: any, { match, replace }: { match: string, replace: string }) => {
     const { requestEditor } = getCurrentReplayEditors();
     if (requestEditor) {
@@ -33,6 +118,7 @@ export const actionFunctions = {
       requestEditor.focus();
     }
   },
+  //DEPRECATED
   replayRequestReplaceSelection: (caido: any, { text }: { text: string }) => {
     const { requestEditor } = getCurrentReplayEditors();
     if (requestEditor) {

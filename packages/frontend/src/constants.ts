@@ -30,7 +30,7 @@ export const QUERY_ENDPOINT = "/query";
 // Max size of request and response in bytes
 export const MAX_SIZE = 30 * 1024; // 30kb in bytes
 
-export const CURRENT_VERSION = "0.0.1";
+export const CURRENT_VERSION = "0.1.4";
 
 export const MAX_UNDO_HISTORY = 15;
 
