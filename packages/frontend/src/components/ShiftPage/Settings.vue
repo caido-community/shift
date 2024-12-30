@@ -25,12 +25,13 @@
           <div 
             class="usage-progress" 
             :style="{ width: `${(tokensUsed / tokensLimit) * 100}%` }"
-            :class="{ 'invalid': !isApiKeyValid }"
+            :class="{ 'invalid': !isApiKeyValid || tokensUsed > tokensLimit }"
           ></div>
         </div>
         <div class="usage-text">
           {{ tokensUsed?.toLocaleString() || 0 }} / {{ tokensLimit?.toLocaleString() || 0 }} tokens
           <span v-if="!isApiKeyValid" class="invalid-key-message">(Invalid API Key)</span>
+          <span v-else-if="tokensUsed > tokensLimit" class="invalid-key-message">You've used all your tokens, please reach out to the shift team for more at joseph@shiftplugin.com</span>
         </div>
       </div>
     </div>
