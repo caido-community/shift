@@ -344,6 +344,13 @@ export const fetchShiftResponse = async (
     }
   } catch (error) {
     logger.error("Error querying Shift:", error);
+    
+    // List of errors that should be passed through
+    const knownErrors = ["Invalid API key", "Unable to process query"];
+    if (error instanceof Error && knownErrors.includes(error.message)) {
+      throw error; // Re-throw known errors
+    }
+    
     throw new Error("Servers down for maintenance. Try again.");
   }
 };
