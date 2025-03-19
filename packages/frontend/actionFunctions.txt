@@ -10,7 +10,7 @@
   navigateToSidebarTab: { tabName: string }
   renameReplayTab: { newName: string, sessionId?: string }
   sendReplayTab: {} // No parameters
-  addMatchAndReplace: { name: string, matchTerm: string, replaceTerm: string, isRegex: boolean, query: string, strategy?: string, isEnabled?: boolean, collectionId?: string }
+  addMatchAndReplace: { name: string, section: string, operation: string, matcherType: string | undefined, matcher: string | undefined, replacerType: string | undefined, replacer: string | undefined, query?: string, collectionId?: string }
   addScope: { name: string, allowlist: string[], denylist?: string[] }
   deleteScope: { name?: string, id?: string }
   updateScope: { name: string, allowList: string[], denyList: string[] }
@@ -19,6 +19,7 @@
   deleteFilter: { name?: string, id?: string }
   showConfirmationModal: { title: string, message: string }
   createHostedFile: { name: string, content: string }
+  displayTextToUser: { title: string, content: string }
   removeHostedFile: { id?: string, name?: string }
   createReplaySession: { requestSource: string, collectionId?: string, host: string, port: number, isTls: boolean, name?: string }
   runConvertWorkflow: { id: string, input: string }
