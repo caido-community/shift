@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import MenuBar from "primevue/menubar";
 import { computed, ref } from "vue";
-import { onMounted } from "vue";
+import { onMounted, onUnmounted } from "vue";
 import type { Caido } from "@caido/sdk-frontend";
 import Tutorial from "./Tutorial.vue";
 import Settings from "./Settings.vue";
+import Agents from "./Agents.vue";
 import { getPluginStorage } from "../../utils/caidoUtils";
+import { startToolbarObserver, stopToolbarObserver} from "../../utils/toolbarInjection";
+import ReplayShiftAgentComponent from '../ReplayShiftAgent/ReplayShiftAgentComponent.vue';
 
 // Define props
 const props = defineProps<{
@@ -15,21 +18,32 @@ const props = defineProps<{
   updateMemory: boolean;
 }>();
 
-const page = ref<"Settings" | "Tutorial">("Settings");
-const items = [
+const page = ref<"Settings" | "Tutorial" | "Agents">("Settings");
+
+// Create a computed property for menu items that updates when page changes
+const items = computed(() => [
   {
     label: "Settings",
     command: () => {
       page.value = "Settings";
     },
+    class: page.value === "Settings" ? "active-nav-item" : ""
+  },
+  {
+    label: "Agents",
+    command: () => {
+      page.value = "Agents";
+    },
+    class: page.value === "Agents" ? "active-nav-item" : ""
   },
   {
     label: "Tutorial",
     command: () => {
       page.value = "Tutorial";
     },
+    class: page.value === "Tutorial" ? "active-nav-item" : ""
   },
-];
+]);
 
 const component = computed(() => {
   switch (page.value) {
@@ -37,6 +51,8 @@ const component = computed(() => {
       return Settings;
     case "Tutorial":
       return Tutorial;
+    case "Agents":
+      return Agents;
   }
 });
 
@@ -48,6 +64,21 @@ onMounted(async () => {
   } else if (!storage.hasSeenTutorial) {
     page.value = "Tutorial";
   }
+  
+  // Add class to parent element
+  const pluginElement = document.getElementById('plugin--shift');
+  if (pluginElement && pluginElement.parentElement) {
+    pluginElement.parentElement.classList.add('shift-parent');
+  }
+
+  // Start the toolbar observer to inject our component
+  startToolbarObserver(props.caido, props.apiEndpoint);
+});
+
+// Clean up when component is unmounted
+onUnmounted(() => {
+  // Stop the toolbar observer and remove any injected components
+  stopToolbarObserver();
 });
 
 // Add handler function
@@ -62,14 +93,14 @@ const handleAuthenticated = async () => {
 <template>
   <div id="plugin--shift">
     <div class="h-full flex flex-col gap-1">
-      <div class="flex items-center w-full" style="background-color: var(--p-menubar-background); border: 1px solid var(--c-bg-tertiary); border-radius: var(--p-menubar-border-radius);">
-        <div class="flex items-center gap-2 px-2" style="font-size: 2em;">
+      <div class="navbar flex items-center w-full">
+        <div class="logo flex items-center gap-2 px-2">
           <i class="far fa-arrow-alt-circle-up"></i>
           <span class="font-bold">Shift</span>
         </div>
         <MenuBar :model="items" breakpoint="320px" class="flex-1" />
       </div>
-      <div class="flex-1 min-h-0">
+      <div class="bodycard flex-1 min-h-0">
         <component 
           :is="component" 
           :caido="caido"
@@ -84,12 +115,28 @@ const handleAuthenticated = async () => {
 </template>
 
 <style>
-#plugin--shift {
+/* Style for the parent element */
+.shift-parent {
   height: 100%;
 }
-:root {
-  --p-menubar-padding: .5em;
-  --p-menubar-background: #30333b;
-  --p-menubar-border-radius: 5px;
+
+#plugin--shift {
+  height: 100%;
+  background-color: var(--c-bg-default);
+}
+.navbar {
+  background-color: var(--c-bg-subtle);
+}
+.bodycard {
+  background-color: var(--c-bg-subtle);
+}
+.logo {
+  font-size: 1.5em;
+  color: var(--c-text-primary);
+}
+/* Styling for active navigation item */
+.active-nav-item {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+  border-radius: 4px !important;
 }
 </style>

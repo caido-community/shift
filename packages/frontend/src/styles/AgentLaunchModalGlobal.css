@@ -1,0 +1,156 @@
+/* Agent Launch Modal Styles */
+.agent-launch-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.agent-launch-modal {
+  background-color: var(--c-bg-default);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 500px;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.agent-launch-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--c-fg-secondary);
+}
+
+.agent-launch-modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--c-text-primary);
+}
+
+.agent-launch-modal-close {
+  background: none;
+  border: none;
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.agent-launch-modal-close:hover {
+  background-color: var(--c-bg-secondary);
+}
+
+.agent-launch-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.agent-launch-modal-description {
+  margin-bottom: 20px;
+  color: var(--c-text-secondary);
+}
+
+.agent-launch-modal-field {
+  margin-bottom: 16px;
+}
+
+.agent-launch-modal-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: var(--c-text-primary);
+}
+
+.agent-launch-modal-field input[type="text"],
+.agent-launch-modal-field input[type="number"],
+.agent-launch-modal-field textarea,
+.agent-launch-modal-field select {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--c-bg-tertiary);
+  background-color: var(--c-bg-default);
+  color: var(--c-text-primary);
+  font-size: 14px;
+}
+
+.agent-launch-modal-field textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.agent-launch-modal-field input:focus,
+.agent-launch-modal-field textarea:focus,
+.agent-launch-modal-field select:focus {
+  outline: none;
+  border-color: var(--c-bg-secondary);
+  box-shadow: 0 0 0 2px rgba(var(--c-bg-secondary-rgb), 0.2);
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-container input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.checkbox-label {
+  font-size: 14px;
+  color: var(--c-text-primary);
+}
+
+.agent-launch-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 20px;
+  border-top: 1px solid var(--c-fg-secondary);
+  gap: 12px;
+}
+
+.agent-launch-modal-cancel,
+.agent-launch-modal-launch {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.agent-launch-modal-cancel {
+  background-color: transparent;
+  border: 1px solid var(--c-fg-secondary);
+  color: var(--c-text-secondary);
+}
+
+.agent-launch-modal-cancel:hover {
+  background-color: var(--c-bg-secondary);
+}
+
+.agent-launch-modal-launch {
+  background-color: var(--c-bg-primary);
+  border: 1px solid var(--c-bg-primary);
+  color: white;
+}
+
+.agent-launch-modal-launch:hover {
+  background-color: var(--c-bg-primary-hover, var(--c-bg-primary));
+}

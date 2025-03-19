@@ -20,6 +20,9 @@
       @focus="refreshContext"
       autofocus
     ></textarea>
+    <div v-if="(context?.context?.requestSelectedText?.length > MAX_SIZE/1024) || (context?.context?.responseSelectedText?.length > MAX_SIZE/1024)" class="context-info">
+      <span style="color: var(--c-fg-secondary)">NOTE: the selected text is too large and will be truncated</span>
+    </div>
     <div class="context-info">
       <span>current context: <strong>{{ context.activeEntity }}</strong></span>
       <span v-if="isLoading" class="loading-indicator">

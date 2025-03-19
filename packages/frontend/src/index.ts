@@ -5,13 +5,18 @@ import { Classic } from '@caido/primevue';
 import ShiftPage from './components/ShiftPage/App.vue';
 import ShiftFloat from './components/ShiftFloat.vue';
 import type { Caido } from "@caido/sdk-frontend";
-import { ActiveEntity, API_ENDPOINT, PAGE, CURRENT_VERSION} from "./constants";
+import { ActiveEntity, API_ENDPOINT, PAGE, CURRENT_VERSION, isDev} from "./constants";
+import { tests } from "./testSuite";
 import { handleServerResponse, fetchShiftResponse, checkAndRenameReplayTabs } from "./utils/shiftUtils";
 import { getCurrentProjectName, getPluginStorage, setPluginStorage } from "./utils/caidoUtils";
-import "./styles/script.css";
+// import "./styles/globalStyles.css";
+import "./styles/ToolbarComponentGlobal.css";
+import "./styles/ReplayShiftAgentGlobal.css";
+import "./styles/AgentLaunchModalGlobal.css";
 //import { applyAutocomplete } from "./autoComplete";
 import CustomToast from './components/CustomToast.vue'
 import logger from './utils/logger';
+import { initAgentMonitoring } from "./agent";
 
 const isShiftOpen = ref(false);
 const updateMemory = ref(false);
@@ -37,7 +42,8 @@ const startRenameInterval = async (caido: Caido) => {
         const currentSettings = currentStorage?.settings;
         
         // If settings were updated, use the new values
-        if (currentSettings?.aiRenameReplayTabs) {
+        if (currentSettings?.aiRenameReplayTabs && !window.renameLock) {
+          window.renameLock=true;
           await checkAndRenameReplayTabs(
             caido,
             currentStorage.apiKey,
@@ -45,8 +51,10 @@ const startRenameInterval = async (caido: Caido) => {
             currentSettings.renameDelay,
             currentSettings.renameInstructions
           );
+          window.renameLock=false;
         }
       } catch (error) {
+        window.renameLock = false;
         logger.error('Error in rename interval:', error);
       }
     }, storage.settings.renameDelay * 1000);
@@ -60,15 +68,31 @@ const addToMemory = async (caido: Caido) => {
   const text = caido.window.getActiveEditor()?.getSelectedText();
   logger.log("storage",await getPluginStorage(caido));
   const storage = await getPluginStorage(caido);
-  if (storage.settings?.memory != '') {
-    storage.settings.memory = storage.settings.memory + "\n" + text;
-  }else{
-    storage.settings.memory = text || '';
+  const projectName = getCurrentProjectName() || 'default';
+  
+  // Ensure memory is an object
+  if (typeof storage.settings.memory === 'string') {
+    storage.settings.memory = {
+      [projectName]: storage.settings.memory
+    };
   }
+  
+  // Ensure the project exists in memory
+  if (!storage.settings.memory[projectName as keyof typeof storage.settings.memory]) {
+    (storage.settings.memory as Record<string, string>)[projectName] = '';
+  }
+  
+  // Add text to memory
+  if ((storage.settings.memory as Record<string, string>)[projectName] !== '') {
+    (storage.settings.memory as Record<string, string>)[projectName] = (storage.settings.memory as Record<string, string>)[projectName] + "\n" + text;
+  } else {
+    (storage.settings.memory as Record<string, string>)[projectName] = text || '';
+  }
+  
   await setPluginStorage(caido, storage);
   updateMemory.value = !updateMemory.value;
   logger.log(storage);
-  await caido.window.showToast("Updated memory", {variant: "success", duration:2000});
+  await caido.window.showToast("Updated memory", {variant: "success", duration: 2000});
 }
 
 
@@ -98,6 +122,8 @@ const addPage = async (caido: Caido) => {
   });
 
   const container = document.createElement('div');
+  container.style.height = '100%';
+  container.style.width = '100%';
   app.use(PrimeVue, { unstyled: true, pt:Classic});
   const card = caido.ui.card({
     body: container,
@@ -153,10 +179,35 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
     logger.log("Submitted text:", text);
     const storage = await getPluginStorage(caido);
     const apiKey = storage.apiKey;
+    const projectName = getCurrentProjectName() || 'default';
+    
+    // Get memory for current project
+    let memory = "";
+    if (typeof storage?.settings?.memory === 'string') {
+      memory = storage.settings.memory;
+    } else if (storage?.settings?.memory) {
+      memory = storage.settings.memory[projectName] || "";
+    }
+    
+    // Get aiInstructions for current project
+    let aiInstructions = "";
+    if (typeof storage?.settings?.aiInstructions === 'string') {
+      aiInstructions = storage.settings.aiInstructions;
+    } else if (storage?.settings?.aiInstructions) {
+      aiInstructions = storage.settings.aiInstructions[projectName] || "";
+    }
+    
     try {
-      const response = await fetchShiftResponse(apiKey, text, activeEntity, context, storage?.settings?.memory||"", storage?.settings?.aiInstructions||"");
-      logger.log("Shift response:", response);
-      
+      let response;
+      if (isDev && window.name.indexOf("localapi") != -1 && Object.keys(tests).includes(text)) {
+        logger.log("Running test", text);
+        logger.log("tests", tests);
+        response = tests[text as keyof typeof tests];
+      }else{
+        response = await fetchShiftResponse(apiKey, text, activeEntity, context, memory, aiInstructions);
+      }
+        logger.log("Shift response:", response);
+        
       // Create container for toast
       const toastContainer = document.createElement('div');
       toastContainer.id = "plugin--shift";
@@ -290,6 +341,7 @@ export const init = async (caido: Caido) => {
     run: () => addToMemory(caido),
     group: "Shift",
   });
+  window.caido = caido;
   caido.commandPalette.register("shift.floating", "Shift Floating Command");
   caido.shortcuts.register("shift.floating", ["⇧", "space"]);
   caido.menu.registerItem({type:"Request", command: "shift.addToMemory"});
@@ -301,5 +353,7 @@ export const init = async (caido: Caido) => {
     checkForUpdates(caido);
   }, 7000);
   // initAutoComplete(caido);
-};
-
+  
+  // Initialize agent monitoring
+  initAgentMonitoring(caido);
+}

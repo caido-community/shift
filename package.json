@@ -10,6 +10,7 @@
     "build": "node scripts/clean.js && pnpm -r build && node scripts/pack.js"
   },
   "devDependencies": {
+    "@caido-community/dev": "^0.1.5",
     "@caido/plugin-manifest": "0.2.0",
     "jszip": "3.10.1",
     "typescript": "5.5.4",

@@ -6,7 +6,7 @@ const isShiftMemoryEnlarged = ref(false);
 
 // Define props
 const props = defineProps<{
-  caido: any // Should be properly typed as Caido
+  caido: Caido // Should be properly typed as Caido
 }>();
 
 onMounted(async () => {
@@ -47,9 +47,9 @@ onMounted(async () => {
       
       <!-- Add new beta notice section -->
       <div class="w-full flex flex-col items-center justify-center gap-4 mt-16">
-        <h1 class="custom-font text-3xl text-center">Closed Beta</h1>
+        <h1 class="custom-font text-3xl text-center">Get An API Key</h1>
         <p class="text-lg text-center max-w-5xl">
-          Shift is currently in closed beta. You can get on the waitlist for an API key at <a href="https://shiftwaitlist.com" target="_blank" style="text-decoration: underline; color: var(--c-fg-secondary)">https://shiftwaitlist.com</a>.
+          Shift is a cloud product that requires an API Key. You can get one at <a href="https://shiftplugin.com" target="_blank" style="text-decoration: underline; color: var(--c-fg-secondary)">https://shiftplugin.com</a>.
           <br>
           Once you get an API key, please add it to the settings page, and you'll be able to use Shift.
           <br>

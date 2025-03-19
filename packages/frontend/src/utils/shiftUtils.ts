@@ -43,7 +43,7 @@ export const getShiftContext = async (
   logger.log("Scope:", scope);
   const hostedFiles = await getHostedFiles(caido);
   const filters = caido.filters.getAll();
-  let convertWorkflows = await caido.graphql.workflows();
+  let convertWorkflows = await caido.graphql.workflowsState();// change to caido.workflows.getAll() when SDK updates
   convertWorkflows = convertWorkflows.workflows
     .filter((a: any) => a.kind === "CONVERT")
     .map((a: any) => {
@@ -252,7 +252,7 @@ export const sendShiftContext = (context: any, activeEntity: ActiveEntity) => {
 };
 
 // Response functions
-export const handleServerResponse = async (caido: any, actions: any[]) => {
+export const handleServerResponse = async (caido: Caido, actions: any[]) => {
   let ksv = {};
   for (let i = 0; i < actions.length; i++) {
     const action = actions[i];
@@ -412,6 +412,10 @@ export const checkAndRenameReplayTabs = async (
 
       const data = await response.json();
       const entry = data.data.replaySession.activeEntry;
+      if (!entry) {
+        logger.log("No entry found for session:", session.id);
+        continue;
+      }
 
       // Check if enough time has passed
       const now = new Date().getTime();

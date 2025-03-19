@@ -3,15 +3,28 @@ import { ref, createApp } from 'vue';
 import ConfirmationModal from './components/ConfirmationModal.vue';
 import logger from "./utils/logger";
 import { parsePayloads } from "./utils/commandUtils";
-
+import { Caido } from "@caido/sdk-frontend";
+import type { 
+  MatchReplaceMatcherRaw, 
+  MatchReplaceMatcherName, 
+  MatchReplaceReplacerTerm, 
+  MatchReplaceReplacerWorkflow, 
+  MatchReplaceOperationStatusCode,
+  MatchReplaceOperationFirstLine,
+  MatchReplaceOperationPath, 
+  MatchReplaceOperationHeader,
+  MatchReplaceOperationMethod,
+  MatchReplaceOperationBody,
+  MatchReplaceOperationQuery,  
+  MatchReplaceSection} from "@caido/sdk-frontend";
 
 //This file should only contain actionFunctions.
 export const actionFunctions = {
-  activeEditorReplaceSelection: (caido: any, { text }: { text: string }) => {
+  activeEditorReplaceSelection: (caido: Caido, { text }: { text: string }) => {
     caido.window.getActiveEditor()?.replaceSelectedText(text);
     caido.window.getActiveEditor()?.focus();
   },
-  activeEditorReplaceByString: (caido: any, { match, replace }: { match: string, replace: string }) => {
+  activeEditorReplaceByString: (caido: Caido, { match, replace }: { match: string, replace: string }) => {
     const editor = caido.window.getActiveEditor()?.getEditorView();
     if (editor) {
       logger.log("activeEditorReplaceByString", { match, replace });
@@ -24,7 +37,7 @@ export const actionFunctions = {
       editor.focus();
     }
   },
-  activeEditorReplaceBody: (caido: any, { body }: { body: string }) => {
+  activeEditorReplaceBody: (caido: Caido, { body }: { body: string }) => {
     const editor = caido.window.getActiveEditor()?.getEditorView();
     if (editor) {
       const lines = editor.state.doc.toJSON();
@@ -53,7 +66,7 @@ export const actionFunctions = {
       editor.focus();
     }
   },
-  activeEditorAddHeader: (caido: any, { header, replace = true }: { header: string, replace?: boolean }) => {
+  activeEditorAddHeader: (caido: Caido, { header, replace = true }: { header: string, replace?: boolean }) => {
     const editor = caido.window.getActiveEditor()?.getEditorView();
     if (editor) {
       const lines = editor.state.doc.toJSON();
@@ -95,7 +108,7 @@ export const actionFunctions = {
       editor.focus();
     }
   },
-  replayRequestReplace: (caido: any, { text }: { text: string }) => {
+  replayRequestReplace: (caido: Caido, { text }: { text: string }) => {
     const { requestEditor } = getCurrentReplayEditors();
     if (requestEditor) {
       requestEditor.dispatch({
@@ -105,7 +118,7 @@ export const actionFunctions = {
     }
   },
   //DEPRECATED
-  replayReplaceByString: (caido: any, { match, replace }: { match: string, replace: string }) => {
+  replayReplaceByString: (caido: Caido, { match, replace }: { match: string, replace: string }) => {
     const { requestEditor } = getCurrentReplayEditors();
     if (requestEditor) {
       logger.log("replayReplaceByString", { match, replace });
@@ -119,7 +132,7 @@ export const actionFunctions = {
     }
   },
   //DEPRECATED
-  replayRequestReplaceSelection: (caido: any, { text }: { text: string }) => {
+  replayRequestReplaceSelection: (caido: Caido, { text }: { text: string }) => {
     const { requestEditor } = getCurrentReplayEditors();
     if (requestEditor) {
       requestEditor.dispatch(
@@ -128,43 +141,148 @@ export const actionFunctions = {
       requestEditor.focus();
     }
   },
-  httpqlBarSetQuery: (caido: any, { text }: { text: string }) => {
+  httpqlBarSetQuery: (caido: Caido, { text }: { text: string }) => {
     caido.httpHistory.setQuery(text)
   },
-  searchBarSetQuery: (caido: any, { text }: { text: string }) => {
+  searchBarSetQuery: (caido: Caido, { text }: { text: string }) => {
     caido.search.setQuery(text)
   },
-  navigateToSidebarTab: (caido: any, { tabName }: { tabName: string }) => {
+  navigateToSidebarTab: (caido: Caido, { tabName }: { tabName: string }) => {
     navigateToSidebarTab(tabName);
   },
-  renameReplayTab: async (caido: any, { newName, sessionId }: { newName: string, sessionId?: string }) => {
+  renameReplayTab: async (caido: Caido, { newName, sessionId }: { newName: string, sessionId?: string }) => {
     return await caido.replay.renameSession(sessionId || getCurrentlySelectedReplayTabSessionId(), newName);
   },
-  sendReplayTab: (caido: any) => {
+  sendReplayTab: (caido: Caido) => {
     sendCurrentReplayTab();
   },
-  addMatchAndReplace: async (caido: any, matchAndReplaceObject: {
+  addMatchAndReplace: async (caido: Caido, matchAndReplaceObject: {
     name: string,
-    matchTerm: string,
-    replaceTerm: string,
-    isRegex: boolean,
-    query: string,
-    strategy?: string,
-    isEnabled?: boolean,
+    section: string,
+    operation: string,
+    matcherType: string | undefined,  
+    matcher: string | undefined,
+    replacerType: string | undefined,
+    replacer: string | undefined,
+    query?: string,
     collectionId?: string
   }) => {
-    logger.log("matchAndReplaceObject", matchAndReplaceObject);
-    matchAndReplaceObject.isEnabled = matchAndReplaceObject.isEnabled || true;
-    matchAndReplaceObject.collectionId = matchAndReplaceObject.collectionId || "1";
-    matchAndReplaceObject.strategy = matchAndReplaceObject.strategy || "RESPONSE_BODY";
-    return await caido.matchReplace.createRule(matchAndReplaceObject);
+    type MatchReplaceOperation = MatchReplaceOperationPath | MatchReplaceOperationHeader | MatchReplaceOperationMethod | MatchReplaceOperationBody | MatchReplaceOperationQuery | MatchReplaceOperationFirstLine;
+    let crMatcher : MatchReplaceMatcherRaw | MatchReplaceMatcherName;
+    let crReplacer : MatchReplaceReplacerTerm | MatchReplaceReplacerWorkflow;
+    let crOperation : MatchReplaceOperation;
+    let crSection : MatchReplaceSection;
+
+    switch(matchAndReplaceObject.matcherType) {
+      case "MatcherRawRegex":
+        crMatcher = {
+          kind: "MatcherRawRegex",
+          regex: matchAndReplaceObject.matcher!
+        } 
+        break;
+      case "MatcherRawValue":
+        crMatcher = {
+          kind: "MatcherRawValue",
+          value: matchAndReplaceObject.matcher!
+        }
+        break;
+      case "MatcherName":
+        crMatcher = {
+          kind: "MatcherName",
+          name: matchAndReplaceObject.matcher!
+        }
+        break;
+      case "MatcherRawFull":
+        crMatcher = {
+          kind: "MatcherRawFull"
+        }
+        break;
+      case undefined:
+      case null:
+      case "":
+        break;
+      default:
+        throw new Error(`Invalid matcher type: ${matchAndReplaceObject.matcherType}`);
+    }
+    switch(matchAndReplaceObject.replacerType) {
+      case "ReplacerTerm":
+        crReplacer = {
+          kind: "ReplacerTerm",
+          term: matchAndReplaceObject.replacer!
+        }
+        break
+      case "ReplacerWorkflow":
+        crReplacer = {
+          kind: "ReplacerWorkflow",
+          workflowId: matchAndReplaceObject.replacer!
+        }
+        break;
+      case undefined:
+      case null:
+      case "":
+        break;
+      default:
+        throw new Error(`Invalid replacer type: ${matchAndReplaceObject.replacerType}`);
+    }
+    /// MatchReplaceSectionRequestBody | MatchReplaceSectionRequestFirstLine | MatchReplaceSectionRequestHeader | MatchReplaceSectionRequestMethod | 
+    // MatchReplaceSectionRequestPath | MatchReplaceSectionRequestQuery | MatchReplaceSectionResponseBody | MatchReplaceSectionResponseFirstLine | 
+    // MatchReplaceSectionResponseHeader | MatchReplaceSectionResponseStatusCode
+    let tempOperation = {kind: matchAndReplaceObject.operation}
+    const operationMap =  {
+      "OperationStatusCodeUpdate": ["replacer"],
+      "OperationQueryRaw": ["matcher", "replacer"],
+      "OperationQueryAdd": ["matcher", "replacer"], 
+      "OperationQueryRemove": ["matcher"],
+      "OperationQueryUpdate": ["matcher", "replacer"],
+      "OperationPathRaw": ["matcher", "replacer"],
+      "OperationBodyRaw": ["matcher", "replacer"],
+      "OperationFirstLineRaw": ["matcher", "replacer"],
+      "OperationHeaderRaw": ["matcher", "replacer"],
+      "OperationHeaderUpdate": ["matcher", "replacer"],
+      "OperationHeaderAdd": ["matcher", "replacer"],
+      "OperationHeaderRemove": ["matcher"],
+      "OperationMethodUpdate": ["replacer"]
+    } as const;
+    let operationFields = operationMap[matchAndReplaceObject.operation as keyof typeof operationMap] || [];
+    if (operationFields.indexOf("matcher") !== -1) { // If the operation requires a matcher
+      if (matchAndReplaceObject.matcherType) {
+        tempOperation.matcher = crMatcher!;
+      } else {
+        throw new Error(`Matcher is required for operation: ${matchAndReplaceObject.operation}`);
+      }
+    }
+    if (operationFields.indexOf("replacer") !== -1) { // If the operation requires a replacer
+      if (matchAndReplaceObject.replacerType) {
+        tempOperation.replacer = crReplacer!;
+      } else {
+        throw new Error(`Replacer is required for operation: ${matchAndReplaceObject.operation}`);
+      }
+    }
+    crOperation = tempOperation as MatchReplaceOperation; 
+    crSection = {
+      kind: matchAndReplaceObject.section,
+      operation: crOperation
+    } as MatchReplaceSection;
+
+    const res = await caido.matchReplace.createRule({
+      name: matchAndReplaceObject.name,
+      section: crSection,
+      collectionId: matchAndReplaceObject.collectionId || "1",
+      query: matchAndReplaceObject.query|| ""
+
+    });
+    if (!res.isEnabled) {
+    await caido.matchReplace.toggleRule(res.id, true);
+    }
+
+    return res;
   },
-  addScope: async (caido: any, { name, allowlist, denylist }: { name: string, allowlist: string[], denylist?: string[] }) => {
+  addScope: async (caido: Caido, { name, allowlist, denylist }: { name: string, allowlist: string[], denylist?: string[] }) => {
     denylist = denylist || [];
     logger.log("scopeObject", { name, allowlist, denylist });
     return await caido.scopes.createScope({ name, allowlist, denylist });
   },
-  deleteScope: async (caido: any, { name, id }: { name?: string; id?: string }) => {
+  deleteScope: async (caido: Caido, { name, id }: { name?: string; id?: string }) => {
     let scopeId: string;
     if (name && !id) {
       const scopes = await caido.scopes.getScopes();
@@ -182,17 +300,17 @@ export const actionFunctions = {
     
     return await caido.scopes.deleteScope(scopeId);
   },
-  updateScope: async (caido: any, { name, allowList, denyList }: { name: string, allowList: string[], denyList: string[] }) => {
+  updateScope: async (caido: Caido, { name, allowList, denyList }: { name: string, allowList: string[], denyList: string[] }) => {
     let currentScope = getCurrentScope();
     let scopes = await caido.scopes.getScopes();
-    currentScope = scopes.find((s: any) => s.name === currentScope);
-    if (currentScope) {
-      return await caido.scopes.updateScope(currentScope.id, { name, allowList, denyList });
+    const scopeObj = scopes.find((s: any) => s.name === currentScope);
+    if (scopeObj) {
+      return await caido.scopes.updateScope(scopeObj.id, { name, allowList, denyList });
     } else {
       throw new Error("Current scope not found.");
     }
   },
-  addFilter: async (caido: any, { name, query, alias }: { name: string; query: string; alias: string }) => {
+  addFilter: async (caido: Caido, { name, query, alias }: { name: string; query: string; alias: string }) => {
     try {
       const newFilter = await caido.filters.create({ name, query, alias });
       logger.log("Filter created successfully:", newFilter);
@@ -202,7 +320,7 @@ export const actionFunctions = {
       throw error;
     }
   },
-  updateFilter: async (caido: any, { id, name, alias, query }: { id: string, name: string; alias: string; query: string }) => {
+  updateFilter: async (caido: Caido, { id, name, alias, query }: { id: string, name: string; alias: string; query: string }) => {
     try {
       const updatedFilter = await caido.filters.update(id, { name, alias, query });
       logger.log("Filter updated successfully:", updatedFilter);
@@ -212,7 +330,7 @@ export const actionFunctions = {
       throw error;
     }
   },
-  deleteFilter: async (caido: any, { name, id }: { name?: string; id?: string }) => {
+  deleteFilter: async (caido: Caido, { name, id }: { name?: string; id?: string }) => {
     try {
       let filterId: string;
       if (name) {
@@ -234,9 +352,14 @@ export const actionFunctions = {
       throw error;
     }
   },
-  showConfirmationModal: async (caido: any, { title, message, onApproveInput, onDenyInput }: { title: string, message: string, onApproveInput?: () => Promise<void>, onDenyInput?: () => Promise<void> }) => {
+  showConfirmationModal: async (caido: Caido, { title, message, onApproveInput, onDenyInput }: { 
+    title: string, 
+    message: string, 
+    onApproveInput?: (value: any) => Promise<void>, 
+    onDenyInput?: (value: any) => Promise<void> 
+  }) => {
     return new Promise((resolve) => {
-      const modalComponent = ref(null);
+      const modalComponent = ref<{ app: any, container: HTMLDivElement } | null>(null);
 
       const modalProps = {
         title,
@@ -266,12 +389,44 @@ export const actionFunctions = {
       modalComponent.value = { app, container };
     });
   },
-  createHostedFile: async (caido: any, { name, content }: { name: string, content: string }) => {
-    await actionFunctions.showConfirmationModal(caido, { title: `${name}`, message: content, onApproveInput: async (value: any) => {
-      return await caido.files.create(new File([value], name));
-    } });
+  createHostedFile: async (caido: Caido, { name, content }: { name: string, content: string }) => {
+    await actionFunctions.showConfirmationModal(caido, { 
+      title: `${name}`, 
+      message: content, 
+      onApproveInput: async (value: any) => {
+        return await caido.files.create(new File([value], name));
+      }
+    });
   },
-  removeHostedFile: async (caido: any, { id, name }: { id?: string, name?: string }) => {
+  displayTextToUser: async (caido: Caido, { title, content }: { title: string, content: string }) => {
+    return new Promise((resolve) => {
+      const modalComponent = ref<{ app: any, container: HTMLDivElement } | null>(null);
+
+      const modalProps = {
+        title,
+        message: content,
+        caido,
+        useClipboard: true,
+        onApprove: () => {}, // Not used but required by component
+        onDeny: () => {
+          modalComponent.value = null;
+          resolve(false);
+        },
+        onCopy: (value: any) => {
+          modalComponent.value = null;
+          resolve(true);
+        }
+      };
+
+      const container = document.createElement('div');
+      container.id = "plugin--shift";
+      document.body.appendChild(container);
+      const app = createApp(ConfirmationModal, modalProps);
+      app.mount(container);
+      modalComponent.value = { app, container };
+    });
+  },
+  removeHostedFile: async (caido: Caido, { id, name }: { id?: string, name?: string }) => {
     try {
       let fileId: string;
       if (id) {
@@ -294,7 +449,7 @@ export const actionFunctions = {
       throw error;
     }
   },
-  createReplaySession: async (caido: any, { requestSource, collectionId = "1", host, port, isTls = true, name }: { requestSource: string, collectionId?: string, host: string, port: number, isTls: boolean, name?: string }) => {
+  createReplaySession: async (caido: Caido, { requestSource, collectionId = "1", host, port, isTls = true, name }: { requestSource: string, collectionId?: string, host: string, port: number, isTls: boolean, name?: string }) => {
     try {
       const result = await caido.graphql.createReplaySession({
         input: {
@@ -326,7 +481,7 @@ export const actionFunctions = {
       throw error;
     }
   },
-  runConvertWorkflow: async (caido: any, { id, input }: { id: string, input: string }) => {
+  runConvertWorkflow: async (caido: Caido, { id, input }: { id: string, input: string }) => {
     try {
       const result = await caido.graphql.runConvertWorkflow({
         id: id,
@@ -338,7 +493,7 @@ export const actionFunctions = {
       throw error;
     }
   },
-  createAutomateSession: async (caido: any, {
+  createAutomateSession: async (caido: Caido, {
     requestSource,
     host,
     port,

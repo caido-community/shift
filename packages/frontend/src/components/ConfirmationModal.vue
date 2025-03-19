@@ -11,7 +11,8 @@
         v-model="props.message"
       ></textarea>
       <div class="info-text">
-        <span><strong>ctrl/⌘ + ↩</strong> to approve</span>
+        <span v-if="props.useClipboard"><strong>ctrl/⌘ + c</strong> to copy and close</span>
+        <span v-else><strong>ctrl/⌘ + ↩</strong> to approve</span>
         <span><strong>esc</strong> to deny</span>
       </div>
       <div class="resize-handle" @mousedown.stop="startResize"></div>
@@ -29,6 +30,8 @@ const props = defineProps<{
   caido: Caido;
   onApprove: (value?: any) => void;
   onDeny: (value?: any) => void;
+  useClipboard?: boolean;
+  onCopy?: (value?: any) => void;
 }>();
 
 const isVisible = ref(true);
@@ -51,12 +54,26 @@ onUnmounted(() => {
 });
 
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+  if (props.useClipboard && event.key === 'c' && (event.metaKey || event.ctrlKey)) {
+    copyAndClose();
+  } else if (!props.useClipboard && event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
     event.preventDefault();
     approve();
   } else if (event.key === 'Escape') {
     event.preventDefault();
     deny();
+  }
+};
+
+const copyAndClose = async () => {
+  try {
+    await navigator.clipboard.writeText(props.message);
+    isVisible.value = false;
+    if (props.onCopy) {
+      props.onCopy(props.message);
+    }
+  } catch (err) {
+    console.error('Failed to copy text: ', err);
   }
 };
 

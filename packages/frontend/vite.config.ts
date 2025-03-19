@@ -40,7 +40,9 @@ export default defineConfig({
 
         // This plugin wraps the root element in a unique ID
         // This is necessary to prevent styling conflicts between plugins
-        prefixwrap(`#plugin--${manifest.id}`),
+        prefixwrap(`#plugin--${manifest.id}`, {
+          blacklist: [".*Global.css"]
+        }),
       ],
     },
   },

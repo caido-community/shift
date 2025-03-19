@@ -393,11 +393,50 @@ export const getPluginStorage = async (
     if (!storage) {
       return DEFAULT_PLUGIN_STORAGE;
     }
-    return storage as PluginStorage;
+    
+    // Migrate storage if needed
+    const migratedStorage = migrateStorage(storage as unknown as PluginStorage);
+    
+    return migratedStorage;
   } catch (error) {
     logger.error("Error getting plugin storage:", error);
     throw error;
   }
+};
+
+/**
+ * Migrates storage from old format to new format
+ * Handles the migration of memory and aiInstructions from string to project-based map
+ */
+export const migrateStorage = (storage: PluginStorage): PluginStorage => {
+  if (!storage.settings) {
+    return storage;
+  }
+  
+  const projectName = getCurrentProjectName() || 'default';
+  
+  // Migrate memory field
+  if (typeof storage.settings.memory === 'string') {
+    const memoryContent = storage.settings.memory;
+    storage.settings.memory = {
+      [projectName]: memoryContent
+    };
+  }
+  
+  // Migrate aiInstructions field
+  if (typeof storage.settings.aiInstructions === 'string') {
+    const aiInstructionsContent = storage.settings.aiInstructions;
+    storage.settings.aiInstructions = {
+      [projectName]: aiInstructionsContent
+    };
+  }
+  
+  // Ensure agents field exists
+  if (!storage.agents) {
+    storage.agents = DEFAULT_PLUGIN_STORAGE.agents;
+  }
+  
+  return storage;
 };
 
 export const setPluginStorage = async (
@@ -414,5 +453,97 @@ export const setPluginStorage = async (
   } catch (error) {
     logger.error("Error setting plugin storage:", error);
     throw error;
+  }
+};
+
+
+
+
+//Agent Utils
+export const getReqAndRespBySessionId = async (caido: Caido, { sessionId }: { sessionId: string }) => {
+  const auth = JSON.parse(localStorage.getItem("CAIDO_AUTHENTICATION") || "{}");
+  const accessToken = auth.accessToken;
+  
+  const response = await fetch("/graphql", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json", 
+    Authorization: `Bearer ${accessToken}`,
+  },
+  body: JSON.stringify({
+      query:
+        "query replaySessionEntries($id: ID!){\n    replaySession(id: $id){\n        activeEntry{\n            session{\n                id\n            }\n            request{\n                raw\n                response{\n                    raw\n                }\n            }\n        }\n    }\n}",
+      variables: { id: sessionId },
+      operationName: "replaySessionEntries",
+    }),
+  });
+
+  const jsonResponse = await response.json();
+
+  // Extract the relevant data from the response
+  const sessionData = jsonResponse.data?.replaySession?.activeEntry;
+
+  // Format the response as requested
+  return {
+    sessionId: sessionId,
+    request: sessionData?.request?.raw ? atob(sessionData.request.raw) : "",
+    response: sessionData?.request?.response?.raw ? atob(sessionData.request.response.raw) : ""
+  };
+}
+
+export const sendReplayBySessionId = async (caido: Caido, sessionId: string, rawBody: string): Promise<void> => {
+  const auth = JSON.parse(localStorage.getItem("CAIDO_AUTHENTICATION") || "{}");
+  const accessToken = auth.accessToken;
+  
+  const response = await fetch("/graphql", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json", 
+    Authorization: `Bearer ${accessToken}`,
+  },
+  body: JSON.stringify({
+      query:
+        "query replaySessionEntries($id: ID!){\n    replaySession(id: $id){\n        activeEntry{\n            session{\n                id\n            }\n            request{\n      isTls port host      }\n        }\n    }\n}",
+      variables: { id: sessionId },
+      operationName: "replaySessionEntries",
+    }),
+  });
+
+  const jsonResponse = await response.json();
+  const sessionData = jsonResponse.data?.replaySession?.activeEntry;
+  const startReplayTaskResponse = await fetch("/graphql", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json", 
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      query: "mutation startReplayTask($sessionId: ID!, $input: StartReplayTaskInput!) {\n  startReplayTask(sessionId: $sessionId, input: $input) {\n    task {\n   id createdAt } } }",
+      variables: {
+        input: {
+          connection: {
+            host: sessionData.request.host,
+            isTLS: sessionData.request.isTls,
+            port: sessionData.request.port
+          },
+          raw: btoa(rawBody),
+          settings: {
+            placeholders: [],
+            updateContentLength: true
+          }
+        },
+        sessionId: sessionId
+      },
+      operationName: "startReplayTask",
+    }),
+  });
+
+  if (!startReplayTaskResponse.ok) {
+    throw new Error(`Failed to start replay task: ${startReplayTaskResponse.statusText}`);
+  }
+
+  const replayTaskData = await startReplayTaskResponse.json();
+  if (replayTaskData.errors) {
+    throw new Error(`GraphQL error starting replay task: ${replayTaskData.errors[0].message}`);
   }
 };

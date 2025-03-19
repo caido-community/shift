@@ -89,7 +89,7 @@
           <strong>Memory</strong> - Free-form notes for the AI to use. You can store details about the target app, IDs for certain objects or accounts, etc, and the AI will use them when making decisions or filling in data.
         </label>
         <textarea
-          v-model="settings.memory"
+          v-model="memoryForCurrentProject"
           id="memory"
           rows="5"
           :placeholder="PLACEHOLDER_MEMORY"
@@ -103,7 +103,7 @@
           <strong>AI Instructions</strong> - Define shortcuts and special instructions for the AI to follow. You can create custom commands or specify how you want the AI to interpret certain patterns.
         </label>
         <textarea
-          v-model="settings.aiInstructions"
+          v-model="aiInstructionsForCurrentProject"
           id="aiInstructions"
           rows="5"
           :placeholder="PLACEHOLDER_AI_INSTRUCTIONS"
@@ -115,7 +115,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted, watch } from 'vue';
+import { defineComponent, ref, onMounted, watch, computed } from 'vue';
 import type { Caido } from "@caido/sdk-frontend";
 import { getCurrentProjectName, getPluginStorage, setPluginStorage } from '../../utils/caidoUtils';
 import { isDev, PAGE, PluginStorage, DEFAULT_PLUGIN_STORAGE, PLACEHOLDER_AI_INSTRUCTIONS, PLACEHOLDER_MEMORY} from '../../constants';
@@ -155,8 +155,47 @@ export default defineComponent({
     const tokensUsed = ref<number | null>(null);
     const tokensLimit = ref<number | null>(null);
     const validationAttempted = ref(false);
+    const projectName = getCurrentProjectName() || 'default';
 
     const settings = ref<PluginStorage['settings']>(DEFAULT_PLUGIN_STORAGE.settings);
+
+    // Computed property for memory that handles the project-based structure
+    const memoryForCurrentProject = computed({
+      get: () => {
+        if (typeof settings.value.memory === 'string') {
+          return settings.value.memory;
+        }
+        return settings.value.memory[projectName] || '';
+      },
+      set: (value: string) => {
+        if (typeof settings.value.memory === 'string') {
+          settings.value.memory = {
+            [projectName]: value
+          };
+        } else {
+          settings.value.memory[projectName] = value;
+        }
+      }
+    });
+
+    // Computed property for aiInstructions that handles the project-based structure
+    const aiInstructionsForCurrentProject = computed({
+      get: () => {
+        if (typeof settings.value.aiInstructions === 'string') {
+          return settings.value.aiInstructions;
+        }
+        return settings.value.aiInstructions[projectName] || '';
+      },
+      set: (value: string) => {
+        if (typeof settings.value.aiInstructions === 'string') {
+          settings.value.aiInstructions = {
+            [projectName]: value
+          };
+        } else {
+          settings.value.aiInstructions[projectName] = value;
+        }
+      }
+    });
 
     watch(props.updateMemory, async (newVal) => {
       logger.log("updateMemory", newVal);
@@ -173,19 +212,31 @@ export default defineComponent({
     watch(settings, async (newSettings) => {
       logger.log("settings updated", settings.value, newSettings);
       let storage = await getPluginStorage(props.caido);
-      if (storage.settings?.memory != newSettings?.memory && !location.href.includes(PAGE)) {
+      const currentProjectName = getCurrentProjectName() || 'default';
+      
+      // Check if memory has changed
+      const oldMemory = typeof storage.settings.memory === 'string' 
+        ? storage.settings.memory 
+        : (storage.settings.memory[currentProjectName] || '');
+      
+      const newMemory = typeof newSettings.memory === 'string'
+        ? newSettings.memory
+        : (newSettings.memory[currentProjectName] || '');
+      
+      if (oldMemory !== newMemory && !location.href.includes(PAGE)) {
         logger.log("Memory update, skipping");
         return;
       }
+      
       storage.settings = JSON.parse(JSON.stringify(newSettings));//Deep copy to avoid reference issues
-      let projectName = getCurrentProjectName();
+      
       if (!newSettings.renameExistingTabs) {
         if (!storage.settings.alreadyAssessedTabs) storage.settings.alreadyAssessedTabs = {};
-        storage.settings.alreadyAssessedTabs[projectName] = props.caido.replay.getSessions().map(session => session.id);
-        logger.log("Rename existing tabs is disabled, so adding all sessions to alreadyAssessedTabs", storage.settings.alreadyAssessedTabs[projectName]);
+        storage.settings.alreadyAssessedTabs[currentProjectName] = props.caido.replay.getSessions().map(session => session.id);
+        logger.log("Rename existing tabs is disabled, so adding all sessions to alreadyAssessedTabs", storage.settings.alreadyAssessedTabs[currentProjectName]);
       }else{
         if (!storage.settings.alreadyAssessedTabs) storage.settings.alreadyAssessedTabs = {};
-        storage.settings.alreadyAssessedTabs[projectName] = [];
+        storage.settings.alreadyAssessedTabs[currentProjectName] = [];
       }
       await setPluginStorage(props.caido, storage);
       props.startRenameInterval(props.caido);
@@ -265,11 +316,13 @@ export default defineComponent({
     return {
       apiKey,
       isApiKeyValid,
+      settings,
+      memoryForCurrentProject,
+      aiInstructionsForCurrentProject,
       tokensUsed,
       tokensLimit,
       validationAttempted,
       validateAndSave,
-      settings,
       incrementRenameDelay,
       decrementRenameDelay,
       PLACEHOLDER_AI_INSTRUCTIONS,
