@@ -28,14 +28,14 @@ const items = computed(() => [
       page.value = "Settings";
     },
     class: page.value === "Settings" ? "active-nav-item" : ""
-  },
+  },/*
   {
     label: "Agents",
     command: () => {
       page.value = "Agents";
     },
     class: page.value === "Agents" ? "active-nav-item" : ""
-  },
+  }*/
   {
     label: "Tutorial",
     command: () => {
@@ -44,6 +44,7 @@ const items = computed(() => [
     class: page.value === "Tutorial" ? "active-nav-item" : ""
   },
 ]);
+
 
 const component = computed(() => {
   switch (page.value) {
@@ -72,13 +73,20 @@ onMounted(async () => {
   }
 
   // Start the toolbar observer to inject our component
-  startToolbarObserver(props.caido, props.apiEndpoint);
+  //feature flag
+  if (window.name.includes("dev")) {
+    startToolbarObserver(props.caido, props.apiEndpoint);
+  }
+
 });
 
 // Clean up when component is unmounted
 onUnmounted(() => {
   // Stop the toolbar observer and remove any injected components
-  stopToolbarObserver();
+  //feature flag
+  if (window.name.includes("dev")) {
+    stopToolbarObserver();
+  }
 });
 
 // Add handler function
