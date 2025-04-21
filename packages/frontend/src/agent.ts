@@ -57,9 +57,11 @@ const restartAgent = async (caido: Caido, storage: PluginStorage, association: A
   if (tabAssociation) {
     tabAssociation.agentState = AgentState.ReadyToTellAI;
     await writeToStorage(caido, storage, association);
+    logger.log("Calling ready to tell AI from restartAgent");
     return await agentReadyToTellAI(caido, storage, association);
   }
 };
+
 
 const agentReadyToImplementActions = async (caido: Caido, storage: PluginStorage, association: AgentTabAssociation) => {
   logger.log(`Agent ready to implement actions for session ${association.sessionId}`);
@@ -75,6 +77,9 @@ const agentReadyToImplementActions = async (caido: Caido, storage: PluginStorage
   const messageToExecute = conversationHistory
     .reverse()
     .find(msg => msg.action?.length && !msg.executed);
+  // Check if the last message indicates halting
+  const lastMessage = conversationHistory[0];
+  logger.log("ready to implement actions lastMessage", lastMessage);
 
   if (!messageToExecute?.action?.length) {
     logger.log('Storage:', storage);
@@ -107,9 +112,21 @@ const agentReadyToImplementActions = async (caido: Caido, storage: PluginStorage
       const newTabAssociation = freshStorage.agentTabAssociations?.[association.sessionId];
       const updatedHistory = newTabAssociation.conversationHistory.map(msg => 
         msg.id === messageToExecute.id ? {...msg, executed: true} : msg
-      );
+      );  
       newTabAssociation.conversationHistory = updatedHistory;
       newTabAssociation.agentState = AgentState.ReadyToTellAI;
+      if (lastMessage?.halting) {
+        logger.log('Agent halting requested');
+        const ts = Date.now();
+        newTabAssociation.conversationHistory.push({
+            id: generateId(),
+            role: 'agent',
+            content: 'Agent paused',
+            action: [],
+            timestamp: ts
+        });
+        newTabAssociation.agentState = AgentState.Paused;
+      }
       await writeToStorage(caido, freshStorage, association);
     }).catch(async (error) => {
       logger.error('Error sending replay:', error);
@@ -145,7 +162,7 @@ const agentReadyToTellAI = async (caido: Caido, storage: PluginStorage, associat
     return;
   }
 
-  logger.log(`Agent ready to tell AI for session ${association.sessionId}`);
+  logger.log(`Agent telling AI for session ${association.sessionId}`);
   const sessionIdParam = { sessionId: association.sessionId };
   let replayStateData = await getReqAndRespBySessionId(caido, sessionIdParam);
   
@@ -177,7 +194,7 @@ const agentReadyToTellAI = async (caido: Caido, storage: PluginStorage, associat
   }).then(async (response) => {
     const responseData = await response.json();
     const freshStorage = await getPluginStorage(caido);
-    logger.log("Fresh storage:", freshStorage);
+    logger.log("Fresh storage in ReadyToImplement then statement:", freshStorage);
     
     // Ensure agentTabAssociations exists and has the session entry with required properties
     const tabAssociation = freshStorage.agentTabAssociations?.[association.sessionId];
@@ -195,6 +212,8 @@ const agentReadyToTellAI = async (caido: Caido, storage: PluginStorage, associat
       });
       logger.log("Updated conversation history after AI call:", tabAssociation.conversationHistory);
       await writeToStorage(caido, freshStorage, association);
+      logger.log("Calling ready to implement actions from ReadyToTellAI");
+      await agentReadyToImplementActions(caido, freshStorage, association);
     }
   }).catch(async (error) => {
     logger.error(`Error initializing agent: ${error}`);
@@ -230,6 +249,7 @@ export const initAgentMonitoring = async (caido: Caido) => {
 
 const writeToStorage = async (caido: Caido, storage: PluginStorage, association: AgentTabAssociation) => {
   if (window.shiftAgentCooldown && window.shiftAgentCooldown[association.sessionId] && window.shiftAgentCooldown[association.sessionId] > Date.now()) {
+    logger.log("Hit cooldown for session and did not write to storage", association.sessionId, storage);
     return; // Still on cooldown
   }
   await setPluginStorage(caido, storage);

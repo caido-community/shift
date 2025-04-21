@@ -43,7 +43,10 @@
   display: flex;
   gap: 8px;
 }
-
+.resume-agent-button[disabled]{
+  background-color: #3a3e4a;
+  cursor: not-allowed;
+}
 .agent-control-button {
   display: flex;
   align-items: center;

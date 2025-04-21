@@ -444,6 +444,7 @@ export const setPluginStorage = async (
   storage: Partial<PluginStorage>,
 ): Promise<void> => {
   try {
+    logger.log("Setting plugin storage:", storage);
     const currentStorage = await getPluginStorage(caido);
     const newStorage = {
       ...currentStorage,

@@ -21,8 +21,10 @@
         v-else
         class="agent-control-button resume-agent-button"
         @click="resumeAgent"
+        :disabled="isInCooldown"
       >
-        <span>Resume Agent</span>
+        <span v-if="!isInCooldown">Resume Agent</span>
+        <span v-else>Cooldown...</span>
         <i class="fas fa-play"></i>
       </button>
       <button 
@@ -91,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue';
 import type { Caido } from "@caido/sdk-frontend";
 import { getPluginStorage, setPluginStorage } from "../../utils/caidoUtils";
 import logger from '@/utils/logger';
@@ -126,10 +128,20 @@ const dropdownStyle = ref({
   display: 'none'
 });
 
+
 // Launch modal state
 const isLaunchModalOpen = ref(false);
 const selectedAgent = ref<{id: string, name: string, instructions: string, knowledge: Array<string>, dynamicFields?: Array<any>} | null>(null);
 const previousConfig = ref<{jitInstructions: string, maxRequests: number, dynamicValues: Record<string, any>} | null>(null);
+const currentTime = ref(Date.now());
+let timeInterval: number;
+// Add this computed property after other refs and before functions
+const isInCooldown = computed(() => {
+  if (!props.toolbarState.sessionId || !window.shiftAgentCooldown?.[props.toolbarState.sessionId]) {
+    return false;
+  }
+  return currentTime.value < window.shiftAgentCooldown[props.toolbarState.sessionId];
+});
 
 // Function to navigate to Shift page
 const navigateToShift = () => {
@@ -181,6 +193,7 @@ const pauseAgent = async (triggerEvent: boolean | MouseEvent = true) => {
   try {
     // Get current storage to retrieve the agent association
     const storage = await getPluginStorage(props.caido);
+    logger.log("Storage in pauseAgent:", storage);
     const associations = storage.agentTabAssociations || {};
     const association = associations[props.toolbarState.sessionId];
     
@@ -189,7 +202,7 @@ const pauseAgent = async (triggerEvent: boolean | MouseEvent = true) => {
       if (!window.shiftAgentCooldown) {
         window.shiftAgentCooldown = {};
       }
-      window.shiftAgentCooldown[props.toolbarState.sessionId] = Date.now() + 1000 * 5; // 5 second cooldown
+      window.shiftAgentCooldown[props.toolbarState.sessionId] = Date.now() + 1000 * 2; // 5 second cooldown
 
       association.agentState = AgentState.Paused;
       
@@ -262,7 +275,7 @@ const stopAgent = async (triggerEvent: boolean | MouseEvent = true) => {
       if (!window.shiftAgentCooldown) {
         window.shiftAgentCooldown = {};
       }
-      window.shiftAgentCooldown[props.toolbarState.sessionId] = Date.now() + 1000 * 5; // 5 second cooldown
+      window.shiftAgentCooldown[props.toolbarState.sessionId] = Date.now() + 1000 * 2; // 5 second cooldown
       // Update storage
       await setPluginStorage(props.caido, {
         agentTabAssociations: associations
@@ -396,7 +409,13 @@ const handleAgentLaunch = async (config: any) => {
         },
         sessionId: sessionId,
         conversationId: generateId(),
-        conversationHistory: [],
+        conversationHistory: [{
+          id: generateId(),
+          role: 'user',
+          content: 'Agent started:\n\n' + config.jitInstructions,
+          action: [],
+          timestamp: Date.now()
+        }],
         agentState: AgentState.ReadyToTellAI
       };
       
@@ -452,6 +471,11 @@ onMounted(() => {
   
   // Add event listener for agent resumed
   window.addEventListener('agent-resumed', handleAgentResumed);
+
+  // Add interval to update currentTime every 100ms
+  timeInterval = window.setInterval(() => {
+    currentTime.value = Date.now();
+  }, 250);
   
   logger.log("ToolbarComponent mounted");
 });
@@ -467,6 +491,7 @@ onUnmounted(() => {
   window.removeEventListener('agent-association-not-found', handleAgentAssociationNotFound);
   window.removeEventListener('agent-paused', handleAgentPaused);
   window.removeEventListener('agent-resumed', handleAgentResumed);
+  window.clearInterval(timeInterval);
 });
 
 // Handle agent selection

@@ -11,6 +11,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 /* Updated styles for grid-based layout */
@@ -116,6 +120,9 @@
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
+  scroll-behavior: smooth;
+  height: 100%;
+  position: relative;
 }
 
 .shift-agent-message {
@@ -123,6 +130,17 @@
   flex-direction: column;
   padding: 12px;
   border-radius: 8px;
+  scroll-margin-bottom: 20px;
+  position: relative;
+}
+
+.shift-agent-message-timestamp {
+  font-size: 11px;
+  color: var(--c-text-secondary);
+  margin-bottom: 4px;
+  opacity: 0.7;
+  text-align: right;
+  padding-right: 4px;
 }
 
 .shift-agent-message-user {
@@ -134,8 +152,9 @@
 
 .shift-agent-message-agent {
   align-self: flex-end;
-  background-color: var(--c-bg-secondary);
-  color: var(--c-text-primary);
+  background-color: var(--c-bg-default);
+  border: 1px solid var(--c-bg-tertiary);
+  padding: 8px;
   max-width: 80%;
 }
 

@@ -22,10 +22,14 @@
             Select an action to begin working with {{ activeAgent.name }}
           </div>
         </div>
-        <div v-else class="shift-agent-messages">
-          <div v-for="message in messages" :key="message.id" 
-               :class="['shift-agent-message', `shift-agent-message-${message.role}`]">
-            <div class="shift-agent-message-content">{{ message.content }}</div>
+        <div v-else 
+             class="shift-agent-messages" 
+             ref="messagesContainer"
+             @scroll="handleScroll">
+          <div v-for="message in messages" :key="message.id">
+            <div :class="['shift-agent-message', `shift-agent-message-${message.role}`]">
+              <div class="shift-agent-message-content">{{ message.content }}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -44,12 +48,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { getPluginStorage, setPluginStorage } from "../../utils/caidoUtils";
 import logger from '@/utils/logger';
 import { getCurrentSessionId } from "../../utils/toolbarInjection";
 import { AgentTabAssociation, Message, AgentState } from '../../constants';
-
+import type { Caido } from "@caido/sdk-frontend";
 // Native UUID generation function
 const generateUUID = (): string => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -76,8 +80,33 @@ const launchConfig = ref<{
   dynamicValues: Record<string, any>;
 } | null>(null);
 const requestCount = ref(0);
+const messagesContainer = ref<HTMLElement | null>(null);
+const shouldAutoScroll = ref(true);
 
 // Methods
+const scrollToBottom = () => {
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+  }
+};
+
+const handleScroll = () => {
+  if (messagesContainer.value) {
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value;
+    const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 50;
+    shouldAutoScroll.value = isAtBottom;
+  }
+};
+
+// Watch for changes in messages
+watch(messages, () => {
+  if (shouldAutoScroll.value) {
+    nextTick(() => {
+      scrollToBottom();
+    });
+  }
+});
+
 const sendMessage = async () => {
   if (!userInput.value.trim() || !activeAgent.value) return;
   
@@ -198,9 +227,6 @@ const checkForAssociatedAgent = async () => {
         } else {
           launchConfig.value = null;
         }
-        
-        // Load conversation history
-        loadConversationHistory();
       } else {
         logger.log('Agent not found, clearing active agent');
         activeAgent.value = null;
@@ -213,32 +239,6 @@ const checkForAssociatedAgent = async () => {
     }
   } catch (error) {
     logger.error('Error checking for associated agent:', error);
-  }
-};
-
-// Load conversation history for the current session
-const loadConversationHistory = async () => {
-  if (!currentSessionId.value || !activeAgent.value) return;
-  
-  try {
-    const response = await fetch(`${props.apiEndpoint}/conversation-history`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        sessionId: currentSessionId.value,
-        agentId: activeAgent.value.id
-      })
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      messages.value = data.messages || [];
-      requestCount.value = data.requestCount || 0;
-    }
-  } catch (error) {
-    console.error('Error loading conversation history:', error);
   }
 };
 
@@ -256,7 +256,7 @@ const detachAgent = async () => {
     if (!window.shiftAgentCooldown) {
       window.shiftAgentCooldown = {};
     }
-    window.shiftAgentCooldown[currentSessionId.value] = Date.now() + 1000 * 5; // 5 second cooldown
+    window.shiftAgentCooldown[currentSessionId.value] = Date.now() + 1000 * 2; // 5 second cooldown
     
     // Update storage
     await setPluginStorage(props.caido, {
@@ -279,55 +279,60 @@ const detachAgent = async () => {
 // Setup event listeners and observers
 let tabObserver: MutationObserver | null = null;
 
-onMounted(() => {
+
+async function handleStorageChange(storage: any) {
+  logger.log("handleStorageChange Called on "+currentSessionId.value);
+  logger.log("hsc storage", storage);
+  if (storage.agentTabAssociations && storage.agentTabAssociations[currentSessionId.value]) {
+    logger.log("Triggering handleStorageChange for storage in ReplayShiftAgentComponent");
+    let history = storage.agentTabAssociations[currentSessionId.value].conversationHistory;
+    if (history.length > messages.value.length) {
+      // Check if the last message is a halting message
+      let sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
+      const lastMessage = sortedHistory[sortedHistory.length - 1];
+      if (lastMessage?.halting) {
+        const association = storage.agentTabAssociations?.[currentSessionId.value];
+        
+        if (association) {
+          
+          // Update the last message to be non-halting after handling the halt
+          lastMessage.halting = false;
+
+          if (!window.shiftAgentCooldown) {
+            window.shiftAgentCooldown = {};
+          }
+          window.shiftAgentCooldown[currentSessionId.value] = Date.now() + 1000 * 2; // 5 second cooldown
+          
+          association.agentState = AgentState.Paused;
+          association.conversationHistory.push({
+            id: generateUUID(),
+            role: 'agent',
+            content: `Agent paused`,
+            action: [],
+            timestamp: Date.now()
+          })
+          history = association.conversationHistory;
+          logger.log("Storage in ReplayShiftAgentComponent before pausing agent:", storage);
+          await setPluginStorage(props.caido, storage);
+          window.dispatchEvent(new CustomEvent('agent-paused', { bubbles: true }));
+        }
+      }
+      logger.log("settings messages to", sortedHistory);
+      logger.log("messages.value", messages.value);
+      sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
+      if (sortedHistory.length > messages.value.length) {
+        messages.value = sortedHistory;
+      }else{
+        logger.log("messages is longer than sortedHistory", messages.value.length, sortedHistory.length);
+      }
+    }
+  }
+}
+
+onMounted(async () => {
   // Get current session ID
   updateCurrentSessionId();
 
-  props.caido.storage.onChange(async (storage: any) => {
-    if (storage.agentTabAssociations && storage.agentTabAssociations[currentSessionId.value]) {
-      let history = storage.agentTabAssociations[currentSessionId.value].conversationHistory;
-      if (history.length > messages.value.length) {
-        // Check if the last message is a halting message
-        let sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
-        const lastMessage = sortedHistory[sortedHistory.length - 1];
-        if (lastMessage?.halting) {
-          const association = storage.agentTabAssociations?.[currentSessionId.value];
-          
-          if (association) {
-            
-            // Update the last message to be non-halting after handling the halt
-            lastMessage.halting = false;
-
-            if (!window.shiftAgentCooldown) {
-              window.shiftAgentCooldown = {};
-            }
-            window.shiftAgentCooldown[currentSessionId.value] = Date.now() + 1000 * 5; // 5 second cooldown
-            
-            association.agentState = AgentState.Paused;
-            association.conversationHistory.push({
-              id: generateUUID(),
-              role: 'agent',
-              content: `Agent paused`,
-              action: [],
-              timestamp: Date.now()
-            })
-            history = association.conversationHistory;
-            window.dispatchEvent(new CustomEvent('agent-paused', { bubbles: true }));
-            await setPluginStorage(props.caido, storage);
-          }
-        }
-        logger.log("settings messages to", sortedHistory);
-        logger.log("messages.value", messages.value);
-        sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
-        if (sortedHistory.length > messages.value.length) {
-          messages.value = sortedHistory;
-        }else{
-          logger.log("messages is longer than sortedHistory", messages.value.length, sortedHistory.length);
-        }
-      }
-    }
-  });
-  
   // Set up tab observer
   tabObserver = new MutationObserver(() => {
     updateCurrentSessionId();
@@ -342,7 +347,10 @@ onMounted(() => {
     });
   }
   
-  logger.log('ReplayShiftAgentComponent mounted');
+  props.caido.storage.onChange(handleStorageChange);
+  await handleStorageChange(await props.caido.storage.get());
+  
+  logger.log('-------------------------------ReplayShiftAgentComponent mounted');
 });
 
 onUnmounted(() => {
