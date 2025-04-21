@@ -20,7 +20,7 @@
       @focus="refreshContext"
       autofocus
     ></textarea>
-    <div v-if="(context?.context?.requestSelectedText?.length > MAX_SIZE/1024) || (context?.context?.responseSelectedText?.length > MAX_SIZE/1024)" class="context-info">
+    <div v-if="(context?.context?.requestSelectedText?.length > MAX_SIZE) || (context?.context?.responseSelectedText?.length > MAX_SIZE)" class="context-info">
       <span style="color: var(--c-fg-secondary)">NOTE: the selected text is too large and will be truncated</span>
     </div>
     <div class="context-info">
@@ -33,7 +33,7 @@
       </span>
     </div>
     <div class="context-info">
-      context keys: <strong :title="`Context values above ${MAX_SIZE/1024}KB will be truncated.`">{{ contextFormatter(context.context) }}</strong>
+      context keys: <strong :title="`Context values above ${MAX_SIZE}KB will be truncated.`">{{ contextFormatter(context.context) }}</strong>
     </div>
     <div class="info-text">
       <span><strong>↩</strong> to submit</span>
