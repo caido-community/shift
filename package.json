@@ -7,7 +7,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "pnpm -r typecheck",
-    "build": "node scripts/clean.js && pnpm -r build && node scripts/pack.js"
+    "build": "caido-dev build",
+    "watch": "caido-dev watch"
   },
   "devDependencies": {
     "@caido-community/dev": "^0.1.5",

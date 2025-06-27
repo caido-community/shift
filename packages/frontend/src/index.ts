@@ -17,13 +17,14 @@ import "./styles/AgentLaunchModalGlobal.css";
 import CustomToast from './components/CustomToast.vue'
 import logger from './utils/logger';
 import { initAgentMonitoring } from "./agent";
+import { FrontendSDK } from '@/types';
 
 const isShiftOpen = ref(false);
 const updateMemory = ref(false);
 let renameInterval: number | null = null;
 
 // --------------------- RENAME ---------------------
-const startRenameInterval = async (caido: Caido) => {
+const startRenameInterval = async (caido: FrontendSDK) => {
   // Clear any existing interval
   if (renameInterval) {
     logger.log("Clearing rename interval", renameInterval);
@@ -40,7 +41,7 @@ const startRenameInterval = async (caido: Caido) => {
         logger.log("rename interval tick")
         const currentStorage = await getPluginStorage(caido);
         const currentSettings = currentStorage?.settings;
-        
+
         // If settings were updated, use the new values
         if (currentSettings?.aiRenameReplayTabs && !window.renameLock) {
           window.renameLock=true;
@@ -63,32 +64,32 @@ const startRenameInterval = async (caido: Caido) => {
 
 
 // --------------------- MEMORY ---------------------
-const addToMemory = async (caido: Caido) => {
+const addToMemory = async (caido: FrontendSDK) => {
   logger.log("Adding to memory");
   const text = caido.window.getActiveEditor()?.getSelectedText();
   logger.log("storage",await getPluginStorage(caido));
   const storage = await getPluginStorage(caido);
   const projectName = getCurrentProjectName() || 'default';
-  
+
   // Ensure memory is an object
   if (typeof storage.settings.memory === 'string') {
     storage.settings.memory = {
       [projectName]: storage.settings.memory
     };
   }
-  
+
   // Ensure the project exists in memory
   if (!storage.settings.memory[projectName as keyof typeof storage.settings.memory]) {
     (storage.settings.memory as Record<string, string>)[projectName] = '';
   }
-  
+
   // Add text to memory
   if ((storage.settings.memory as Record<string, string>)[projectName] !== '') {
     (storage.settings.memory as Record<string, string>)[projectName] = (storage.settings.memory as Record<string, string>)[projectName] + "\n" + text;
   } else {
     (storage.settings.memory as Record<string, string>)[projectName] = text || '';
   }
-  
+
   await setPluginStorage(caido, storage);
   updateMemory.value = !updateMemory.value;
   logger.log(storage);
@@ -97,7 +98,7 @@ const addToMemory = async (caido: Caido) => {
 
 
 // --------------------- AUTOCOMPLETE ---------------------
-const initAutoComplete = (caido: Caido) => {
+const initAutoComplete = (caido: FrontendSDK) => {
   logger.log("Initializing auto complete");
   var interval = setInterval(()=>{
     const editor = caido.window.getActiveEditor()?.getEditorView();
@@ -113,11 +114,11 @@ const initAutoComplete = (caido: Caido) => {
 
 // --------------------- UI ---------------------
 
-const addPage = async (caido: Caido) => {
-  const app = createApp(ShiftPage, { 
-    caido: caido, 
-    apiEndpoint: API_ENDPOINT, 
-    startRenameInterval: startRenameInterval, 
+const addPage = async (caido: FrontendSDK) => {
+  const app = createApp(ShiftPage, {
+    caido: caido,
+    apiEndpoint: API_ENDPOINT,
+    startRenameInterval: startRenameInterval,
     updateMemory: updateMemory
   });
 
@@ -140,9 +141,9 @@ const addPage = async (caido: Caido) => {
   logger.log("Mounted app add page");
 };
 
-const spawnCommandInterfaceUI = async (caido: Caido) => {
+const spawnCommandInterfaceUI = async (caido: FrontendSDK) => {
   logger.log("spawnCommandInterfaceUI started");
-  
+
   // If the interface is already open, toggle its visibility
   const existingInterface = document.querySelector('.shift-floating-interface');
   if (existingInterface) {
@@ -180,7 +181,7 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
     const storage = await getPluginStorage(caido);
     const apiKey = storage.apiKey;
     const projectName = getCurrentProjectName() || 'default';
-    
+
     // Get memory for current project
     let memory = "";
     if (typeof storage?.settings?.memory === 'string') {
@@ -188,7 +189,7 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
     } else if (storage?.settings?.memory) {
       memory = storage.settings.memory[projectName] || "";
     }
-    
+
     // Get aiInstructions for current project
     let aiInstructions = "";
     if (typeof storage?.settings?.aiInstructions === 'string') {
@@ -196,7 +197,7 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
     } else if (storage?.settings?.aiInstructions) {
       aiInstructions = storage.settings.aiInstructions[projectName] || "";
     }
-    
+
     try {
       let response;
       if (isDev && window.name.indexOf("localapi") != -1 && Object.keys(tests).includes(text)) {
@@ -207,12 +208,12 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
         response = await fetchShiftResponse(apiKey, text, activeEntity, context, memory, aiInstructions);
       }
         logger.log("Shift response:", response);
-        
+
       // Create container for toast
       const toastContainer = document.createElement('div');
       toastContainer.id = "plugin--shift";
       document.body.appendChild(toastContainer);
-      
+
       // Create toast instance with message in props
       if (response.actions.length > 0) {
         logger.log("response.actions", response.actions);
@@ -251,7 +252,7 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
         });
         toastApp.mount(toastContainer);
       }
-      
+
 
       handleServerResponse(caido, response.actions);
       return ""; // Success case
@@ -260,7 +261,7 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
       const toastContainer = document.createElement('div');
       toastContainer.id = "plugin--shift";
       document.body.appendChild(toastContainer);
-      
+
       const toastApp = createApp(CustomToast, {
         variant: 'error',
         duration: 20000,
@@ -275,7 +276,7 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
           document.body.removeChild(toastContainer);
         }
       });
-      
+
       toastApp.mount(toastContainer);
       return `Error: ${error}`; // Error case
     } finally {
@@ -286,11 +287,11 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
   const closeInterface = async () => {
     logger.log("Closing command interface");
     isShiftOpen.value = false;
-    
+
     // Save the current position before unmounting
     const storage = await getPluginStorage(caido);
     logger.log(storage.shiftFloatingPosition);
-    
+
     app.unmount();
     document.body.removeChild(container);
   };
@@ -314,7 +315,7 @@ const spawnCommandInterfaceUI = async (caido: Caido) => {
 
 
 // --------------------- UPDATE CHECK ---------------------
-const checkForUpdates = (caido: Caido) => {
+const checkForUpdates = (caido: FrontendSDK) => {
   logger.log("Checking for updates");
   fetch(`${API_ENDPOINT}/version`).then(async (response) => {
     const data = await response.json();
@@ -330,7 +331,7 @@ const checkForUpdates = (caido: Caido) => {
   });
 }
 
-export const init = async (caido: Caido) => {
+export const init = (caido: FrontendSDK) => {
   caido.commands.register("shift.floating", {
     name: "Shift Floating Command",
     run: () => spawnCommandInterfaceUI(caido),
@@ -353,7 +354,7 @@ export const init = async (caido: Caido) => {
     checkForUpdates(caido);
   }, 7000);
   // initAutoComplete(caido);
-  
+
   // Initialize agent monitoring
   initAgentMonitoring(caido);
 }

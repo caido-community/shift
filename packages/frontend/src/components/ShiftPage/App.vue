@@ -2,23 +2,25 @@
 import MenuBar from "primevue/menubar";
 import { computed, ref } from "vue";
 import { onMounted, onUnmounted } from "vue";
-import type { Caido } from "@caido/sdk-frontend";
+import type { FrontendSDK } from "@/types";
 import Tutorial from "./Tutorial.vue";
 import Settings from "./Settings.vue";
 import Agents from "./Agents.vue";
+import Welcome from "./Welcome.vue";
 import { getPluginStorage } from "../../utils/caidoUtils";
 import { startToolbarObserver, stopToolbarObserver} from "../../utils/toolbarInjection";
-import ReplayShiftAgentComponent from '../ReplayShiftAgent/ReplayShiftAgentComponent.vue';
 
 // Define props
 const props = defineProps<{
-  caido: Caido;
+  caido: FrontendSDK;
   apiEndpoint: string;
   startRenameInterval: () => void;
   updateMemory: boolean;
 }>();
 
 const page = ref<"Settings" | "Tutorial" | "Agents">("Settings");
+const isAuthenticated = ref(false);
+let authCheckInterval: number | null = null;
 
 // Create a computed property for menu items that updates when page changes
 const items = computed(() => [
@@ -65,7 +67,13 @@ onMounted(async () => {
   } else if (!storage.hasSeenTutorial) {
     page.value = "Tutorial";
   }
-  
+
+  if (storage.apiKey) {
+    isAuthenticated.value = true;
+    checkAuthentication();
+    startAuthCheck();
+  }
+
   // Add class to parent element
   const pluginElement = document.getElementById('plugin--shift');
   if (pluginElement && pluginElement.parentElement) {
@@ -87,7 +95,43 @@ onUnmounted(() => {
   if (window.name.includes("dev")) {
     stopToolbarObserver();
   }
+
+  stopAuthCheck();
 });
+
+const checkAuthentication = async () => {
+  const auth = JSON.parse(localStorage.getItem("CAIDO_AUTHENTICATION") || "{}");
+  const accessToken = auth.accessToken;
+
+  if (!accessToken) {
+    isAuthenticated.value = false;
+    return;
+  }
+
+  try {
+    const response = await props.caido.backend.authenticate(accessToken);
+    if (response.kind === "Error") {
+      isAuthenticated.value = false;
+    }
+  } catch (error) {
+    isAuthenticated.value = false;
+  }
+};
+
+const startAuthCheck = () => {
+  if (authCheckInterval) {
+    return;
+  }
+
+  authCheckInterval = window.setInterval(checkAuthentication, 3 * 60 * 60 * 1000);
+};
+
+const stopAuthCheck = () => {
+  if (authCheckInterval) {
+    clearInterval(authCheckInterval);
+    authCheckInterval = null;
+  }
+};
 
 // Add handler function
 const handleAuthenticated = async () => {
@@ -95,12 +139,14 @@ const handleAuthenticated = async () => {
   if (!storage.hasSeenTutorial) {
     page.value = "Tutorial";
   }
+  startAuthCheck();
 };
 </script>
 
 <template>
   <div id="plugin--shift">
-    <div class="h-full flex flex-col gap-1">
+    <Welcome :caido="caido" :isAuthenticated="isAuthenticated" @authenticated="() => { isAuthenticated = true; startAuthCheck(); }" v-if="!isAuthenticated" />
+    <div v-else class="h-full flex flex-col gap-1">
       <div class="navbar flex items-center w-full">
         <div class="logo flex items-center gap-2 px-2">
           <i class="far fa-arrow-alt-circle-up"></i>
@@ -109,8 +155,8 @@ const handleAuthenticated = async () => {
         <MenuBar :model="items" breakpoint="320px" class="flex-1" />
       </div>
       <div class="bodycard flex-1 min-h-0">
-        <component 
-          :is="component" 
+        <component
+          :is="component"
           :caido="caido"
           :apiEndpoint="apiEndpoint"
           :startRenameInterval="startRenameInterval"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import type { Caido } from "@caido/sdk-frontend";
+import type { FrontendSDK } from "@/types";
 import { getPluginStorage, setPluginStorage } from "../../utils/caidoUtils";
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
@@ -10,7 +10,7 @@ import Tag from 'primevue/tag';
 
 // Define props
 const props = defineProps<{
-  caido: Caido;
+  caido: FrontendSDK;
   apiEndpoint: string;
   startRenameInterval: () => void;
   updateMemory: boolean;
@@ -27,7 +27,7 @@ onMounted(async () => {
   try {
     const storage = await getPluginStorage(props.caido);
     agents.value = storage.agents || [];
-    
+
     // Default to selecting the first agent in the list
     if (agents.value.length > 0) {
       const firstAgent = agents.value[0];
@@ -45,7 +45,7 @@ const selectAgent = async (agent: {id: string, name: string}) => {
   try {
     const storage = await getPluginStorage(props.caido);
     const agentDetails = storage.agents.find(a => a.id === agent.id);
-    
+
     if (agentDetails) {
       selectedAgent.value = agentDetails;
       newName.value = agentDetails.name;
@@ -71,16 +71,16 @@ const createNewAgent = () => {
 // Save the current agent
 const saveAgent = async () => {
   if (!selectedAgent.value) return;
-   
+
   const agent = selectedAgent.value as {id: string, name: string, instructions: string, knowledge: Array<string>};
-  
+
   try {
     const storage = await getPluginStorage(props.caido);
-    
+
     // Update the agent with new values
     agent.name = newName.value;
     agent.instructions = newInstructions.value;
-    
+
     // Check if this is a new agent or an existing one
     if (agent.id === 'new') {
       // Generate a new ID for the agent
@@ -93,13 +93,13 @@ const saveAgent = async () => {
         storage.agents[index] = agent;
       }
     }
-    
+
     // Save to storage
     await setPluginStorage(props.caido, { agents: storage.agents });
-    
+
     // Update local list
     agents.value = storage.agents.map(a => ({ id: a.id, name: a.name }));
-    
+
   } catch (error) {
     console.error("Error saving agent:", error);
   }
@@ -108,24 +108,24 @@ const saveAgent = async () => {
 // Delete the current agent
 const deleteAgent = async () => {
   if (!selectedAgent.value) return;
-  
+
   try {
     const storage = await getPluginStorage(props.caido);
-    
+
     // Remove the agent from storage
     storage.agents = storage.agents.filter(a => a.id !== selectedAgent.value?.id);
-    
+
     // Save to storage
     await setPluginStorage(props.caido, { agents: storage.agents });
-    
+
     // Update local list
     agents.value = storage.agents.map(a => ({ id: a.id, name: a.name }));
-    
+
     // Clear selection
     selectedAgent.value = null;
     newName.value = '';
     newInstructions.value = '';
-    
+
   } catch (error) {
     console.error("Error deleting agent:", error);
   }
@@ -134,19 +134,19 @@ const deleteAgent = async () => {
 // Handle file upload
 const onFileUpload = async (event: any) => {
   if (!selectedAgent.value) return;
-  
+
   try {
     const storage = await getPluginStorage(props.caido);
     const files = event.files;
-    
+
     // Process uploaded files
     for (const file of files) {
       const reader = new FileReader();
       reader.onload = async (e) => {
         if (!e.target || !e.target.result) return;
-        
+
         const filename = file.name;
-        
+
         // Find the agent in storage
         const agentIndex = storage.agents.findIndex(a => a.id === selectedAgent.value?.id);
         if (agentIndex >= 0 && storage.agents[agentIndex]) {
@@ -154,12 +154,12 @@ const onFileUpload = async (event: any) => {
           // Add the file to the agent's knowledge
           if (!agent.knowledge.includes(filename)) {
             agent.knowledge.push(filename);
-            
+
             // Update the selected agent
             if (selectedAgent.value) {
               selectedAgent.value.knowledge.push(filename);
             }
-            
+
             // Save to storage
             await setPluginStorage(props.caido, { agents: storage.agents });
           }
@@ -167,7 +167,7 @@ const onFileUpload = async (event: any) => {
       };
       reader.readAsText(file);
     }
-    
+
     // Clear the file upload
     event.clear();
   } catch (error) {
@@ -178,22 +178,22 @@ const onFileUpload = async (event: any) => {
 // Remove a knowledge file
 const removeKnowledgeFile = async (filename: string) => {
   if (!selectedAgent.value) return;
-  
+
   try {
     const storage = await getPluginStorage(props.caido);
-    
+
     // Find the agent in storage
     const agentIndex = storage.agents.findIndex(a => a.id === selectedAgent.value?.id);
     if (agentIndex >= 0 && storage.agents[agentIndex]) {
       const agent = storage.agents[agentIndex];
       // Remove the file from the agent's knowledge
       agent.knowledge = agent.knowledge.filter(f => f !== filename);
-      
+
       // Update the selected agent
       if (selectedAgent.value) {
         selectedAgent.value.knowledge = selectedAgent.value.knowledge.filter(f => f !== filename);
       }
-      
+
       // Save to storage
       await setPluginStorage(props.caido, { agents: storage.agents });
     }
@@ -211,7 +211,7 @@ const removeKnowledgeFile = async (filename: string) => {
         <strong>Agents</strong>
       </div>
     </div>
-    
+
     <div class="agents-content gap-1">
       <!-- Left sidebar - Agent list (20%) -->
       <div class="agent-list">
@@ -221,10 +221,10 @@ const removeKnowledgeFile = async (filename: string) => {
             <span>Add New Agent</span>
           </div>
         </div>
-        
-        <div 
-          v-for="agent in agents" 
-          :key="agent.id" 
+
+        <div
+          v-for="agent in agents"
+          :key="agent.id"
           class="agent-item"
           :class="{ 'selected': selectedAgent?.id === agent.id }"
           @click="selectAgent(agent)"
@@ -235,7 +235,7 @@ const removeKnowledgeFile = async (filename: string) => {
           </div>
         </div>
       </div>
-      
+
       <!-- Right content area - Agent details (80%) -->
       <div class="agent-details">
         <div v-if="selectedAgent" class="agent-form">
@@ -243,27 +243,27 @@ const removeKnowledgeFile = async (filename: string) => {
             <label for="agent-name">Name</label>
             <InputText id="agent-name" v-model="newName" class="w-full" />
           </div>
-          
+
           <div class="form-group">
             <label for="agent-instructions">System Prompt</label>
-            <Textarea 
-              id="agent-instructions" 
-              v-model="newInstructions" 
-              rows="18" 
+            <Textarea
+              id="agent-instructions"
+              v-model="newInstructions"
+              rows="18"
               class="w-full"
               placeholder="Enter instructions for this agent..."
             />
           </div>
-          
+
           <div class="form-group disabled-section">
             <div class="coming-soon-header">
               <label>Knowledge</label>
               <Tag value="Coming Soon" severity="info" />
             </div>
-            <FileUpload 
-              mode="advanced" 
-              :multiple="true" 
-              accept=".md,.txt" 
+            <FileUpload
+              mode="advanced"
+              :multiple="true"
+              accept=".md,.txt"
               :maxFileSize="10000000"
               @upload="onFileUpload"
               :auto="true"
@@ -271,36 +271,36 @@ const removeKnowledgeFile = async (filename: string) => {
               class="w-full"
               disabled
             />
-            
+
             <div v-if="selectedAgent.knowledge.length > 0" class="knowledge-files">
               <div v-for="(file, index) in selectedAgent.knowledge" :key="index" class="knowledge-file">
                 <span>{{ file }}</span>
-                <Button 
-                  icon="pi pi-times" 
-                  text 
-                  rounded 
-                  severity="danger" 
-                  @click="removeKnowledgeFile(file)" 
+                <Button
+                  icon="pi pi-times"
+                  text
+                  rounded
+                  severity="danger"
+                  @click="removeKnowledgeFile(file)"
                   disabled
                 />
               </div>
             </div>
           </div>
-          
+
           <div class="form-actions">
-            <Button 
-              label="Delete" 
-              severity="danger" 
-              @click="deleteAgent" 
+            <Button
+              label="Delete"
+              severity="danger"
+              @click="deleteAgent"
               class="p-button-outlined"
             />
-            <Button 
-              label="Save" 
+            <Button
+              label="Save"
               @click="saveAgent"
             />
           </div>
         </div>
-        
+
         <div v-else class="no-agent-selected">
           <p>Select an agent from the list or create a new one</p>
         </div>
@@ -490,4 +490,4 @@ input, textarea {
 input:focus, textarea:focus {
   outline: 1px solid var(--c-fg-secondary);
 }
-</style> 
+</style>

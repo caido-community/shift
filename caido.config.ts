@@ -10,13 +10,22 @@ export default defineConfig({
     email: "justin@criticalthinkingpodcast.io",
     url: "https://github.com/CRITSoftware/shift",
   },
-  plugins: [ 
+  plugins: [
     {
-      "kind": "frontend",
-      "id": "frontend",
-      "name": "Frontend",
-      "root": "packages/frontend",
-    //   "style": "frontend/style.css"
-    }
+      kind: "backend",
+      id: "backend",
+      name: "Backend",
+      root: "packages/backend",
+    },
+    {
+      kind: "frontend",
+      id: "frontend",
+      name: "Frontend",
+      root: "packages/frontend",
+      backend: {
+        id: "backend",
+      }
+      //   "style": "frontend/style.css"
+    },
   ],
 });

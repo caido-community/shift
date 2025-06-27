@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { getPluginStorage, setPluginStorage } from '../../utils/caidoUtils';
+import type { FrontendSDK } from "@/types";
+
 const isShiftCoreEnlarged = ref(false);
 const isShiftMemoryEnlarged = ref(false);
 
 // Define props
 const props = defineProps<{
-  caido: Caido // Should be properly typed as Caido
+  caido: FrontendSDK;
 }>();
 
 onMounted(async () => {
@@ -24,9 +26,9 @@ onMounted(async () => {
         <div class="w-1/2 flex flex-col justify-center gap-4">
           <h1 class="custom-font text-4xl text-center">Shift Core</h1>
           <p class="text-lg text-center">Shift is a quick and easy way to query AI within Caido.<br>Shift can take actions for you like creating M&R rules, modifying the HTTQL bar, and much more.</p>
-          <img 
+          <img
             :class="{ 'enlarged-core': isShiftCoreEnlarged }"
-            src="../../assets/ShiftIntro.svg" 
+            src="../../assets/ShiftIntro.svg"
             alt="Shift Introduction"
             @click="isShiftCoreEnlarged = !isShiftCoreEnlarged"
             @contextmenu.prevent="isShiftCoreEnlarged = !isShiftCoreEnlarged"
@@ -35,16 +37,16 @@ onMounted(async () => {
         <div class="w-1/2 flex flex-col justify-center gap-4">
           <h1 class="custom-font text-4xl text-center">Shift Memory</h1>
           <p class="text-lg text-center">Shift Memory is a way to store and retrieve information from the current session.<br>This is useful for things like keeping track of IDs, API Keys, or other info that you want to keep around for a bit.</p>
-          <img 
+          <img
             :class="{ 'enlarged-memory': isShiftMemoryEnlarged }"
-            src="../../assets/ShiftMemoryIntro.svg" 
+            src="../../assets/ShiftMemoryIntro.svg"
             alt="Shift Memory Introduction"
             @click="isShiftMemoryEnlarged = !isShiftMemoryEnlarged"
             @contextmenu.prevent="isShiftMemoryEnlarged = !isShiftMemoryEnlarged"
           />
         </div>
       </div>
-      
+
       <!-- Add new beta notice section -->
       <div class="w-full flex flex-col items-center justify-center gap-4 mt-16">
         <h1 class="custom-font text-3xl text-center">Get An API Key</h1>
