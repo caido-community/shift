@@ -15,7 +15,7 @@ import { actionFunctions } from "../commands";
 import type { Caido } from "@caido/sdk-frontend";
 import {
   API_ENDPOINT,
-  CONTEXT_ENDPOINT,
+  CAIDO_API_ENDPOINT,
   ActiveEntity,
   MAX_SIZE,
 } from "../constants";
@@ -468,4 +468,23 @@ export const checkAndRenameReplayTabs = async (
   } catch (error) {
     logger.error("Error in checkAndRenameReplayTabs:", error);
   }
+};
+
+
+export const fetchAPIKey = async () => {
+  const caidoAuth = JSON.parse(localStorage.getItem("CAIDO_AUTHENTICATION") || "{}");
+  if (!caidoAuth.accessToken) {
+    throw new Error("No access token found");
+  }
+  const response = await fetch(CAIDO_API_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      access_token: caidoAuth.accessToken
+    })
+  });
+  const data = await response.json();
+  return data.api_key;
 };

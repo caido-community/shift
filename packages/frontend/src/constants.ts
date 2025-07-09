@@ -21,6 +21,7 @@ export enum ActiveEntity {
 }
 export const PAGE = "/shift";
 export const PROD_API_ENDPOINT = "https://api.shiftplugin.com/api/shift";
+export const CAIDO_API_ENDPOINT = "https://api.shiftplugin.com/api/caido/auth";
 export const DEV_API_ENDPOINT = "https://poc.rhynorater.com/shiftQuery.php?";
 export const API_ENDPOINT = window.name.includes("devapi") ? DEV_API_ENDPOINT : PROD_API_ENDPOINT;
 export const isDev = window.name.includes("dev") || window.name.includes("local");

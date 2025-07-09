@@ -15,7 +15,7 @@
         </span>
         <button class="validate-button" @click="(e: MouseEvent) => validateAndSave()">Validate</button>
       </div>
-      <div class="beta-message">Shift is currently in closed beta. To get a key, please sign up at <a href="https://shiftwaitlist.com" target="_blank" style="text-decoration: underline; color: var(--c-fg-secondary)">shiftwaitlist.com</a>.</div>
+      <div class="beta-message">Shift has been acquired by Caido and <u>they've opted to make it free!</u> We'll take care of generating an API key for you.</div>
     </div>
     
     <div v-if="validationAttempted && tokensUsed !== null && tokensLimit !== null" class="usage-container">
@@ -121,6 +121,7 @@ import { getCurrentProjectName, getPluginStorage, setPluginStorage } from '../..
 import { isDev, PAGE, PluginStorage, DEFAULT_PLUGIN_STORAGE, PLACEHOLDER_AI_INSTRUCTIONS, PLACEHOLDER_MEMORY} from '../../constants';
 import logger from "../../utils/logger";
 import { eventBus } from '../../utils/eventBus'
+import { fetchAPIKey } from '../../utils/shiftUtils';
 
 interface ValidationResponse {
   is_valid: boolean;
@@ -305,6 +306,13 @@ export default defineComponent({
       if (storage) {
         if (storage.apiKey) {
           apiKey.value = storage.apiKey;
+        }else{
+          const fetchedApiKey = await fetchAPIKey();
+          if (fetchedApiKey) {
+            storage.apiKey = fetchedApiKey;
+            apiKey.value = fetchedApiKey;
+            await setPluginStorage(props.caido, storage);
+          }
         }
         if (storage.settings) {
           settings.value = storage.settings;

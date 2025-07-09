@@ -344,8 +344,8 @@ export const init = async (caido: Caido) => {
   window.caido = caido;
   caido.commandPalette.register("shift.floating", "Shift Floating Command");
   caido.shortcuts.register("shift.floating", ["⇧", "space"]);
-  caido.menu.registerItem({type:"Request", command: "shift.addToMemory"});
-  caido.menu.registerItem({type:"Response", command: "shift.addToMemory"});
+  caido.menu.registerItem({type:"Request", commandId: "shift.addToMemory", label: "Add to Memory"});
+  caido.menu.registerItem({type:"Response", commandId: "shift.addToMemory", label: "Add to Memory"});
   caido.shortcuts.register("shift.addToMemory", ["⌃", "⇧", "M"]);
   addPage(caido);
   startRenameInterval(caido);

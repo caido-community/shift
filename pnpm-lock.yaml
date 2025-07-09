@@ -30,8 +30,8 @@ importers:
         specifier: ^0.1.7
         version: 0.1.7(primevue@4.3.2(vue@3.5.13(typescript@5.8.2)))
       '@caido/sdk-frontend':
-        specifier: 0.46.1-beta.8
-        version: 0.46.1-beta.8(@codemirror/view@6.36.4)
+        specifier: latest
+        version: 0.49.0(@codemirror/state@6.5.2)(@codemirror/view@6.36.4)(vue@3.5.13(typescript@5.8.2))
       '@codemirror/language':
         specifier: ^6.11.0
         version: 6.11.0
@@ -127,10 +127,12 @@ packages:
     peerDependencies:
       primevue: 4.1.0
 
-  '@caido/sdk-frontend@0.46.1-beta.8':
-    resolution: {integrity: sha512-9sa2Ywfm9UnIoRZtj3k+Qham5ERRN8+v4ViPdiHxrtAzEEgcr7ZCSMEEqQ6Wr35Pdi9HiuipvNlSKcj0nIu1MA==}
+  '@caido/sdk-frontend@0.49.0':
+    resolution: {integrity: sha512-dvt4FzFWj4MMCtFH0XiuoEgEWmUwDsmFQo3iCZiCeZzybKpYDs2/fh1wz7/Ue/rCsHMIwqI5NtvKy5a9V0sGNg==}
     peerDependencies:
+      '@codemirror/state': ^6.0.0
       '@codemirror/view': ^6.0.0
+      vue: ^3.0.0
 
   '@caido/tailwindcss@0.0.1':
     resolution: {integrity: sha512-BGp7s8BiZv6eBV8x/j0t5nPBVKP7Bm+gJVY4APcFgFkNkrRSRDo0VuXN52OhiHc/+vTg85lrmLO8IWMM5bcJrQ==}
@@ -2046,9 +2048,11 @@ snapshots:
     dependencies:
       primevue: 4.3.2(vue@3.5.13(typescript@5.8.2))
 
-  '@caido/sdk-frontend@0.46.1-beta.8(@codemirror/view@6.36.4)':
+  '@caido/sdk-frontend@0.49.0(@codemirror/state@6.5.2)(@codemirror/view@6.36.4)(vue@3.5.13(typescript@5.8.2))':
     dependencies:
+      '@codemirror/state': 6.5.2
       '@codemirror/view': 6.36.4
+      vue: 3.5.13(typescript@5.8.2)
 
   '@caido/tailwindcss@0.0.1(ts-node@10.9.2(@types/node@20.17.24)(typescript@5.8.2))':
     dependencies:

@@ -107,10 +107,10 @@ export const getCurrentReplayEditors = () => {
   }
 
   const requestEditor = (
-    document.querySelector(".c-request__body .cm-content") as any
+    document.querySelector(".cm-content[data-language='http-request']") as any
   )?.cmView?.view;
   const responseEditor = (
-    document.querySelector(".c-response__body .cm-content") as any
+    document.querySelector(".cm-content[data-language='http-response']") as any
   )?.cmView?.view;
   const focusedEditor = (
     document.querySelector(".cm-editor.cm-focused .cm-content") as any
@@ -278,13 +278,13 @@ export const navigateToSidebarTab = async (tabName: string) => {
 };
 export const getCurrentlySelectedReplayTab = () => {
   const activeTab = document.querySelector(
-    '.c-tab-list__tab [data-is-selected="true"]',
+    '[data-is-selected="true"][data-session-id]',
   );
   return activeTab ? activeTab.textContent : "";
 };
 export const getCurrentlySelectedReplayTabSessionId = () => {
   const activeTab = document.querySelector(
-    '.c-tab-list__tab [data-is-selected="true"]',
+    '[data-is-selected="true"][data-session-id]',
   );
   return activeTab ? activeTab.getAttribute("data-session-id") : "";
 };

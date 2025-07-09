@@ -16,6 +16,7 @@ export default defineConfig({
       fileName: () => "script.js",
       formats: ["es"],
     },
+    // minify: false,
     outDir: "../../dist/frontend",
     rollupOptions: {
       output: {
