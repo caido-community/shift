@@ -1,121 +1,200 @@
 <template>
-  <div class="shift-ui-container">
-    <div class="input-group">
-      <div class="input-header">
-        <strong>API Key</strong>
-      </div>
-      <div class="input-wrapper">
-        <input 
-          type="password" 
-          id="apiKey" 
-          v-model="apiKey"
-        />
-        <span v-if="validationAttempted" class="validation-icon" :class="{ 'valid': isApiKeyValid, 'invalid': !isApiKeyValid }">
-          {{ isApiKeyValid ? '✓' : '✗' }}
-        </span>
-        <button class="validate-button" @click="(e: MouseEvent) => validateAndSave()">Validate</button>
-      </div>
-      <div class="beta-message">Shift has been acquired by Caido and <u>they've opted to make it free!</u> We'll take care of generating an API key for you.</div>
-    </div>
-    
-    <div v-if="validationAttempted && tokensUsed !== null && tokensLimit !== null" class="usage-container">
-      <div class="usage-label">Usage:</div>
-      <div class="usage-info">
-        <div class="usage-bar">
-          <div 
-            class="usage-progress" 
-            :style="{ width: `${(tokensUsed / tokensLimit) * 100}%` }"
-            :class="{ 'invalid': !isApiKeyValid || tokensUsed > tokensLimit }"
-          ></div>
-        </div>
-        <div class="usage-text">
-          {{ tokensUsed?.toLocaleString() || 0 }} / {{ tokensLimit?.toLocaleString() || 0 }} tokens
-          <span v-if="!isApiKeyValid" class="invalid-key-message">(Invalid API Key)</span>
-          <span v-else-if="tokensUsed > tokensLimit" class="invalid-key-message">You've used all your tokens, please reach out to the shift team for more at joseph@shiftplugin.com</span>
-        </div>
-      </div>
-    </div>
-    <div class="settings-section" :class="{ 'disabled-section': !isApiKeyValid }">
-      <div class="setting-row">
-        <input
-          type="checkbox"
-          v-model="settings.aiRenameReplayTabs"
-          id="aiRenameReplayTabs"
-          :disabled="!isApiKeyValid"
-        />
-        <label for="aiRenameReplayTabs" :class="{ 'disabled-text': !isApiKeyValid }">
-          <strong>&nbsp;AI Rename Replay Tabs</strong> - Note: This will only rename tabs that have not been renamed yet.
-        </label>
-      </div>
-
-      <div v-if="settings.aiRenameReplayTabs" class="setting-subsection">
-        <div class="setting-row column">
-          <label for="renameDelay" :class="{ 'disabled-text': !isApiKeyValid }">Rename after X Seconds:</label>
-          <div class="numeric-input">
-            <input
-              type="number"
-              v-model.number="settings.renameDelay"
-              id="renameDelay"
-              :disabled="!isApiKeyValid"
+  <div class="p-6 h-full max-h-screen overflow-y-auto bg-[var(--c-bg-default)]">
+    <!-- API Key Section (not in card) -->
+    <div class="mb-8 pb-6 border-b border-[var(--c-border-default)]">
+      <h2 class="text-xl font-semibold text-white mb-2">API Key</h2>
+      <p class="text-sm text-[var(--c-fg-secondary)] mb-4">
+        Your API key to access Shift features. This is required for AI functionality.
+      </p>
+      
+      <div class="flex items-start gap-6 mb-4">
+        <!-- API Key Input Section -->
+        <div class="flex-1 max-w-md">
+          <div class="relative">
+            <input 
+              type="password" 
+              id="apiKey" 
+              v-model="apiKey"
+              class="w-full bg-[var(--c-bg-subtle)] border border-[var(--c-border-default)] rounded-lg text-white px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-[var(--c-fg-primary)] focus:border-transparent"
+              placeholder="Enter your API key"
             />
+            <span v-if="validationAttempted" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-lg" :class="{ 'text-green-500': isApiKeyValid, 'text-red-500': !isApiKeyValid }">
+              {{ isApiKeyValid ? '✓' : '✗' }}
+            </span>
           </div>
         </div>
-        <div class="setting-row">
-          <input
-            type="checkbox"
-            v-model="settings.renameExistingTabs"
-            id="renameExistingTabs"
-            :disabled="!isApiKeyValid"
-          />
-          <label for="renameExistingTabs" :class="{ 'disabled-text': !isApiKeyValid }">
-            <strong>&nbsp;Rename Existing Replay Tabs (Use only if you want all tabs to be renamed)</strong>
-          </label>
+        
+        <!-- Compact Usage Info -->
+        <div v-if="validationAttempted && tokensUsed !== null && tokensLimit !== null" class="flex-shrink-0">
+          <div class="text-xs font-medium text-[var(--c-fg-secondary)] mb-1">Usage</div>
+          <div class="w-32">
+            <div class="h-1.5 bg-[var(--c-bg-subtle)] rounded-full overflow-hidden border border-[var(--c-border-default)]">
+              <div 
+                class="h-full bg-green-500 transition-all duration-300 ease-in-out" 
+                :style="{ width: `${Math.min((tokensUsed / tokensLimit) * 100, 100)}%`, height: '1.5px' }"
+                :class="{ 'bg-red-500': !isApiKeyValid || tokensUsed > tokensLimit }"
+              ></div>
+            </div>
+            <div class="text-xs text-[var(--c-fg-secondary)] mt-1">
+              {{ tokensUsed?.toLocaleString() || 0 }} / {{ tokensLimit?.toLocaleString() || 0 }}
+            </div>
+            <div v-if="!isApiKeyValid" class="text-xs text-red-500">Invalid Key</div>
+            <div v-else-if="tokensUsed > tokensLimit" class="text-xs text-red-500">Limit exceeded</div>
+          </div>
         </div>
-        <div class="setting-row column">
-          <label for="renameInstructions" :class="{ 'disabled-text': !isApiKeyValid }">Rename Instructions:</label>
-          <textarea
-            v-model="settings.renameInstructions"
-            id="renameInstructions"
-            rows="3"
-            :disabled="!isApiKeyValid"
-          ></textarea>
-        </div>
+      </div>
+      
+      <div class="text-sm text-[var(--c-fg-secondary)]">
+        Shift has been acquired by Caido and <u class="text-[var(--c-fg-primary)]">they've opted to make it free!</u> We'll take care of generating an API key for you.
+      </div>
+    </div>
 
-      </div>
-    </div>
-    <div class="settings-section" :class="{ 'disabled-section': !isApiKeyValid }">
-      <div class="setting-row column">
-        <label for="memory" :class="{ 'disabled-text': !isApiKeyValid }">
-          <strong>Memory</strong> - Free-form notes for the AI to use. You can store details about the target app, IDs for certain objects or accounts, etc, and the AI will use them when making decisions or filling in data.
-        </label>
-        <textarea
-          v-model="memoryForCurrentProject"
-          id="memory"
-          rows="5"
-          :placeholder="PLACEHOLDER_MEMORY"
-          :disabled="!isApiKeyValid"
-        ></textarea>
-      </div>
-    </div>
-    <div class="settings-section" :class="{ 'disabled-section': !isApiKeyValid }">
-      <div class="setting-row column">
-        <label for="aiInstructions" :class="{ 'disabled-text': !isApiKeyValid }">
-          <strong>AI Instructions</strong> - Define shortcuts and special instructions for the AI to follow. You can create custom commands or specify how you want the AI to interpret certain patterns.
-        </label>
-        <textarea
-          v-model="aiInstructionsForCurrentProject"
-          id="aiInstructions"
-          rows="5"
-          :placeholder="PLACEHOLDER_AI_INSTRUCTIONS"
-          :disabled="!isApiKeyValid"
-        ></textarea>
-      </div>
+    <!-- AI Rename Replay Tabs Card (Full Width) -->
+    <Card class="mb-6 bg-[var(--c-bg-subtle)]" :class="{ 'opacity-60 pointer-events-none': !isApiKeyValid }">
+      <template #header>
+        <div class="p-4" style="border-bottom: 1px solid #26272c;">
+          <h3 class="text-lg font-semibold text-white m-0">AI Rename Replay Tabs</h3>
+          <p class="text-sm text-[var(--c-fg-secondary)] mt-1 mb-0">
+            Automatically rename replay tabs using AI to provide meaningful descriptions.
+          </p>
+        </div>
+      </template>
+      <template #content>
+        <div class="p-4">
+          <!-- Main Enable Toggle -->
+          <div class="mb-6">
+            <div class="flex items-center gap-3 mb-2">
+              <InputSwitch
+                v-model="settings.aiRenameReplayTabs"
+                inputId="aiRenameReplayTabs"
+                :disabled="!isApiKeyValid"
+              />
+              <label for="aiRenameReplayTabs" class="text-white cursor-pointer" :class="{ 'text-[var(--c-fg-disabled)]': !isApiKeyValid }">
+                Enable AI Rename Replay Tabs
+              </label>
+            </div>
+            <p class="text-sm text-[var(--c-fg-secondary)]">
+              Note: This will only rename tabs that have not been renamed yet.
+            </p>
+          </div>
+
+          <!-- Settings when enabled -->
+          <div v-if="settings.aiRenameReplayTabs" class="space-y-6 pl-4 border-l-2 border-[var(--c-border-default)]">
+            <!-- Rename Delay -->
+            <div class="flex flex-col gap-2">
+              <label for="renameDelay" class="text-sm font-medium text-white" :class="{ 'text-[var(--c-fg-disabled)]': !isApiKeyValid }">
+                Rename Delay (seconds)
+              </label>
+              <input
+                type="number"
+                v-model.number="settings.renameDelay"
+                id="renameDelay"
+                :disabled="!isApiKeyValid"
+                class="w-24 text-center rounded-lg bg-[var(--c-bg-default)] border border-[var(--c-border-default)] text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--c-fg-primary)] focus:border-transparent disabled:bg-[var(--c-bg-disabled)] disabled:text-[var(--c-fg-disabled)] disabled:cursor-not-allowed"
+                min="0"
+                step="1"
+              />
+              <p class="text-xs text-[var(--c-fg-secondary)]">
+                How long to wait before automatically renaming a tab
+              </p>
+            </div>
+
+            <!-- Rename Existing Tabs -->
+            <div>
+              <div class="flex items-center gap-3 mb-2">
+                <InputSwitch
+                  v-model="settings.renameExistingTabs"
+                  inputId="renameExistingTabs"
+                  :disabled="!isApiKeyValid"
+                />
+                <label for="renameExistingTabs" class="text-white cursor-pointer" :class="{ 'text-[var(--c-fg-disabled)]': !isApiKeyValid }">
+                  Rename Existing Replay Tabs
+                </label>
+              </div>
+              <p class="text-sm text-[var(--c-fg-secondary)]">
+                Use only if you want all tabs to be renamed, including previously created ones
+              </p>
+            </div>
+
+            <!-- Rename Instructions -->
+            <div class="flex flex-col gap-2">
+              <label for="renameInstructions" class="text-sm font-medium text-white" :class="{ 'text-[var(--c-fg-disabled)]': !isApiKeyValid }">
+                Rename Instructions
+              </label>
+              <textarea
+                v-model="settings.renameInstructions"
+                id="renameInstructions"
+                rows="4"
+                :disabled="!isApiKeyValid"
+                placeholder="Provide custom instructions for how tabs should be renamed..."
+                class="textarea-focus w-full min-h-[100px] resize-y rounded-lg bg-[var(--c-bg-default)] text-white p-3 text-sm disabled:bg-[var(--c-bg-disabled)] disabled:text-[var(--c-fg-disabled)] disabled:cursor-not-allowed"
+              ></textarea>
+              <p class="text-xs text-[var(--c-fg-secondary)]">
+                Custom instructions for the AI when renaming tabs
+              </p>
+            </div>
+          </div>
+        </div>
+      </template>
+    </Card>
+
+    <!-- Memory and AI Instructions Side-by-Side -->
+    <div class="flex gap-6" :class="{ 'opacity-60 pointer-events-none': !isApiKeyValid }">
+      <!-- Memory Card -->
+      <Card class="flex-1 bg-[var(--c-bg-subtle)]">
+        <template #header>
+          <div class="p-4" style="border-bottom: 1px solid #26272c;">
+            <h3 class="text-lg font-semibold text-white m-0">Memory</h3>
+            <p class="text-sm text-[var(--c-fg-secondary)] mt-1 mb-0">
+              Free-form notes for the AI to use when making decisions or filling in data.
+            </p>
+          </div>
+        </template>
+        <template #content>
+          <div class="p-4">
+            <textarea
+              v-model="memoryForCurrentProject"
+              id="memory"
+              rows="8"
+              :placeholder="PLACEHOLDER_MEMORY"
+              :disabled="!isApiKeyValid"
+              class="textarea-focus w-full min-h-[200px] font-mono text-sm whitespace-pre resize-y rounded-lg bg-[var(--c-bg-default)] text-white p-3 disabled:bg-[var(--c-bg-disabled)] disabled:text-[var(--c-fg-disabled)] disabled:cursor-not-allowed"
+            ></textarea>
+          </div>
+        </template>
+      </Card>
+
+      <!-- AI Instructions Card -->
+      <Card class="flex-1 bg-[var(--c-bg-subtle)]">
+        <template #header>
+          <div class="p-4" style="border-bottom: 1px solid #26272c;">
+            <h3 class="text-lg font-semibold text-white m-0">AI Instructions</h3>
+            <p class="text-sm text-[var(--c-fg-secondary)] mt-1 mb-0">
+              Define shortcuts and special instructions for the AI to follow.
+            </p>
+          </div>
+        </template>
+        <template #content>
+          <div class="p-4">
+            <textarea
+              v-model="aiInstructionsForCurrentProject"
+              id="aiInstructions"
+              rows="8"
+              :placeholder="PLACEHOLDER_AI_INSTRUCTIONS"
+              :disabled="!isApiKeyValid"
+              class="textarea-focus w-full min-h-[200px] font-mono text-sm whitespace-pre resize-y rounded-lg bg-[var(--c-bg-default)] text-white p-3 disabled:bg-[var(--c-bg-disabled)] disabled:text-[var(--c-fg-disabled)] disabled:cursor-not-allowed"
+            ></textarea>
+          </div>
+        </template>
+      </Card>
     </div>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, ref, onMounted, watch, computed } from 'vue';
+import Card from 'primevue/card';
+import InputSwitch from 'primevue/inputswitch';
 import type { Caido } from "@caido/sdk-frontend";
 import { getCurrentProjectName, getPluginStorage, setPluginStorage } from '../../utils/caidoUtils';
 import { isDev, PAGE, PluginStorage, DEFAULT_PLUGIN_STORAGE, PLACEHOLDER_AI_INSTRUCTIONS, PLACEHOLDER_MEMORY} from '../../constants';
@@ -131,6 +210,10 @@ interface ValidationResponse {
 
 export default defineComponent({
   name: 'ShiftUIComponent',
+  components: {
+    Card,
+    InputSwitch
+  },
   emits: ['authenticated'],
   props: {
     caido: {
@@ -198,7 +281,8 @@ export default defineComponent({
       }
     });
 
-    watch(props.updateMemory, async (newVal) => {
+    // Fix the watch to properly watch a reactive source
+    watch(() => props.updateMemory, async (newVal) => {
       logger.log("updateMemory", newVal);
       let storage = await getPluginStorage(props.caido);
       if (storage.settings) {
@@ -209,6 +293,13 @@ export default defineComponent({
         logger.log("settings updated", settings.value);
       }
     })
+
+    // Auto-save on API key changes
+    watch(apiKey, async (newKey) => {
+      if (newKey && newKey.length > 0) {
+        await validateAndSave();
+      }
+    });
 
     watch(settings, async (newSettings) => {
       logger.log("settings updated", settings.value, newSettings);
@@ -242,14 +333,6 @@ export default defineComponent({
       await setPluginStorage(props.caido, storage);
       props.startRenameInterval(props.caido);
     }, { deep: true });
-
-    const incrementRenameDelay = () => {
-      settings.value.renameDelay++;
-    };
-
-    const decrementRenameDelay = () => {
-      settings.value.renameDelay--;
-    };
 
     const validateApiKey = async (key: string): Promise<boolean> => {
       try {
@@ -331,8 +414,6 @@ export default defineComponent({
       tokensLimit,
       validationAttempted,
       validateAndSave,
-      incrementRenameDelay,
-      decrementRenameDelay,
       PLACEHOLDER_AI_INSTRUCTIONS,
       PLACEHOLDER_MEMORY
     };
@@ -341,310 +422,25 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.shift-ui-container {
-  padding: 20px;
-  font-family: Arial, sans-serif;
-  margin: 0;
-  height: calc(100vh - 100px);
-  overflow-y: auto;
-  scrollbar-width: thin;
-}
-
-.shift-ui-container::-webkit-scrollbar {
+/* Custom scrollbar */
+.overflow-y-auto::-webkit-scrollbar {
   width: 8px;
 }
 
-.centered-content {
-  text-align: center; /* Center only the h2 */
+.overflow-y-auto {
+  scrollbar-width: thin;
 }
 
-.input-group {
-  margin-bottom: 15px;
-  display: flex;
-  flex-direction: column;
+/* Custom styles */
+
+/* Textarea focus styling with 1px secondary border */
+.textarea-focus {
+  border: 1px solid transparent;
+  outline: none;
 }
 
-.input-header {
-  margin-bottom: 10px;
-}
-
-.input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 400px;
-  margin-right: 10px;
-}
-
-input{
-  width: 100%;
-  background: transparent;
-  outline: 0;
-  box-sizing: border-box;
-  line-height: inherit;
-  border: 1px solid var(--c-border-default);
-  border-radius: 10px;
-  color: white;
-}
-
-input[type="password"] {
-  width: 100%;
-  padding: 5px;
-  padding-right: 30px;
-  box-sizing: border-box; /* Include padding in the width calculation */
-}
-
-.validation-icon {
-  position: absolute;
-  right: 120px;
-  font-size: 18px;
-}
-
-.validation-icon.valid {
-  color: green;
-}
-
-.validation-icon.invalid {
-  color: red;
-}
-
-button {
-  padding: 10px 15px;
-  background-color: var(--c-fg-primary);
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-
-button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-}
-
-.result {
-  margin-top: 20px;
-}
-
-pre {
-  background-color: #f4f4f4;
-  padding: 10px;
-  overflow-x: auto;
-}
-
-.usage-container {
-  margin-top: 20px;
-  width: 300px;
-}
-
-.usage-label {
-  color: white;
-  margin-bottom: 5px;
-}
-
-.usage-info {
-  width: 100%;
-}
-
-.usage-bar {
-  height: 10px;
-  background-color: #333;
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.usage-progress {
-  height: 100%;
-  background-color: #4CAF50;
-  transition: width 0.3s ease;
-}
-
-.usage-text {
-  font-size: 0.9em;
-  color: white;
-  text-align: right;
-  margin-top: 5px;
-}
-
-.usage-progress.invalid {
-  background-color: #ff4444;
-}
-
-.invalid-key-message {
-  color: #ff4444;
-  margin-left: 5px;
-}
-
- .validate-button {
-  padding: 0px 15px;
-  background-color: var(--c-fg-primary);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  height: 28px;
-  width: fit-content;
-  margin-left: 10px;
-}
-
-.validate-button:active{
-  background-color: var(--c-fg-primary-pressed);
-}
-
-.setting-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.setting-subsection {
-  margin-left: 20px;
-  margin-top: 8px;
-}
-
-.numeric-input {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.numeric-input button {
-  padding: 2px 8px;
-  cursor: pointer;
-}
-
-.numeric-input input {
-  width: 60px;
-  text-align: center;
-}
-
-textarea {
-  width: 100%;
-  resize: vertical;
-  min-height: 60px;
-  padding: 8px;
-}
-
-.setting-row.column {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-textarea {
-  border-radius: 4px;
-  background-color: var(--c-bg-default);
-  border: 1px solid var(--c-border-default);
-  color: white;
-}
-
-textarea:focus, input:focus {
-  outline: 1px solid var(--c-fg-secondary);
-}
-
-.numeric-input input {
-  border-radius: 4px;
-}
-.settings-section{
-  border-top:3px solid var(--c-fg-secondary);
-  margin: 1em 0;
-  padding: 1em 0;
-}
-
-input[type="checkbox"] {
-  cursor: pointer;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  width: 1.15em;
-  height: 1.15em;
-  border: .1em solid grey;
-  border-radius: 4px;
-  display: inline-grid;
-  place-content: center;
-  margin: 0;
-}
-
-/* Add a checkmark when checked */
-input[type="checkbox"]::before {
-  content: "";
-  width: 0.65em;
-  height: 0.65em;
-  transform: scale(0);
-  transition: 120ms transform ease-in-out;
-  box-shadow: inset 1em 1em var(--c-fg-primary);
-  transform-origin: center;
-  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
-}
-
-input[type="checkbox"]:checked::before {
-  transform: scale(1);
-}
-
-textarea#memory {
-  width: 100%;
-  min-height: 100px;
-  font-family: monospace;
-  white-space: pre;
-  resize: vertical;
-}
-
-.disabled-section {
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-.disabled-text {
-  color: var(--c-fg-disabled, #666);
-}
-
-input:disabled, textarea:disabled {
-  background-color: var(--c-bg-disabled, #333);
-  color: var(--c-fg-disabled, #666);
-  cursor: not-allowed;
-}
-
-input[type="checkbox"]:disabled {
-  border-color: var(--c-border-disabled, #444);
-  background-color: var(--c-bg-disabled, #333);
-}
-
-textarea#aiInstructions {
-  width: 100%;
-  min-height: 100px;
-  font-family: monospace;
-  white-space: pre;
-  resize: vertical;
-}
-
-.model-selector {
-  margin-top: 15px;
-  width: 300px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.model-selector select {
-  flex: 1;
-  padding: 5px;
-  border-radius: 4px;
-  background-color: var(--c-bg-default);
-  border: 1px solid var(--c-border-default);
-  color: white;
-}
-
-.model-selector select:disabled {
-  background-color: var(--c-bg-disabled, #333);
-  color: var(--c-fg-disabled, #666);
-  cursor: not-allowed;
-}
-
-.model-selector label {
-  min-width: 50px;
-}
-
-.beta-message {
-  margin-top: 10px;
-  font-size: 0.8em;
+.textarea-focus:focus {
+  border: 1px solid var(--c-fg-secondary) !important;
+  outline: none;
 }
 </style>

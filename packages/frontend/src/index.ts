@@ -355,5 +355,5 @@ export const init = async (caido: Caido) => {
   // initAutoComplete(caido);
   
   // Initialize agent monitoring
-  initAgentMonitoring(caido);
+  //initAgentMonitoring(caido);
 }

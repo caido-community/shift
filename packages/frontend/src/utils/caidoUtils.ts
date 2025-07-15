@@ -335,7 +335,7 @@ export const switchToReplayTabByName = (name: string) => {
 
 export const getCurrentProjectName = () => {
   const projectNameElement = document.querySelector(
-    ".c-current-project__value",
+    ".c-current-project[data-project-id]",
   );
   return projectNameElement instanceof HTMLElement
     ? projectNameElement.innerText

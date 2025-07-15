@@ -28,14 +28,14 @@ const items = computed(() => [
       page.value = "Settings";
     },
     class: page.value === "Settings" ? "active-nav-item" : ""
-  },/*
-  {
-    label: "Agents",
-    command: () => {
-      page.value = "Agents";
-    },
-    class: page.value === "Agents" ? "active-nav-item" : ""
-  }*/
+  },
+  // {
+  //   label: "Agents",
+  //   command: () => {
+  //     page.value = "Agents";
+  //   },
+  //   class: page.value === "Agents" ? "active-nav-item" : ""
+  // },
   {
     label: "Tutorial",
     command: () => {

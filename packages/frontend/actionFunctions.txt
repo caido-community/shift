@@ -2,6 +2,10 @@
   activeEditorReplaceByString: { match: string, replace: string }
   activeEditorReplaceBody: { body: string }
   activeEditorAddHeader: { header: string, replace?: boolean }
+  activeEditorAddQueryParameter: { name: string, value: string }
+  activeEditorRemoveQueryParameter: { name: string }
+  activeEditorUpdatePath: { path: string }
+  activeEditorRemoveHeader: { headerName: string }
   replayRequestReplace: { text: string }
   replayReplaceByString: { match: string, replace: string } // DEPRECATED
   replayRequestReplaceSelection: { text: string } // DEPRECATED

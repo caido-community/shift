@@ -108,6 +108,128 @@ export const actionFunctions = {
       editor.focus();
     }
   },
+  activeEditorAddQueryParameter: (caido: Caido, { name, value }: { name: string, value: string }) => {
+    const editor = caido.window.getActiveEditor()?.getEditorView();
+    if (editor) {
+      const lines = editor.state.doc.toJSON();
+      if (lines.length > 0 && lines[0]) {
+        const firstLine = lines[0];
+        const parts = firstLine.split(' ');
+        if (parts.length >= 2 && parts[1]) {
+          const method = parts[0];
+          const urlPart = parts[1];
+          const httpVersion = parts.slice(2).join(' ');
+          
+          // Parse URL and query string
+          const [path, existingQuery] = urlPart.split('?');
+          const queryParams = new URLSearchParams(existingQuery || '');
+          queryParams.set(name, value);
+          
+          const newUrl = `${path}?${queryParams.toString()}`;
+          const newFirstLine = `${method} ${newUrl} ${httpVersion}`;
+          
+          // Replace first line
+          const endOfFirstLine = firstLine.length;
+          editor.dispatch({
+            changes: { from: 0, to: endOfFirstLine, insert: newFirstLine }
+          });
+          editor.focus();
+        }
+      }
+    }
+  },
+  activeEditorRemoveQueryParameter: (caido: Caido, { name }: { name: string }) => {
+    const editor = caido.window.getActiveEditor()?.getEditorView();
+    if (editor) {
+      const lines = editor.state.doc.toJSON();
+      if (lines.length > 0 && lines[0]) {
+        const firstLine = lines[0];
+        const parts = firstLine.split(' ');
+        if (parts.length >= 2 && parts[1]) {
+          const method = parts[0];
+          const urlPart = parts[1];
+          const httpVersion = parts.slice(2).join(' ');
+          
+          // Parse URL and query string
+          const [path, existingQuery] = urlPart.split('?');
+          if (existingQuery) {
+            const queryParams = new URLSearchParams(existingQuery);
+            queryParams.delete(name);
+            
+            const queryString = queryParams.toString();
+            const newUrl = queryString ? `${path}?${queryString}` : path;
+            const newFirstLine = `${method} ${newUrl} ${httpVersion}`;
+            
+            // Replace first line
+            const endOfFirstLine = firstLine.length;
+            editor.dispatch({
+              changes: { from: 0, to: endOfFirstLine, insert: newFirstLine }
+            });
+            editor.focus();
+          }
+        }
+      }
+    }
+  },
+  activeEditorUpdatePath: (caido: Caido, { path }: { path: string }) => {
+    const editor = caido.window.getActiveEditor()?.getEditorView();
+    if (editor) {
+      const lines = editor.state.doc.toJSON();
+      if (lines.length > 0 && lines[0]) {
+        const firstLine = lines[0];
+        const parts = firstLine.split(' ');
+        if (parts.length >= 2 && parts[1]) {
+          const method = parts[0];
+          const urlPart = parts[1];
+          const httpVersion = parts.slice(2).join(' ');
+          
+          // Parse URL and preserve query string
+          const [, existingQuery] = urlPart.split('?');
+          const newUrl = existingQuery ? `${path}?${existingQuery}` : path;
+          const newFirstLine = `${method} ${newUrl} ${httpVersion}`;
+          
+          // Replace first line
+          const endOfFirstLine = firstLine.length;
+          editor.dispatch({
+            changes: { from: 0, to: endOfFirstLine, insert: newFirstLine }
+          });
+          editor.focus();
+        }
+      }
+    }
+  },
+  activeEditorRemoveHeader: (caido: Caido, { headerName }: { headerName: string }) => {
+    const editor = caido.window.getActiveEditor()?.getEditorView();
+    if (editor) {
+      const lines = editor.state.doc.toJSON();
+      const targetHeaderName = headerName.toLowerCase();
+      
+      // Find where headers end (first empty line)
+      let headerEndIndex = 0;
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i] === '') {
+          headerEndIndex = i;
+          break;
+        }
+      }
+      
+      // Find and remove the header
+      for (let i = 1; i < headerEndIndex; i++) { // Start from 1 to skip the first line (request line)
+        const currentLine = lines[i];
+        if (currentLine && currentLine.toLowerCase().startsWith(targetHeaderName + ':')) {
+          // Calculate position to remove entire line including newline
+          const startOfLine = lines.slice(0, i).join('\n').length + (i > 0 ? 1 : 0);
+          const endOfLine = startOfLine + currentLine.length + 1; // +1 for newline
+          
+          editor.dispatch({
+            changes: { from: startOfLine, to: endOfLine, insert: '' }
+          });
+          editor.focus();
+          return;
+        }
+      }
+    }
+  },
   replayRequestReplace: (caido: Caido, { text }: { text: string }) => {
     const { requestEditor } = getCurrentReplayEditors();
     if (requestEditor) {
