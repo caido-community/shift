@@ -943,6 +943,65 @@ const MatchAndReplaceTests = {
     }
 }
 
+export const ActiveEditorTests = {
+    "activeEditorTests": {
+        "actions": [
+            {
+                "name": "activeEditorReplaceSelection",
+                "parameters": {
+                    "text": "replacement text"
+                }
+            },
+            {
+                "name": "activeEditorReplaceByString", 
+                "parameters": {
+                    "match": "find this",
+                    "replace": "replace with this"
+                }
+            },
+            {
+                "name": "activeEditorReplaceBody",
+                "parameters": {
+                    "body": "new request body"
+                }
+            },
+            {
+                "name": "activeEditorAddHeader",
+                "parameters": {
+                    "header": "Authorization: Bearer token123",
+                    "replace": true
+                }
+            },
+            {
+                "name": "activeEditorAddQueryParameter",
+                "parameters": {
+                    "name": "page",
+                    "value": "1" 
+                }
+            },
+            {
+                "name": "activeEditorRemoveQueryParameter",
+                "parameters": {
+                    "name": "page"
+                }
+            },
+            {
+                "name": "activeEditorUpdatePath",
+                "parameters": {
+                    "path": "/api/v2/users"
+                }
+            },
+            {
+                "name": "activeEditorRemoveHeader",
+                "parameters": {
+                    "headerName": "Authorization"
+                }
+            }
+        ]
+    }
+}
+
 export const tests = {
-    ...MatchAndReplaceTests
+    ...MatchAndReplaceTests,
+    ...ActiveEditorTests
 }
