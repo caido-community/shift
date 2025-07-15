@@ -44,18 +44,6 @@ onMounted(async () => {
           />
         </div>
       </div>
-      
-      <!-- Add new beta notice section -->
-      <div class="w-full flex flex-col items-center justify-center gap-4 mt-16">
-        <h1 class="custom-font text-3xl text-center">Get An API Key</h1>
-        <p class="text-lg text-center max-w-5xl">
-          Shift is a cloud product that requires an API Key. You can get one at <a href="https://shiftplugin.com" target="_blank" style="text-decoration: underline; color: var(--c-fg-secondary)">https://shiftplugin.com</a>.
-          <br>
-          Once you get an API key, please add it to the settings page, and you'll be able to use Shift.
-          <br>
-          Please use the thumbs up and thumbs down buttons to give us feedback and DM us in the Caido discord for more feedback.
-        </p>
-      </div>
     </div>
   </div>
 </template>
