@@ -41,7 +41,7 @@ export const PLACEHOLDER_AI_INSTRUCTIONS = "Example: If I type 'rcw' interpret i
 export const PLACEHOLDER_MEMORY = "Example: USERA Admin Account ID: 12345\nUSERB Admin Account ID: 67890\nOrganization ID: 98765";
 export const PLACEHOLDER_PROMPT="Query Shift..."
 
-export const DEFAULT_RENAME_INSTRUCTIONS = "Include the HTTP Verb, and a concise version of the path in the tab name. Focus on the end of the path. Include only the first 4 characters of IDs.\nExample: GET /api/v1/users/{id}/profile";
+export const DEFAULT_RENAME_INSTRUCTIONS = "Include the HTTP Verb, and a concise version of the path in the tab name. Focus on the end of the path. Include only the first 4 characters of IDs.\nExample: GET /api/v1/users/{id}/profile\nUNLESS, the current request is a graphql request, then use the operationName if present.";
 
 export enum AgentState {
   Stopped = 'stopped',
