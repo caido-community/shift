@@ -343,10 +343,10 @@ export const init = async (caido: Caido) => {
   });
   window.caido = caido;
   caido.commandPalette.register("shift.floating", "Shift Floating Command");
-  caido.shortcuts.register("shift.floating", ["⇧", "space"]);
+  caido.shortcuts.register("shift.floating", ["shift", "space"]);
   caido.menu.registerItem({type:"Request", commandId: "shift.addToMemory", label: "Add to Memory"});
   caido.menu.registerItem({type:"Response", commandId: "shift.addToMemory", label: "Add to Memory"});
-  caido.shortcuts.register("shift.addToMemory", ["⌃", "⇧", "M"]);
+  caido.shortcuts.register("shift.addToMemory", ["control", "shift", "M"]);
   addPage(caido);
   startRenameInterval(caido);
   setTimeout(()=>{
