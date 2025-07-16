@@ -9,13 +9,14 @@
       
       <div class="flex items-start gap-6 mb-4">
         <!-- API Key Input Section -->
-        <div class="flex-1 max-w-md">
+        <div class="flex-1 max-w-md" style="max-width:48rem; padding-right:1rem;">
           <div class="relative">
             <input 
               type="password" 
               id="apiKey" 
               v-model="apiKey"
               class="w-full bg-[var(--c-bg-subtle)] border border-[var(--c-border-default)] rounded-lg text-white px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-[var(--c-fg-primary)] focus:border-transparent"
+              style="background-color: var(--c-bg-subtle)"
               placeholder="Enter your API key"
             />
             <span v-if="validationAttempted" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-lg" :class="{ 'text-green-500': isApiKeyValid, 'text-red-500': !isApiKeyValid }">
