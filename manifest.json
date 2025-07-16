@@ -1,12 +1,12 @@
 {
   "id": "shift",
   "name": "Shift",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Seamless AI Integration into Caido.",
   "author": {
-    "name": "JThacker & CRITSoftware",
-    "email": "justin@criticalthinkingpodcast.io",
-    "url": "https://github.com/CRITSoftware/shift"
+    "name": "Caido Labs Inc.",
+    "email": "dev@caido.io",
+    "url": "https://caido.io"
   },
   "plugins": [
     {
