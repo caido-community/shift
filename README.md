@@ -1,9 +1,26 @@
-![image](https://github.com/user-attachments/assets/0641619d-b629-40c6-9aec-dc209deb8491)
-
+<p align="center">
+<img src="https://github.com/user-attachments/assets/0641619d-b629-40c6-9aec-dc209deb8491" width=250>
+<p/>
 
 # Shift AI Plugin
 
-This plugin is the Caido frontend for Shift AI. You can find more information about Shift here: https://shiftwaitlist.com.
+Shift is an AI plugin that integrates state-of-the-art LLMs directly into Caido's UI. It allows for LLM-powered free-form HTTP modification in Replay, automatic contextualization of queries, and [supports many tools that AI can use to interface with Caido. ](https://github.com/CRITSoftware/shift/blob/main/packages/frontend/actionFunctions.txt).
+
+Use Cases include:
+* `Build out this JSON request body in Replay [Paste Obfuscated JS Code]`
+    * **Result**: AI automatically builds the JSON request body from the JS code.
+* `Match and Replace this to true` (with a feature flag boolean selected) 
+    * **Result**: AI creates Match & Replace rule to turn on the feature
+* `Add this to scope` 
+    * **Result**: AI adds the current request to scope
+* `Generate a wordlist with all HTTP Verbs` 
+    * **Result**: AI generates a wordlist with all HTTP verbs and adds it to your hosted files
+* `Capitalize the 2nd letter of all query parameters` 
+    * **Result**: AI uses a Replay search and replace tool to capitalize all 2nd letters of query params
+* `Remove all the spaces from the path` 
+    * **Result**: AI updates the path to reflect the same path but without spaces
+* `Add 3 more tags to the JSON request body` 
+    * **Result**: AI reads the current JSON body and adds 3 more tag objects to the "tags" array.
 
 ## Demo
 <div>
@@ -18,14 +35,11 @@ This plugin is the Caido frontend for Shift AI. You can find more information ab
 ## Usage
 
 1. Install this plugin via the Caido Plugin Store
-2. Acquire an API key and configure it via the Shift -> Settings tab within Caido
-3. Press `shift + <space>`
+2. Press `shift + <space>`
 
 ## Disclosures
 
 Per the [Caido Developer Policy](https://developer.caido.io/policy.html), we are required to inform you that, for this plugin:
-* Payment is required for full access.
-* An account is required for full access.
 * External services are required for full access.
 * Server-side telemetry is collected (Opt-in - see [Privacy Policy](https://docs.google.com/document/d/1-x9f1iwsbgQJDIGfyeg3TsR4U_zwexfvdcqqGgbhbIU/edit?usp=sharing))
 
