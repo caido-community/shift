@@ -4,7 +4,7 @@ export default defineConfig({
   id: "shift",
   name: "Shift",
   description: "Seamless AI Integration into Caido.",
-  version: "0.0.0",
+  version: "0.2.4",
   author: {
     name: "JThacker & CRITSoftware",
     email: "justin@criticalthinkingpodcast.io",
