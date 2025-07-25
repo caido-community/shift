@@ -259,20 +259,20 @@ export const getCurrentScope = () => {
 
 export const getCurrentSidebarTab = () => {
   const activeTab = document.querySelector(
-    '.c-sidebar-item[data-is-active="true"] .c-sidebar__label',
+    'li[data-pc-section="item"].bg-surface-900',
   );
   return activeTab ? activeTab.textContent : "";
 };
 export const navigateToSidebarTab = async (tabName: string) => {
   const tab = Array.from(
-    document.querySelectorAll(".c-sidebar-item:has(.c-sidebar__label)"),
-  ).filter((a) => a.querySelector(".c-sidebar__label")?.textContent == tabName);
+    document.querySelectorAll("li[data-pc-section='item'] > div >a"),
+  ).filter((a) => a.textContent == tabName);
   if (tab.length == 0) {
     logger.error(`Tab with name "${tabName}" not found`);
     return;
   }
   if (tab[0] instanceof HTMLElement) {
-    tab[0].dispatchEvent(new MouseEvent("mousedown"));
+    tab[0].click();
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 };
@@ -393,6 +393,14 @@ export const getPluginStorage = async (
     if (!storage) {
       return DEFAULT_PLUGIN_STORAGE;
     }
+
+    // Remove old fields - clean this up in future versions
+    if (storage.agents) {
+      delete storage.agents;
+    }
+    if (storage.agentTabAssociations) {
+      delete storage.agentTabAssociations;
+    }
     
     // Migrate storage if needed
     const migratedStorage = migrateStorage(storage as unknown as PluginStorage);
@@ -429,11 +437,6 @@ export const migrateStorage = (storage: PluginStorage): PluginStorage => {
     storage.settings.aiInstructions = {
       [projectName]: aiInstructionsContent
     };
-  }
-  
-  // Ensure agents field exists
-  if (!storage.agents) {
-    storage.agents = DEFAULT_PLUGIN_STORAGE.agents;
   }
   
   return storage;

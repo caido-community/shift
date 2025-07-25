@@ -9,14 +9,8 @@ import { ActiveEntity, API_ENDPOINT, PAGE, CURRENT_VERSION, isDev} from "./const
 import { tests } from "./testSuite";
 import { handleServerResponse, fetchShiftResponse, checkAndRenameReplayTabs } from "./utils/shiftUtils";
 import { getCurrentProjectName, getPluginStorage, setPluginStorage } from "./utils/caidoUtils";
-// import "./styles/globalStyles.css";
-import "./styles/ToolbarComponentGlobal.css";
-import "./styles/ReplayShiftAgentGlobal.css";
-import "./styles/AgentLaunchModalGlobal.css";
-//import { applyAutocomplete } from "./autoComplete";
 import CustomToast from './components/CustomToast.vue'
 import logger from './utils/logger';
-import { initAgentMonitoring } from "./agent";
 
 const isShiftOpen = ref(false);
 const updateMemory = ref(false);
@@ -93,21 +87,6 @@ const addToMemory = async (caido: Caido) => {
   updateMemory.value = !updateMemory.value;
   logger.log(storage);
   await caido.window.showToast("Updated memory", {variant: "success", duration: 2000});
-}
-
-
-// --------------------- AUTOCOMPLETE ---------------------
-const initAutoComplete = (caido: Caido) => {
-  logger.log("Initializing auto complete");
-  var interval = setInterval(()=>{
-    const editor = caido.window.getActiveEditor()?.getEditorView();
-    logger.log("editor", editor?.state.doc.toString());
-    if (editor) {
-
-      applyAutocomplete(editor);
-      clearInterval(interval);
-    }
-  }, 1000)
 }
 
 
@@ -330,7 +309,42 @@ const checkForUpdates = (caido: Caido) => {
   });
 }
 
+// const caidoNavigationListener = ()=>{
+//   // Create a new observer instance
+//   const navigationObserver = new MutationObserver((mutations) => {
+//     const activeNavItem = document.querySelector('.c-sidebar-item[data-is-active="true"]');
+//     if (activeNavItem) {
+//       const navText = activeNavItem.textContent?.trim().toLowerCase() || '';
+//       window.caidoLocation = navText;
+//       window.dispatchEvent(new CustomEvent('caido-navigation', {
+//         detail: navText
+//       }));
+//     }
+//   });
+
+//   // Start observing the document body for navigation changes
+//   navigationObserver.observe(document.body, {
+//     childList: true,
+//     subtree: true,
+//     attributes: true,
+//     attributeFilter: ['data-is-active']
+//   });
+
+//   // Initial check in case navigation is already active
+//   const activeNavItem = document.querySelector('.c-sidebar-item[data-is-active="true"]');
+//   if (activeNavItem) {
+//     const navText = activeNavItem.textContent?.trim().toLowerCase() || '';
+//     window.caidoLocation = navText;
+//     window.dispatchEvent(new CustomEvent('caido-navigation', {
+//       detail: navText
+//     }));
+//   }
+
+// }
+
+
 export const init = async (caido: Caido) => {
+  // caidoNavigationListener();
   caido.commands.register("shift.floating", {
     name: "Shift Floating Command",
     run: () => spawnCommandInterfaceUI(caido),
@@ -352,8 +366,4 @@ export const init = async (caido: Caido) => {
   setTimeout(()=>{
     checkForUpdates(caido);
   }, 7000);
-  // initAutoComplete(caido);
-  
-  // Initialize agent monitoring
-  //initAgentMonitoring(caido);
 }

@@ -5,10 +5,8 @@ import { onMounted, onUnmounted } from "vue";
 import type { Caido } from "@caido/sdk-frontend";
 import Tutorial from "./Tutorial.vue";
 import Settings from "./Settings.vue";
-import Agents from "./Agents.vue";
 import { getPluginStorage } from "../../utils/caidoUtils";
-import { startToolbarObserver, stopToolbarObserver} from "../../utils/toolbarInjection";
-import ReplayShiftAgentComponent from '../ReplayShiftAgent/ReplayShiftAgentComponent.vue';
+import logger from "../../utils/logger";
 
 // Define props
 const props = defineProps<{
@@ -18,7 +16,7 @@ const props = defineProps<{
   updateMemory: boolean;
 }>();
 
-const page = ref<"Settings" | "Tutorial" | "Agents">("Settings");
+const page = ref<"Settings" | "Tutorial">("Settings");
 
 // Create a computed property for menu items that updates when page changes
 const items = computed(() => [
@@ -29,13 +27,6 @@ const items = computed(() => [
     },
     class: page.value === "Settings" ? "active-nav-item" : ""
   },
-  // {
-  //   label: "Agents",
-  //   command: () => {
-  //     page.value = "Agents";
-  //   },
-  //   class: page.value === "Agents" ? "active-nav-item" : ""
-  // },
   {
     label: "Tutorial",
     command: () => {
@@ -52,8 +43,6 @@ const component = computed(() => {
       return Settings;
     case "Tutorial":
       return Tutorial;
-    case "Agents":
-      return Agents;
   }
 });
 
@@ -73,20 +62,14 @@ onMounted(async () => {
   }
 
   // Start the toolbar observer to inject our component
-  //feature flag
-  if (window.name.includes("dev")) {
-    startToolbarObserver(props.caido, props.apiEndpoint);
-  }
+  logger.log('Shift: Starting caido navigation listener for toolbar observer');
+  startToolbarObserver(props.caido, props.apiEndpoint);
 
 });
 
 // Clean up when component is unmounted
 onUnmounted(() => {
-  // Stop the toolbar observer and remove any injected components
-  //feature flag
-  if (window.name.includes("dev")) {
-    stopToolbarObserver();
-  }
+  stopToolbarObserver();
 });
 
 // Add handler function

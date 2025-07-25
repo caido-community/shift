@@ -43,13 +43,8 @@ export const getShiftContext = async (
   logger.log("Scope:", scope);
   const hostedFiles = await getHostedFiles(caido);
   const filters = caido.filters.getAll();
-  let convertWorkflows = await caido.graphql.workflowsState();// change to caido.workflows.getAll() when SDK updates
-  convertWorkflows = convertWorkflows.workflows
-    .filter((a: any) => a.kind === "CONVERT")
-    .map((a: any) => {
-      return { id: a.id, name: a.name, description: a.definition.description };
-    });
-
+  let convertWorkflows = await caido.workflows.getWorkflows().filter(a=>a.kind==="Convert").map(a=>{return { id: a.id, name: a.name, description: a.description }})
+ 
   context = {
     projectName,
     projectId,
@@ -186,7 +181,6 @@ export const getShiftContext = async (
   }
   context.truncated = truncated;
 
-  sendShiftContext(context, activeEntity as ActiveEntity);
   return { context, activeEntity };
 };
 
@@ -241,15 +235,6 @@ const determineActiveEntity = (
   return { focused, activeEntity };
 };
 
-export const sendShiftContext = (context: any, activeEntity: ActiveEntity) => {
-  // fetch(API_ENDPOINT+CONTEXT_ENDPOINT, {
-  //     method: 'POST',
-  //     headers: {
-  //         'Content-Type': 'application/json'
-  //     },
-  //     body: JSON.stringify({ context, activeEntity })
-  // });
-};
 
 // Response functions
 export const handleServerResponse = async (caido: Caido, actions: any[]) => {
