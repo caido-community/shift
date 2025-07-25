@@ -43,61 +43,6 @@ export const PLACEHOLDER_PROMPT="Query Shift..."
 
 export const DEFAULT_RENAME_INSTRUCTIONS = "Include the HTTP Verb, and a concise version of the path in the tab name. Focus on the end of the path. Include only the first 4 characters of IDs.\nExample: GET /api/v1/users/{id}/profile\nUNLESS, the current request is a graphql request, then use the operationName if present.";
 
-export enum AgentState {
-  Stopped = 'stopped',
-  Paused = 'paused',
-  Restarted = 'restarted',
-  Error = 'error',
-  WaitingOnAI = 'running - waiting on ai',
-  ReadyToImplementActions = 'idle - ready to implement actions', 
-  WaitingOnReplay = 'running - waiting on replay',
-  ReadyToTellAI = 'idle - ready to tell ai'
-}
-
-// Add this interface for the agent-tab association
-export interface AgentTabAssociation {
-  conversationId: string;
-  agentId: string;
-  timestamp: number;
-  launchConfig?: {
-    jitInstructions: string;
-    maxRequests: number;
-    dynamicValues: Record<string, any>;
-  };
-  sessionId: string;
-  conversationHistory: Message[];
-  agentState: AgentState;
-  isActive?: boolean;
-  requestCount?: number;
-}
-
-export interface Message {
-  id: string;
-  role: 'AI' | 'agent' | 'user';
-  content: string;
-  action: Action[];
-  timestamp: number;
-  halting?: boolean;
-  executed?: boolean;
-}
-
-export enum AgentActionType {
-  matchAndReplace = 'matchAndReplace',
-  setBody = 'setBody',
-  setPath = 'setPath',
-  setMethod = 'setMethod',
-  addUpdateHeader = 'addUpdateHeader',
-  removeHeader = 'removeHeader',
-  addUpdateQueryParam = 'addUpdateQueryParam',
-  removeQueryParam = 'removeQueryParam',
-}
-
-
-export interface Action {
-  type: AgentActionType;
-  params: string[];
-}
-
 export interface PluginStorage {
   apiKey: string;
   settings: {
@@ -108,16 +53,6 @@ export interface PluginStorage {
     memory: string | {[projectName: string]: string};
     aiInstructions: string | {[projectName: string]: string};
     alreadyAssessedTabs: {[projectName: string]: string[]};
-  };
-  agents: Array<{
-    id: string;
-    name: string;
-    instructions: string;
-    knowledge: Array<string>;
-  }>;
-  // Add the new property for agent-tab associations
-  agentTabAssociations: {
-    [sessionId: string]: AgentTabAssociation
   };
   shiftFloatingPosition: {x: number, y: number};
   shiftCommandHistory: string[];
@@ -135,17 +70,6 @@ export const DEFAULT_PLUGIN_STORAGE: PluginStorage = {
     aiInstructions: {},
     alreadyAssessedTabs: {}
   },
-  agents: [{
-    id: 'default-agent',
-    name: 'HTTP Helper',
-    instructions: 'I help analyze and modify HTTP requests. I can help you understand request/response patterns, suggest modifications, and explain security implications.',
-    knowledge: [
-      'Common HTTP request/response patterns',
-      'HTTP security best practices',
-      'Web API design principles'
-    ]
-  }],
-  agentTabAssociations: {},
   shiftFloatingPosition: {x: 0, y: 0},
   shiftCommandHistory: [],
   hasSeenTutorial: false
