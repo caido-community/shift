@@ -1,369 +1,87 @@
-import { createApp, ref } from 'vue';
-import PrimeVue from 'primevue/config';
-import { Classic } from '@caido/primevue';
-//import ShiftUI from './components/ShiftUI.vue';
-import ShiftPage from './components/ShiftPage/App.vue';
-import ShiftFloat from './components/ShiftFloat.vue';
-import type { Caido } from "@caido/sdk-frontend";
-import { ActiveEntity, API_ENDPOINT, PAGE, CURRENT_VERSION, isDev} from "./constants";
-import { tests } from "./testSuite";
-import { handleServerResponse, fetchShiftResponse, checkAndRenameReplayTabs } from "./utils/shiftUtils";
-import { getCurrentProjectName, getPluginStorage, setPluginStorage } from "./utils/caidoUtils";
-import CustomToast from './components/CustomToast.vue'
-import logger from './utils/logger';
+import { Classic } from "@caido/primevue";
+import { createPinia } from "pinia";
+import PrimeVue from "primevue/config";
+import Tooltip from "primevue/tooltip";
+import { createApp } from "vue";
 
-const isShiftOpen = ref(false);
-const updateMemory = ref(false);
-let renameInterval: number | null = null;
+import { SDKPlugin } from "./plugins/sdk";
+import "./styles/index.css";
+import type { FrontendSDK } from "./types";
+import App from "./views/App.vue";
 
-// --------------------- RENAME ---------------------
-const startRenameInterval = async (caido: Caido) => {
-  // Clear any existing interval
-  if (renameInterval) {
-    logger.log("Clearing rename interval", renameInterval);
-    clearInterval(renameInterval);
-    renameInterval = null;
-  }
+import { setupAgents } from "@/agents";
+import { createDOMManager } from "@/dom";
+import { setupFloat } from "@/float";
+import { setupRenaming } from "@/renaming";
+import { useAgentsStore } from "@/stores/agents";
+import { useConfigStore } from "@/stores/config";
 
-  // Get settings from storage
-  const storage = await getPluginStorage(caido);
-  if (storage.settings?.aiRenameReplayTabs) {
-      logger.log("Starting rename interval", storage.settings.renameDelay*1000);
-    renameInterval = window.setInterval(async () => {
-      try {
-        logger.log("rename interval tick")
-        const currentStorage = await getPluginStorage(caido);
-        const currentSettings = currentStorage?.settings;
-        
-        // If settings were updated, use the new values
-        if (currentSettings?.aiRenameReplayTabs && !window.renameLock) {
-          window.renameLock=true;
-          await checkAndRenameReplayTabs(
-            caido,
-            currentStorage.apiKey,
-            getCurrentProjectName(),
-            currentSettings.renameDelay,
-            currentSettings.renameInstructions
-          );
-          window.renameLock=false;
-        }
-      } catch (error) {
-        window.renameLock = false;
-        logger.error('Error in rename interval:', error);
-      }
-    }, storage.settings.renameDelay * 1000);
-  }
-};
+export const init = (sdk: FrontendSDK) => {
+  const app = createApp(App);
 
-
-// --------------------- MEMORY ---------------------
-const addToMemory = async (caido: Caido) => {
-  logger.log("Adding to memory");
-  const text = caido.window.getActiveEditor()?.getSelectedText();
-  logger.log("storage",await getPluginStorage(caido));
-  const storage = await getPluginStorage(caido);
-  const projectName = getCurrentProjectName() || 'default';
-  
-  // Ensure memory is an object
-  if (typeof storage.settings.memory === 'string') {
-    storage.settings.memory = {
-      [projectName]: storage.settings.memory
-    };
-  }
-  
-  // Ensure the project exists in memory
-  if (!storage.settings.memory[projectName as keyof typeof storage.settings.memory]) {
-    (storage.settings.memory as Record<string, string>)[projectName] = '';
-  }
-  
-  // Add text to memory
-  if ((storage.settings.memory as Record<string, string>)[projectName] !== '') {
-    (storage.settings.memory as Record<string, string>)[projectName] = (storage.settings.memory as Record<string, string>)[projectName] + "\n" + text;
-  } else {
-    (storage.settings.memory as Record<string, string>)[projectName] = text || '';
-  }
-  
-  await setPluginStorage(caido, storage);
-  updateMemory.value = !updateMemory.value;
-  logger.log(storage);
-  await caido.window.showToast("Updated memory", {variant: "success", duration: 2000});
-}
-
-
-// --------------------- UI ---------------------
-
-const addPage = async (caido: Caido) => {
-  const app = createApp(ShiftPage, { 
-    caido: caido, 
-    apiEndpoint: API_ENDPOINT, 
-    startRenameInterval: startRenameInterval, 
-    updateMemory: updateMemory
+  app.use(PrimeVue, {
+    unstyled: true,
+    pt: Classic,
   });
 
-  const container = document.createElement('div');
-  container.style.height = '100%';
-  container.style.width = '100%';
-  app.use(PrimeVue, { unstyled: true, pt:Classic});
-  const card = caido.ui.card({
-    body: container,
+  app.directive("tooltip", Tooltip);
+
+  const pinia = createPinia();
+  app.use(pinia);
+
+  app.use(SDKPlugin, sdk);
+
+  const root = document.createElement("div");
+  Object.assign(root.style, {
+    height: "100%",
+    width: "100%",
   });
-  app.mount(container);
 
-  // Create plugin page in left tab menu.
-  caido.navigation.addPage(PAGE, {
-    body: card,
+  root.id = `plugin--shift`;
+
+  app.mount(root);
+
+  sdk.navigation.addPage("/shift", {
+    body: root,
   });
-  caido.sidebar.registerItem("Shift", PAGE, {
-    icon: "far fa-arrow-alt-circle-up",
+
+  sdk.sidebar.registerItem("Shift", "/shift", {
+    icon: "fas fa-robot",
   });
-  logger.log("Mounted app add page");
-};
 
-const spawnCommandInterfaceUI = async (caido: Caido) => {
-  logger.log("spawnCommandInterfaceUI started");
-  
-  // If the interface is already open, toggle its visibility
-  const existingInterface = document.querySelector('.shift-floating-interface');
-  if (existingInterface) {
-    logger.log("existingInterface", existingInterface);
-    if (existingInterface.classList.contains('hidden')) {
-      existingInterface.classList.remove('hidden');
-      document.querySelector('.shift-textarea')?.focus();
-    } else {
-      existingInterface.classList.add('hidden');
-      caido.window.getActiveEditor()?.focus();
-    }
-    return; // Exit the function early as we've toggled visibility
-  }
-  isShiftOpen.value = true;
+  setupAgents(sdk);
+  setupFloat(sdk);
+  setupRenaming(sdk);
 
-  logger.log("Creating new interface");
-  const container = document.createElement('div');
-  container.id = "plugin--shift"; // Temporary fix for the plugin page not being found
-  container.classList.add('shift-floating-interface');
-  document.body.appendChild(container);
-  logger.log("Container added to body");
+  sdk.commands.register("shift:add-to-memory", {
+    name: "Add to memory",
+    run: () => {
+      const configStore = useConfigStore();
 
-  // Retrieve saved position from storage
-  const storage = await getPluginStorage(caido);
-  const savedPosition = storage.shiftFloatingPosition;
-  logger.log("Saved position:", savedPosition);
-  if (savedPosition) {
-    const { x, y } = savedPosition;
-    container.style.left = `${x}px`;
-    container.style.top = `${y}px`;
-  }
+      const selection = window.getSelection();
+      if (selection === null) return;
 
-  const handleSubmit = async (text: string, activeEntity: ActiveEntity, context: any): Promise<string> => {
-    logger.log("Submitted text:", text);
-    const storage = await getPluginStorage(caido);
-    const apiKey = storage.apiKey;
-    const projectName = getCurrentProjectName() || 'default';
-    
-    // Get memory for current project
-    let memory = "";
-    if (typeof storage?.settings?.memory === 'string') {
-      memory = storage.settings.memory;
-    } else if (storage?.settings?.memory) {
-      memory = storage.settings.memory[projectName] || "";
-    }
-    
-    // Get aiInstructions for current project
-    let aiInstructions = "";
-    if (typeof storage?.settings?.aiInstructions === 'string') {
-      aiInstructions = storage.settings.aiInstructions;
-    } else if (storage?.settings?.aiInstructions) {
-      aiInstructions = storage.settings.aiInstructions[projectName] || "";
-    }
-    
-    try {
-      let response;
-      if (isDev && window.name.indexOf("localapi") != -1 && Object.keys(tests).includes(text)) {
-        logger.log("Running test", text);
-        logger.log("tests", tests);
-        response = tests[text as keyof typeof tests];
-      }else{
-        response = await fetchShiftResponse(apiKey, text, activeEntity, context, memory, aiInstructions);
-      }
-        logger.log("Shift response:", response);
-        
-      // Create container for toast
-      const toastContainer = document.createElement('div');
-      toastContainer.id = "plugin--shift";
-      document.body.appendChild(toastContainer);
-      
-      // Create toast instance with message in props
-      if (response.actions.length > 0) {
-        logger.log("response.actions", response.actions);
-        const toastApp = createApp(CustomToast, {
-          variant: 'success',
-          duration: 20000,
-          responseId: response.id,
-          apiKey: apiKey,
-          message: "Taking following actions: " + response.actions.map((action: any) => action.name).join(", "),
-          userInput: text,
-          activeEntity: activeEntity,
-          context: context,
-          serverResponse: response,
-          onClose: () => {
-            toastApp.unmount();
-            document.body.removeChild(toastContainer);
-          }
-        });
-        // Mount toast
-        toastApp.mount(toastContainer);
-      }else{
-        const toastApp = createApp(CustomToast, {
-          variant: 'info',
-          duration: 20000,
-          responseId: response.id,
-          apiKey: apiKey,
-          message: "No actions taken.",
-          userInput: text,
-          activeEntity: activeEntity,
-          context: context,
-          serverResponse: response,
-          onClose: () => {
-            toastApp.unmount();
-            document.body.removeChild(toastContainer);
-          }
-        });
-        toastApp.mount(toastContainer);
-      }
-      
+      const text = selection.toString();
+      if (text.length === 0) return;
 
-      handleServerResponse(caido, response.actions);
-      return ""; // Success case
-    } catch (error) {
-      // Create error toast
-      const toastContainer = document.createElement('div');
-      toastContainer.id = "plugin--shift";
-      document.body.appendChild(toastContainer);
-      
-      const toastApp = createApp(CustomToast, {
-        variant: 'error',
-        duration: 20000,
-        responseId: '',
-        apiKey: apiKey,
-        message: `${error}`,
-        userInput: text,
-        activeEntity: activeEntity,
-        context: context,
-        onClose: () => {
-          toastApp.unmount();
-          document.body.removeChild(toastContainer);
-        }
+      configStore.memory += "\n" + text;
+
+      sdk.window.showToast(`Text has been saved to your Shift memory`, {
+        variant: "info",
       });
-      
-      toastApp.mount(toastContainer);
-      return `Error: ${error}`; // Error case
-    } finally {
-      closeInterface();
-    }
-  };
-
-  const closeInterface = async () => {
-    logger.log("Closing command interface");
-    isShiftOpen.value = false;
-    
-    // Save the current position before unmounting
-    const storage = await getPluginStorage(caido);
-    logger.log(storage.shiftFloatingPosition);
-    
-    app.unmount();
-    document.body.removeChild(container);
-  };
-
-  logger.log("instantiating app");
-  const app = createApp(ShiftFloat, {
-    onSubmit: handleSubmit,
-    onClose: closeInterface,
-    caido: caido,
-    onPositionChange: async (x: number, y: number) => {
-      logger.log("Position changed to:", x, y);
-      const storage = await getPluginStorage(caido);
-      storage.shiftFloatingPosition = { x, y };
-      await setPluginStorage(caido, storage);
     },
   });
-  logger.log("instantiating app2");
-  app.mount(container);
-  logger.log("Mounted app spawnCommandInterfaceUI");
-};
 
+  sdk.shortcuts.register("shift:add-to-memory", ["shift", "m"]);
 
-// --------------------- UPDATE CHECK ---------------------
-const checkForUpdates = (caido: Caido) => {
-  logger.log("Checking for updates");
-  fetch(`${API_ENDPOINT}/version`).then(async (response) => {
-    const data = await response.json();
-    if (data.version !== CURRENT_VERSION) {
-      if (data.message && data.duration) {
-        caido.window.showToast(data.message, {variant: "info", duration: data.duration});
-      } else {
-        caido.window.showToast(`Shift is at version ${data.version}. You are on ${CURRENT_VERSION}. Update via Plugins -> Store.`, {variant: "info", duration: 3000});
-      }
+  const domManager = createDOMManager(sdk);
+  domManager.drawer.start();
+  domManager.session.start();
+
+  domManager.session.onSelected((sessionId) => {
+    const agentStore = useAgentsStore();
+    if (sessionId !== undefined) {
+      agentStore.selectAgent(sessionId);
     }
-  }).catch((error) => {
-    logger.error("Error checking for updates:", error);
   });
-}
-
-// const caidoNavigationListener = ()=>{
-//   // Create a new observer instance
-//   const navigationObserver = new MutationObserver((mutations) => {
-//     const activeNavItem = document.querySelector('.c-sidebar-item[data-is-active="true"]');
-//     if (activeNavItem) {
-//       const navText = activeNavItem.textContent?.trim().toLowerCase() || '';
-//       window.caidoLocation = navText;
-//       window.dispatchEvent(new CustomEvent('caido-navigation', {
-//         detail: navText
-//       }));
-//     }
-//   });
-
-//   // Start observing the document body for navigation changes
-//   navigationObserver.observe(document.body, {
-//     childList: true,
-//     subtree: true,
-//     attributes: true,
-//     attributeFilter: ['data-is-active']
-//   });
-
-//   // Initial check in case navigation is already active
-//   const activeNavItem = document.querySelector('.c-sidebar-item[data-is-active="true"]');
-//   if (activeNavItem) {
-//     const navText = activeNavItem.textContent?.trim().toLowerCase() || '';
-//     window.caidoLocation = navText;
-//     window.dispatchEvent(new CustomEvent('caido-navigation', {
-//       detail: navText
-//     }));
-//   }
-
-// }
-
-
-export const init = async (caido: Caido) => {
-  // caidoNavigationListener();
-  caido.commands.register("shift.floating", {
-    name: "Shift Floating Command",
-    run: () => spawnCommandInterfaceUI(caido),
-    group: "Shift",
-  });
-  caido.commands.register("shift.addToMemory", {
-    name: "Add to Memory",
-    run: () => addToMemory(caido),
-    group: "Shift",
-  });
-  window.caido = caido;
-  caido.commandPalette.register("shift.floating", "Shift Floating Command");
-  caido.shortcuts.register("shift.floating", ["shift", "space"]);
-  caido.menu.registerItem({type:"Request", commandId: "shift.addToMemory", label: "Add to Memory"});
-  caido.menu.registerItem({type:"Response", commandId: "shift.addToMemory", label: "Add to Memory"});
-  caido.shortcuts.register("shift.addToMemory", ["control", "shift", "M"]);
-  addPage(caido);
-  startRenameInterval(caido);
-  setTimeout(()=>{
-    checkForUpdates(caido);
-  }, 7000);
-}
+};

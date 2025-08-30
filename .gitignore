@@ -1,6 +1,7 @@
-node_modules
 dist
-dist-zip
-.DS_Store
-*Zone.Identifier
-.vscode
+node_modules
+secrets.ts
+.cursor
+DS_Store
+plan.md
+todo.md

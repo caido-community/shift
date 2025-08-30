@@ -9,17 +9,17 @@ Shift is an AI plugin that integrates state-of-the-art LLMs directly into Caido'
 Use Cases include:
 * `Build out this JSON request body in Replay [Paste Obfuscated JS Code]`
     * **Result**: AI automatically builds the JSON request body from the JS code.
-* `Match and Replace this to true` (with a feature flag boolean selected) 
+* `Match and Replace this to true` (with a feature flag boolean selected)
     * **Result**: AI creates Match & Replace rule to turn on the feature
-* `Add this to scope` 
+* `Add this to scope`
     * **Result**: AI adds the current request to scope
-* `Generate a wordlist with all HTTP Verbs` 
+* `Generate a wordlist with all HTTP Verbs`
     * **Result**: AI generates a wordlist with all HTTP verbs and adds it to your hosted files
-* `Capitalize the 2nd letter of all query parameters` 
+* `Capitalize the 2nd letter of all query parameters`
     * **Result**: AI uses a Replay search and replace tool to capitalize all 2nd letters of query params
-* `Remove all the spaces from the path` 
+* `Remove all the spaces from the path`
     * **Result**: AI updates the path to reflect the same path but without spaces
-* `Add 3 more tags to the JSON request body` 
+* `Add 3 more tags to the JSON request body`
     * **Result**: AI reads the current JSON body and adds 3 more tag objects to the "tags" array.
 
 ## Demo

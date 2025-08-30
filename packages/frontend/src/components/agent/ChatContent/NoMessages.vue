@@ -1,0 +1,10 @@
+<script setup lang="ts"></script>
+
+<template>
+  <div class="flex-1 flex items-center justify-center text-surface-400">
+    <div class="text-center">
+      <i class="fas fa-robot text-4xl mb-2" />
+      <div class="text-lg">Send a message to begin</div>
+    </div>
+  </div>
+</template>
