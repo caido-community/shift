@@ -1,0 +1,49 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+.shimmer {
+  display: inline-block;
+  color: white;
+  background: #acacac linear-gradient(to left, #acacac, #ffffff 50%, #acacac);
+  background-position: -4rem top;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-animation: shimmer 1s infinite;
+  animation: shimmer 1s infinite;
+  background-size: 4rem 100%;
+}
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+@-webkit-keyframes shimmer {
+  0% {
+    background-position: -4rem top;
+  }
+  70% {
+    background-position: 12rem top;
+  }
+  100% {
+    background-position: 12rem top;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -4rem top;
+  }
+  70% {
+    background-position: 12rem top;
+  }
+  100% {
+    background-position: 12rem top;
+  }
+}

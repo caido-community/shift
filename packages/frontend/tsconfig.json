@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "lib": ["DOM", "ESNext"],
-    "types": ["@caido/sdk-backend"],
+    "types": [],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]

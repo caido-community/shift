@@ -1,0 +1,1 @@
+export { useConfigStore } from "./store";

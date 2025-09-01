@@ -1,18 +1,21 @@
 {
   "name": "shift",
-  "version": "0.1.0",
-  "description": "Monorepo for the Shift plugin.",
-  "author": "Caido Labs Inc. <dev@caido.io>",
-  "type": "module",
+  "version": "1.0.0",
+  "private": true,
   "scripts": {
     "typecheck": "pnpm -r typecheck",
-    "build": "node scripts/clean.js && pnpm -r build && node scripts/pack.js"
+    "lint": "eslint ./packages/**/src --fix",
+    "build": "caido-dev build",
+    "watch": "caido-dev watch"
   },
   "devDependencies": {
-    "@caido-community/dev": "^0.1.5",
-    "@caido/plugin-manifest": "0.2.0",
-    "jszip": "3.10.1",
-    "typescript": "5.5.4",
-    "vite": "5.2.7"
+    "@caido-community/dev": "^0.1.3",
+    "@caido/eslint-config": "^0.6.0",
+    "@caido/tailwindcss": "0.0.1",
+    "@vitejs/plugin-vue": "5.2.1",
+    "postcss-prefixwrap": "1.51.0",
+    "tailwindcss": "3.4.13",
+    "tailwindcss-primeui": "0.3.4",
+    "typescript": "5.5.4"
   }
 }
