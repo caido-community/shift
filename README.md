@@ -1,10 +1,25 @@
+<div align="center">
+  <img width="1000" alt="image" src="https://github.com/caido-community/.github/blob/main/content/banner.png?raw=true">
+
+  <br />
+  <br />
+  <a href="https://github.com/caido-community" target="_blank">Github</a>
+  <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
+  <a href="https://developer.caido.io/" target="_blank">Documentation</a>
+  <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
+  <a href="https://links.caido.io/www-discord" target="_blank">Discord</a>
+  <br />
+  <hr />
+</div>
+
+# Shift
+
+Shift is an AI plugin that integrates state-of-the-art LLMs directly into Caido's UI. It allows for LLM-powered free-form HTTP modification in Replay, automatic contextualization of queries, and [supports many tools that AI can use to interface with Caido. ](https://github.com/CRITSoftware/shift/blob/main/packages/frontend/actionFunctions.txt).
+
+
 <p align="center">
 <img src="https://github.com/user-attachments/assets/0641619d-b629-40c6-9aec-dc209deb8491" width=250>
 <p/>
-
-# Shift AI Plugin
-
-Shift is an AI plugin that integrates state-of-the-art LLMs directly into Caido's UI. It allows for LLM-powered free-form HTTP modification in Replay, automatic contextualization of queries, and [supports many tools that AI can use to interface with Caido. ](https://github.com/CRITSoftware/shift/blob/main/packages/frontend/actionFunctions.txt).
 
 Use Cases include:
 * `Build out this JSON request body in Replay [Paste Obfuscated JS Code]`
@@ -22,20 +37,65 @@ Use Cases include:
 * `Add 3 more tags to the JSON request body`
     * **Result**: AI reads the current JSON body and adds 3 more tag objects to the "tags" array.
 
-## Demo
-<div>
-    <a href="https://www.loom.com/share/ac132e7b4ab645fdaa67c8a34a818fb2">
-      <p>Shift Core, Shift Memory, Shift Rename Demo - Watch Video</p>
-    </a>
-    <a href="https://www.loom.com/share/ac132e7b4ab645fdaa67c8a34a818fb2">
-      <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/ac132e7b4ab645fdaa67c8a34a818fb2-329aa30b44cf128f-full.jpg">
-    </a>
-  </div>
+## Shift Agents
 
-## Usage
+Shift Agents, the new micro-agent framework for Caido users.
+
+Build personalized micro-agents for tasks like XSS exploitation, WAF bypassing, or anything you can think of.
+
+## Demos
+<div>
+  <a href="https://www.loom.com/share/ac132e7b4ab645fdaa67c8a34a818fb2">
+    <p>Shift Core, Shift Memory, Shift Rename Demo - Watch Video</p>
+  </a>
+  <a href="https://www.loom.com/share/ac132e7b4ab645fdaa67c8a34a818fb2">
+    <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/ac132e7b4ab645fdaa67c8a34a818fb2-329aa30b44cf128f-full.jpg">
+  </a>
+</div>
+
+<hr>
+
+<div>
+  <p>Shift Agents Demo</p>
+  <video controls style="max-width:300px;">
+    <source src="assets/agent-demo.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+</div>
+
+<hr>
+
+<div>
+  <p>Shift New Float Demo</p>
+  <video controls style="max-width:300px;">
+    <source src="assets/float-demo.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+</div>
+
+# Installation
+
+### From Plugin Store
 
 1. Install this plugin via the Caido Plugin Store
 2. Press `shift + <space>`
+
+### Manual Installation
+
+1. Install dependencies:
+
+   ```bash
+   pnpm install
+   ```
+
+2. Build the plugin:
+
+   ```bash
+   pnpm build
+   ```
+
+3. Install in Caido:
+   - Upload the `dist/plugin_package.zip` file in Caido by clicking on the "Install Package" button in-app
 
 ## Disclosures
 
