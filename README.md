@@ -55,23 +55,13 @@ Build personalized micro-agents for tasks like XSS exploitation, WAF bypassing, 
 
 <hr>
 
-<div>
-  <p>Shift Agents Demo</p>
-  <video controls style="max-width:300px;">
-    <source src="assets/agent-demo.mp4" type="video/mp4">
-    Your browser does not support the video tag.
-  </video>
-</div>
+<p>Shift Agents Demo</p>
+<video src="assets/agent-demo.mp4" width="300px"></video>
 
-<hr>
+<hr />
 
-<div>
-  <p>Shift New Float Demo</p>
-  <video controls style="max-width:300px;">
-    <source src="assets/float-demo.mp4" type="video/mp4">
-    Your browser does not support the video tag.
-  </video>
-</div>
+<p>Shift New Float Demo</p>
+<video src="assets/float-demo.mp4" width="300px"></video>
 
 # Installation
 
