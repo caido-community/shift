@@ -56,12 +56,15 @@ Build personalized micro-agents for tasks like XSS exploitation, WAF bypassing, 
 <hr>
 
 <p>Shift Agents Demo</p>
-<video src="assets/agent-demo.mp4" width="300px"></video>
+
+https://github.com/user-attachments/assets/20853016-cc60-4d49-b4f5-ec7a53eb86e7
 
 <hr />
 
 <p>Shift New Float Demo</p>
-<video src="assets/float-demo.mp4" width="300px"></video>
+
+https://github.com/user-attachments/assets/88a25f77-3eba-457a-927c-721abb70d759
+
 
 # Installation
 
