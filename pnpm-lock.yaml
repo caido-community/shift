@@ -36,14 +36,14 @@ importers:
   packages/frontend:
     dependencies:
       '@ai-sdk/vue':
-        specifier: ^2.0.28
-        version: 2.0.28(vue@3.5.20(typescript@5.5.4))(zod@4.1.5)
+        specifier: ^2.0.29
+        version: 2.0.29(vue@3.5.20(typescript@5.5.4))(zod@4.1.5)
       '@caido/primevue':
         specifier: 0.2.1
-        version: 0.2.1(primevue@4.3.7(vue@3.5.20(typescript@5.5.4)))
+        version: 0.2.1(primevue@4.3.8(vue@3.5.20(typescript@5.5.4)))
       '@openrouter/ai-sdk-provider':
         specifier: 1.1.2
-        version: 1.1.2(ai@5.0.28(zod@4.1.5))(zod@4.1.5)
+        version: 1.1.2(ai@5.0.29(zod@4.1.5))(zod@4.1.5)
       '@tailwindcss/typography':
         specifier: ^0.5.16
         version: 0.5.16(tailwindcss@3.4.13)
@@ -51,11 +51,11 @@ importers:
         specifier: ^14.1.2
         version: 14.1.2
       '@vueuse/core':
-        specifier: ^13.8.0
-        version: 13.8.0(vue@3.5.20(typescript@5.5.4))
+        specifier: ^13.9.0
+        version: 13.9.0(vue@3.5.20(typescript@5.5.4))
       ai:
-        specifier: ^5.0.28
-        version: 5.0.28(zod@4.1.5)
+        specifier: ^5.0.29
+        version: 5.0.29(zod@4.1.5)
       markdown-it:
         specifier: ^14.1.0
         version: 14.1.0
@@ -63,11 +63,11 @@ importers:
         specifier: ^3.0.3
         version: 3.0.3(typescript@5.5.4)(vue@3.5.20(typescript@5.5.4))
       primevue:
-        specifier: 4.3.7
-        version: 4.3.7(vue@3.5.20(typescript@5.5.4))
+        specifier: 4.3.8
+        version: 4.3.8(vue@3.5.20(typescript@5.5.4))
       ts-http-forge:
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.1.2
+        version: 0.1.2
       vue:
         specifier: 3.5.20
         version: 3.5.20(typescript@5.5.4)
@@ -76,14 +76,14 @@ importers:
         version: 4.1.5
     devDependencies:
       '@caido/sdk-backend':
-        specifier: ^0.51.0
-        version: 0.51.0
+        specifier: ^0.51.1
+        version: 0.51.1
       '@caido/sdk-frontend':
-        specifier: ^0.51.0
-        version: 0.51.0(@codemirror/state@6.5.2)(@codemirror/view@6.38.1)(vue@3.5.20(typescript@5.5.4))
+        specifier: ^0.51.1
+        version: 0.51.1(@codemirror/state@6.5.2)(@codemirror/view@6.38.2)(vue@3.5.20(typescript@5.5.4))
       '@codemirror/view':
-        specifier: 6.38.1
-        version: 6.38.1
+        specifier: 6.38.2
+        version: 6.38.2
       vue-tsc:
         specifier: 3.0.6
         version: 3.0.6(typescript@5.5.4)
@@ -106,8 +106,8 @@ packages:
     resolution: {integrity: sha512-6o7Y2SeO9vFKB8lArHXehNuusnpddKPk7xqL7T2/b+OvXMRIXUO1rR4wcv1hAFUAT9avGZshty3Wlua/XA7TvA==, tarball: https://registry.npmjs.org/@ai-sdk/provider/-/provider-2.0.0.tgz}
     engines: {node: '>=18'}
 
-  '@ai-sdk/vue@2.0.28':
-    resolution: {integrity: sha512-uCyP4FYNvQFW1QNGAFARkTPsbfp96ASsp+nwbI9KT1Jj3QElPs/gBWkIT5UFV8ObMHMp8UAOLq51utbk9IIpcA==, tarball: https://registry.npmjs.org/@ai-sdk/vue/-/vue-2.0.28.tgz}
+  '@ai-sdk/vue@2.0.29':
+    resolution: {integrity: sha512-ttCRbVd6OeMR21vgjeH7FibobTOBqEUFkLAP6ekZreSp1C5il7rvsFHg9NADnydEEMgvnSi4b8up3L0MzTIU2A==, tarball: https://registry.npmjs.org/@ai-sdk/vue/-/vue-2.0.29.tgz}
     engines: {node: '>=18'}
     peerDependencies:
       vue: ^3.3.4
@@ -155,14 +155,14 @@ packages:
     peerDependencies:
       primevue: 4.1.0
 
-  '@caido/quickjs-types@0.19.3':
-    resolution: {integrity: sha512-ReIj7GylOPGPGlYHODVWHxbctCv22kbYcmZzv6b5PQe2w8AMsIdaVRYST24KoZ0xaSGwxMrFi8Wvo/N6VSTnuw==, tarball: https://registry.npmjs.org/@caido/quickjs-types/-/quickjs-types-0.19.3.tgz}
+  '@caido/quickjs-types@0.20.0':
+    resolution: {integrity: sha512-T3OTw3GjGPtMxASFHZro86Jce+9TVNNbUz2fQCaCbP+Yh+olt5mwTMLNz8uLFo4icgc1WPfyimfFSN23za9UXw==, tarball: https://registry.npmjs.org/@caido/quickjs-types/-/quickjs-types-0.20.0.tgz}
 
-  '@caido/sdk-backend@0.51.0':
-    resolution: {integrity: sha512-hVAE94AjfiNqSW5LzY0moRu1zO6QilOW4uUjhy18ePnBsYO1e+vn7lcxNp5j6u3Val3ite+i4hX32InU3X/bfA==, tarball: https://registry.npmjs.org/@caido/sdk-backend/-/sdk-backend-0.51.0.tgz}
+  '@caido/sdk-backend@0.51.1':
+    resolution: {integrity: sha512-BvDCcbxXCDcsCvqntpeoKJ475DUZ7H7TXZjIPcoa5WU+ynBpvnDpeoxVoy1UBYQKz9L5ld8MQ3S5oY9wEoNHqQ==, tarball: https://registry.npmjs.org/@caido/sdk-backend/-/sdk-backend-0.51.1.tgz}
 
-  '@caido/sdk-frontend@0.51.0':
-    resolution: {integrity: sha512-aT3wxkao44yZunA9Xc4o19gCPnUObpIc5t/sfykUF0rkBymbNosv41Asu5Grwwcjn5Yz0KnjG3koFmGtCnZOHg==, tarball: https://registry.npmjs.org/@caido/sdk-frontend/-/sdk-frontend-0.51.0.tgz}
+  '@caido/sdk-frontend@0.51.1':
+    resolution: {integrity: sha512-mop5Fk5Gv9cxm/BGaO6T1NxJHXPqDU6adIrWKjnWOhZnuqOfH+DxU8TpI+k+IRgtPJkmOv4NqfGPx7axLHhM5A==, tarball: https://registry.npmjs.org/@caido/sdk-frontend/-/sdk-frontend-0.51.1.tgz}
     peerDependencies:
       '@codemirror/state': ^6.0.0
       '@codemirror/view': ^6.0.0
@@ -177,8 +177,8 @@ packages:
   '@codemirror/state@6.5.2':
     resolution: {integrity: sha512-FVqsPqtPWKVVL3dPSxy8wEF/ymIEuVzF1PK3VbUgrxXpJUSHQWWZz4JMToquRxnkw+36LTamCZG2iua2Ptq0fA==, tarball: https://registry.npmjs.org/@codemirror/state/-/state-6.5.2.tgz}
 
-  '@codemirror/view@6.38.1':
-    resolution: {integrity: sha512-RmTOkE7hRU3OVREqFVITWHz6ocgBjv08GoePscAakgVQfciA3SGCEk7mb9IzwW61cKKmlTpHXG6DUE5Ubx+MGQ==, tarball: https://registry.npmjs.org/@codemirror/view/-/view-6.38.1.tgz}
+  '@codemirror/view@6.38.2':
+    resolution: {integrity: sha512-bTWAJxL6EOFLPzTx+O5P5xAO3gTqpatQ2b/ARQ8itfU/v2LlpS3pH2fkL0A3E/Fx8Y2St2KES7ZEV0sHTsSW/A==, tarball: https://registry.npmjs.org/@codemirror/view/-/view-6.38.2.tgz}
 
   '@esbuild/aix-ppc64@0.24.2':
     resolution: {integrity: sha512-thpVCb/rhxE/BnMLQ7GReQLLN8q9qbHmI55F4489/ByVg2aQaQ6kbcLb6FHkocZzQhxc4gx0sCk0tJkKBFzDhA==, tarball: https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.24.2.tgz}
@@ -468,14 +468,14 @@ packages:
     resolution: {integrity: sha512-tQL/ZOPgCdD+NTimlUmhyD0ey8J1XmpZE4hDHM+/fnuBicVVmlKOd5HpS748LcOVRUKbWjmEPdHX4hi5XZoC1Q==, tarball: https://registry.npmjs.org/@primeuix/utils/-/utils-0.6.1.tgz}
     engines: {node: '>=12.11.0'}
 
-  '@primevue/core@4.3.7':
-    resolution: {integrity: sha512-rYmEZTKs/C2Re+xFluY9R02+n4TcyJshooPPOG6zc23v/bmhrfcqCiS5gNiuXF/lYoOh4y8VTcHF6eZCZW724Q==, tarball: https://registry.npmjs.org/@primevue/core/-/core-4.3.7.tgz}
+  '@primevue/core@4.3.8':
+    resolution: {integrity: sha512-KOE5XnyUlA4qwztQ+HQbeqMrRLgX+VsSfZrtEkkw2HZP+eoT9Ij3AGZx7yJhzLh/4feDZQqWNjG8wRyLmv5GDQ==, tarball: https://registry.npmjs.org/@primevue/core/-/core-4.3.8.tgz}
     engines: {node: '>=12.11.0'}
     peerDependencies:
       vue: ^3.5.0
 
-  '@primevue/icons@4.3.7':
-    resolution: {integrity: sha512-CKiOeiJzNSbELwbQdrgWHgmfcAmjNQXqRZtBGb8sUPrB8hjWf9lYMBAbcAuqJbyLFFcC0lFiB80CfBR07FNSHw==, tarball: https://registry.npmjs.org/@primevue/icons/-/icons-4.3.7.tgz}
+  '@primevue/icons@4.3.8':
+    resolution: {integrity: sha512-80eeuHPtEcbSfiV2iMWijjqrItU+HIWCZvHclsFt9r30OUFOc2F0BaDZj3JcCEjBgk2dzWVkNnP3D19QQBgt9Q==, tarball: https://registry.npmjs.org/@primevue/icons/-/icons-4.3.8.tgz}
     engines: {node: '>=12.11.0'}
 
   '@rollup/rollup-android-arm-eabi@4.45.1':
@@ -725,16 +725,16 @@ packages:
   '@vue/shared@3.5.20':
     resolution: {integrity: sha512-SoRGP596KU/ig6TfgkCMbXkr4YJ91n/QSdMuqeP5r3hVIYA3CPHUBCc7Skak0EAKV+5lL4KyIh61VA/pK1CIAA==, tarball: https://registry.npmjs.org/@vue/shared/-/shared-3.5.20.tgz}
 
-  '@vueuse/core@13.8.0':
-    resolution: {integrity: sha512-rmBcgpEpxY0ZmyQQR94q1qkUcHREiLxQwNyWrtjMDipD0WTH/JBcAt0gdcn2PsH0SA76ec291cHFngmyaBhlxA==, tarball: https://registry.npmjs.org/@vueuse/core/-/core-13.8.0.tgz}
+  '@vueuse/core@13.9.0':
+    resolution: {integrity: sha512-ts3regBQyURfCE2BcytLqzm8+MmLlo5Ln/KLoxDVcsZ2gzIwVNnQpQOL/UKV8alUqjSZOlpFZcRNsLRqj+OzyA==, tarball: https://registry.npmjs.org/@vueuse/core/-/core-13.9.0.tgz}
     peerDependencies:
       vue: ^3.5.0
 
-  '@vueuse/metadata@13.8.0':
-    resolution: {integrity: sha512-BYMp3Gp1kBUPv7AfQnJYP96mkX7g7cKdTIgwv/Jgd+pfQhz678naoZOAcknRtPLP4cFblDDW7rF4e3KFa+PfIA==, tarball: https://registry.npmjs.org/@vueuse/metadata/-/metadata-13.8.0.tgz}
+  '@vueuse/metadata@13.9.0':
+    resolution: {integrity: sha512-1AFRvuiGphfF7yWixZa0KwjYH8ulyjDCC0aFgrGRz8+P4kvDFSdXLVfTk5xAN9wEuD1J6z4/myMoYbnHoX07zg==, tarball: https://registry.npmjs.org/@vueuse/metadata/-/metadata-13.9.0.tgz}
 
-  '@vueuse/shared@13.8.0':
-    resolution: {integrity: sha512-x4nfM0ykW+RmNJ4/1IzZsuLuWWrNTxlTWUiehTGI54wnOxIgI9EDdu/O5S77ac6hvQ3hk2KpOVFHaM0M796Kbw==, tarball: https://registry.npmjs.org/@vueuse/shared/-/shared-13.8.0.tgz}
+  '@vueuse/shared@13.9.0':
+    resolution: {integrity: sha512-e89uuTLMh0U5cZ9iDpEI2senqPGfbPRTHM/0AaQkcxnpqjkZqDYP8rpfm7edOz8s+pOCOROEy1PIveSW8+fL5g==, tarball: https://registry.npmjs.org/@vueuse/shared/-/shared-13.9.0.tgz}
     peerDependencies:
       vue: ^3.5.0
 
@@ -752,8 +752,8 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  ai@5.0.28:
-    resolution: {integrity: sha512-tnybAqoDFzuK6O1NOMHX1d/wH7Eug8y0H4l/Gl6swi8BYGtlTPDjniKnGYzgTpLTdpj7SI3qjZuomz7evph9+w==, tarball: https://registry.npmjs.org/ai/-/ai-5.0.28.tgz}
+  ai@5.0.29:
+    resolution: {integrity: sha512-jA/d6X5hn3r/PxgZjwzDUMJiEkLBIVVD2gcbpcT/FD4MSLxm5sn6fH1y2VFXVgBEd95mNzQ8ALQubysc6E8Y9g==, tarball: https://registry.npmjs.org/ai/-/ai-5.0.29.tgz}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4
@@ -2015,8 +2015,8 @@ packages:
     engines: {node: '>=14'}
     hasBin: true
 
-  primevue@4.3.7:
-    resolution: {integrity: sha512-yyknh2kFjSGwRyxqmUUWy/pY4FK1vxoonGH3eQdtd8k/sGl5JpSQ2f0tXpR79lV6dcGf3FZPL1B5JNR11zJfmg==, tarball: https://registry.npmjs.org/primevue/-/primevue-4.3.7.tgz}
+  primevue@4.3.8:
+    resolution: {integrity: sha512-pVsY/gnS+x3VG/LXqrBGRsmbqNmQSn8NF2VhVf1SF8P5mxBiQJg+5lHe+MtiJlpAm1ACNWlDEcjYxhlFaQYrFA==, tarball: https://registry.npmjs.org/primevue/-/primevue-4.3.8.tgz}
     engines: {node: '>=12.11.0'}
 
   process-nextick-args@2.0.1:
@@ -2336,8 +2336,8 @@ packages:
     peerDependencies:
       typescript: '>=4.8.4'
 
-  ts-http-forge@0.1.1:
-    resolution: {integrity: sha512-oH7vwMdcm0xnKmD9BqPPHfNDer+5CIAciPl74qX5to4jhLJXR/bmqbHFs4VQfW+Fv4DU8KgmDYlsJZmk9UH29w==, tarball: https://registry.npmjs.org/ts-http-forge/-/ts-http-forge-0.1.1.tgz}
+  ts-http-forge@0.1.2:
+    resolution: {integrity: sha512-kYRZFC9MyXCZqkGnPs5x8BV2xvrPTKUhNGNScDsSQ50si29ZBER+tLKlsUy2Lh5gZLiEsjjL98a4hKqvofwQOA==, tarball: https://registry.npmjs.org/ts-http-forge/-/ts-http-forge-0.1.2.tgz}
 
   ts-interface-checker@0.1.13:
     resolution: {integrity: sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==, tarball: https://registry.npmjs.org/ts-interface-checker/-/ts-interface-checker-0.1.13.tgz}
@@ -2599,10 +2599,10 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/vue@2.0.28(vue@3.5.20(typescript@5.5.4))(zod@4.1.5)':
+  '@ai-sdk/vue@2.0.29(vue@3.5.20(typescript@5.5.4))(zod@4.1.5)':
     dependencies:
       '@ai-sdk/provider-utils': 3.0.7(zod@4.1.5)
-      ai: 5.0.28(zod@4.1.5)
+      ai: 5.0.29(zod@4.1.5)
       swrv: 1.1.0(vue@3.5.20(typescript@5.5.4))
     optionalDependencies:
       vue: 3.5.20(typescript@5.5.4)
@@ -2683,21 +2683,21 @@ snapshots:
     dependencies:
       ajv: 8.17.1
 
-  '@caido/primevue@0.2.1(primevue@4.3.7(vue@3.5.20(typescript@5.5.4)))':
+  '@caido/primevue@0.2.1(primevue@4.3.8(vue@3.5.20(typescript@5.5.4)))':
     dependencies:
-      primevue: 4.3.7(vue@3.5.20(typescript@5.5.4))
+      primevue: 4.3.8(vue@3.5.20(typescript@5.5.4))
 
-  '@caido/quickjs-types@0.19.3': {}
+  '@caido/quickjs-types@0.20.0': {}
 
-  '@caido/sdk-backend@0.51.0':
+  '@caido/sdk-backend@0.51.1':
     dependencies:
-      '@caido/quickjs-types': 0.19.3
+      '@caido/quickjs-types': 0.20.0
       '@caido/sdk-shared': 0.1.1
 
-  '@caido/sdk-frontend@0.51.0(@codemirror/state@6.5.2)(@codemirror/view@6.38.1)(vue@3.5.20(typescript@5.5.4))':
+  '@caido/sdk-frontend@0.51.1(@codemirror/state@6.5.2)(@codemirror/view@6.38.2)(vue@3.5.20(typescript@5.5.4))':
     dependencies:
       '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.38.1
+      '@codemirror/view': 6.38.2
       vue: 3.5.20(typescript@5.5.4)
 
   '@caido/sdk-shared@0.1.1': {}
@@ -2712,7 +2712,7 @@ snapshots:
     dependencies:
       '@marijn/find-cluster-break': 1.0.2
 
-  '@codemirror/view@6.38.1':
+  '@codemirror/view@6.38.2':
     dependencies:
       '@codemirror/state': 6.5.2
       crelt: 1.0.6
@@ -2900,9 +2900,9 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
 
-  '@openrouter/ai-sdk-provider@1.1.2(ai@5.0.28(zod@4.1.5))(zod@4.1.5)':
+  '@openrouter/ai-sdk-provider@1.1.2(ai@5.0.29(zod@4.1.5))(zod@4.1.5)':
     dependencies:
-      ai: 5.0.28(zod@4.1.5)
+      ai: 5.0.29(zod@4.1.5)
       zod: 4.1.5
 
   '@opentelemetry/api@1.9.0': {}
@@ -2922,16 +2922,16 @@ snapshots:
 
   '@primeuix/utils@0.6.1': {}
 
-  '@primevue/core@4.3.7(vue@3.5.20(typescript@5.5.4))':
+  '@primevue/core@4.3.8(vue@3.5.20(typescript@5.5.4))':
     dependencies:
       '@primeuix/styled': 0.7.2
       '@primeuix/utils': 0.6.1
       vue: 3.5.20(typescript@5.5.4)
 
-  '@primevue/icons@4.3.7(vue@3.5.20(typescript@5.5.4))':
+  '@primevue/icons@4.3.8(vue@3.5.20(typescript@5.5.4))':
     dependencies:
       '@primeuix/utils': 0.6.1
-      '@primevue/core': 4.3.7(vue@3.5.20(typescript@5.5.4))
+      '@primevue/core': 4.3.8(vue@3.5.20(typescript@5.5.4))
     transitivePeerDependencies:
       - vue
 
@@ -3213,16 +3213,16 @@ snapshots:
 
   '@vue/shared@3.5.20': {}
 
-  '@vueuse/core@13.8.0(vue@3.5.20(typescript@5.5.4))':
+  '@vueuse/core@13.9.0(vue@3.5.20(typescript@5.5.4))':
     dependencies:
       '@types/web-bluetooth': 0.0.21
-      '@vueuse/metadata': 13.8.0
-      '@vueuse/shared': 13.8.0(vue@3.5.20(typescript@5.5.4))
+      '@vueuse/metadata': 13.9.0
+      '@vueuse/shared': 13.9.0(vue@3.5.20(typescript@5.5.4))
       vue: 3.5.20(typescript@5.5.4)
 
-  '@vueuse/metadata@13.8.0': {}
+  '@vueuse/metadata@13.9.0': {}
 
-  '@vueuse/shared@13.8.0(vue@3.5.20(typescript@5.5.4))':
+  '@vueuse/shared@13.9.0(vue@3.5.20(typescript@5.5.4))':
     dependencies:
       vue: 3.5.20(typescript@5.5.4)
 
@@ -3237,7 +3237,7 @@ snapshots:
 
   acorn@8.15.0: {}
 
-  ai@5.0.28(zod@4.1.5):
+  ai@5.0.29(zod@4.1.5):
     dependencies:
       '@ai-sdk/gateway': 1.0.15(zod@4.1.5)
       '@ai-sdk/provider': 2.0.0
@@ -4603,13 +4603,13 @@ snapshots:
 
   prettier@3.6.2: {}
 
-  primevue@4.3.7(vue@3.5.20(typescript@5.5.4)):
+  primevue@4.3.8(vue@3.5.20(typescript@5.5.4)):
     dependencies:
       '@primeuix/styled': 0.7.2
       '@primeuix/styles': 1.2.3
       '@primeuix/utils': 0.6.1
-      '@primevue/core': 4.3.7(vue@3.5.20(typescript@5.5.4))
-      '@primevue/icons': 4.3.7(vue@3.5.20(typescript@5.5.4))
+      '@primevue/core': 4.3.8(vue@3.5.20(typescript@5.5.4))
+      '@primevue/icons': 4.3.8(vue@3.5.20(typescript@5.5.4))
     transitivePeerDependencies:
       - vue
 
@@ -5018,7 +5018,7 @@ snapshots:
     dependencies:
       typescript: 5.5.4
 
-  ts-http-forge@0.1.1: {}
+  ts-http-forge@0.1.2: {}
 
   ts-interface-checker@0.1.13: {}
 
