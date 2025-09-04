@@ -19,7 +19,7 @@ export const useConfigStore = defineStore("stores.config", () => {
   const customPrompts = ref<CustomPrompt[]>(defaultCustomPrompts);
   const _openRouterApiKey = ref<string>("");
   const _agentsModel = ref<string>("anthropic/claude-sonnet-4");
-  const _floatModel = ref<string>("openai/gpt-4.1");
+  const _floatModel = ref<string>("google/gemini-2.5-flash");
   const _renamingModel = ref<string>("google/gemini-flash-1.5");
   const _maxIterations = ref<number>(35);
   const projectMemoryById = ref<Record<string, string>>({});
@@ -37,7 +37,7 @@ export const useConfigStore = defineStore("stores.config", () => {
 
   const getActiveProjectId = () => {
     const projectNameElement = document.querySelector(
-      ".c-current-project[data-project-id]",
+      ".c-current-project[data-project-id]"
     );
     if (projectNameElement === null) {
       return "";
@@ -278,7 +278,7 @@ export const useConfigStore = defineStore("stores.config", () => {
   };
 
   const updateAISessionRenaming = async (
-    updates: Partial<AISessionRenamingConfig>,
+    updates: Partial<AISessionRenamingConfig>
   ) => {
     _aiSessionRenaming.value = { ..._aiSessionRenaming.value, ...updates };
     await saveSettings();
