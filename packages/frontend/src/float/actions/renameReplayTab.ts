@@ -10,7 +10,7 @@ export const renameReplayTabSchema = z.object({
     sessionId: z
       .string()
       .describe(
-        "Session ID of the replay tab to rename. This is optional, leave empty for the current tab.",
+        'Session ID of the replay tab to rename. This is optional, leave empty for the current tab. If users says, rename "this tab", then most likely he refers to the current tab.'
       ),
   }),
 });
@@ -24,14 +24,13 @@ export const renameReplayTab: ActionDefinition<RenameReplayTabInput> = {
   execute: async (
     sdk: FrontendSDK,
     { newName, sessionId }: RenameReplayTabInput["parameters"],
-    context: ActionContext,
+    context: ActionContext
   ) => {
     const contextSessionId = (context.replay?.value as { sessionId?: string })
       ?.sessionId;
 
-    const targetSessionId =
-      sessionId || contextSessionId !== undefined ? undefined : "";
-    if (targetSessionId === undefined || targetSessionId === "") {
+    const targetSessionId = sessionId || contextSessionId;
+    if (targetSessionId === undefined) {
       return {
         success: false,
         error: "No session ID provided or the current tab is not a replay tab",
