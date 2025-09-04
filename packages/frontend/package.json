@@ -6,6 +6,7 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.23",
     "@ai-sdk/vue": "2.0.29",
     "@caido/primevue": "0.3.0",
     "@openrouter/ai-sdk-provider": "1.1.2",
