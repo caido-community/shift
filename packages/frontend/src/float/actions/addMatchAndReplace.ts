@@ -1,3 +1,4 @@
+/* eslint-disable prefer-const */
 import {
   type MatchReplaceMatcherName,
   type MatchReplaceMatcherRaw,
@@ -158,7 +159,7 @@ export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
       // MatchReplaceSectionRequestPath | MatchReplaceSectionRequestQuery | MatchReplaceSectionResponseBody | MatchReplaceSectionResponseFirstLine |
       // MatchReplaceSectionResponseHeader | MatchReplaceSectionResponseStatusCode
       const tempOperation: Record<string, unknown> = { kind: operation };
-      const operationMap = {
+      const operationMap: Record<string, string[]> = {
         OperationStatusCodeUpdate: ["replacer"],
         OperationQueryRaw: ["matcher", "replacer"],
         OperationQueryAdd: ["matcher", "replacer"],
@@ -173,8 +174,7 @@ export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
         OperationHeaderRemove: ["matcher"],
         OperationMethodUpdate: ["replacer"],
       };
-      const operationFields =
-        operationMap[operation as keyof typeof operationMap] || [];
+      const operationFields = operationMap[operation] || [];
       if (operationFields.includes("matcher")) {
         // If the operation requires a matcher
         if (matcherType !== undefined && matcherType !== null) {

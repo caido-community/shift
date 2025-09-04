@@ -37,7 +37,7 @@ import {
 import { markdownJoinerTransform } from "@/agents/utils/markdownJoiner";
 import { useConfigStore } from "@/stores/config";
 import { useUIStore } from "@/stores/ui";
-import { getReplaySession } from "@/utils";
+import { getReplaySession, isPresent } from "@/utils";
 
 export class ClientSideChatTransport implements ChatTransport<UIMessage> {
   constructor(private toolContext: ToolContext) {}
@@ -248,7 +248,7 @@ function contextMessages({
           .map(
             (todo) =>
               `- [ ] ${todo.content} (ID: ${todo.id})${
-                todo.internal_content
+                isPresent(todo.internal_content)
                   ? ` - Internal content: \n"""\n${todo.internal_content}\n"""`
                   : ""
               }`,

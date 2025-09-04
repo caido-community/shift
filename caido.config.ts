@@ -1,11 +1,13 @@
+import path from "path";
+
+import tailwindCaido from "@caido/tailwindcss";
 import { defineConfig } from "@caido-community/dev";
 import vue from "@vitejs/plugin-vue";
+import prefixwrap from "postcss-prefixwrap";
 import tailwindcss from "tailwindcss";
 // @ts-expect-error no declared types at this time
 import tailwindPrimeui from "tailwindcss-primeui";
-import tailwindCaido from "@caido/tailwindcss";
-import path from "path";
-import prefixwrap from "postcss-prefixwrap";
+
 // @ts-expect-error no types
 import tailwindConfig from "./packages/frontend/tailwind.config.js";
 
@@ -23,7 +25,7 @@ export default defineConfig({
   plugins: [
     {
       kind: "frontend",
-      id: "frontend",
+      id: "shift-frontend",
       root: "packages/frontend",
       vite: {
         plugins: [vue()],
