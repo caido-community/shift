@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import DOMPurify from "dompurify";
 import MarkdownIt from "markdown-it";
 import { computed, toRefs } from "vue";
 
@@ -10,12 +11,17 @@ const md = new MarkdownIt({
   linkify: false,
 });
 
-const rendered = computed(() => md.render(content.value));
+const rendered = computed(() => {
+  const rendered = md.render(content.value);
+  return DOMPurify.sanitize(rendered);
+});
 </script>
 
 <template>
+  <!-- eslint-disable vue/no-v-html -->
   <div
     class="prose prose-compact dark:prose-invert break-words select-text font-mono"
     v-html="rendered"
   ></div>
+  <!-- eslint-enable vue/no-v-html -->
 </template>
