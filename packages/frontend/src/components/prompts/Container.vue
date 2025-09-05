@@ -94,8 +94,8 @@ const {
                   severity="info"
                   outlined
                   :disabled="data.isDefault || isLoadingGist"
-                  @click="refreshGist(data)"
                   title="Refresh from Gist"
+                  @click="refreshGist(data)"
                 />
                 <Button
                   icon="fas fa-edit"
@@ -158,7 +158,9 @@ const {
         <div class="flex flex-col gap-2">
           <label class="text-sm font-medium">
             Title
-            <span v-if="isGistMode" class="text-xs text-surface-500 ml-2">(from Gist)</span>
+            <span v-if="isGistMode" class="text-xs text-surface-500 ml-2"
+              >(from Gist)</span
+            >
           </label>
           <InputText
             v-model="promptTitle"
@@ -172,7 +174,9 @@ const {
         <div class="flex flex-col gap-2">
           <label class="text-sm font-medium">
             Content
-            <span v-if="isGistMode" class="text-xs text-surface-500 ml-2">(from Gist)</span>
+            <span v-if="isGistMode" class="text-xs text-surface-500 ml-2"
+              >(from Gist)</span
+            >
           </label>
           <Textarea
             v-model="promptContent"
@@ -194,7 +198,11 @@ const {
           />
           <Button
             :label="isLoadingGist ? 'Loading...' : 'Save'"
-            :disabled="promptTitle.trim() === '' || promptContent.trim() === '' || isLoadingGist"
+            :disabled="
+              promptTitle.trim() === '' ||
+              promptContent.trim() === '' ||
+              isLoadingGist
+            "
             :loading="isLoadingGist"
             size="small"
             @click="savePrompt"
