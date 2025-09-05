@@ -37,6 +37,7 @@ export type CustomPrompt = {
   title: string;
   content: string;
   isDefault?: boolean;
+  gistUrl?: string;
 };
 
 export type AISessionRenamingConfig = {

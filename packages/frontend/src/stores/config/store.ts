@@ -37,7 +37,7 @@ export const useConfigStore = defineStore("stores.config", () => {
 
   const getActiveProjectId = () => {
     const projectNameElement = document.querySelector(
-      ".c-current-project[data-project-id]"
+      ".c-current-project[data-project-id]",
     );
     if (projectNameElement === null) {
       return "";
@@ -278,7 +278,7 @@ export const useConfigStore = defineStore("stores.config", () => {
   };
 
   const updateAISessionRenaming = async (
-    updates: Partial<AISessionRenamingConfig>
+    updates: Partial<AISessionRenamingConfig>,
   ) => {
     _aiSessionRenaming.value = { ..._aiSessionRenaming.value, ...updates };
     await saveSettings();
