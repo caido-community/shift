@@ -14,11 +14,16 @@ const {
   editingPrompt,
   promptTitle,
   promptContent,
+  gistUrl,
+  isGistMode,
+  isLoadingGist,
   openEditDialog,
   openCreateDialog,
   closeDialog,
   savePrompt,
   deletePrompt,
+  handleGistUrlChange,
+  refreshGist,
 } = useForm();
 </script>
 
@@ -63,6 +68,11 @@ const {
                   class="text-xs bg-surface-700 text-surface-300 px-2 py-1 rounded"
                   >Default</span
                 >
+                <span
+                  v-if="data.gistUrl"
+                  class="text-xs bg-blue-700 text-blue-300 px-2 py-1 rounded"
+                  >Gist</span
+                >
               </div>
             </template>
           </Column>
@@ -74,9 +84,19 @@ const {
               </span>
             </template>
           </Column>
-          <Column header="Actions" class="w-32">
+          <Column header="Actions" class="w-40">
             <template #body="{ data }">
               <div class="flex gap-2 justify-end">
+                <Button
+                  v-if="data.gistUrl"
+                  icon="fas fa-sync-alt"
+                  size="small"
+                  severity="info"
+                  outlined
+                  :disabled="data.isDefault || isLoadingGist"
+                  @click="refreshGist(data)"
+                  title="Refresh from Gist"
+                />
                 <Button
                   icon="fas fa-edit"
                   size="small"
@@ -123,21 +143,44 @@ const {
     >
       <div class="flex flex-col gap-4 px-6">
         <div class="flex flex-col gap-2">
-          <label class="text-sm font-medium">Title</label>
+          <label class="text-sm font-medium">GitHub Gist URL (Optional)</label>
+          <InputText
+            v-model="gistUrl"
+            placeholder="https://gist.github.com/username/gist-id"
+            class="w-full"
+            @blur="handleGistUrlChange"
+          />
+          <p class="text-xs text-surface-500">
+            Paste a GitHub Gist URL to automatically load title and content
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium">
+            Title
+            <span v-if="isGistMode" class="text-xs text-surface-500 ml-2">(from Gist)</span>
+          </label>
           <InputText
             v-model="promptTitle"
             placeholder="Enter prompt title"
             class="w-full"
+            :readonly="isGistMode"
+            :class="{ 'opacity-60': isGistMode }"
           />
         </div>
 
         <div class="flex flex-col gap-2">
-          <label class="text-sm font-medium">Content</label>
+          <label class="text-sm font-medium">
+            Content
+            <span v-if="isGistMode" class="text-xs text-surface-500 ml-2">(from Gist)</span>
+          </label>
           <Textarea
             v-model="promptContent"
             placeholder="Enter prompt content"
             rows="8"
             class="w-full"
+            :readonly="isGistMode"
+            :class="{ 'opacity-60': isGistMode }"
           />
         </div>
 
@@ -150,8 +193,9 @@ const {
             @click="closeDialog"
           />
           <Button
-            label="Save"
-            :disabled="promptTitle.trim() === '' || promptContent.trim() === ''"
+            :label="isLoadingGist ? 'Loading...' : 'Save'"
+            :disabled="promptTitle.trim() === '' || promptContent.trim() === '' || isLoadingGist"
+            :loading="isLoadingGist"
             size="small"
             @click="savePrompt"
           />
