@@ -7,8 +7,11 @@ import { computed, ref } from "vue";
 import { PromptsContainer } from "@/components/prompts";
 import { RenamingContainer } from "@/components/renaming";
 import { SettingsContainer } from "@/components/settings";
+import { TutorialContainer } from "@/components/tutorial";
 
-const page = ref<"Custom Prompts" | "AI Session Renaming" | "Settings">(
+const page = ref<
+  "Custom Prompts" | "AI Session Renaming" | "Tutorial" | "Settings"
+>(
   "Custom Prompts",
 );
 const items = [
@@ -27,6 +30,13 @@ const items = [
     },
   },
   {
+    label: "Tutorial",
+    isActive: () => page.value === "Tutorial",
+    onClick: () => {
+      page.value = "Tutorial";
+    },
+  },
+  {
     label: "Settings",
     isActive: () => page.value === "Settings",
     onClick: () => {
@@ -41,6 +51,8 @@ const component = computed(() => {
       return PromptsContainer;
     case "AI Session Renaming":
       return RenamingContainer;
+    case "Tutorial":
+      return TutorialContainer;
     case "Settings":
       return SettingsContainer;
     default:
