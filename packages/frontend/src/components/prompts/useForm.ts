@@ -1,9 +1,11 @@
 import { ref, toRefs, watch } from "vue";
 
 import type { CustomPrompt } from "@/agents/types";
+import { useSDK } from "@/plugins/sdk";
 import { useConfigStore } from "@/stores/config";
 
 export const useForm = () => {
+  const sdk = useSDK();
   const configStore = useConfigStore();
   const { customPrompts } = toRefs(configStore);
 
@@ -15,15 +17,13 @@ export const useForm = () => {
   const isGistMode = ref(false);
   const isLoadingGist = ref(false);
 
-  // Function to validate if a URL is a valid GitHub Gist URL
   const isValidGistUrl = (url: string): boolean => {
-    if (!url.trim()) return false;
+    if (url.trim() === "") return false;
     const gistRegex =
       /^https:\/\/gist\.github\.com\/(?:[^/]+\/)?([a-f0-9]+)(?:\/.*)?$/;
     return gistRegex.test(url.trim());
   };
 
-  // Watch for changes to gistUrl and auto-trigger handleGistUrlChange when valid
   watch(gistUrl, (newUrl) => {
     if (isValidGistUrl(newUrl)) {
       handleGistUrlChange();
@@ -36,7 +36,7 @@ export const useForm = () => {
     promptTitle.value = prompt.title;
     promptContent.value = prompt.content;
     gistUrl.value = prompt.gistUrl ?? "";
-    isGistMode.value = prompt.gistUrl !== null && prompt.gistUrl !== "";
+    isGistMode.value = prompt.gistUrl !== undefined && prompt.gistUrl !== "";
     showDialog.value = true;
   };
 
@@ -63,11 +63,10 @@ export const useForm = () => {
     try {
       isLoadingGist.value = true;
 
-      // Convert gist URL to raw content URL
       const gistId = url.match(
         /gist\.github\.com\/(?:[^/]+\/)?([a-f0-9]+)/,
       )?.[1];
-      if (gistId === null) {
+      if (gistId === undefined) {
         throw new Error("Invalid GitHub Gist URL");
       }
 
@@ -85,11 +84,8 @@ export const useForm = () => {
         throw new Error("Gist contains no files");
       }
 
-      // Use the first file's content
       const firstFile = files[0];
       const content = (firstFile as { content?: string }).content ?? "";
-
-      // Extract title from filename (remove extension)
       const title = gistData.description;
 
       promptTitle.value = title;
@@ -97,8 +93,13 @@ export const useForm = () => {
       isGistMode.value = true;
     } catch (error) {
       console.error("Error fetching Gist:", error);
-      alert(
-        `Error fetching Gist: ${error instanceof Error ? error.message : "Unknown error"}`,
+      sdk.window.showToast(
+        `Error fetching Gist: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        {
+          variant: "error",
+        },
       );
     } finally {
       isLoadingGist.value = false;
@@ -106,7 +107,7 @@ export const useForm = () => {
   };
 
   const handleGistUrlChange = async () => {
-    if (gistUrl.value !== null && gistUrl.value.trim() !== "") {
+    if (gistUrl.value.trim() !== "") {
       await fetchGistContent(gistUrl.value.trim());
     } else {
       isGistMode.value = false;
@@ -116,13 +117,12 @@ export const useForm = () => {
   };
 
   const refreshGist = async (prompt: CustomPrompt) => {
-    if (prompt.gistUrl === null || prompt.gistUrl === "") return;
+    if (prompt.gistUrl === undefined || prompt.gistUrl === "") return;
 
     try {
       isLoadingGist.value = true;
-      await fetchGistContent(prompt.gistUrl!);
+      await fetchGistContent(prompt.gistUrl);
 
-      // Update the existing prompt with refreshed content
       await configStore.updateCustomPrompt({
         ...prompt,
         title: promptTitle.value,
@@ -130,8 +130,13 @@ export const useForm = () => {
       });
     } catch (error) {
       console.error("Error refreshing Gist:", error);
-      alert(
-        `Error refreshing Gist: ${error instanceof Error ? error.message : "Unknown error"}`,
+      sdk.window.showToast(
+        `Error refreshing Gist: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        {
+          variant: "error",
+        },
       );
     } finally {
       isLoadingGist.value = false;
@@ -139,12 +144,7 @@ export const useForm = () => {
   };
 
   const savePrompt = async () => {
-    if (
-      promptTitle.value === null ||
-      promptTitle.value.trim() === "" ||
-      promptContent.value === null ||
-      promptContent.value.trim() === ""
-    ) {
+    if (promptTitle.value.trim() === "" || promptContent.value.trim() === "") {
       return;
     }
 
