@@ -57,3 +57,4 @@ jobs:
           commit: ${{ github.sha }}
           body: 'Release ${{ steps.meta.outputs.version }}'
           artifacts: 'dist/plugin_package.zip,dist/plugin_package.zip.sig'
+          immutableCreate: true
