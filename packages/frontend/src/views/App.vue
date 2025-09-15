@@ -11,9 +11,7 @@ import { TutorialContainer } from "@/components/tutorial";
 
 const page = ref<
   "Custom Prompts" | "AI Session Renaming" | "Tutorial" | "Settings"
->(
-  "Custom Prompts",
-);
+>("Custom Prompts");
 const items = [
   {
     label: "Custom Prompts",
