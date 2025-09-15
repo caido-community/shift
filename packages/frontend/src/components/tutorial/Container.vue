@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import CoreIntro from "./FloatIntro.vue";
 import AgentsIntro from "./AgentsIntro.vue";
+import CoreIntro from "./FloatIntro.vue";
 </script>
 
 <template>
@@ -8,7 +8,10 @@ import AgentsIntro from "./AgentsIntro.vue";
     <div class="border border-surface-600 rounded-lg p-4 mb-4">
       <h2 class="text-xl font-semibold mb-2">What is Shift?</h2>
       <p class="text-sm text-surface-300">
-        Shift is an AI plugin that integrates state-of-the-art LLMs directly into Caido's UI. It enables LLM-powered free-form HTTP modification in Replay, automatic contextualization of queries, and supports many tools that the AI can use to interface with Caido.
+        Shift is an AI plugin that integrates state-of-the-art LLMs directly
+        into Caido's UI. It enables LLM-powered free-form HTTP modification in
+        Replay, automatic contextualization of queries, and supports many tools
+        that the AI can use to interface with Caido.
       </p>
     </div>
     <div class="grid grid-cols-2 gap-4 h-fit">

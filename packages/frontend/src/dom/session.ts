@@ -21,6 +21,8 @@ export const useSessionManager = (sdk: FrontendSDK) => {
         remove();
       }
     });
+
+    monitorProjectChanges();
   };
 
   const stop = () => {
@@ -129,6 +131,20 @@ export const useSessionManager = (sdk: FrontendSDK) => {
       return undefined;
     }
     return currentSelected.getAttribute("data-session-id") ?? undefined;
+  };
+
+  const monitorProjectChanges = async () => {
+    try {
+      const iterator = sdk.graphql.updatedProject();
+      for await (const _ of iterator) {
+        setTimeout(() => {
+          remove();
+          inject();
+        }, 50);
+      }
+    } catch {
+      // do nothing
+    }
   };
 
   return {

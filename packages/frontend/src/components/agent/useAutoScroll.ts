@@ -69,18 +69,23 @@ export const useAutoScroll = (
         scrollToBottom(false);
       });
     });
-    mutationObserver.observe(el, {
-      childList: true,
-      characterData: true,
-      subtree: cfg.observeDeep,
-    });
+
+    if (el !== undefined && el.nodeType === Node.ELEMENT_NODE) {
+      mutationObserver.observe(el, {
+        childList: true,
+        characterData: true,
+        subtree: cfg.observeDeep,
+      });
+    }
 
     resizeObserver = new ResizeObserver(() => {
       requestAnimationFrame(() => {
         scrollToBottom(false);
       });
     });
-    resizeObserver.observe(el);
+    if (el !== undefined && el.nodeType === Node.ELEMENT_NODE) {
+      resizeObserver.observe(el);
+    }
 
     el.addEventListener("scroll", handleScroll, { passive: true });
     detachScrollListener = () => {
