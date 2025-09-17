@@ -1,6 +1,6 @@
 {
   "name": "shift",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "scripts": {
     "typecheck": "pnpm -r typecheck",

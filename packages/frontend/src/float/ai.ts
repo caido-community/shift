@@ -37,6 +37,7 @@ function streamActions(input: ActionQuery) {
 
   const { elementStream } = streamObject({
     model,
+    temperature: 0,
     output: "array",
     schema: ActionSchema,
     system: SYSTEM_PROMPT,
@@ -69,7 +70,7 @@ const execute = async (
           };
         }
 
-        if (result.frontend_message) {
+        if (result.frontend_message && result.frontend_message !== "") {
           sdk.window.showToast(result.frontend_message, {
             variant: "info",
             duration: 3000,
