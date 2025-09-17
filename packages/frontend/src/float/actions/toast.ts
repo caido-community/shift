@@ -16,10 +16,15 @@ export const toast: ActionDefinition<ToastInput> = {
   name: "toast",
   description: "Show a toast message to the user",
   inputSchema: toastSchema,
-  execute: (_: FrontendSDK, { content }: ToastInput["parameters"]) => {
+  execute: (sdk: FrontendSDK, { content }: ToastInput["parameters"]) => {
+    sdk.window.showToast(content, {
+      variant: "info",
+      duration: 6000,
+    });
+
     return {
       success: true,
-      frontend_message: content,
+      frontend_message: "",
     };
   },
 };

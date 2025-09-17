@@ -19,6 +19,7 @@ const { runQuery } = store;
         v-if="streamState === 'Idle'"
         severity="tertiary"
         icon="fas fa-arrow-circle-up"
+        class="hover:text-surface-200"
         :disabled="!canSendMessage"
         :pt="{
           root: {
