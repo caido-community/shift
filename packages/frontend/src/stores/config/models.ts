@@ -14,6 +14,12 @@ export const models: ModelGroup[] = [
     icon: AnthropicIcon,
     items: [
       {
+        name: "Claude 4.5 Sonnet",
+        id: "anthropic/claude-sonnet-4.5",
+        isRecommended: true,
+        isReasoningModel: true,
+      },
+      {
         name: "Claude 4 Sonnet",
         id: "anthropic/claude-sonnet-4",
         isReasoningModel: true,
@@ -77,17 +83,18 @@ export const models: ModelGroup[] = [
         id: "google/gemini-2.5-flash-lite",
         isRecommended: true,
       },
-      {
-        name: "Gemini 1.5 Flash",
-        id: "google/gemini-flash-1.5",
-        onlyFor: "renaming",
-      },
     ],
   },
   {
     label: "xAI",
     icon: XAIIcon,
     items: [
+      {
+        name: "Grok 4 Fast",
+        id: "x-ai/grok-4-fast",
+        isReasoningModel: true,
+        isRecommended: true,
+      },
       {
         name: "Grok Code Fast",
         id: "x-ai/grok-code-fast-1",
