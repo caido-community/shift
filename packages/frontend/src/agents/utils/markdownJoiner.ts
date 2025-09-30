@@ -16,8 +16,8 @@ export const markdownJoinerTransform =
         }
       },
       async transform(chunk, controller) {
-        if (chunk.type === "text-delta") {
-          const processedText = joiner.processText(chunk.text ?? "");
+        if (chunk !== undefined && chunk.type === "text-delta") {
+          const processedText = joiner.processText(chunk?.text ?? "");
           if (processedText) {
             controller.enqueue({
               ...chunk,
@@ -25,7 +25,7 @@ export const markdownJoinerTransform =
             });
             await delay(joiner.delayInMs);
           }
-        } else {
+        } else if (chunk !== undefined) {
           controller.enqueue(chunk);
         }
       },

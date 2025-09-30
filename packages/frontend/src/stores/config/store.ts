@@ -12,15 +12,19 @@ import type {
 import { useSDK } from "@/plugins/sdk";
 import { type PluginStorage } from "@/types";
 
+const DEFAULT_AGENTS_MODEL = "anthropic/claude-sonnet-4.5";
+const DEFAULT_FLOAT_MODEL = "google/gemini-2.5-flash";
+const DEFAULT_RENAMING_MODEL = "google/gemini-2.5-flash-lite";
+
 // TODO: cleanup the store, maybe split it up a bit
 export const useConfigStore = defineStore("stores.config", () => {
   const sdk = useSDK();
 
   const customPrompts = ref<CustomPrompt[]>(defaultCustomPrompts);
   const _openRouterApiKey = ref<string>("");
-  const _agentsModel = ref<string>("anthropic/claude-sonnet-4");
-  const _floatModel = ref<string>("google/gemini-2.5-flash");
-  const _renamingModel = ref<string>("google/gemini-flash-1.5");
+  const _agentsModel = ref<string>(DEFAULT_AGENTS_MODEL);
+  const _floatModel = ref<string>(DEFAULT_FLOAT_MODEL);
+  const _renamingModel = ref<string>(DEFAULT_RENAMING_MODEL);
   const _maxIterations = ref<number>(35);
   const projectMemoryById = ref<Record<string, string>>({});
   const projectHistoryById = ref<Record<string, string[]>>({});
@@ -34,6 +38,24 @@ export const useConfigStore = defineStore("stores.config", () => {
     instructions:
       "Include the HTTP Verb, and a concise version of the path in the tab name. Focus on the end of the path. Include only the first 4 characters of IDs.\nExample: GET /api/v1/users/{id}/profile\nUNLESS, the current request is a graphql request, then use the operationName if present.",
   });
+
+  const isValidModel = (
+    modelId: string,
+    context: "agents" | "float" | "renaming",
+  ): boolean => {
+    const allModels = models.flatMap((group) => group.items);
+    const model = allModels.find((item) => item.id === modelId);
+
+    if (!model) {
+      return false;
+    }
+
+    if (model.onlyFor && model.onlyFor !== context) {
+      return false;
+    }
+
+    return true;
+  };
 
   const getActiveProjectId = () => {
     const projectNameElement = document.querySelector(
@@ -140,13 +162,19 @@ export const useConfigStore = defineStore("stores.config", () => {
         _openRouterApiKey.value = settings.openRouterApiKey;
       }
       if (settings.agentsModel !== undefined) {
-        _agentsModel.value = settings.agentsModel;
+        _agentsModel.value = isValidModel(settings.agentsModel, "agents")
+          ? settings.agentsModel
+          : DEFAULT_AGENTS_MODEL;
       }
       if (settings.floatModel !== undefined) {
-        _floatModel.value = settings.floatModel;
+        _floatModel.value = isValidModel(settings.floatModel, "float")
+          ? settings.floatModel
+          : DEFAULT_FLOAT_MODEL;
       }
       if (settings.renamingModel !== undefined) {
-        _renamingModel.value = settings.renamingModel;
+        _renamingModel.value = isValidModel(settings.renamingModel, "renaming")
+          ? settings.renamingModel
+          : DEFAULT_RENAMING_MODEL;
       }
       if (settings.reasoningConfig !== undefined) {
         reasoningConfig.value = settings.reasoningConfig;
@@ -206,13 +234,19 @@ export const useConfigStore = defineStore("stores.config", () => {
         _openRouterApiKey.value = settings.openRouterApiKey;
       }
       if (settings.agentsModel !== undefined) {
-        _agentsModel.value = settings.agentsModel;
+        _agentsModel.value = isValidModel(settings.agentsModel, "agents")
+          ? settings.agentsModel
+          : DEFAULT_AGENTS_MODEL;
       }
       if (settings.floatModel !== undefined) {
-        _floatModel.value = settings.floatModel;
+        _floatModel.value = isValidModel(settings.floatModel, "float")
+          ? settings.floatModel
+          : DEFAULT_FLOAT_MODEL;
       }
       if (settings.renamingModel !== undefined) {
-        _renamingModel.value = settings.renamingModel;
+        _renamingModel.value = isValidModel(settings.renamingModel, "renaming")
+          ? settings.renamingModel
+          : DEFAULT_RENAMING_MODEL;
       }
       if (settings.reasoningConfig !== undefined) {
         reasoningConfig.value = settings.reasoningConfig;

@@ -51,6 +51,7 @@ const onToggle = (event: MouseEvent) => popoverRef.value?.toggle(event);
               :model-value="isSelected(prompt.id)"
               binary
               size="small"
+              @click.stop
               @update:model-value="togglePrompt(prompt.id)"
             />
             <span class="text-surface-200 text-sm font-mono truncate">{{

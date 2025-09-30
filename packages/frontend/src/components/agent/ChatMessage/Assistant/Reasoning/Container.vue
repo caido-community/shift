@@ -58,7 +58,7 @@ useAutoScroll(
         <span>{{ reasoningText }}</span>
         <i
           class="fas transition-transform text-sm opacity-0 group-hover:opacity-100 duration-200 ml-auto"
-          :class="showReasoning ? 'fa-chevron-down' : 'fa-chevron-right'"
+          :class="showReasoning ? 'fa-chevron-up' : 'fa-chevron-down'"
         ></i>
       </button>
       <div v-else class="flex items-center text-surface-300 text-sm font-mono">

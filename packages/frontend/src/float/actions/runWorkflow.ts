@@ -40,7 +40,7 @@ export const runWorkflow: ActionDefinition<runWorkflowInput> = {
 
       const currentText = view.state.doc.toString();
       const updatedText = currentText.replace(input, output);
-      const normalizedText = updatedText.replace(/\r?\n/g, '\r\n');
+      const normalizedText = updatedText.replace(/\r?\n/g, "\r\n");
 
       view.dispatch({
         changes: {

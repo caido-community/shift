@@ -13,52 +13,48 @@ export const activeEditorSetRawSchema = z.object({
   }),
 });
 
-export type ActiveEditorSetRawInput = z.infer<
-  typeof activeEditorSetRawSchema
->;
+export type ActiveEditorSetRawInput = z.infer<typeof activeEditorSetRawSchema>;
 
-export const activeEditorSetRaw: ActionDefinition<ActiveEditorSetRawInput> =
-  {
-    name: "activeEditorSetRaw",
-    description:
-      "Set the entire content of the active editor with raw text",
-    inputSchema: activeEditorSetRawSchema,
-    execute: (
-      sdk: FrontendSDK,
-      { content }: ActiveEditorSetRawInput["parameters"],
-    ) => {
-      const view = sdk.window.getActiveEditor()?.getEditorView();
+export const activeEditorSetRaw: ActionDefinition<ActiveEditorSetRawInput> = {
+  name: "activeEditorSetRaw",
+  description: "Set the entire content of the active editor with raw text",
+  inputSchema: activeEditorSetRawSchema,
+  execute: (
+    sdk: FrontendSDK,
+    { content }: ActiveEditorSetRawInput["parameters"],
+  ) => {
+    const view = sdk.window.getActiveEditor()?.getEditorView();
 
-      if (view === undefined) {
-        return {
-          success: false,
-          error: "No active editor view found",
-        };
-      }
+    if (view === undefined) {
+      return {
+        success: false,
+        error: "No active editor view found",
+      };
+    }
 
-      try {
-        const normalizedContent = content.replace(/\r?\n/g, '\r\n');
+    try {
+      const normalizedContent = content.replace(/\r?\n/g, "\r\n");
 
-        view.dispatch({
-          changes: {
-            from: 0,
-            to: view.state.doc.length,
-            insert: normalizedContent,
-          },
-        });
-        view.focus();
+      view.dispatch({
+        changes: {
+          from: 0,
+          to: view.state.doc.length,
+          insert: normalizedContent,
+        },
+      });
+      view.focus();
 
-        return {
-          success: true,
-          frontend_message: `Content set in active editor`,
-        };
-      } catch (error) {
-        return {
-          success: false,
-          error: `Failed to set content: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`,
-        };
-      }
-    },
-  };
+      return {
+        success: true,
+        frontend_message: `Content set in active editor`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Failed to set content: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      };
+    }
+  },
+};
