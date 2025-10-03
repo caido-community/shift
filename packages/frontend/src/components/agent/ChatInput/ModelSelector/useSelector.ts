@@ -69,9 +69,14 @@ export const useSelector = (variant: Variant) => {
     return item;
   });
 
+  const isCustomModel = computed<boolean>(() => {
+    return selectedModel.value === undefined && modelId.value !== "";
+  });
+
   return {
     modelId,
     groups,
     selectedModel,
+    isCustomModel,
   };
 };

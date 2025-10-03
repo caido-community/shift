@@ -47,7 +47,7 @@ export const useConfigStore = defineStore("stores.config", () => {
     const model = allModels.find((item) => item.id === modelId);
 
     if (!model) {
-      return false;
+      return true;
     }
 
     if (model.onlyFor && model.onlyFor !== context) {
