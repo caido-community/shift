@@ -19,4 +19,5 @@ export type PluginStorage = {
   aiSessionRenaming: AISessionRenamingConfig;
   projectMemoryById: Record<string, string>;
   projectHistoryById: Record<string, string[]>;
+  projectSpecificPromptsById: Record<string, Record<string, string>>;
 };

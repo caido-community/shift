@@ -279,7 +279,13 @@ function buildSystemPrompt(agentId: string) {
   if (selectedPrompts.length > 0) {
     prompt += `\n<additional_instructions>\n`;
     prompt += selectedPrompts
-      .map((prompt) => `<prompt>${prompt.content}</prompt>`)
+      .map((prompt) => {
+        const projectSpecificContent = configStore.getProjectSpecificPrompt(prompt.id);
+        const fullContent = projectSpecificContent 
+          ? `${prompt.content}\n\n${projectSpecificContent}`
+          : prompt.content;
+        return `<prompt>${fullContent}</prompt>`;
+      })
       .join("\n");
     prompt += `\n</additional_instructions>`;
   }

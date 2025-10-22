@@ -16,6 +16,7 @@ export const useForm = () => {
   const gistUrl = ref("");
   const isGistMode = ref(false);
   const isLoadingGist = ref(false);
+  const projectSpecificPrompt = ref("");
 
   const isValidGistUrl = (url: string): boolean => {
     if (url.trim() === "") return false;
@@ -37,6 +38,7 @@ export const useForm = () => {
     promptContent.value = prompt.content;
     gistUrl.value = prompt.gistUrl ?? "";
     isGistMode.value = prompt.gistUrl !== undefined && prompt.gistUrl !== "";
+    projectSpecificPrompt.value = configStore.getProjectSpecificPrompt(prompt.id);
     showDialog.value = true;
   };
 
@@ -47,6 +49,7 @@ export const useForm = () => {
     gistUrl.value = "";
     isGistMode.value = false;
     isLoadingGist.value = false;
+    projectSpecificPrompt.value = "";
   };
 
   const closeDialog = () => {
@@ -164,6 +167,11 @@ export const useForm = () => {
       await configStore.addCustomPrompt(promptData);
     }
 
+    // Save project-specific prompt
+    if (projectSpecificPrompt.value.trim() !== "") {
+      await configStore.setProjectSpecificPrompt(promptData.id, projectSpecificPrompt.value.trim());
+    }
+
     closeDialog();
   };
 
@@ -181,6 +189,7 @@ export const useForm = () => {
     gistUrl,
     isGistMode,
     isLoadingGist,
+    projectSpecificPrompt,
     openEditDialog,
     openCreateDialog,
     closeDialog,

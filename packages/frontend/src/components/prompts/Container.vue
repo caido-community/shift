@@ -17,6 +17,7 @@ const {
   gistUrl,
   isGistMode,
   isLoadingGist,
+  projectSpecificPrompt,
   openEditDialog,
   openCreateDialog,
   closeDialog,
@@ -186,6 +187,24 @@ const {
             :readonly="isGistMode"
             :class="{ 'opacity-60': isGistMode }"
           />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium">
+            Project-Specific Prompt
+            <span class="text-xs text-surface-500 ml-2"
+              >(optional, unique per project)</span
+            >
+          </label>
+          <Textarea
+            v-model="projectSpecificPrompt"
+            placeholder="Enter project-specific prompt content that will be appended to the main prompt"
+            rows="4"
+            class="w-full"
+          />
+          <p class="text-xs text-surface-500">
+            This content will be automatically appended to the main prompt content when used in this project
+          </p>
         </div>
 
         <div class="flex justify-end gap-3 pt-4">

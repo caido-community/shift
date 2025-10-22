@@ -24,6 +24,7 @@ export const useConfigStore = defineStore("stores.config", () => {
   const _maxIterations = ref<number>(35);
   const projectMemoryById = ref<Record<string, string>>({});
   const projectHistoryById = ref<Record<string, string[]>>({});
+  const projectSpecificPromptsById = ref<Record<string, Record<string, string>>>({});
   const reasoningConfig = ref<ReasoningConfig>({
     enabled: true,
     max_tokens: 1500,
@@ -129,6 +130,7 @@ export const useConfigStore = defineStore("stores.config", () => {
       aiSessionRenaming: _aiSessionRenaming.value,
       projectMemoryById: projectMemoryById.value,
       projectHistoryById: projectHistoryById.value,
+      projectSpecificPromptsById: projectSpecificPromptsById.value,
     };
     await sdk.storage.set(settings);
   };
@@ -232,6 +234,9 @@ export const useConfigStore = defineStore("stores.config", () => {
       if (settings.projectHistoryById !== undefined) {
         projectHistoryById.value = settings.projectHistoryById;
       }
+      if (settings.projectSpecificPromptsById !== undefined) {
+        projectSpecificPromptsById.value = settings.projectSpecificPromptsById;
+      }
     }
   });
 
@@ -284,6 +289,23 @@ export const useConfigStore = defineStore("stores.config", () => {
     await saveSettings();
   };
 
+  const getProjectSpecificPrompt = (promptId: string): string => {
+    const projectId = _projectId.value;
+    return projectSpecificPromptsById.value[projectId]?.[promptId] ?? "";
+  };
+
+  const setProjectSpecificPrompt = async (promptId: string, content: string) => {
+    const projectId = _projectId.value;
+    projectSpecificPromptsById.value = {
+      ...projectSpecificPromptsById.value,
+      [projectId]: {
+        ...projectSpecificPromptsById.value[projectId],
+        [promptId]: content,
+      },
+    };
+    await saveSettings();
+  };
+
   return {
     openRouterApiKey,
     maxIterations,
@@ -305,5 +327,7 @@ export const useConfigStore = defineStore("stores.config", () => {
     addCustomPrompt,
     updateCustomPrompt,
     deleteCustomPrompt,
+    getProjectSpecificPrompt,
+    setProjectSpecificPrompt,
   };
 });
