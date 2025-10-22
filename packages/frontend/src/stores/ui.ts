@@ -1,6 +1,8 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 
+import type { CustomPrompt } from "@/agents/types";
+
 type UIState = {
   input: string;
   selectedPrompts: string[];
@@ -9,6 +11,7 @@ type UIState = {
 export const useUIStore = defineStore("stores.ui", () => {
   const drawerVisible = ref(false);
   const agentsUI = ref<Record<string, UIState>>({});
+  const editPromptCallback = ref<((prompt: CustomPrompt) => void) | null>(null);
 
   const toggleDrawer = () => {
     drawerVisible.value = !drawerVisible.value;
@@ -51,6 +54,16 @@ export const useUIStore = defineStore("stores.ui", () => {
     return getUIState(agentId).selectedPrompts;
   }
 
+  function setEditPromptCallback(callback: (prompt: CustomPrompt) => void) {
+    editPromptCallback.value = callback;
+  }
+
+  function openEditPromptDialog(prompt: CustomPrompt) {
+    if (editPromptCallback.value) {
+      editPromptCallback.value(prompt);
+    }
+  }
+
   return {
     drawerVisible,
     toggleDrawer,
@@ -61,5 +74,7 @@ export const useUIStore = defineStore("stores.ui", () => {
     unselectPrompt,
     setSelectedPrompts,
     getSelectedPrompts,
+    setEditPromptCallback,
+    openEditPromptDialog,
   };
 });

@@ -5,8 +5,10 @@ import DataTable from "primevue/datatable";
 import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import Textarea from "primevue/textarea";
+import { onMounted } from "vue";
 
 import { useForm } from "./useForm";
+import { useUIStore } from "@/stores/ui";
 
 const {
   customPrompts,
@@ -26,6 +28,12 @@ const {
   handleGistUrlChange,
   refreshGist,
 } = useForm();
+
+const uiStore = useUIStore();
+
+onMounted(() => {
+  uiStore.setEditPromptCallback(openEditDialog);
+});
 </script>
 
 <template>
