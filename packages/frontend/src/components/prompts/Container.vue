@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import Button from "primevue/button";
+import Checkbox from "primevue/checkbox";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import Dialog from "primevue/dialog";
+import Dropdown from "primevue/dropdown";
 import InputText from "primevue/inputtext";
 import Textarea from "primevue/textarea";
 import { onMounted } from "vue";
@@ -20,6 +22,9 @@ const {
   isGistMode,
   isLoadingGist,
   projectSpecificPrompt,
+  autoExecuteCollection,
+  promptForJitInstructions,
+  collections,
   openEditDialog,
   openCreateDialog,
   closeDialog,
@@ -178,6 +183,41 @@ onMounted(() => {
             :readonly="isGistMode"
             :class="{ 'opacity-60': isGistMode }"
           />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium">Auto Execute Collection</label>
+          <select
+            v-model="autoExecuteCollection"
+            class="w-full p-2 border border-surface-600 bg-surface-800 text-surface-100 rounded"
+          >
+            <option
+              v-for="collection in collections"
+              :key="collection.value"
+              :value="collection.value"
+            >
+              {{ collection.label }}
+            </option>
+          </select>
+          <!-- Debug info -->
+          <p class="text-xs text-surface-500">
+            If a Replay Collection with this exact name exists, it will be auto-selected when this modal loads
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <Checkbox
+            v-model="promptForJitInstructions"
+            binary
+            :disabled="!autoExecuteCollection || autoExecuteCollection === ''"
+            :class="{ 'opacity-50': !autoExecuteCollection || autoExecuteCollection === '' }"
+          />
+          <label 
+            class="text-sm font-medium"
+            :class="{ 'text-surface-500': !autoExecuteCollection || autoExecuteCollection === '' }"
+          >
+            Prompt for a starting message on collection-based launch
+          </label>
         </div>
 
         <div class="flex flex-col gap-2">

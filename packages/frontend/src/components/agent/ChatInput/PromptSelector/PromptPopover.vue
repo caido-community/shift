@@ -6,9 +6,11 @@ import { ref } from "vue";
 
 import { useSelector } from "./useSelector";
 import { useUIStore } from "@/stores/ui";
+import { useChat } from "../useChat";
 
 const { promptOptions, isSelected, togglePrompt } = useSelector();
 const uiStore = useUIStore();
+const { isAgentIdle } = useChat();
 
 const popoverRef = ref<InstanceType<typeof Popover>>();
 const onToggle = (event: MouseEvent) => popoverRef.value?.toggle(event);
@@ -24,6 +26,7 @@ const handleEditPrompt = (prompt: any, event: Event) => {
     <Button
       severity="tertiary"
       icon="fas fa-plus"
+      :disabled="!isAgentIdle"
       :pt="{
         root: {
           class:

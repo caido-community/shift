@@ -12,7 +12,7 @@ import App from "./views/App.vue";
 import { setupAgents } from "@/agents";
 import { createDOMManager } from "@/dom";
 import { setupFloat } from "@/float";
-import { setupRenaming } from "@/renaming";
+import { setupRenaming, setupReplayCollectionCorrelation } from "@/renaming";
 import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
 
@@ -52,6 +52,7 @@ export const init = (sdk: FrontendSDK) => {
   setupAgents(sdk);
   setupFloat(sdk);
   setupRenaming(sdk);
+  setupReplayCollectionCorrelation(sdk);
 
   sdk.commands.register("shift:add-to-memory", {
     name: "Add to memory",

@@ -149,8 +149,6 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
                 variant: "error",
               },
             );
-
-            console.error(error);
           },
         });
 

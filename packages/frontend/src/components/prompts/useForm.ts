@@ -17,6 +17,9 @@ export const useForm = () => {
   const isGistMode = ref(false);
   const isLoadingGist = ref(false);
   const projectSpecificPrompt = ref("");
+  const autoExecuteCollection = ref("");
+  const promptForJitInstructions = ref(false);
+  const collections = ref<Array<{ label: string; value: string }>>([]);
 
   const isValidGistUrl = (url: string): boolean => {
     if (url.trim() === "") return false;
@@ -31,14 +34,90 @@ export const useForm = () => {
     }
   });
 
-  const openEditDialog = (prompt: CustomPrompt) => {
+  // Watch for changes in autoExecuteCollection and disable JIT instructions when None is selected
+  watch(autoExecuteCollection, (newValue, oldValue) => {
+    // Only run the watcher if the value actually changed (not during initial setup)
+    if (oldValue !== undefined) {
+      if (!newValue || newValue === '') {
+        promptForJitInstructions.value = false;
+      } else {
+        promptForJitInstructions.value = true;
+      }
+    }
+  });
+
+  const fetchCollections = async () => {
+    try {
+      const result = await sdk.replay.getCollections();
+      
+      collections.value = [
+        { label: "None", value: "" },
+        ...result.map((collection: any) => ({
+          label: collection.name,
+          value: collection.name,
+        }))
+      ];
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      sdk.window.showToast(
+        `Error fetching collections: ${errorMessage}`,
+        { variant: "error" }
+      );
+      collections.value = [{ label: "None", value: "" }];
+    }
+  };
+
+  const findMatchingCollection = async (promptTitle: string): Promise<{ name: string } | null> => {
+    try {
+      const collections = await sdk.replay.getCollections();
+      const matchingCollection = collections.find((collection: any) => collection.name === promptTitle);
+      return matchingCollection ? { name: matchingCollection.name } : null;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      sdk.window.showToast(
+        `Error finding matching collection: ${errorMessage}`,
+        { variant: "error" }
+      );
+      return null;
+    }
+  };
+
+  const openEditDialog = async (prompt: CustomPrompt) => {
     if (prompt.isDefault !== undefined) return;
+    
+    // Fetch collections when opening the dialog
+    await fetchCollections();
+    
     editingPrompt.value = prompt;
     promptTitle.value = prompt.title;
     promptContent.value = prompt.content;
     gistUrl.value = prompt.gistUrl ?? "";
     isGistMode.value = prompt.gistUrl !== undefined && prompt.gistUrl !== "";
     projectSpecificPrompt.value = configStore.getProjectSpecificPrompt(prompt.id);
+    
+    // Set auto execute collection - check for exact title match first, then use saved value, default to None
+    if (prompt.autoExecuteCollection) {
+      // Use the saved value if it exists
+      autoExecuteCollection.value = prompt.autoExecuteCollection;
+    } else {
+      // Check for exact title match
+      const matchingCollection = await findMatchingCollection(prompt.title);
+      if (matchingCollection) {
+        autoExecuteCollection.value = matchingCollection.name;
+      } else {
+        // Default to None if no exact match
+        autoExecuteCollection.value = "";
+      }
+    }
+    // Set JIT instructions based on whether a collection is selected
+    // If prompt has a saved value, use it; otherwise default based on collection selection
+    if (prompt.promptForJitInstructions !== undefined) {
+      promptForJitInstructions.value = prompt.promptForJitInstructions;
+    } else {
+      // Default to true if a collection is selected, false if None
+      promptForJitInstructions.value = autoExecuteCollection.value !== "" && autoExecuteCollection.value !== undefined;
+    }
+    
     showDialog.value = true;
   };
 
@@ -50,6 +129,8 @@ export const useForm = () => {
     isGistMode.value = false;
     isLoadingGist.value = false;
     projectSpecificPrompt.value = "";
+    autoExecuteCollection.value = "";
+    promptForJitInstructions.value = false;
   };
 
   const closeDialog = () => {
@@ -57,9 +138,17 @@ export const useForm = () => {
     resetDialog();
   };
 
-  const openCreateDialog = () => {
-    showDialog.value = true;
+  const openCreateDialog = async () => {
+    // Fetch collections when opening the dialog
+    await fetchCollections();
+    
+    // Reset all values first
     resetDialog();
+    
+    // Ensure checkbox is unchecked since no collection is selected by default
+    promptForJitInstructions.value = false;
+    
+    showDialog.value = true;
   };
 
   const fetchGistContent = async (url: string) => {
@@ -95,11 +184,9 @@ export const useForm = () => {
       promptContent.value = content;
       isGistMode.value = true;
     } catch (error) {
-      console.error("Error fetching Gist:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       sdk.window.showToast(
-        `Error fetching Gist: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
+        `Error fetching Gist: ${errorMessage}`,
         {
           variant: "error",
         },
@@ -132,11 +219,9 @@ export const useForm = () => {
         content: promptContent.value,
       });
     } catch (error) {
-      console.error("Error refreshing Gist:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       sdk.window.showToast(
-        `Error refreshing Gist: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
+        `Error refreshing Gist: ${errorMessage}`,
         {
           variant: "error",
         },
@@ -156,6 +241,8 @@ export const useForm = () => {
       title: promptTitle.value.trim(),
       content: promptContent.value.trim(),
       gistUrl: isGistMode.value ? gistUrl.value.trim() : undefined,
+      autoExecuteCollection: autoExecuteCollection.value.trim() || undefined,
+      promptForJitInstructions: promptForJitInstructions.value,
     };
 
     if (editingPrompt.value) {
@@ -190,6 +277,9 @@ export const useForm = () => {
     isGistMode,
     isLoadingGist,
     projectSpecificPrompt,
+    autoExecuteCollection,
+    promptForJitInstructions,
+    collections,
     openEditDialog,
     openCreateDialog,
     closeDialog,

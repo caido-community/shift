@@ -92,6 +92,7 @@ export const useAgentsStore = defineStore("stores.agents", () => {
     agents: computed(() =>
       Array.from(agents.value.values()).map((e) => e.chat),
     ),
+    addAgent,
     getAgent,
     getToolContext,
     selectedAgent,

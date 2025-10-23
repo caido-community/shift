@@ -56,10 +56,10 @@ export const useChat = () => {
     try {
       agentStore.selectedAgent.sendMessage({ text: message });
     } catch (error) {
-      sdk.window.showToast("Error sending message", {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      sdk.window.showToast(`Error sending message: ${errorMessage}`, {
         variant: "error",
       });
-      console.error("Error sending message", error);
     }
   };
 

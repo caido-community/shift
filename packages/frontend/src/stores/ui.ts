@@ -37,7 +37,10 @@ export const useUIStore = defineStore("stores.ui", () => {
   }
 
   function selectPrompt(agentId: string, promptId: string) {
-    getUIState(agentId).selectedPrompts.push(promptId);
+    const state = getUIState(agentId);
+    if (!state.selectedPrompts.includes(promptId)) {
+      state.selectedPrompts = [...state.selectedPrompts, promptId];
+    }
   }
 
   function unselectPrompt(agentId: string, promptId: string) {
