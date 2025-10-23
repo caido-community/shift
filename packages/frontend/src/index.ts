@@ -108,7 +108,7 @@ export const init = (sdk: FrontendSDK) => {
     },
   });
 
-  sdk.shortcuts.register("shift:add-to-memory", ["shift", "m"]);
+  sdk.shortcuts.register("shift:add-to-memory", ["shift", "control", "m"]);
 
   const domManager = createDOMManager(sdk);
   domManager.drawer.start();
