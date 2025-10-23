@@ -10,13 +10,15 @@ const props = defineProps<{
 }>();
 
 const inputValue = ref(props.initialValue || "");
-const textareaRef = ref<HTMLTextAreaElement>();
 
 onMounted(() => {
   // Focus the textarea when the component mounts
-  if (textareaRef.value) {
-    textareaRef.value.focus();
-  }
+  setTimeout(() => {
+    const textarea = document.querySelector('textarea[autofocus]') as HTMLTextAreaElement;
+    if (textarea) {
+      textarea.focus();
+    }
+  }, 0);
 });
 
 const handleConfirm = () => {
@@ -29,14 +31,16 @@ const handleCancel = () => {
 };
 
 const handleKeydown = (event: KeyboardEvent) => {
-
   if (event.key === "Enter" && event.ctrlKey) {
     event.preventDefault();
+    event.stopPropagation();
     handleConfirm();
-  }
-  if (event.key === "Escape") {
+  } else if (event.key === "Escape") {
     event.preventDefault();
+    event.stopPropagation();
     handleCancel();
+  } else if (event.key === "ArrowUp" || event.key === "ArrowDown" || event.key === "ArrowLeft" || event.key === "ArrowRight") {
+    event.stopPropagation();
   }
 };
 </script>
@@ -44,7 +48,6 @@ const handleKeydown = (event: KeyboardEvent) => {
 <template>
   <div
     class="flex flex-col gap-4 w-[500px] p-2"
-    @keydown="handleKeydown"
   >
     <textarea
       :placeholder="placeholder || 'Enter your instructions...'"
@@ -56,6 +59,7 @@ const handleKeydown = (event: KeyboardEvent) => {
         const value = (event.target as HTMLTextAreaElement).value;
         inputValue = value;
       }"
+      @keydown="handleKeydown"
     />
     
     <div class="text-xs text-surface-400 text-center">
