@@ -16,6 +16,7 @@ import { setupRenaming } from "@/renaming";
 import { setupReplayCollectionCorrelation } from "@/agents/collectionAutoExecute";
 import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
+import { InputDialog } from "@/components/inputDialog";
 
 export const init = (sdk: FrontendSDK) => {
   const app = createApp(App);
@@ -59,6 +60,7 @@ export const init = (sdk: FrontendSDK) => {
     name: "Add to memory",
     run: () => {
       const configStore = useConfigStore();
+      let dialog: any;
 
       const selection = window.getSelection();
       if (selection === null) return;
@@ -66,11 +68,43 @@ export const init = (sdk: FrontendSDK) => {
       const text = selection.toString();
       if (text.length === 0) return;
 
-      configStore.memory += "\n" + text;
+      const handleConfirm = (value: string) => {
+        dialog.close();
+        if (value.trim() === "") {
+          return;
+        }
 
-      sdk.window.showToast(`Text has been saved to your Shift memory`, {
-        variant: "info",
-      });
+        configStore.memory += "\n" + value;
+
+        sdk.window.showToast(`Text has been saved to your Shift memory`, {
+          variant: "info",
+        });
+      };
+
+      const handleCancel = () => {
+        dialog.close();
+      };
+
+      dialog = sdk.window.showDialog(
+        {
+          component: InputDialog,
+          props: {
+            title: "Add to Memory",
+            placeholder: "Enter text to add to memory...",
+            initialValue: text,
+            onConfirm: () => handleConfirm,
+            onCancel: () => handleCancel,
+          },
+        },
+        {
+          title: "Add to Memory",
+          closeOnEscape: true,
+          closable: true,
+          draggable: true,
+          modal: true,
+          position: "center",
+        },
+      );
     },
   });
 

@@ -54,23 +54,30 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
       })();
     };
 
+    const handleCancel = () => {
+      dialog.close();
+    };
+
     dialog = sdk.window.showDialog(
-      {
-        component: InputDialog,
-        props: {
-          title: ``,
-          placeholder: "Enter your instructions for the agent...",
-          onConfirm: () => handleConfirm,
+        {
+          component: InputDialog,
+          props: {
+            title: "Instructions",
+            placeholder: "Enter your instructions for the agent...",
+            onConfirm: () => handleConfirm,
+            onCancel: () => handleCancel,
+          },
         },
-      },
-      {
-        closeOnEscape: true,
-        closable: false,
-        modal: true,
-        position: "center",
-        draggable: true,
-      },
-    );
+        {
+          title: "Instructions",
+          closeOnEscape: true,
+          closable: true,
+          draggable: true,
+          modal: true,
+          position: "center",
+        },
+      );
+
   };
 
   const findPromptsByCollectionName = (collectionName: string) => {
@@ -85,12 +92,15 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
   ) => {
     const { updatedReplaySession: data } = result;
     const session = data.sessionEdge.node;
-
+    console.log("sessionId", session.id);
+    console.log("sessionToCollectionId", sessionToCollectionId);
     const previousCollectionId = sessionToCollectionId.get(session.id);
     const nextCollectionId = session.collection?.id;
 
     // If nothing changed, do nothing.
     if (previousCollectionId === nextCollectionId) return;
+    console.log("previousCollectionId", previousCollectionId);
+    console.log("nextCollectionId", nextCollectionId);
 
     try {
       // Always update our local state, even if we bail early below.
@@ -204,6 +214,22 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     }
   };
 
+  const loadCurrentSessions = async () => {
+    try {
+      const sessions = await sdk.replay.getSessions();
+      sessions.forEach((session: any) => {
+        sessionToCollectionId.set(session.id, session.collectionId);
+      });
+      console.log(`Loaded ${sessions.length} current sessions into sessionToCollectionId`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      sdk.window.showToast(
+        `[Shift] Error loading current sessions: ${errorMessage}`,
+        { variant: "error" }
+      );
+    }
+  };
+
   const subscribeToCreatedReplaySession = async () => {
     try {
       const createdReplaySession = sdk.graphql.createdReplaySession();
@@ -234,6 +260,9 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     }
   };
 
+  // Load existing sessions into sessionToCollectionId
+  loadCurrentSessions();
+  
   subscribeToCreatedReplaySession();
   subscribeToUpdatedReplaySession();
 };
