@@ -25,6 +25,8 @@ export const useConfigStore = defineStore("stores.config", () => {
   const projectMemoryById = ref<Record<string, string>>({});
   const projectHistoryById = ref<Record<string, string[]>>({});
   const projectSpecificPromptsById = ref<Record<string, Record<string, string>>>({});
+  const projectAutoExecuteCollectionsById = ref<Record<string, Record<string, string>>>({});
+  const projectJitInstructionsById = ref<Record<string, Record<string, boolean>>>({});
   const reasoningConfig = ref<ReasoningConfig>({
     enabled: true,
     max_tokens: 1500,
@@ -131,6 +133,8 @@ export const useConfigStore = defineStore("stores.config", () => {
       projectMemoryById: projectMemoryById.value,
       projectHistoryById: projectHistoryById.value,
       projectSpecificPromptsById: projectSpecificPromptsById.value,
+      projectAutoExecuteCollectionsById: projectAutoExecuteCollectionsById.value,
+      projectJitInstructionsById: projectJitInstructionsById.value,
     };
     await sdk.storage.set(settings);
   };
@@ -167,6 +171,15 @@ export const useConfigStore = defineStore("stores.config", () => {
       }
       if (settings.projectHistoryById !== undefined) {
         projectHistoryById.value = settings.projectHistoryById;
+      }
+      if (settings.projectSpecificPromptsById !== undefined) {
+        projectSpecificPromptsById.value = settings.projectSpecificPromptsById;
+      }
+      if (settings.projectAutoExecuteCollectionsById !== undefined) {
+        projectAutoExecuteCollectionsById.value = settings.projectAutoExecuteCollectionsById;
+      }
+      if (settings.projectJitInstructionsById !== undefined) {
+        projectJitInstructionsById.value = settings.projectJitInstructionsById;
       }
     }
   };
@@ -237,6 +250,12 @@ export const useConfigStore = defineStore("stores.config", () => {
       if (settings.projectSpecificPromptsById !== undefined) {
         projectSpecificPromptsById.value = settings.projectSpecificPromptsById;
       }
+      if (settings.projectAutoExecuteCollectionsById !== undefined) {
+        projectAutoExecuteCollectionsById.value = settings.projectAutoExecuteCollectionsById;
+      }
+      if (settings.projectJitInstructionsById !== undefined) {
+        projectJitInstructionsById.value = settings.projectJitInstructionsById;
+      }
     }
   });
 
@@ -306,6 +325,40 @@ export const useConfigStore = defineStore("stores.config", () => {
     await saveSettings();
   };
 
+  const getProjectAutoExecuteCollection = (promptId: string): string => {
+    const projectId = _projectId.value;
+    return projectAutoExecuteCollectionsById.value[projectId]?.[promptId] ?? "";
+  };
+
+  const setProjectAutoExecuteCollection = async (promptId: string, collectionName: string) => {
+    const projectId = _projectId.value;
+    projectAutoExecuteCollectionsById.value = {
+      ...projectAutoExecuteCollectionsById.value,
+      [projectId]: {
+        ...projectAutoExecuteCollectionsById.value[projectId],
+        [promptId]: collectionName,
+      },
+    };
+    await saveSettings();
+  };
+
+  const getProjectJitInstructions = (promptId: string): boolean => {
+    const projectId = _projectId.value;
+    return projectJitInstructionsById.value[projectId]?.[promptId] ?? false;
+  };
+
+  const setProjectJitInstructions = async (promptId: string, enabled: boolean) => {
+    const projectId = _projectId.value;
+    projectJitInstructionsById.value = {
+      ...projectJitInstructionsById.value,
+      [projectId]: {
+        ...projectJitInstructionsById.value[projectId],
+        [promptId]: enabled,
+      },
+    };
+    await saveSettings();
+  };
+
   return {
     openRouterApiKey,
     maxIterations,
@@ -329,5 +382,9 @@ export const useConfigStore = defineStore("stores.config", () => {
     deleteCustomPrompt,
     getProjectSpecificPrompt,
     setProjectSpecificPrompt,
+    getProjectAutoExecuteCollection,
+    setProjectAutoExecuteCollection,
+    getProjectJitInstructions,
+    setProjectJitInstructions,
   };
 });

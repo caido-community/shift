@@ -3,6 +3,7 @@ import {
   type UpdatedReplaySessionSubscription,
 } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
 
+import InputDialog from "@/components/inputDialog/Container.vue";
 import { type CustomPrompt } from "@/agents/types";
 import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
@@ -18,40 +19,65 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
   const sessionToCollectionId = new Map<string, string | undefined>();
 
   const showJitInstructionDialog = async (sessionId: string, collectionName: string, prompts: CustomPrompt[]) => {
-    // For now, use a simple prompt - in a real implementation, you'd want a proper dialog
-    const instruction = window.prompt(
-      `Enter instructions for replay session in collection "${collectionName}":`
-    );
+    let dialog: any;
 
-    if (instruction && instruction.trim() !== "") {
-      // Launch the agent with the JIT instructions
-      try {
-        await agentsStore.addAgent(sessionId);
-        await agentsStore.selectAgent(sessionId);
-        
-        // Set all selected prompts for this agent
-        const uiStore = useUIStore();
-        const promptIds = prompts.map(prompt => prompt.id);
-        uiStore.setSelectedPrompts(sessionId, promptIds);
-        
-        await agentsStore.selectedAgent?.sendMessage({
-          text: instruction,
-        });
-
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        sdk.window.showToast(
-          `[Shift] Failed to launch agent with JIT instructions: ${errorMessage}`,
-          { variant: "error" }
-        );
+    const handleConfirm = (instruction: string) => {
+      dialog.close();
+      
+      // If instruction is empty, user cancelled - do nothing
+      if (!instruction || instruction.trim() === "") {
+        return;
       }
-    }
+      
+      // Launch the agent with the JIT instructions
+      (async () => {
+        try {
+          await agentsStore.addAgent(sessionId);
+          await agentsStore.selectAgent(sessionId);
+          sdk.replay.openTab(sessionId);
+          // Set all selected prompts for this agent
+          const uiStore = useUIStore();
+          const promptIds = prompts.map(prompt => prompt.id);
+          uiStore.setSelectedPrompts(sessionId, promptIds);
+          
+          await agentsStore.selectedAgent?.sendMessage({
+            text: instruction,
+          });
+
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          sdk.window.showToast(
+            `[Shift] Failed to launch agent with JIT instructions: ${errorMessage}`,
+            { variant: "error" }
+          );
+        }
+      })();
+    };
+
+    dialog = sdk.window.showDialog(
+      {
+        component: InputDialog,
+        props: {
+          title: ``,
+          placeholder: "Enter your instructions for the agent...",
+          onConfirm: () => handleConfirm,
+        },
+      },
+      {
+        closeOnEscape: true,
+        closable: false,
+        modal: true,
+        position: "center",
+        draggable: true,
+      },
+    );
   };
 
   const findPromptsByCollectionName = (collectionName: string) => {
-    return configStore.customPrompts.filter(
-      prompt => prompt.autoExecuteCollection === collectionName
-    );
+    return configStore.customPrompts.filter(prompt => {
+      const projectAutoExecuteCollection = configStore.getProjectAutoExecuteCollection(prompt.id);
+      return projectAutoExecuteCollection === collectionName;
+    });
   };
 
   const handleUpdatedReplaySession = async (
@@ -83,13 +109,14 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
       if (prompts.length === 0) return;
 
       // Check if any prompt requires JIT instructions
-      const jitPrompt = prompts.find(prompt => prompt.promptForJitInstructions);
+      const jitPrompt = prompts.find(prompt => configStore.getProjectJitInstructions(prompt.id));
       if (jitPrompt) {
         await showJitInstructionDialog(session.id, collectionName, prompts);
       } else {
         try {
           await agentsStore.addAgent(session.id);
           await agentsStore.selectAgent(session.id);
+          sdk.replay.openTab(session.id);
           
           // Set all selected prompts for this agent
           const uiStore = useUIStore();
@@ -142,7 +169,7 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
       if (prompts.length === 0) return;
 
       // Check if any prompt requires JIT instructions
-      const jitPrompt = prompts.find(prompt => prompt.promptForJitInstructions);
+      const jitPrompt = prompts.find(prompt => configStore.getProjectJitInstructions(prompt.id));
       if (jitPrompt) {
         await showJitInstructionDialog(session.id, collectionName, prompts);
       } else {
@@ -150,7 +177,8 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
         try {
           await agentsStore.addAgent(session.id);
           await agentsStore.selectAgent(session.id);
-          
+
+          sdk.replay.openTab(session.id);
           // Set all selected prompts for this agent
           const uiStore = useUIStore();
           const promptIds = prompts.map(prompt => prompt.id);

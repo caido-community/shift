@@ -20,4 +20,6 @@ export type PluginStorage = {
   projectMemoryById: Record<string, string>;
   projectHistoryById: Record<string, string[]>;
   projectSpecificPromptsById: Record<string, Record<string, string>>;
+  projectAutoExecuteCollectionsById: Record<string, Record<string, string>>;
+  projectJitInstructionsById: Record<string, Record<string, boolean>>;
 };

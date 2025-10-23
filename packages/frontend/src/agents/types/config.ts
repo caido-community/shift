@@ -39,8 +39,6 @@ export type CustomPrompt = {
   isDefault?: boolean;
   gistUrl?: string;
   projectSpecificPrompt?: string;
-  autoExecuteCollection?: string;
-  promptForJitInstructions?: boolean;
 };
 
 export type AISessionRenamingConfig = {

@@ -95,10 +95,11 @@ export const useForm = () => {
     isGistMode.value = prompt.gistUrl !== undefined && prompt.gistUrl !== "";
     projectSpecificPrompt.value = configStore.getProjectSpecificPrompt(prompt.id);
     
-    // Set auto execute collection - check for exact title match first, then use saved value, default to None
-    if (prompt.autoExecuteCollection) {
-      // Use the saved value if it exists
-      autoExecuteCollection.value = prompt.autoExecuteCollection;
+    // Set auto execute collection - check for exact title match first, then use project-specific value, default to None
+    const projectAutoExecuteCollection = configStore.getProjectAutoExecuteCollection(prompt.id);
+    if (projectAutoExecuteCollection) {
+      // Use the project-specific value if it exists
+      autoExecuteCollection.value = projectAutoExecuteCollection;
     } else {
       // Check for exact title match
       const matchingCollection = await findMatchingCollection(prompt.title);
@@ -110,9 +111,10 @@ export const useForm = () => {
       }
     }
     // Set JIT instructions based on whether a collection is selected
-    // If prompt has a saved value, use it; otherwise default based on collection selection
-    if (prompt.promptForJitInstructions !== undefined) {
-      promptForJitInstructions.value = prompt.promptForJitInstructions;
+    // If prompt has a project-specific value, use it; otherwise default based on collection selection
+    const projectJitInstructions = configStore.getProjectJitInstructions(prompt.id);
+    if (projectJitInstructions !== undefined && projectJitInstructions !== false) {
+      promptForJitInstructions.value = projectJitInstructions;
     } else {
       // Default to true if a collection is selected, false if None
       promptForJitInstructions.value = autoExecuteCollection.value !== "" && autoExecuteCollection.value !== undefined;
@@ -241,8 +243,6 @@ export const useForm = () => {
       title: promptTitle.value.trim(),
       content: promptContent.value.trim(),
       gistUrl: isGistMode.value ? gistUrl.value.trim() : undefined,
-      autoExecuteCollection: autoExecuteCollection.value.trim() || undefined,
-      promptForJitInstructions: promptForJitInstructions.value,
     };
 
     if (editingPrompt.value) {
@@ -258,6 +258,12 @@ export const useForm = () => {
     if (projectSpecificPrompt.value.trim() !== "") {
       await configStore.setProjectSpecificPrompt(promptData.id, projectSpecificPrompt.value.trim());
     }
+
+    // Save project-specific auto execute collection
+    await configStore.setProjectAutoExecuteCollection(promptData.id, autoExecuteCollection.value.trim());
+
+    // Save project-specific JIT instructions
+    await configStore.setProjectJitInstructions(promptData.id, promptForJitInstructions.value);
 
     closeDialog();
   };
