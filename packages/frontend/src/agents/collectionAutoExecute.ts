@@ -92,15 +92,11 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
   ) => {
     const { updatedReplaySession: data } = result;
     const session = data.sessionEdge.node;
-    console.log("sessionId", session.id);
-    console.log("sessionToCollectionId", sessionToCollectionId);
     const previousCollectionId = sessionToCollectionId.get(session.id);
     const nextCollectionId = session.collection?.id;
 
     // If nothing changed, do nothing.
     if (previousCollectionId === nextCollectionId) return;
-    console.log("previousCollectionId", previousCollectionId);
-    console.log("nextCollectionId", nextCollectionId);
 
     try {
       // Always update our local state, even if we bail early below.
@@ -220,7 +216,6 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
       sessions.forEach((session: any) => {
         sessionToCollectionId.set(session.id, session.collectionId);
       });
-      console.log(`Loaded ${sessions.length} current sessions into sessionToCollectionId`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       sdk.window.showToast(
