@@ -12,7 +12,8 @@ import App from "./views/App.vue";
 import { setupAgents } from "@/agents";
 import { createDOMManager } from "@/dom";
 import { setupFloat } from "@/float";
-import { setupRenaming, setupReplayCollectionCorrelation } from "@/renaming";
+import { setupRenaming } from "@/renaming";
+import { setupReplayCollectionCorrelation } from "@/agents/collectionAutoExecute";
 import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
 
