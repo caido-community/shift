@@ -15,8 +15,8 @@ const textareaRef = ref<HTMLTextAreaElement>();
 onMounted(() => {
   // Focus the textarea when the component mounts
   setTimeout(() => {
-    const textarea = document.querySelector('textarea[autofocus]') as HTMLTextAreaElement;
-    if (textarea) {
+    const textarea = document.querySelector("textarea[autofocus]");
+    if (textarea !== null) {
       textarea.focus();
     }
   }, 0);
@@ -40,7 +40,12 @@ const handleKeydown = (event: KeyboardEvent) => {
     event.preventDefault();
     event.stopPropagation();
     handleCancel();
-  } else if (event.key === "ArrowUp" || event.key === "ArrowDown" || event.key === "ArrowLeft" || event.key === "ArrowRight") {
+  } else if (
+    event.key === "ArrowUp" ||
+    event.key === "ArrowDown" ||
+    event.key === "ArrowLeft" ||
+    event.key === "ArrowRight"
+  ) {
     event.stopPropagation();
   }
 };
