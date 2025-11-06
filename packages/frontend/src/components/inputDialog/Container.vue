@@ -10,13 +10,12 @@ const props = defineProps<{
 }>();
 
 const inputValue = ref(props.initialValue ?? "");
-const textareaRef = ref<HTMLTextAreaElement>();
 
 onMounted(() => {
   // Focus the textarea when the component mounts
   setTimeout(() => {
     const textarea = document.querySelector("textarea[autofocus]");
-    if (textarea !== null) {
+    if (textarea instanceof HTMLTextAreaElement) {
       textarea.focus();
     }
   }, 0);
