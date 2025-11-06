@@ -9,14 +9,21 @@ const props = defineProps<{
   initialValue?: string;
 }>();
 
+<<<<<<< HEAD
 const inputValue = ref(props.initialValue ?? "");
 const textareaRef = ref<HTMLTextAreaElement>();
+=======
+const inputValue = ref(props.initialValue || "");
+>>>>>>> 7bea606a1d28dc1488eebcbbd6945f2bfb9117c8
 
 onMounted(() => {
   // Focus the textarea when the component mounts
-  if (textareaRef.value) {
-    textareaRef.value.focus();
-  }
+  setTimeout(() => {
+    const textarea = document.querySelector('textarea[autofocus]') as HTMLTextAreaElement;
+    if (textarea) {
+      textarea.focus();
+    }
+  }, 0);
 });
 
 const handleConfirm = () => {
@@ -31,11 +38,14 @@ const handleCancel = () => {
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === "Enter" && event.ctrlKey) {
     event.preventDefault();
+    event.stopPropagation();
     handleConfirm();
-  }
-  if (event.key === "Escape") {
+  } else if (event.key === "Escape") {
     event.preventDefault();
+    event.stopPropagation();
     handleCancel();
+  } else if (event.key === "ArrowUp" || event.key === "ArrowDown" || event.key === "ArrowLeft" || event.key === "ArrowRight") {
+    event.stopPropagation();
   }
 };
 
@@ -48,14 +58,28 @@ const handleInput = (event: Event) => {
 </script>
 
 <template>
+<<<<<<< HEAD
   <div class="flex flex-col gap-4 w-[500px] p-2" @keydown="handleKeydown">
+=======
+  <div
+    class="flex flex-col gap-4 w-[500px] p-2"
+  >
+>>>>>>> 7bea606a1d28dc1488eebcbbd6945f2bfb9117c8
     <textarea
       :placeholder="placeholder || 'Enter your instructions...'"
       class="w-full h-24 p-3 border border-surface-600 rounded-md bg-surface-800 text-surface-100 placeholder-surface-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       rows="4"
       autofocus
       :value="inputValue"
+<<<<<<< HEAD
       @input="handleInput"
+=======
+      @input="(event) => {
+        const value = (event.target as HTMLTextAreaElement).value;
+        inputValue = value;
+      }"
+      @keydown="handleKeydown"
+>>>>>>> 7bea606a1d28dc1488eebcbbd6945f2bfb9117c8
     />
 
     <div class="text-xs text-surface-400 text-center">
