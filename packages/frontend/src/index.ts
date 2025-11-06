@@ -10,13 +10,13 @@ import type { FrontendSDK } from "./types";
 import App from "./views/App.vue";
 
 import { setupAgents } from "@/agents";
+import { setupReplayCollectionCorrelation } from "@/agents/collectionAutoExecute";
+import { InputDialog } from "@/components/inputDialog";
 import { createDOMManager } from "@/dom";
 import { setupFloat } from "@/float";
 import { setupRenaming } from "@/renaming";
-import { setupReplayCollectionCorrelation } from "@/agents/collectionAutoExecute";
 import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
-import { InputDialog } from "@/components/inputDialog";
 
 export const init = (sdk: FrontendSDK) => {
   const app = createApp(App);
@@ -59,8 +59,8 @@ export const init = (sdk: FrontendSDK) => {
   sdk.commands.register("shift:add-to-memory", {
     name: "Add to memory",
     run: () => {
+      let dialog: { close: () => void } = { close: () => {} };
       const configStore = useConfigStore();
-      let dialog: any;
 
       const selection = window.getSelection();
       if (selection === null) return;

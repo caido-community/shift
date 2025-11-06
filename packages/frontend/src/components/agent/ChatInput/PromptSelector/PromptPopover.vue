@@ -4,9 +4,12 @@ import Checkbox from "primevue/checkbox";
 import Popover from "primevue/popover";
 import { ref } from "vue";
 
-import { useSelector } from "./useSelector";
-import { useUIStore } from "@/stores/ui";
 import { useChat } from "../useChat";
+
+import { useSelector } from "./useSelector";
+
+import { type CustomPrompt } from "@/agents/types";
+import { useUIStore } from "@/stores/ui";
 
 const { promptOptions, isSelected, togglePrompt } = useSelector();
 const uiStore = useUIStore();
@@ -15,7 +18,7 @@ const { isAgentIdle } = useChat();
 const popoverRef = ref<InstanceType<typeof Popover>>();
 const onToggle = (event: MouseEvent) => popoverRef.value?.toggle(event);
 
-const handleEditPrompt = (prompt: any, event: Event) => {
+const handleEditPrompt = (prompt: CustomPrompt, event: Event) => {
   event.stopPropagation();
   uiStore.openEditPromptDialog(prompt);
 };

@@ -24,9 +24,15 @@ export const useConfigStore = defineStore("stores.config", () => {
   const _maxIterations = ref<number>(35);
   const projectMemoryById = ref<Record<string, string>>({});
   const projectHistoryById = ref<Record<string, string[]>>({});
-  const projectSpecificPromptsById = ref<Record<string, Record<string, string>>>({});
-  const projectAutoExecuteCollectionsById = ref<Record<string, Record<string, string>>>({});
-  const projectJitInstructionsById = ref<Record<string, Record<string, boolean>>>({});
+  const projectSpecificPromptsById = ref<
+    Record<string, Record<string, string>>
+  >({});
+  const projectAutoExecuteCollectionsById = ref<
+    Record<string, Record<string, string>>
+  >({});
+  const projectJitInstructionsById = ref<
+    Record<string, Record<string, boolean>>
+  >({});
   const reasoningConfig = ref<ReasoningConfig>({
     enabled: true,
     max_tokens: 1500,
@@ -133,7 +139,8 @@ export const useConfigStore = defineStore("stores.config", () => {
       projectMemoryById: projectMemoryById.value,
       projectHistoryById: projectHistoryById.value,
       projectSpecificPromptsById: projectSpecificPromptsById.value,
-      projectAutoExecuteCollectionsById: projectAutoExecuteCollectionsById.value,
+      projectAutoExecuteCollectionsById:
+        projectAutoExecuteCollectionsById.value,
       projectJitInstructionsById: projectJitInstructionsById.value,
     };
     await sdk.storage.set(settings);
@@ -176,7 +183,8 @@ export const useConfigStore = defineStore("stores.config", () => {
         projectSpecificPromptsById.value = settings.projectSpecificPromptsById;
       }
       if (settings.projectAutoExecuteCollectionsById !== undefined) {
-        projectAutoExecuteCollectionsById.value = settings.projectAutoExecuteCollectionsById;
+        projectAutoExecuteCollectionsById.value =
+          settings.projectAutoExecuteCollectionsById;
       }
       if (settings.projectJitInstructionsById !== undefined) {
         projectJitInstructionsById.value = settings.projectJitInstructionsById;
@@ -251,7 +259,8 @@ export const useConfigStore = defineStore("stores.config", () => {
         projectSpecificPromptsById.value = settings.projectSpecificPromptsById;
       }
       if (settings.projectAutoExecuteCollectionsById !== undefined) {
-        projectAutoExecuteCollectionsById.value = settings.projectAutoExecuteCollectionsById;
+        projectAutoExecuteCollectionsById.value =
+          settings.projectAutoExecuteCollectionsById;
       }
       if (settings.projectJitInstructionsById !== undefined) {
         projectJitInstructionsById.value = settings.projectJitInstructionsById;
@@ -313,7 +322,10 @@ export const useConfigStore = defineStore("stores.config", () => {
     return projectSpecificPromptsById.value[projectId]?.[promptId] ?? "";
   };
 
-  const setProjectSpecificPrompt = async (promptId: string, content: string) => {
+  const setProjectSpecificPrompt = async (
+    promptId: string,
+    content: string,
+  ) => {
     const projectId = _projectId.value;
     projectSpecificPromptsById.value = {
       ...projectSpecificPromptsById.value,
@@ -330,7 +342,10 @@ export const useConfigStore = defineStore("stores.config", () => {
     return projectAutoExecuteCollectionsById.value[projectId]?.[promptId] ?? "";
   };
 
-  const setProjectAutoExecuteCollection = async (promptId: string, collectionName: string) => {
+  const setProjectAutoExecuteCollection = async (
+    promptId: string,
+    collectionName: string,
+  ) => {
     const projectId = _projectId.value;
     projectAutoExecuteCollectionsById.value = {
       ...projectAutoExecuteCollectionsById.value,
@@ -347,7 +362,10 @@ export const useConfigStore = defineStore("stores.config", () => {
     return projectJitInstructionsById.value[projectId]?.[promptId] ?? false;
   };
 
-  const setProjectJitInstructions = async (promptId: string, enabled: boolean) => {
+  const setProjectJitInstructions = async (
+    promptId: string,
+    enabled: boolean,
+  ) => {
     const projectId = _projectId.value;
     projectJitInstructionsById.value = {
       ...projectJitInstructionsById.value,

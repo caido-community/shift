@@ -11,7 +11,9 @@ type UIState = {
 export const useUIStore = defineStore("stores.ui", () => {
   const drawerVisible = ref(false);
   const agentsUI = ref<Record<string, UIState>>({});
-  const editPromptCallback = ref<((prompt: CustomPrompt) => void) | null>(null);
+  const editPromptCallback = ref<((prompt: CustomPrompt) => void) | undefined>(
+    undefined,
+  );
 
   const toggleDrawer = () => {
     drawerVisible.value = !drawerVisible.value;

@@ -10,6 +10,7 @@ import Textarea from "primevue/textarea";
 import { onMounted } from "vue";
 
 import { useForm } from "./useForm";
+
 import { useUIStore } from "@/stores/ui";
 
 const {
@@ -201,7 +202,8 @@ onMounted(() => {
           </select>
           <!-- Debug info -->
           <p class="text-xs text-surface-500">
-            If a Replay Collection with this exact name exists, it will be auto-selected when this modal loads
+            If a Replay Collection with this exact name exists, it will be
+            auto-selected when this modal loads
           </p>
         </div>
 
@@ -210,11 +212,17 @@ onMounted(() => {
             v-model="promptForJitInstructions"
             binary
             :disabled="!autoExecuteCollection || autoExecuteCollection === ''"
-            :class="{ 'opacity-50': !autoExecuteCollection || autoExecuteCollection === '' }"
+            :class="{
+              'opacity-50':
+                !autoExecuteCollection || autoExecuteCollection === '',
+            }"
           />
-          <label 
+          <label
             class="text-sm font-medium"
-            :class="{ 'text-surface-500': !autoExecuteCollection || autoExecuteCollection === '' }"
+            :class="{
+              'text-surface-500':
+                !autoExecuteCollection || autoExecuteCollection === '',
+            }"
           >
             Prompt for a starting message on collection-based launch
           </label>
@@ -251,7 +259,8 @@ onMounted(() => {
             class="w-full"
           />
           <p class="text-xs text-surface-500">
-            This content will be automatically appended to the main prompt content when used in this project
+            This content will be automatically appended to the main prompt
+            content when used in this project
           </p>
         </div>
 
