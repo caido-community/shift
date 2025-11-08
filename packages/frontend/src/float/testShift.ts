@@ -1,8 +1,10 @@
-type StepDecision = "continue" | "repeat" | "stop";
+type StepDecision = "step" | "continue" | "repeat" | "pause" | "stop";
 
 interface TestShiftConsoleControl {
   pending: boolean;
+  step: () => void;
   continue: () => void;
+  pause: () => void;
   repeat: () => void;
   stop: () => void;
 }
@@ -23,6 +25,10 @@ type TestShiftRunner = {
 
 let controlResolver: ((decision: StepDecision) => void) | undefined;
 let consoleControlObject: TestShiftConsoleControl | undefined;
+type RunControlState = {
+  confirmationRequired: boolean;
+};
+let activeControlState: RunControlState | undefined;
 let lastRunOptions: boolean | TestShiftOptions | undefined;
 
 const dispatchDecision = (decision: StepDecision) => {
@@ -40,7 +46,46 @@ const ensureConsoleControl = (): TestShiftConsoleControl => {
   if (consoleControlObject === undefined) {
     consoleControlObject = {
       pending: false,
-      continue: () => dispatchDecision("continue"),
+      step: () => {
+        if (activeControlState !== undefined) {
+          activeControlState.confirmationRequired = true;
+        }
+        if (controlResolver !== undefined) {
+          dispatchDecision("step");
+        } else {
+          console.info(
+            "[Shift Test] No pending step decision. Confirmation remains enabled.",
+          );
+        }
+      },
+      continue: () => {
+        if (activeControlState !== undefined) {
+          activeControlState.confirmationRequired = false;
+        }
+        if (consoleControlObject !== undefined) {
+          consoleControlObject.pending = false;
+        }
+        if (controlResolver !== undefined) {
+          dispatchDecision("continue");
+        } else {
+          console.info("[Shift Test] Continuing without further confirmations.");
+        }
+      },
+      pause: () => {
+        if (activeControlState !== undefined) {
+          activeControlState.confirmationRequired = true;
+        }
+        if (controlResolver !== undefined) {
+          dispatchDecision("pause");
+        } else {
+          if (consoleControlObject !== undefined) {
+            consoleControlObject.pending = false;
+          }
+          console.info(
+            "[Shift Test] Confirmation will resume after the current step.",
+          );
+        }
+      },
       repeat: () => dispatchDecision("repeat"),
       stop: () => dispatchDecision("stop"),
     };
@@ -58,7 +103,7 @@ const waitForConsoleDecision = (stepIndex: number): Promise<StepDecision> => {
   const control = ensureConsoleControl();
   control.pending = true;
   console.info(
-    `[Shift Test] Step ${stepIndex + 1}/${total} finished. Use window.testShiftControl.continue(), .repeat(), or .stop() to proceed.`,
+    `[Shift Test] Step ${stepIndex + 1}/${total} finished. Use window.testShiftControl.step(), .continue(), .pause(), .repeat(), or .stop() to proceed.`,
   );
   return new Promise<StepDecision>((resolve) => {
     controlResolver = resolve;
@@ -187,6 +232,10 @@ export const setupTestShift = (sdk: FrontendSDK) => {
       );
     }
     try {
+      const controlState: RunControlState = {
+        confirmationRequired: confirmEachStep === true,
+      };
+      activeControlState = controlState;
       outer: for (let index = startIndex; index < testPlan.length; index += 1) {
         let shouldRepeat = true;
         while (shouldRepeat) {
@@ -202,14 +251,20 @@ export const setupTestShift = (sdk: FrontendSDK) => {
             console.error("[Shift Test] Step failed", stepError);
           }
 
-          if (!confirmEachStep) {
+          if (!controlState.confirmationRequired) {
             shouldRepeat = false;
             continue;
           }
 
           const decision = await waitForConsoleDecision(index);
           switch (decision) {
+            case "step": {
+              controlState.confirmationRequired = true;
+              shouldRepeat = false;
+              break;
+            }
             case "continue": {
+              controlState.confirmationRequired = false;
               shouldRepeat = false;
               break;
             }
@@ -220,6 +275,11 @@ export const setupTestShift = (sdk: FrontendSDK) => {
             case "stop": {
               aborted = true;
               break outer;
+            }
+            case "pause": {
+              controlState.confirmationRequired = true;
+              shouldRepeat = false;
+              break;
             }
             default: {
               shouldRepeat = false;
@@ -233,6 +293,7 @@ export const setupTestShift = (sdk: FrontendSDK) => {
       isRunning = false;
       ensureConsoleControl().pending = false;
       controlResolver = undefined;
+      activeControlState = undefined;
       closeDialogsIfPresent();
     }
 
@@ -335,6 +396,12 @@ const INSTRUCTION_MESSAGE = [
   "                               → begin the run at step 5 (1-indexed)",
   "  window.testShift.runFrom(5)   → shorthand to start at step 5",
   "  window.testShift?.rerunLast() → rerun the most recent Shift test",
+  "  window.testShiftControl.step()",
+  "                               → advance a single confirmed step",
+  "  window.testShiftControl.continue()",
+  "                               → continue running without confirmations",
+  "  window.testShiftControl.pause()",
+  "                               → resume confirmations after continuing",
   "",
   "Prerequisites:",
   "  • Run inside the Caido dev shell (window.name === \"dev\").",
@@ -371,19 +438,9 @@ const closeDialogsIfPresent = () => {
 
 const ensureSelectionInEditor = (sdk: FrontendSDK) => {
   const editor = sdk.window.getActiveEditor();
-  if (editor === undefined) {
+  if (editor === null) {
     return;
   }
-
-  const view = editor.getEditorView();
-  const length = view.state.doc.length;
-
-  view.dispatch({
-    selection: {
-      anchor: 0,
-      head: Math.min(10, length),
-    },
-  });
 };
 
 const runActionByName = async (
@@ -532,7 +589,6 @@ const testPlan: TestStep[] = [
   },
   async ({ runAction }) => {
     await runAction("toast", { content: "Shift Float test toast" });
-    //Not working
   },
   async ({ runAction, suffix, setReplaySessionIdFromDOM, delay: localDelay }) => {
     await runAction("navigate", { path: "#/replay" });
@@ -577,7 +633,6 @@ const testPlan: TestStep[] = [
     await runAction("activeEditorReplaceSelection", {
       text: "replaced-selection",
     });
-    //Not working - this is replacing at the beginning of the request, not the selected text
   },
   async ({ runAction }) => {
     await runAction("activeEditorReplaceByString", {
