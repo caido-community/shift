@@ -11,10 +11,12 @@ import { addFilter } from "@/float/actions/addFilter";
 import { addMatchAndReplace } from "@/float/actions/addMatchAndReplace";
 import { addScope } from "@/float/actions/addScope";
 import { createAutomateSession } from "@/float/actions/createAutomateSession";
+import { createEnvironment } from "@/float/actions/createEnvironment";
 import { createFinding } from "@/float/actions/createFinding";
 import { createHostedFile } from "@/float/actions/createHostedFile";
 import { createHostedFileAdvanced } from "@/float/actions/createHostedFileAdvanced";
 import { createReplaySession } from "@/float/actions/createReplaySession";
+import { deleteEnvironment } from "@/float/actions/deleteEnvironment";
 import { deleteFilter } from "@/float/actions/deleteFilter";
 import { deleteScope } from "@/float/actions/deleteScope";
 import { filterAppendQuery } from "@/float/actions/filterAppendQuery";
@@ -28,6 +30,8 @@ import { sendReplayTab } from "@/float/actions/sendReplayTab";
 import { toast } from "@/float/actions/toast";
 import { updateFilter } from "@/float/actions/updateFilter";
 import { updateScope } from "@/float/actions/updateScope";
+import { deleteEnvironmentVariable } from "@/float/actions/deleteEnvironmentVariable";
+import { updateEnvironmentVariable } from "@/float/actions/updateEnvironmentVariable";
 import { type ActionDefinition } from "@/float/types";
 
 export const registeredActions = [
@@ -61,4 +65,8 @@ export const registeredActions = [
   runConvertWorkflow,
   createFinding,
   createHostedFileAdvanced,
+  createEnvironment,
+  deleteEnvironment,
+  updateEnvironmentVariable,
+  deleteEnvironmentVariable,
 ] as ActionDefinition[];

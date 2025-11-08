@@ -135,6 +135,17 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
     return sdk.workflows.getWorkflows();
   };
 
+  const getEnvironments = async () => {
+    try {
+      const result = await sdk.graphql.environmentContext();
+      return result?.environmentContext ?? "No environments available";
+    } catch (error) {
+      return `Failed to fetch environments: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`;
+    }
+  };
+
   const context: ActionContext = {
     page: {
       description: "The page you are currently on",
@@ -172,6 +183,11 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
     workflows: {
       description: "List of all workflows",
       value: getWorkflows(),
+    },
+    environments: {
+      description:
+        "Global and selected environments including their current variables",
+      value: getEnvironments(),
     },
   };
 
