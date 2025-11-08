@@ -173,7 +173,6 @@ export const hostedFileConfirmation = (
       dialog.close();
 
       try {
-        console.log("passed into file", [updatedContent]);
         const file = new File([updatedContent], options.fileName);
         const result = await sdk.files.create(file);
 
