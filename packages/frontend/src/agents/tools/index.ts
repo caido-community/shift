@@ -11,5 +11,7 @@ export * from "./replaceRequestText";
 export * from "./removeRequestQuery";
 export * from "./removeRequestHeader";
 export * from "./grepResponse";
+export * from "./grepRequest";
+export * from "./searchRequests";
 export * from "./addTodo";
 export * from "./addFinding";

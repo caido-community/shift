@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -27,17 +28,11 @@ export const runConvertWorkflow: ActionDefinition<RunConvertWorkflowInput> = {
         input: input,
       });
 
-      return {
-        success: true,
-        frontend_message: `Convert workflow executed successfully. Output: ${result.runConvertWorkflow.output}`,
-      };
+      return actionSuccess(
+        `Convert workflow executed successfully. Output: ${result.runConvertWorkflow.output}`,
+      );
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to run convert workflow: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      };
+      return actionError("Failed to run convert workflow", error);
     }
   },
 };

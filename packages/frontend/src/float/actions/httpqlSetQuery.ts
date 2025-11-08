@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -25,15 +26,9 @@ export const httpqlSetQuery: ActionDefinition<HttpqlSetQueryInput> = {
     try {
       sdk.httpHistory.setQuery(query);
 
-      return {
-        success: true,
-        frontend_message: `Query set successfully`,
-      };
+      return actionSuccess("Query set successfully");
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to set query: ${error}`,
-      };
+      return actionError("Failed to set query", error);
     }
   },
 };

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -53,27 +54,27 @@ export const createReplaySession: ActionDefinition<CreateReplaySessionInput> = {
         },
       });
 
-      sdk.replay.openTab(result.createReplaySession.session!.id);
+      const sessionId = result.createReplaySession.session?.id;
+
+      if (sessionId === undefined) {
+        return {
+          success: false,
+          error: "Failed to create replay session",
+        };
+      }
+
+      sdk.replay.openTab(sessionId);
 
       if (name !== undefined) {
-        const sessionId = result.createReplaySession.session!.id;
         await sdk.graphql.renameReplaySession({
           id: sessionId,
           name,
         });
       }
 
-      return {
-        success: true,
-        frontend_message: "Replay session created successfully",
-      };
+      return actionSuccess("Replay session created successfully");
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to create replay session: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      };
+      return actionError("Failed to create replay session", error);
     }
   },
 };

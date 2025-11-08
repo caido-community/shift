@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -26,17 +27,9 @@ export const deleteEnvironment: ActionDefinition<DeleteEnvironmentInput> = {
     try {
       await sdk.graphql.deleteEnvironment({ id });
 
-      return {
-        success: true,
-        frontend_message: `Environment ${id} deleted successfully`,
-      };
+      return actionSuccess(`Environment ${id} deleted successfully`);
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to delete environment: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      };
+      return actionError("Failed to delete environment", error);
     }
   },
 };

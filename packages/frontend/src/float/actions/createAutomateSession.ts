@@ -4,6 +4,7 @@ import {
 } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -212,17 +213,9 @@ export const createAutomateSession: ActionDefinition<CreateAutomateSessionInput>
         });
 
         sdk.navigation.goTo("/automate");
-        return {
-          success: true,
-          frontend_message: "Automate session created",
-        };
+        return actionSuccess("Automate session created");
       } catch (error) {
-        return {
-          success: false,
-          error: `Failed to create automate session: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`,
-        };
+        return actionError("Failed to create automate session", error);
       }
     },
   };

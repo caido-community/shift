@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  actionError,
+  actionSuccess,
+  normalizeEnvironmentVariable,
+} from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -45,11 +50,7 @@ export const createEnvironment: ActionDefinition<CreateEnvironmentInput> = {
       const result = await sdk.graphql.createEnvironment({
         input: {
           name,
-          variables: (variables ?? []).map((variable) => ({
-            name: variable.name,
-            value: variable.value,
-            kind: variable.kind ?? "PLAIN",
-          })),
+          variables: (variables ?? []).map(normalizeEnvironmentVariable),
         },
       });
 
@@ -62,17 +63,11 @@ export const createEnvironment: ActionDefinition<CreateEnvironmentInput> = {
         };
       }
 
-      return {
-        success: true,
-        frontend_message: `Environment ${environment.name} created successfully`,
-      };
+      return actionSuccess(
+        `Environment ${environment.name} created successfully`,
+      );
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to create environment: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      };
+      return actionError("Failed to create environment", error);
     }
   },
 };

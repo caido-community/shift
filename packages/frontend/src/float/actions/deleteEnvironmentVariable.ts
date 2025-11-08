@@ -1,33 +1,12 @@
 import { z } from "zod";
 
+import {
+  actionError,
+  actionSuccess,
+  resolveEnvironment,
+} from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
-
-const resolveEnvironment = async (sdk: FrontendSDK, environmentId?: string) => {
-  if (environmentId !== undefined && environmentId.length > 0) {
-    const environmentResult = await sdk.graphql.environment({ id: environmentId });
-    return environmentResult?.environment ?? null;
-  }
-
-  const contextResult = await sdk.graphql.environmentContext();
-  const contextEnvironment =
-    contextResult?.environmentContext?.selected ??
-    contextResult?.environmentContext?.global;
-
-  if (
-    contextEnvironment === undefined ||
-    contextEnvironment === null ||
-    contextEnvironment.id === undefined
-  ) {
-    return null;
-  }
-
-  const environmentResult = await sdk.graphql.environment({
-    id: contextEnvironment.id,
-  });
-
-  return environmentResult?.environment ?? null;
-};
 
 export const deleteEnvironmentVariableSchema = z.object({
   name: z.literal("deleteEnvironmentVariable"),
@@ -96,17 +75,11 @@ export const deleteEnvironmentVariable: ActionDefinition<
         },
       });
 
-      return {
-        success: true,
-        frontend_message: `Variable ${variableName} deleted successfully`,
-      };
+      return actionSuccess(
+        `Variable ${variableName} deleted successfully`,
+      );
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to delete environment variable: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      };
+      return actionError("Failed to delete environment variable", error);
     }
   },
 };

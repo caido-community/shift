@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionError, actionSuccess, withActiveEditorView } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -25,32 +26,19 @@ export const replayRequestReplace: ActionDefinition<ReplayRequestReplaceInput> =
     execute: (
       sdk: FrontendSDK,
       { text }: ReplayRequestReplaceInput["parameters"],
-    ) => {
-      const view = sdk.window.getActiveEditor()?.getEditorView();
+    ) =>
+      withActiveEditorView(sdk, (view) => {
+        try {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: text },
+          });
+        } catch (error) {
+          return actionError(
+            "Failed to replace request in replay editor",
+            error,
+          );
+        }
 
-      if (view === undefined) {
-        return {
-          success: false,
-          error: "No active editor view found",
-        };
-      }
-
-      try {
-        view.dispatch({
-          changes: { from: 0, to: view.state.doc.length, insert: text },
-        });
-      } catch (error) {
-        return {
-          success: false,
-          error: `Failed to replace request in replay editor: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`,
-        };
-      }
-
-      return {
-        success: true,
-        frontend_message: "Request replaced in replay editor",
-      };
-    },
+        return actionSuccess("Request replaced in replay editor");
+      }),
   };

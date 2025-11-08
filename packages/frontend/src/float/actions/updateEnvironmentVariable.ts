@@ -1,33 +1,14 @@
 import { z } from "zod";
 
+import {
+  actionError,
+  actionSuccess,
+  normalizeEnvironmentVariable,
+  resolveEnvironment,
+} from "@/float/actionUtils";
+import { type NormalizedEnvironmentVariable } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
-
-const resolveEnvironment = async (sdk: FrontendSDK, environmentId?: string) => {
-  if (environmentId !== undefined && environmentId.length > 0) {
-    const environmentResult = await sdk.graphql.environment({ id: environmentId });
-    return environmentResult?.environment ?? null;
-  }
-
-  const contextResult = await sdk.graphql.environmentContext();
-  const contextEnvironment =
-    contextResult?.environmentContext?.selected ??
-    contextResult?.environmentContext?.global;
-
-  if (
-    contextEnvironment === undefined ||
-    contextEnvironment === null ||
-    contextEnvironment.id === undefined
-  ) {
-    return null;
-  }
-
-  const environmentResult = await sdk.graphql.environment({
-    id: contextEnvironment.id,
-  });
-
-  return environmentResult?.environment ?? null;
-};
 
 const environmentVariableSchema = z.object({
   name: z
@@ -85,16 +66,40 @@ export const updateEnvironmentVariable: ActionDefinition<
         };
       }
 
-      const variables = [...(environment.variables ?? [])];
+      const variables = (environment.variables ?? []).reduce<
+        NormalizedEnvironmentVariable[]
+      >((acc, existingVariable) => {
+        if (
+          existingVariable === null ||
+          existingVariable === undefined ||
+          typeof existingVariable.name !== "string" ||
+          typeof existingVariable.value !== "string"
+        ) {
+          return acc;
+        }
+
+        acc.push(
+          normalizeEnvironmentVariable({
+            name: existingVariable.name,
+            value: existingVariable.value,
+            kind:
+              typeof existingVariable.kind === "string"
+                ? existingVariable.kind
+                : undefined,
+          }),
+        );
+
+        return acc;
+      }, []);
+
+      const normalizedVariable = normalizeEnvironmentVariable({
+        name: variable.name,
+        value: variable.value,
+        kind: variable.kind,
+      });
       const index = variables.findIndex(
         (existingVariable) => existingVariable.name === variable.name,
       );
-
-      const normalizedVariable = {
-        name: variable.name,
-        value: variable.value,
-        kind: variable.kind ?? "PLAIN",
-      };
 
       if (index >= 0) {
         variables[index] = normalizedVariable;
@@ -106,22 +111,16 @@ export const updateEnvironmentVariable: ActionDefinition<
         id: environment.id,
         input: {
           name: environment.name,
-          version: (environment.version ?? 0) + 1,
+          version: environment.version,
           variables,
         },
       });
 
-      return {
-        success: true,
-        frontend_message: `Variable ${variable.name} updated successfully`,
-      };
+      return actionSuccess(
+        `Variable ${variable.name} updated successfully`,
+      );
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to update environment variable: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      };
+      return actionError("Failed to update environment variable", error);
     }
   },
 };
