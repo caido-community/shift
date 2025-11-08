@@ -70,7 +70,7 @@ export const deleteEnvironmentVariable: ActionDefinition<
         id: environment.id,
         input: {
           name: environment.name,
-          version: (environment.version ?? 0) + 1,
+          version: environment.version,
           variables,
         },
       });

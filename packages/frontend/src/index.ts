@@ -14,6 +14,7 @@ import { setupReplayCollectionCorrelation } from "@/agents/collectionAutoExecute
 import { InputDialog } from "@/components/inputDialog";
 import { createDOMManager } from "@/dom";
 import { setupFloat } from "@/float";
+import { setupTestShift } from "@/float/testShift";
 import { setupRenaming } from "@/renaming";
 import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
@@ -55,6 +56,7 @@ export const init = (sdk: FrontendSDK) => {
   setupFloat(sdk);
   setupRenaming(sdk);
   setupReplayCollectionCorrelation(sdk);
+  setupTestShift(sdk);
 
   sdk.commands.register("shift:add-to-memory", {
     name: "Add to memory",
