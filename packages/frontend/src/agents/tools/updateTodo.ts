@@ -10,7 +10,10 @@ const UpdateTodoSchema = z.object({
 });
 
 export const updateTodoTool = tool({
-  description: "Update an existing todo item by ID",
+  description: `The updateTodo tool is used to update an existing todo item by ID.
+  You can update the content of the todo item, or mark it as completed.
+  You can also update the internal content of the todo item that only you see, this is not visible to the user.
+  Use this if you want to track some more information about the todo item, like the request schema, endpoint, parameter you want to send, etc.`,
   inputSchema: UpdateTodoSchema,
   execute: (input, { experimental_context }) => {
     const context = experimental_context as ToolContext;

@@ -32,11 +32,17 @@ import { updateFilter } from "@/float/actions/updateFilter";
 import { updateScope } from "@/float/actions/updateScope";
 import { deleteEnvironmentVariable } from "@/float/actions/deleteEnvironmentVariable";
 import { updateEnvironmentVariable } from "@/float/actions/updateEnvironmentVariable";
+import { addLearning } from "@/float/actions/addLearning";
+import { updateLearning } from "@/float/actions/updateLearning";
+import { removeLearnings } from "@/float/actions/removeLearnings";
 import { type ActionDefinition } from "@/float/types";
 
 export const registeredActions = [
   httpqlSetQuery,
   toast,
+  addLearning,
+  updateLearning,
+  removeLearnings,
   addScope,
   deleteScope,
   updateScope,

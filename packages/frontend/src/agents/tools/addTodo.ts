@@ -18,7 +18,13 @@ const AddTodoSchema = z.object({
 });
 
 export const addTodoTool = tool({
-  description: "Add a new todo item to the todo list",
+  description: `The addTodo tool is used to add a new todo item to the todo list.
+  This is useful for tracking progress on complex security testing tasks.
+  You can add a todo item with a short description of the task you want to perform.
+  You can also add internal content to the todo item that only you see, this is not visible to the user.
+  Use this if you want to track some more information about the todo item, like the request schema, endpoint, parameter you want to send, etc.
+  
+  It is very important to build out a thorough todo list before you start testing. This will help you stay organized and ensure you don't miss anything.`,
   inputSchema: AddTodoSchema,
   execute: (input, { experimental_context }) => {
     const context = experimental_context as ToolContext;

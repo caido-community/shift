@@ -59,7 +59,7 @@ export const init = (sdk: FrontendSDK) => {
   setupTestShift(sdk);
 
   sdk.commands.register("shift:add-to-memory", {
-    name: "Add to memory",
+    name: "Add Learning",
     run: () => {
       let dialog: { close: () => void } = { close: () => {} };
       const configStore = useConfigStore();
@@ -76,11 +76,23 @@ export const init = (sdk: FrontendSDK) => {
           return;
         }
 
-        configStore.memory += "\n" + value;
-
-        sdk.window.showToast(`Text has been saved to your Shift memory`, {
-          variant: "info",
-        });
+        void (async () => {
+          try {
+            await configStore.addLearning(value);
+            sdk.window.showToast(`Learning stored for this project`, {
+              variant: "info",
+            });
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Unknown error";
+            sdk.window.showToast(
+              `[Shift] Failed to store learning: ${message}`,
+              {
+                variant: "error",
+              },
+            );
+          }
+        })();
       };
 
       const handleCancel = () => {
@@ -91,15 +103,15 @@ export const init = (sdk: FrontendSDK) => {
         {
           component: InputDialog,
           props: {
-            title: "Add to Memory",
-            placeholder: "Enter text to add to memory...",
+            title: "Add Learning",
+            placeholder: "Enter learning content...",
             initialValue: text,
             onConfirm: () => handleConfirm,
             onCancel: () => handleCancel,
           },
         },
         {
-          title: "Add to Memory",
+          title: "Add Learning",
           closeOnEscape: true,
           closable: true,
           draggable: true,
@@ -115,6 +127,7 @@ export const init = (sdk: FrontendSDK) => {
   const domManager = createDOMManager(sdk);
   domManager.drawer.start();
   domManager.session.start();
+  domManager.indicators.start();
 
   domManager.session.onSelected((sessionId) => {
     const agentStore = useAgentsStore();

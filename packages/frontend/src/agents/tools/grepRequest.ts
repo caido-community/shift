@@ -5,7 +5,7 @@ import { type ToolContext } from "@/agents/types";
 
 const GrepRequestSchema = z
   .object({
-    requestID: z.string().describe("The request ID to read from"),
+    requestID: z.string().describe("The string representation of the request ID to read from"),
     offset: z
       .number()
       .optional()
@@ -50,7 +50,15 @@ const GrepRequestSchema = z
 
 export const grepRequestTool = tool({
   description:
-    "Read request content in three modes: 1) Read specific bytes from offset to offset+length, 2) Search entire request for string content and return content starting from match, or 3) Search entire request for regex pattern and return content starting from match. When content or regex is provided, it searches the entire request and returns content from the specified occurrence.",
+    `The grepRequest tool is used to read data about a request. It is useful for investigating how other requests in Caido look, what cookies, parameter, etc are being sent.
+    This tool should be used to get data like: cookies, parameter, headers, body values, etc.
+    This tool should be used to investigate parts of a request that are interesting to give more context on how the app/api/domain works.
+    Read request content in three modes: 
+    1) Read specific bytes from offset to offset+length, 
+    2) Search entire request for string content and return content starting from match, 
+    or 3) Search entire request for regex pattern and return content starting from match. 
+    
+    When content or regex is provided, it searches the entire request and returns content from the specified occurrence.`,
   inputSchema: GrepRequestSchema,
   execute: async (input, { experimental_context }) => {
     const context = experimental_context as ToolContext;

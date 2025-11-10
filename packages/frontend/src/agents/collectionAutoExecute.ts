@@ -9,10 +9,44 @@ import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
 import { useUIStore } from "@/stores/ui";
 import { type FrontendSDK } from "@/types";
+const SHIFT_COLLECTION_NAME = "Shift";
+const DEFAULT_SHIFT_MESSAGE =
+  "Shift agent auto-launched from the Shift collection. Proceed with testing.";
+
+export const ensureShiftCollection = async (sdk: FrontendSDK) => {
+  try {
+    const configStore = useConfigStore();
+    const collections = sdk.replay.getCollections();
+    const existing = collections.find(
+      (collection: { id: string; name?: string }) =>
+        collection.name === SHIFT_COLLECTION_NAME,
+    );
+
+    if (existing) {
+      return existing;
+    }
+
+    if (!configStore.autoCreateShiftCollection) {
+      return undefined;
+    }
+
+    return await sdk.replay.createCollection(SHIFT_COLLECTION_NAME);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
+    sdk.window.showToast(
+      `[Shift] Failed to ensure Shift collection exists: ${errorMessage}`,
+      { variant: "error" },
+    );
+    return undefined;
+  }
+};
 
 export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
   const configStore = useConfigStore();
   const agentsStore = useAgentsStore();
+
+  void ensureShiftCollection(sdk);
 
   // Track the last known collection ID for each replay session so we can
   // detect moves between collections on update events.
@@ -24,7 +58,6 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     prompts: CustomPrompt[],
   ) => {
     let dialog: { close: () => void } = { close: () => {} };
-
     const handleConfirm = (instruction: string) => {
       dialog.close();
 
@@ -91,6 +124,71 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     });
   };
 
+  const shouldAutoLaunchForCollection = (collectionName: string) => {
+    if (collectionName === SHIFT_COLLECTION_NAME) {
+      return true;
+    }
+    return findPromptsByCollectionName(collectionName).length > 0;
+  };
+
+  const launchAgentForCollection = async (
+    sessionId: string,
+    collectionName: string,
+  ) => {
+    const prompts = findPromptsByCollectionName(collectionName);
+    const requiresJit = prompts.find((prompt) =>
+      configStore.getProjectJitInstructions(prompt.id),
+    );
+
+    if (requiresJit || collectionName === SHIFT_COLLECTION_NAME) {
+      showJitInstructionDialog(sessionId, collectionName, prompts);
+      return;
+    }
+
+    if (agentsStore.getAgent(sessionId) !== undefined) {
+      return;
+    }
+
+    try {
+      const entry = await agentsStore.addAgent(sessionId);
+      await agentsStore.selectAgent(sessionId);
+      sdk.replay.openTab(sessionId);
+
+      if (prompts.length > 0) {
+        const uiStore = useUIStore();
+        const promptIds = prompts.map((prompt) => prompt.id);
+        uiStore.setSelectedPrompts(sessionId, promptIds);
+      }
+
+      const message =
+        collectionName === SHIFT_COLLECTION_NAME && prompts.length === 0
+          ? DEFAULT_SHIFT_MESSAGE
+          : "Proceed with testing.";
+
+      await entry.chat.sendMessage({
+        text: message,
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      sdk.window.showToast(
+        `[Shift] Failed to launch agent: ${errorMessage}`,
+        { variant: "error" },
+      );
+    }
+  };
+
+  const handleSessionInCollection = async (
+    sessionId: string,
+    collectionName: string,
+  ) => {
+    if (!shouldAutoLaunchForCollection(collectionName)) {
+      return;
+    }
+
+    await launchAgentForCollection(sessionId, collectionName);
+  };
+
   const handleUpdatedReplaySession = async (
     result: UpdatedReplaySessionSubscription,
   ) => {
@@ -117,38 +215,7 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
       const collectionName = collection?.name;
       if (collectionName === undefined || collectionName === "") return;
 
-      const prompts = findPromptsByCollectionName(collectionName);
-      if (prompts.length === 0) return;
-
-      // Check if any prompt requires JIT instructions
-      const jitPrompt = prompts.find((prompt) =>
-        configStore.getProjectJitInstructions(prompt.id),
-      );
-      if (jitPrompt) {
-        showJitInstructionDialog(session.id, collectionName, prompts);
-      } else {
-        try {
-          await agentsStore.addAgent(session.id);
-          await agentsStore.selectAgent(session.id);
-          sdk.replay.openTab(session.id);
-
-          // Set all selected prompts for this agent
-          const uiStore = useUIStore();
-          const promptIds = prompts.map((prompt) => prompt.id);
-          uiStore.setSelectedPrompts(session.id, promptIds);
-
-          await agentsStore.selectedAgent?.sendMessage({
-            text: "Proceed with testing.",
-          });
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          sdk.window.showToast(
-            `[Shift] Failed to launch agent: ${errorMessage}`,
-            { variant: "error" },
-          );
-        }
-      }
+      await handleSessionInCollection(session.id, collectionName);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -181,41 +248,7 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
 
       if (collectionName === undefined || collectionName === "") return;
 
-      // Find prompts by collection name
-      const prompts = findPromptsByCollectionName(collectionName);
-
-      if (prompts.length === 0) return;
-
-      // Check if any prompt requires JIT instructions
-      const jitPrompt = prompts.find((prompt) =>
-        configStore.getProjectJitInstructions(prompt.id),
-      );
-      if (jitPrompt) {
-        showJitInstructionDialog(session.id, collectionName, prompts);
-      } else {
-        // Launch agent without JIT instructions
-        try {
-          await agentsStore.addAgent(session.id);
-          await agentsStore.selectAgent(session.id);
-
-          sdk.replay.openTab(session.id);
-          // Set all selected prompts for this agent
-          const uiStore = useUIStore();
-          const promptIds = prompts.map((prompt) => prompt.id);
-          uiStore.setSelectedPrompts(session.id, promptIds);
-
-          await agentsStore.selectedAgent?.sendMessage({
-            text: "Proceed with testing.",
-          });
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          sdk.window.showToast(
-            `[Shift] Failed to launch agent: ${errorMessage}`,
-            { variant: "error" },
-          );
-        }
-      }
+      await handleSessionInCollection(session.id, collectionName);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -226,12 +259,15 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     }
   };
 
-  const loadCurrentSessions = () => {
+  const loadCurrentSessions = async () => {
     try {
-      const sessions = sdk.replay.getSessions();
-      sessions.forEach((session: { id: string; collectionId?: string }) => {
-        sessionToCollectionId.set(session.id, session.collectionId);
-      });
+      const collections = sdk.replay.getCollections();
+      for (const collection of collections) {
+        if (!collection.sessionIds || !collection.id) continue;
+        for (const sessionId of collection.sessionIds) {
+          sessionToCollectionId.set(sessionId, collection.id);
+        }
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -246,6 +282,7 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     try {
       const createdReplaySession = sdk.graphql.createdReplaySession();
       for await (const result of createdReplaySession) {
+        void ensureShiftCollection(sdk);
         handleCreatedReplaySessionForCorrelation(result);
       }
     } catch (error) {
@@ -262,6 +299,7 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     try {
       const updatedReplaySession = sdk.graphql.updatedReplaySession({});
       for await (const result of updatedReplaySession) {
+        void ensureShiftCollection(sdk);
         handleUpdatedReplaySession(result);
       }
     } catch (error) {
@@ -275,7 +313,7 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
   };
 
   // Load existing sessions into sessionToCollectionId
-  loadCurrentSessions();
+  void loadCurrentSessions();
 
   subscribeToCreatedReplaySession();
   subscribeToUpdatedReplaySession();

@@ -63,21 +63,21 @@ const hasPendingStep = computed(() => {
       <template v-for="(part, index) in message.parts" :key="index">
         <template v-if="part && part.type === 'text'">
           <div class="text-surface-200">
-            <Markdown :content="part.text ?? ''" />
+            <Markdown :content="part?.text ?? ''" />
           </div>
         </template>
         <template v-else-if="part && part.type === 'reasoning'">
           <Reasoning
-            :content="part.text ?? ''"
-            :state="part.state"
+            :content="part?.text ?? ''"
+            :state="part?.state"
             :message-state="message.metadata?.state"
           />
         </template>
         <template v-else-if="part && isToolUIPart(part)">
           <ChatMessageTool
             :tool-name="getToolName(part)"
-            :state="part.state"
-            :output="part.output"
+            :state="part?.state"
+            :output="part?.output"
             :message-state="message.metadata?.state"
           />
         </template>

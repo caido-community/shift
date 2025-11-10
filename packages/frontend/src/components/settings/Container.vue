@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import Button from "primevue/button";
+import Checkbox from "primevue/checkbox";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import InputNumber from "primevue/inputnumber";
 import InputText from "primevue/inputtext";
-import Textarea from "primevue/textarea";
 
 import { useForm } from "./useForm";
 
@@ -72,19 +72,22 @@ const config = useConfigStore();
 
     <div class="flex flex-col gap-2">
       <div class="flex flex-col">
-        <label class="text-base font-medium">Memory</label>
+        <label class="text-base font-medium" for="shift-auto-create">
+          Auto-create Shift Collection
+        </label>
         <p class="text-sm text-surface-400">
-          Project-scoped notes for the AI to use. You can store details about
-          the target app, IDs for certain objects or accounts, etc.
+          Automatically create the Shift collection for this project when needed.
         </p>
       </div>
 
-      <Textarea
-        v-model="config.memory"
-        placeholder="Enter memory content"
-        rows="5"
-        class="w-full"
-      />
+      <div class="flex items-center gap-2">
+        <Checkbox
+          inputId="shift-auto-create"
+          v-model="config.autoCreateShiftCollection"
+          binary
+        />
+        <label class="text-sm" for="shift-auto-create">Enable auto-create</label>
+      </div>
     </div>
   </div>
 </template>

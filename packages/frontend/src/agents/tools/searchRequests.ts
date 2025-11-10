@@ -33,7 +33,14 @@ const SearchRequestsSchema = z.object({
 
 export const searchRequestsTool = tool({
   description:
-    "Search HTTP history using Caido HTTPQL filters. Returns recent requests with key metadata so you can inspect IDs, cookies, or other parameters.",
+    `This is your Caido search tool. Use this to look at requests that come through Caido's proxy. This is useful for:
+    * Investigation of details of how the app/api/domain works
+    * Fetching IDs, session cookies, session tokens, etc needed to recreate requests
+    * Looking for requests that are successful to learn from them (what auth, CSRF tokens, etc are being used)
+    * Looking for requests that are failing to learn from them (what errors are being returned)
+    
+    The data returned is mostly metadata, but will allow you to proceed to investigate further with your grepRequest and grepResponse tools.
+    `,
   inputSchema: SearchRequestsSchema,
   execute: async (input, { experimental_context }) => {
     const context = experimental_context as ToolContext;

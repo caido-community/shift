@@ -24,7 +24,7 @@ const { isGenerating, handleMessageClick } = useUserMessage();
       :class="{ 'opacity-80': isGenerating }"
       @click="handleMessageClick(message)"
     >
-      <span v-if="part && part.type === 'text'">{{ part.text ?? "" }}</span>
+      <span v-if="part && part.type === 'text'">{{ part?.text ?? "" }}</span>
     </div>
   </div>
 </template>
