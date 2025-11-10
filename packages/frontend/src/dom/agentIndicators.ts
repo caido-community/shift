@@ -50,7 +50,6 @@ const createIndicator = (
     "fa-brain",
     "inline"
   );
-  console.log("sessionState", sessionState);
   indicator.title = tooltip;
   indicator.setAttribute("aria-label", tooltip);
   indicator.setAttribute("role", "img");
@@ -312,7 +311,6 @@ const scheduleUpdate = (immediate = false) => {
 
     unsubscribeAgents = agentsStore.subscribeToAgentStates((snapshot) => {
       latestAgentStates = snapshot.map((state) => ({ ...state }));
-      console.log("latestAgentStates", latestAgentStates);
       refreshSessionIndicators();
     });
   };
