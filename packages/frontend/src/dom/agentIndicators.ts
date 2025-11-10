@@ -26,9 +26,16 @@ const createIndicator = (
   container: Element,
   variantClass: string,
   tooltip: string,
+  sessionState?: AgentStatusSnapshot,
 ) => {
   const existing = container.querySelector<HTMLElement>(`.${variantClass}`);
   if (existing) {
+    existing.classList.remove("text-success-500", "text-error-500");
+    if (sessionState && sessionState.status === "streaming") {
+      existing.classList.add("text-success-500");
+    }else if (sessionState && sessionState.status === "error") {
+      existing.classList.add("text-error-500");
+    }
     existing.title = tooltip;
     existing.setAttribute("aria-label", tooltip);
     existing.dataset.shiftAiIndicatorTooltip = tooltip;
@@ -43,6 +50,7 @@ const createIndicator = (
     "fa-brain",
     "inline"
   );
+  console.log("sessionState", sessionState);
   indicator.title = tooltip;
   indicator.setAttribute("aria-label", tooltip);
   indicator.setAttribute("role", "img");
@@ -232,6 +240,7 @@ const refreshSessionIndicators = () => {
           targetNode,
           SESSION_INDICATOR_CLASS,
           SESSION_TOOLTIP,
+          sessionState,
         );
         indicator.dataset.shiftAiAgentStatus = sessionState.status;
       });
