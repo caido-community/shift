@@ -16,6 +16,10 @@ export const useForm = () => {
   const gistUrl = ref("");
   const isGistMode = ref(false);
   const isLoadingGist = ref(false);
+  const projectSpecificPrompt = ref("");
+  const autoExecuteCollection = ref("");
+  const promptForJitInstructions = ref(false);
+  const collections = ref<Array<{ label: string; value: string }>>([]);
 
   const isValidGistUrl = (url: string): boolean => {
     if (url.trim() === "") return false;
@@ -30,13 +34,107 @@ export const useForm = () => {
     }
   });
 
+  // Watch for changes in autoExecuteCollection and disable JIT instructions when None is selected
+  watch(autoExecuteCollection, (newValue, oldValue) => {
+    // Only run the watcher if the value actually changed (not during initial setup)
+    if (oldValue !== undefined) {
+      if (!newValue || newValue === "") {
+        promptForJitInstructions.value = false;
+      } else {
+        promptForJitInstructions.value = true;
+      }
+    }
+  });
+
+  const fetchCollections = () => {
+    try {
+      const result = sdk.replay.getCollections();
+
+      collections.value = [
+        { label: "None", value: "" },
+        ...result.map((collection: { name: string }) => ({
+          label: collection.name,
+          value: collection.name,
+        })),
+      ];
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      sdk.window.showToast(`Error fetching collections: ${errorMessage}`, {
+        variant: "error",
+      });
+      collections.value = [{ label: "None", value: "" }];
+    }
+  };
+
+  const findMatchingCollection = (
+    promptTitle: string,
+  ): { name: string } | undefined => {
+    try {
+      const collections = sdk.replay.getCollections();
+      const matchingCollection = collections.find(
+        (collection: { name: string }) => collection.name === promptTitle,
+      );
+      return matchingCollection ? { name: matchingCollection.name } : undefined;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      sdk.window.showToast(
+        `Error finding matching collection: ${errorMessage}`,
+        { variant: "error" },
+      );
+      return undefined;
+    }
+  };
+
   const openEditDialog = (prompt: CustomPrompt) => {
     if (prompt.isDefault !== undefined) return;
+
+    // Fetch collections when opening the dialog
+    fetchCollections();
+
     editingPrompt.value = prompt;
     promptTitle.value = prompt.title;
     promptContent.value = prompt.content;
     gistUrl.value = prompt.gistUrl ?? "";
     isGistMode.value = prompt.gistUrl !== undefined && prompt.gistUrl !== "";
+    projectSpecificPrompt.value = configStore.getProjectSpecificPrompt(
+      prompt.id,
+    );
+
+    // Set auto execute collection - check for exact title match first, then use project-specific value, default to None
+    const projectAutoExecuteCollection =
+      configStore.getProjectAutoExecuteCollection(prompt.id);
+    if (projectAutoExecuteCollection) {
+      // Use the project-specific value if it exists
+      autoExecuteCollection.value = projectAutoExecuteCollection;
+    } else {
+      // Check for exact title match
+      const matchingCollection = findMatchingCollection(prompt.title);
+      if (matchingCollection) {
+        autoExecuteCollection.value = matchingCollection.name;
+      } else {
+        // Default to None if no exact match
+        autoExecuteCollection.value = "";
+      }
+    }
+    // Set JIT instructions based on whether a collection is selected
+    // If prompt has a project-specific value, use it; otherwise default based on collection selection
+    const projectJitInstructions = configStore.getProjectJitInstructions(
+      prompt.id,
+    );
+    if (
+      projectJitInstructions !== undefined &&
+      projectJitInstructions !== false
+    ) {
+      promptForJitInstructions.value = projectJitInstructions;
+    } else {
+      // Default to true if a collection is selected, false if None
+      promptForJitInstructions.value =
+        autoExecuteCollection.value !== "" &&
+        autoExecuteCollection.value !== undefined;
+    }
+
     showDialog.value = true;
   };
 
@@ -47,6 +145,9 @@ export const useForm = () => {
     gistUrl.value = "";
     isGistMode.value = false;
     isLoadingGist.value = false;
+    projectSpecificPrompt.value = "";
+    autoExecuteCollection.value = "";
+    promptForJitInstructions.value = false;
   };
 
   const closeDialog = () => {
@@ -55,8 +156,16 @@ export const useForm = () => {
   };
 
   const openCreateDialog = () => {
-    showDialog.value = true;
+    // Fetch collections when opening the dialog
+    fetchCollections();
+
+    // Reset all values first
     resetDialog();
+
+    // Ensure checkbox is unchecked since no collection is selected by default
+    promptForJitInstructions.value = false;
+
+    showDialog.value = true;
   };
 
   const fetchGistContent = async (url: string) => {
@@ -92,15 +201,11 @@ export const useForm = () => {
       promptContent.value = content;
       isGistMode.value = true;
     } catch (error) {
-      console.error("Error fetching Gist:", error);
-      sdk.window.showToast(
-        `Error fetching Gist: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-        {
-          variant: "error",
-        },
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      sdk.window.showToast(`Error fetching Gist: ${errorMessage}`, {
+        variant: "error",
+      });
     } finally {
       isLoadingGist.value = false;
     }
@@ -129,15 +234,11 @@ export const useForm = () => {
         content: promptContent.value,
       });
     } catch (error) {
-      console.error("Error refreshing Gist:", error);
-      sdk.window.showToast(
-        `Error refreshing Gist: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-        {
-          variant: "error",
-        },
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      sdk.window.showToast(`Error refreshing Gist: ${errorMessage}`, {
+        variant: "error",
+      });
     } finally {
       isLoadingGist.value = false;
     }
@@ -164,6 +265,26 @@ export const useForm = () => {
       await configStore.addCustomPrompt(promptData);
     }
 
+    // Save project-specific prompt
+    if (projectSpecificPrompt.value.trim() !== "") {
+      await configStore.setProjectSpecificPrompt(
+        promptData.id,
+        projectSpecificPrompt.value.trim(),
+      );
+    }
+
+    // Save project-specific auto execute collection
+    await configStore.setProjectAutoExecuteCollection(
+      promptData.id,
+      autoExecuteCollection.value.trim(),
+    );
+
+    // Save project-specific JIT instructions
+    await configStore.setProjectJitInstructions(
+      promptData.id,
+      promptForJitInstructions.value,
+    );
+
     closeDialog();
   };
 
@@ -181,6 +302,10 @@ export const useForm = () => {
     gistUrl,
     isGistMode,
     isLoadingGist,
+    projectSpecificPrompt,
+    autoExecuteCollection,
+    promptForJitInstructions,
+    collections,
     openEditDialog,
     openCreateDialog,
     closeDialog,

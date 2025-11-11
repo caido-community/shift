@@ -1,6 +1,7 @@
 import type { Chat } from "@ai-sdk/vue";
 import { defineStore } from "pinia";
 import { computed, markRaw, ref, shallowRef, watch } from "vue";
+import type { WatchStopHandle } from "vue";
 
 import { createAgent } from "@/agents/create";
 import type { CustomUIMessage, ToolContext } from "@/agents/types";
@@ -11,11 +12,66 @@ type AgentEntry = {
   context: ToolContext;
 };
 
+type AgentStatusSnapshot = {
+  sessionId: string;
+  numMessages: number;
+  status: Chat<CustomUIMessage>["status"];
+  error?: Error;
+};
+
+type AgentStateListener = (snapshot: AgentStatusSnapshot[]) => void;
+
 export const useAgentsStore = defineStore("stores.agents", () => {
   const agents = shallowRef<Map<string, AgentEntry>>(new Map());
   const selectedId = ref<string | undefined>(undefined);
 
   const sdk = useSDK();
+
+  const agentStateListeners = new Set<AgentStateListener>();
+  const agentStateWatchers = new Map<string, WatchStopHandle>();
+
+  const getAgentStatusSnapshot = (): AgentStatusSnapshot[] => {
+    return Array.from(agents.value.entries()).map(([sessionId, entry]) => ({
+      sessionId,
+      numMessages: entry.chat.messages.length,
+      status: entry.chat.status,
+      error: entry.chat.error,
+    }));
+  };
+
+  const notifyAgentStateListeners = () => {
+    const snapshot = getAgentStatusSnapshot();
+    agentStateListeners.forEach((listener) => {
+      try {
+        listener(snapshot);
+      } catch (error) {
+        console.error("[Shift Agents] Agent state listener failed", error);
+      }
+    });
+  };
+
+  const registerAgentWatcher = (
+    sessionId: string,
+    chat: Chat<CustomUIMessage>,
+  ) => {
+    const existingWatcher = agentStateWatchers.get(sessionId);
+    if (existingWatcher) {
+      existingWatcher();
+    }
+
+    const stopHandle = watch(
+      () => ({
+        status: chat.status,
+        error: chat.error,
+      }),
+      () => {
+        notifyAgentStateListeners();
+      },
+      { immediate: true },
+    );
+
+    agentStateWatchers.set(sessionId, stopHandle);
+  };
 
   async function addAgent(replaySessionId: string) {
     if (agents.value.has(replaySessionId)) {
@@ -33,6 +89,7 @@ export const useAgentsStore = defineStore("stores.agents", () => {
     };
 
     agents.value.set(replaySessionId, entry);
+    registerAgentWatcher(replaySessionId, chat);
     return entry;
   }
 
@@ -58,6 +115,18 @@ export const useAgentsStore = defineStore("stores.agents", () => {
       await agent.stop();
     }
   }
+
+  const subscribeToAgentStates = (listener: AgentStateListener) => {
+    agentStateListeners.add(listener);
+    try {
+      listener(getAgentStatusSnapshot());
+    } catch (error) {
+      console.error("[Shift Agents] Agent state listener failed", error);
+    }
+    return () => {
+      agentStateListeners.delete(listener);
+    };
+  };
 
   const selectedAgent = computed(() => {
     if (selectedId.value === undefined) return undefined;
@@ -92,6 +161,7 @@ export const useAgentsStore = defineStore("stores.agents", () => {
     agents: computed(() =>
       Array.from(agents.value.values()).map((e) => e.chat),
     ),
+    addAgent,
     getAgent,
     getToolContext,
     selectedAgent,
@@ -99,5 +169,6 @@ export const useAgentsStore = defineStore("stores.agents", () => {
     selectedId,
     selectAgent,
     abortSelectedAgent,
+    subscribeToAgentStates,
   };
 });

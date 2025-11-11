@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 import { getCurrentRequestID } from "@/utils";
@@ -38,22 +39,23 @@ export const createFinding: ActionDefinition<createFindingInput> = {
       };
     }
 
-    const finding = await sdk.findings.createFinding(requestID, {
-      title,
-      description,
-      reporter: "shift",
-    });
+    try {
+      const finding = await sdk.findings.createFinding(requestID, {
+        title,
+        description,
+        reporter: "shift",
+      });
 
-    if (finding === undefined) {
-      return {
-        success: false,
-        error: "Failed to create finding",
-      };
+      if (finding === undefined) {
+        return {
+          success: false,
+          error: "Failed to create finding",
+        };
+      }
+
+      return actionSuccess("Created finding");
+    } catch (error) {
+      return actionError("Failed to create finding", error);
     }
-
-    return {
-      frontend_message: `Created finding`,
-      success: true,
-    };
   },
 };

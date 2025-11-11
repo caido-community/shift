@@ -17,6 +17,11 @@ export type PluginStorage = {
   maxIterations: number;
   customPrompts: CustomPrompt[];
   aiSessionRenaming: AISessionRenamingConfig;
-  projectMemoryById: Record<string, string>;
+  projectLearningsById?: Record<string, string[]>;
+  projectMemoryById?: Record<string, string>;
   projectHistoryById: Record<string, string[]>;
+  projectSpecificPromptsById: Record<string, Record<string, string>>;
+  projectAutoExecuteCollectionsById: Record<string, Record<string, string>>;
+  projectJitInstructionsById: Record<string, Record<string, boolean>>;
+  projectShiftCollectionAutoCreateById?: Record<string, boolean>;
 };

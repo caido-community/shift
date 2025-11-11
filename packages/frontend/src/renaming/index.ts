@@ -28,9 +28,10 @@ export const setupRenaming = (sdk: FrontendSDK) => {
       const sessionId = result.startedTask.task.replayEntry?.session.id;
       await renameTab(sdk, sessionId, name);
     } catch (error) {
-      console.error(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       sdk.window.showToast(
-        "[Shift] Something went wrong while renaming the tab.",
+        `[Shift] Something went wrong while renaming the tab: ${errorMessage}`,
         {
           variant: "error",
         },
@@ -54,9 +55,10 @@ export const setupRenaming = (sdk: FrontendSDK) => {
 
       await renameTab(sdk, data.sessionEdge.node.id, name);
     } catch (error) {
-      console.error(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       sdk.window.showToast(
-        "[Shift] Something went wrong while renaming the tab.",
+        `[Shift] Something went wrong while renaming the tab: ${errorMessage}`,
         {
           variant: "error",
         },
@@ -96,7 +98,10 @@ const renameTab = async (sdk: FrontendSDK, id: string, name: string) => {
 
   while (isSending()) {
     if (Date.now() - startTime > timeout) {
-      console.warn("[Shift] Timeout while waiting for sending to finish");
+      sdk.window.showToast(
+        "[Shift] Timeout while waiting for sending to finish",
+        { variant: "warning" },
+      );
       break;
     }
     await new Promise((resolve) => setTimeout(resolve, 200));

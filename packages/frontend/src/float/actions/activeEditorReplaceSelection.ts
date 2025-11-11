@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionSuccess, withActiveEditor } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -25,22 +26,11 @@ export const activeEditorReplaceSelection: ActionDefinition<ActiveEditorReplaceS
     execute: (
       sdk: FrontendSDK,
       { text }: ActiveEditorReplaceSelectionInput["parameters"],
-    ) => {
-      const editor = sdk.window.getActiveEditor();
+    ) =>
+      withActiveEditor(sdk, (editor) => {
+        editor.replaceSelectedText(text);
+        editor.focus();
 
-      if (editor === undefined) {
-        return {
-          success: false,
-          error: "No active editor found",
-        };
-      }
-
-      editor.replaceSelectedText(text);
-      editor.focus();
-
-      return {
-        success: true,
-        frontend_message: "Selection replaced in active editor",
-      };
-    },
+        return actionSuccess("Selection replaced in active editor");
+      }),
   };

@@ -4,19 +4,27 @@ import Card from "primevue/card";
 import MenuBar from "primevue/menubar";
 import { computed, ref } from "vue";
 
+import { LearningsContainer } from "@/components/learnings";
 import { PromptsContainer } from "@/components/prompts";
 import { RenamingContainer } from "@/components/renaming";
 import { SettingsContainer } from "@/components/settings";
 
-const page = ref<"Custom Prompts" | "AI Session Renaming" | "Settings">(
-  "Custom Prompts",
-);
+const page = ref<
+  "Custom Prompts" | "Learnings" | "AI Session Renaming" | "Settings"
+>("Custom Prompts");
 const items = [
   {
     label: "Custom Prompts",
     isActive: () => page.value === "Custom Prompts",
     onClick: () => {
       page.value = "Custom Prompts";
+    },
+  },
+  {
+    label: "Learnings",
+    isActive: () => page.value === "Learnings",
+    onClick: () => {
+      page.value = "Learnings";
     },
   },
   {
@@ -41,6 +49,8 @@ const component = computed(() => {
       return PromptsContainer;
     case "AI Session Renaming":
       return RenamingContainer;
+    case "Learnings":
+      return LearningsContainer;
     case "Settings":
       return SettingsContainer;
     default:

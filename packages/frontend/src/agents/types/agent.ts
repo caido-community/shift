@@ -12,6 +12,7 @@ export type ToolContext = {
 
 export type ReplaySession = {
   id: string;
+  activeEntryId: string;
   request: {
     raw: string;
     host: string;

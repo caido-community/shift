@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -34,28 +35,20 @@ export const filterAppendQuery: ActionDefinition<FilterAppendQueryInput> = {
         };
       }
 
-      if (!filter.query.startsWith(" ")) {
-        appendQuery = " " + appendQuery;
-      }
+      const suffix = filter.query.startsWith(" ")
+        ? appendQuery
+        : ` ${appendQuery}`;
 
-      const updatedQuery = filter.query + appendQuery;
+      const updatedQuery = filter.query + suffix;
       await sdk.filters.update(id, {
         name: filter.name,
         alias: filter.alias,
         query: updatedQuery,
       });
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to append to filter query: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      };
+      return actionError("Failed to append to filter query", error);
     }
 
-    return {
-      success: true,
-      frontend_message: `Query appended to filter ${id} successfully`,
-    };
+    return actionSuccess(`Query appended to filter ${id} successfully`);
   },
 };

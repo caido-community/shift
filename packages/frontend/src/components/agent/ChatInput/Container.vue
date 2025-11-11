@@ -61,7 +61,7 @@ watch(
       </div>
 
       <div class="flex items-center gap-2">
-        <PromptSelector v-if="isAgentIdle" />
+        <PromptSelector />
         <Button
           v-if="isAgentIdle"
           severity="tertiary"

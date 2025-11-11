@@ -1,3 +1,4 @@
+import { useAgentIndicatorManager } from "@/dom/agentIndicators";
 import { useDrawerManager } from "@/dom/drawer";
 import { useSessionManager } from "@/dom/session";
 import { type FrontendSDK } from "@/types";
@@ -18,13 +19,16 @@ export const createDOMManager = (sdk: FrontendSDK) => {
 
   const drawer = useDrawerManager(sdk);
   const session = useSessionManager(sdk);
+  const indicators = useAgentIndicatorManager(sdk);
 
   return {
     drawer,
     session,
+    indicators,
     stop: () => {
       drawer.stop();
       session.stop();
+      indicators.stop();
     },
   };
 };

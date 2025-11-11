@@ -13,13 +13,23 @@ import {
 import { BASE_SYSTEM_PROMPT } from "@/agents/prompt";
 import { type TodoManager } from "@/agents/todos";
 import {
+  addCookieTool,
+  addEnvironmentTool,
   addFindingTool,
+  addLearningTool,
   addTodoTool,
+  deleteCookieTool,
+  deleteEnvironmentTool,
+  environementContextTool,
+  fetchReplayEntriesTool,
+  grepRequestTool,
   grepResponseTool,
+  removeLearningsTool,
   removeRequestHeaderTool,
   removeRequestQueryTool,
   replaceRequestTextTool,
   runJavaScriptTool,
+  searchRequestsTool,
   sendRequestTool,
   setRequestBodyTool,
   setRequestHeaderTool,
@@ -27,6 +37,9 @@ import {
   setRequestPathTool,
   setRequestQueryTool,
   setRequestRawTool,
+  updateCookieTool,
+  updateEnvironmentTool,
+  updateLearningTool,
   updateTodoTool,
 } from "@/agents/tools";
 import {
@@ -34,10 +47,62 @@ import {
   type ReplaySession,
   type ToolContext,
 } from "@/agents/types";
+import {
+  fetchAgentEnvironments,
+  summarizeAgentEnvironments,
+} from "@/agents/utils/environment";
 import { markdownJoinerTransform } from "@/agents/utils/markdownJoiner";
 import { useConfigStore } from "@/stores/config";
 import { useUIStore } from "@/stores/ui";
 import { getReplaySession, isPresent } from "@/utils";
+
+function sanitizeValue(value: unknown): unknown {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (value instanceof Map) {
+    return sanitizeValue(Object.fromEntries(value));
+  }
+
+  if (value instanceof Set) {
+    return Array.from(value, (entry) => sanitizeValue(entry));
+  }
+
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+
+  if (typeof value === "number" && !Number.isFinite(value)) {
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeValue(item));
+  }
+
+  if (value !== null && typeof value === "object") {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, nestedValue] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      const sanitized = sanitizeValue(nestedValue);
+
+      if (sanitized !== undefined) {
+        result[key] = sanitized;
+      }
+    }
+
+    return result;
+  }
+
+  return value;
+}
+
+function sanitizeUiMessages(messages: UIMessage[]): UIMessage[] {
+  return messages.map((message) => sanitizeValue(message) as UIMessage);
+}
 
 export class ClientSideChatTransport implements ChatTransport<UIMessage> {
   constructor(private toolContext: ToolContext) {}
@@ -62,20 +127,20 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
       throw new Error(initialSession.error);
     }
 
-    const currentRequest = this.toolContext.replaySession.request;
-    currentRequest.raw = initialSession.session.request.raw;
-    currentRequest.host = initialSession.session.request.host;
-    currentRequest.port = initialSession.session.request.port;
-    currentRequest.isTLS = initialSession.session.request.isTLS;
-    currentRequest.SNI = initialSession.session.request.SNI;
+    // const currentRequest = this.toolContext.replaySession.request;
+    // currentRequest.raw = initialSession.session.request.raw;
+    // currentRequest.host = initialSession.session.request.host;
+    // currentRequest.port = initialSession.session.request.port;
+    // currentRequest.isTLS = initialSession.session.request.isTLS;
+    // currentRequest.SNI = initialSession.session.request.SNI;
 
-    const prompt = convertToModelMessages(messages);
+    const prompt = convertToModelMessages(sanitizeUiMessages(messages));
     const configStore = useConfigStore();
 
     const openrouter = createOpenRouter({
       apiKey: configStore.openRouterApiKey,
       extraBody: {
-        parallel_tool_calls: false,
+        parallel_tool_calls: true,
         reasoning: {
           max_tokens: configStore.reasoningConfig.max_tokens,
           enabled: configStore.reasoningConfig.enabled,
@@ -101,18 +166,47 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
             setRequestMethod: setRequestMethodTool,
             setRequestHeader: setRequestHeaderTool,
             setRequestBody: setRequestBodyTool,
+            updateCookie: updateCookieTool,
+            addCookie: addCookieTool,
+            deleteCookie: deleteCookieTool,
             runJavaScript: runJavaScriptTool,
             replaceRequestText: replaceRequestTextTool,
             removeRequestQuery: removeRequestQueryTool,
             removeRequestHeader: removeRequestHeaderTool,
             grepResponse: grepResponseTool,
+            grepRequest: grepRequestTool,
+            searchRequests: searchRequestsTool,
+            fetchReplayEntries: fetchReplayEntriesTool,
+            // navigateReplayEntry: navigateReplayEntryTool, // Currently not working in the Caido UI, so we're not using it.
             addTodo: addTodoTool,
+            addLearning: addLearningTool,
+            updateLearning: updateLearningTool,
+            removeLearnings: removeLearningsTool,
             addFinding: addFindingTool,
+            environementContext: environementContextTool,
+            updateEnvironment: updateEnvironmentTool,
+            addEnvironment: addEnvironmentTool,
+            deleteEnvironment: deleteEnvironmentTool,
           },
           onFinish: () => {
             this.toolContext.todoManager.clearTodos();
           },
-          prepareStep: (step) => {
+          prepareStep: async (step) => {
+            let environmentSummaries: ReturnType<
+              typeof summarizeAgentEnvironments
+            > = [];
+            try {
+              const environments = await fetchAgentEnvironments(
+                this.toolContext.sdk,
+              );
+              environmentSummaries = summarizeAgentEnvironments(environments);
+            } catch (error) {
+              console.warn(
+                "[Shift Agents] Failed to load environments for context",
+                error,
+              );
+            }
+
             return {
               messages: [
                 ...step.messages,
@@ -121,7 +215,8 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
                   content: contextMessages({
                     currentRequest: this.toolContext.replaySession,
                     todoManager: this.toolContext.todoManager,
-                    memory: configStore.memory,
+                    learnings: configStore.learnings,
+                    environmentSummaries,
                   }),
                 },
               ],
@@ -149,8 +244,6 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
                 variant: "error",
               },
             );
-
-            console.error(error);
           },
         });
 
@@ -201,27 +294,52 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
 function contextMessages({
   currentRequest,
   todoManager,
-  memory,
+  learnings,
+  environmentSummaries,
 }: {
   currentRequest: ReplaySession;
   todoManager: TodoManager;
-  memory: string;
+  learnings: string[];
+  environmentSummaries: ReturnType<typeof summarizeAgentEnvironments>;
 }): string {
   let contextContent =
     "This message gets automatically attached. Here is the current context about the environment and replay session:\n\n";
 
   contextContent += `<|current_request|>
     The HTTP request you are analyzing:
+    <|active_entry_id|>${currentRequest.activeEntryId}</|active_entry_id|>
     <|raw|>${currentRequest.request.raw}</|raw|>
     <|host|>${currentRequest.request.host}</|host|>
     <|port|>${currentRequest.request.port}</|port|>
     </|current_request|>
     \n\n`;
 
-  if (memory.trim()) {
-    contextContent += `<|memory|>
-    ${memory.trim()}
-    </|memory|>
+  if (learnings.length > 0) {
+    const serializedLearnings = JSON.stringify(
+      learnings.map((value, index) => ({ index, value })),
+      null,
+      2,
+    );
+    contextContent += `<|learnings|>
+    ${serializedLearnings}
+    </|learnings|>
+    \n\n`;
+  }
+
+  if (environmentSummaries.length > 0) {
+    const serializedEnvironments = JSON.stringify(
+      environmentSummaries.map((environment) => ({
+        id: environment.id,
+        name: environment.name,
+        variableKeys: environment.variableKeys,
+      })),
+      null,
+      2,
+    );
+
+    contextContent += `<|environments|>
+    ${serializedEnvironments}
+    </|environments|>
     \n\n`;
   }
 
@@ -260,7 +378,6 @@ function contextMessages({
       You can mark pending todos as finished using the todo tool with their IDs.
       </todos>\n\n`;
   }
-
   return contextContent.trim();
 }
 
@@ -279,7 +396,15 @@ function buildSystemPrompt(agentId: string) {
   if (selectedPrompts.length > 0) {
     prompt += `\n<additional_instructions>\n`;
     prompt += selectedPrompts
-      .map((prompt) => `<prompt>${prompt.content}</prompt>`)
+      .map((prompt) => {
+        const projectSpecificContent = configStore.getProjectSpecificPrompt(
+          prompt.id,
+        );
+        const fullContent = projectSpecificContent
+          ? `${prompt.content}\n\n${projectSpecificContent}`
+          : prompt.content;
+        return `<prompt>${fullContent}</prompt>`;
+      })
       .join("\n");
     prompt += `\n</additional_instructions>`;
   }

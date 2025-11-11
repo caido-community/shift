@@ -10,8 +10,11 @@ import type { FrontendSDK } from "./types";
 import App from "./views/App.vue";
 
 import { setupAgents } from "@/agents";
+import { setupReplayCollectionCorrelation } from "@/agents/collectionAutoExecute";
+import { InputDialog } from "@/components/inputDialog";
 import { createDOMManager } from "@/dom";
 import { setupFloat } from "@/float";
+import { setupTestShift } from "@/float/testShift";
 import { setupRenaming } from "@/renaming";
 import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
@@ -52,10 +55,13 @@ export const init = (sdk: FrontendSDK) => {
   setupAgents(sdk);
   setupFloat(sdk);
   setupRenaming(sdk);
+  setupReplayCollectionCorrelation(sdk);
+  setupTestShift(sdk);
 
   sdk.commands.register("shift:add-to-memory", {
-    name: "Add to memory",
+    name: "Add Learning",
     run: () => {
+      let dialog: { close: () => void } = { close: () => {} };
       const configStore = useConfigStore();
 
       const selection = window.getSelection();
@@ -64,19 +70,64 @@ export const init = (sdk: FrontendSDK) => {
       const text = selection.toString();
       if (text.length === 0) return;
 
-      configStore.memory += "\n" + text;
+      const handleConfirm = (value: string) => {
+        dialog.close();
+        if (value.trim() === "") {
+          return;
+        }
 
-      sdk.window.showToast(`Text has been saved to your Shift memory`, {
-        variant: "info",
-      });
+        void (async () => {
+          try {
+            await configStore.addLearning(value);
+            sdk.window.showToast(`Learning stored for this project`, {
+              variant: "info",
+            });
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Unknown error";
+            sdk.window.showToast(
+              `[Shift] Failed to store learning: ${message}`,
+              {
+                variant: "error",
+              },
+            );
+          }
+        })();
+      };
+
+      const handleCancel = () => {
+        dialog.close();
+      };
+
+      dialog = sdk.window.showDialog(
+        {
+          component: InputDialog,
+          props: {
+            title: "Add Learning",
+            placeholder: "Enter learning content...",
+            initialValue: text,
+            onConfirm: () => handleConfirm,
+            onCancel: () => handleCancel,
+          },
+        },
+        {
+          title: "Add Learning",
+          closeOnEscape: true,
+          closable: true,
+          draggable: true,
+          modal: true,
+          position: "center",
+        },
+      );
     },
   });
 
-  sdk.shortcuts.register("shift:add-to-memory", ["shift", "m"]);
+  sdk.shortcuts.register("shift:add-to-memory", ["shift", "control", "m"]);
 
   const domManager = createDOMManager(sdk);
   domManager.drawer.start();
   domManager.session.start();
+  domManager.indicators.start();
 
   domManager.session.onSelected((sessionId) => {
     const agentStore = useAgentsStore();

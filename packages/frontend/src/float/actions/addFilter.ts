@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -30,17 +31,9 @@ export const addFilter: ActionDefinition<AddFilterInput> = {
         };
       }
 
-      return {
-        success: true,
-        frontend_message: `Filter ${name} created successfully`,
-      };
+      return actionSuccess(`Filter ${name} created successfully`);
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to create filter: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      };
+      return actionError("Failed to create filter", error);
     }
   },
 };

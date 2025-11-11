@@ -1,6 +1,12 @@
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import {
+  actionError,
+  actionSuccess,
+  replaceEditorContent,
+  withActiveEditorView,
+} from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -25,43 +31,22 @@ export const activeEditorAddQueryParameter: ActionDefinition<ActiveEditorAddQuer
     execute: (
       sdk: FrontendSDK,
       { name, value }: ActiveEditorAddQueryParameterInput["parameters"],
-    ) => {
-      const view = sdk.window.getActiveEditor()?.getEditorView();
+    ) =>
+      withActiveEditorView(sdk, (view) => {
+        try {
+          const currentText = view.state.doc.toString();
 
-      if (view === undefined) {
-        return {
-          success: false,
-          error: "No active editor view found",
-        };
-      }
+          const modifiedRequest = HttpForge.create(currentText)
+            .addQueryParam(name, value)
+            .build();
 
-      try {
-        const currentText = view.state.doc.toString();
+          replaceEditorContent(view, modifiedRequest);
 
-        const modifiedRequest = HttpForge.create(currentText)
-          .addQueryParam(name, value)
-          .build();
-
-        view.dispatch({
-          changes: {
-            from: 0,
-            to: view.state.doc.length,
-            insert: modifiedRequest,
-          },
-        });
-        view.focus();
-
-        return {
-          success: true,
-          frontend_message: `Query parameter ${name} added in active editor`,
-        };
-      } catch (error) {
-        return {
-          success: false,
-          error: `Failed to modify query parameter: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`,
-        };
-      }
-    },
+          return actionSuccess(
+            `Query parameter ${name} added in active editor`,
+          );
+        } catch (error) {
+          return actionError("Failed to modify query parameter", error);
+        }
+      }),
   };

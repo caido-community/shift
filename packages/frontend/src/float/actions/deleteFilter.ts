@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { runAction } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -16,24 +17,10 @@ export const deleteFilter: ActionDefinition<DeleteFilterInput> = {
   name: "deleteFilter",
   description: "Delete a filter by ID",
   inputSchema: deleteFilterSchema,
-  execute: async (
-    sdk: FrontendSDK,
-    { id }: DeleteFilterInput["parameters"],
-  ) => {
-    try {
-      await sdk.filters.delete(id);
-
-      return {
-        success: true,
-        frontend_message: "Filter deleted successfully",
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: `Failed to delete filter: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      };
-    }
-  },
+  execute: async (sdk: FrontendSDK, { id }: DeleteFilterInput["parameters"]) =>
+    runAction(
+      () => sdk.filters.delete(id),
+      "Filter deleted successfully",
+      "Failed to delete filter",
+    ),
 };

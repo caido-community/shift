@@ -57,6 +57,7 @@ function buildToolContext({
     sdk,
     replaySession: {
       id: initialSession.id,
+      activeEntryId: initialSession.activeEntryId,
       request: requestState,
       updateRequestRaw: (updater) => {
         const newRaw = updater(requestState.raw);
