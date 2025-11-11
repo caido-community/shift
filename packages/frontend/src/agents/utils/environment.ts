@@ -1,60 +1,36 @@
 import { type FrontendSDK } from "@/types";
 
 type GraphQLEnvironmentVariable = {
-  name?: string | null;
-  value?: string | null;
-  kind?: string | null;
+  name?: string;
+  value?: string;
+  kind?: string;
 };
 
+type GraphQLEnvironmentEdge = {
+  node?: GraphQLEnvironment;
+};
+
+type GraphQLEnvironmentCollection =
+  | {
+      nodes?: Array<GraphQLEnvironment | undefined>;
+      edges?: Array<GraphQLEnvironmentEdge | undefined>;
+    }
+  | Array<GraphQLEnvironment | undefined>
+  | undefined;
+
 type GraphQLEnvironment = {
-  id?: string | null;
-  name?: string | null;
-  version?: string | number | null;
-  variables?: Array<GraphQLEnvironmentVariable | null | undefined> | null;
+  id?: string;
+  name?: string;
+  version?: string | number;
+  variables?: Array<GraphQLEnvironmentVariable | undefined>;
 };
 
 type EnvironmentContextPayload = {
-  selected?: GraphQLEnvironment | null;
-  global?: GraphQLEnvironment | null;
-  environments?:
-    | {
-        nodes?: Array<GraphQLEnvironment | null | undefined> | null;
-        edges?:
-          | Array<
-              | { node?: GraphQLEnvironment | null | undefined }
-              | null
-              | undefined
-            >
-          | null;
-      }
-    | Array<GraphQLEnvironment | null | undefined>
-    | null;
-  recent?:
-    | {
-        nodes?: Array<GraphQLEnvironment | null | undefined> | null;
-        edges?:
-          | Array<
-              | { node?: GraphQLEnvironment | null | undefined }
-              | null
-              | undefined
-            >
-          | null;
-      }
-    | Array<GraphQLEnvironment | null | undefined>
-    | null;
-  all?:
-    | {
-        nodes?: Array<GraphQLEnvironment | null | undefined> | null;
-        edges?:
-          | Array<
-              | { node?: GraphQLEnvironment | null | undefined }
-              | null
-              | undefined
-            >
-          | null;
-      }
-    | Array<GraphQLEnvironment | null | undefined>
-    | null;
+  selected?: GraphQLEnvironment;
+  global?: GraphQLEnvironment;
+  environments?: GraphQLEnvironmentCollection;
+  recent?: GraphQLEnvironmentCollection;
+  all?: GraphQLEnvironmentCollection;
   [key: string]: unknown;
 };
 
@@ -81,21 +57,37 @@ export type AgentEnvironmentSummary = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
+const coerceEnvironmentVariable = (
+  value: unknown,
+): GraphQLEnvironmentVariable | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  return value as GraphQLEnvironmentVariable;
+};
+
+const coerceEnvironment = (value: unknown): GraphQLEnvironment | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  return value as GraphQLEnvironment;
+};
+
 const normalizeVariable = (
-  variable: GraphQLEnvironmentVariable | null | undefined,
-): AgentEnvironmentVariable | null => {
-  if (variable === null || variable === undefined) {
-    return null;
+  variable: GraphQLEnvironmentVariable | undefined,
+): AgentEnvironmentVariable | undefined => {
+  if (variable === undefined) {
+    return undefined;
   }
 
   const { name, value, kind } = variable;
 
   if (typeof name !== "string" || name.length === 0) {
-    return null;
+    return undefined;
   }
 
   if (typeof value !== "string") {
-    return null;
+    return undefined;
   }
 
   return {
@@ -106,10 +98,10 @@ const normalizeVariable = (
 };
 
 const normalizeEnvironment = (
-  environment: GraphQLEnvironment | null | undefined,
-): AgentEnvironment | null => {
-  if (environment === null || environment === undefined) {
-    return null;
+  environment: GraphQLEnvironment | undefined,
+): AgentEnvironment | undefined => {
+  if (environment === undefined) {
+    return undefined;
   }
 
   const { id, name, version, variables } = environment;
@@ -123,16 +115,17 @@ const normalizeEnvironment = (
         : undefined;
 
   if (resolvedId === undefined) {
-    return null;
+    return undefined;
   }
 
   const cleanVariables = Array.isArray(variables)
-    ? variables
-        .map(normalizeVariable)
-        .filter(
-          (variable): variable is AgentEnvironmentVariable =>
-            variable !== null,
-        )
+    ? variables.reduce<AgentEnvironmentVariable[]>((accumulator, entry) => {
+        const normalized = normalizeVariable(coerceEnvironmentVariable(entry));
+        if (normalized !== undefined) {
+          accumulator.push(normalized);
+        }
+        return accumulator;
+      }, [])
     : [];
 
   return {
@@ -146,18 +139,15 @@ const normalizeEnvironment = (
   };
 };
 
-const collectNodes = (
-  value: EnvironmentContextPayload[keyof EnvironmentContextPayload],
-): GraphQLEnvironment[] => {
+const collectNodes = (value: unknown): GraphQLEnvironment[] => {
   if (value === null || value === undefined) {
     return [];
   }
 
   if (Array.isArray(value)) {
-    return value.filter(
-      (node): node is GraphQLEnvironment =>
-        node !== null && node !== undefined,
-    );
+    return value
+      .map((node) => coerceEnvironment(node))
+      .filter((node): node is GraphQLEnvironment => node !== undefined);
   }
 
   if (!isRecord(value)) {
@@ -165,25 +155,30 @@ const collectNodes = (
   }
 
   const nodes: GraphQLEnvironment[] = [];
+  const { nodes: rawNodes, edges: rawEdges } = value as {
+    nodes?: unknown;
+    edges?: unknown;
+  };
 
-  if (Array.isArray(value.nodes)) {
-    for (const node of value.nodes) {
-      if (node !== null && node !== undefined) {
-        nodes.push(node);
+  if (Array.isArray(rawNodes)) {
+    for (const node of rawNodes) {
+      const normalized = coerceEnvironment(node);
+      if (normalized !== undefined) {
+        nodes.push(normalized);
       }
     }
   }
 
-  if (Array.isArray(value.edges)) {
-    for (const edge of value.edges) {
-      if (
-        edge !== null &&
-        edge !== undefined &&
-        isRecord(edge) &&
-        edge.node !== null &&
-        edge.node !== undefined
-      ) {
-        nodes.push(edge.node as GraphQLEnvironment);
+  if (Array.isArray(rawEdges)) {
+    for (const edge of rawEdges) {
+      if (!isRecord(edge)) {
+        continue;
+      }
+      const normalized = coerceEnvironment(
+        (edge as GraphQLEnvironmentEdge | undefined)?.node,
+      );
+      if (normalized !== undefined) {
+        nodes.push(normalized);
       }
     }
   }
@@ -194,13 +189,15 @@ const collectNodes = (
 export const fetchAgentEnvironmentById = async (
   sdk: FrontendSDK,
   id: string,
-): Promise<AgentEnvironment | null> => {
+): Promise<AgentEnvironment | undefined> => {
   try {
     const result = await sdk.graphql.environment({ id });
-    const environment = (result as { environment?: GraphQLEnvironment })?.environment;
+    const environment = coerceEnvironment(
+      (result as { environment?: unknown })?.environment,
+    );
     return normalizeEnvironment(environment);
   } catch {
-    return null;
+    return undefined;
   }
 };
 
@@ -220,9 +217,9 @@ export const fetchAgentEnvironments = async (
     const candidateMap = new Map<string, AgentEnvironment>();
     const detailedIds = new Set<string>();
 
-    const registerEnvironment = (candidate: GraphQLEnvironment | null | undefined) => {
+    const registerEnvironment = (candidate: GraphQLEnvironment | undefined) => {
       const normalized = normalizeEnvironment(candidate);
-      if (normalized === null) {
+      if (normalized === undefined) {
         return;
       }
 
@@ -232,8 +229,8 @@ export const fetchAgentEnvironments = async (
       }
     };
 
-    registerEnvironment(context.selected ?? null);
-    registerEnvironment(context.global ?? null);
+    registerEnvironment(coerceEnvironment(context.selected));
+    registerEnvironment(coerceEnvironment(context.global));
 
     for (const key of Object.keys(context)) {
       const value = context[key as keyof EnvironmentContextPayload];
@@ -254,7 +251,7 @@ export const fetchAgentEnvironments = async (
     );
 
     for (const environment of detailedResults) {
-      if (environment === null) {
+      if (environment === undefined) {
         continue;
       }
       candidateMap.set(environment.id, environment);
@@ -277,7 +274,7 @@ export const findAgentEnvironment = (
     id?: string;
     name?: string;
   },
-): AgentEnvironment | null => {
+): AgentEnvironment | undefined => {
   const idLower = typeof id === "string" ? id.toLowerCase() : undefined;
   const nameLower = typeof name === "string" ? name.toLowerCase() : undefined;
 
@@ -300,18 +297,16 @@ export const findAgentEnvironment = (
     return false;
   };
 
-  return environments.find(matches) ?? null;
+  return environments.find(matches) ?? undefined;
 };
 
 export const findAgentEnvironmentVariable = (
   environment: AgentEnvironment,
   variableName: string,
-): AgentEnvironmentVariable | null => {
+): AgentEnvironmentVariable | undefined => {
   const target = variableName.toLowerCase();
-  return (
-    environment.variables.find(
-      (variable) => variable.name.toLowerCase() === target,
-    ) ?? null
+  return environment.variables.find(
+    (variable) => variable.name.toLowerCase() === target,
   );
 };
 
@@ -324,5 +319,3 @@ export const summarizeAgentEnvironments = (
     variableKeys: environment.variables.map((variable) => variable.name),
     totalVariables: environment.variables.length,
   }));
-
-

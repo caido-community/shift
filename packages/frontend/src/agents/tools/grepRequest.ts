@@ -5,7 +5,9 @@ import { type ToolContext } from "@/agents/types";
 
 const GrepRequestSchema = z
   .object({
-    requestID: z.string().describe("The string representation of the request ID to read from"),
+    requestID: z
+      .string()
+      .describe("The string representation of the request ID to read from"),
     offset: z
       .number()
       .optional()
@@ -49,8 +51,7 @@ const GrepRequestSchema = z
   );
 
 export const grepRequestTool = tool({
-  description:
-    `The grepRequest tool is used to read data about a request. It is useful for investigating how other requests in Caido look, what cookies, parameter, etc are being sent.
+  description: `The grepRequest tool is used to read data about a request. It is useful for investigating how other requests in Caido look, what cookies, parameter, etc are being sent.
     This tool should be used to get data like: cookies, parameter, headers, body values, etc.
     This tool should be used to investigate parts of a request that are interesting to give more context on how the app/api/domain works.
     Read request content in three modes: 
@@ -92,7 +93,8 @@ export const grepRequestTool = tool({
             const regexPattern = new RegExp(input.regex, "g");
             let match: RegExpExecArray | undefined;
             while (
-              (match = regexPattern.exec(fullRequest) ?? undefined) !== undefined
+              (match = regexPattern.exec(fullRequest) ?? undefined) !==
+              undefined
             ) {
               allMatches.push(match.index);
               if (regexPattern.lastIndex === match.index) {
@@ -162,4 +164,3 @@ export const grepRequestTool = tool({
     }
   },
 });
-

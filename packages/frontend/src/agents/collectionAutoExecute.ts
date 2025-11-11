@@ -32,8 +32,7 @@ export const ensureShiftCollection = async (sdk: FrontendSDK) => {
 
     return await sdk.replay.createCollection(SHIFT_COLLECTION_NAME);
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     sdk.window.showToast(
       `[Shift] Failed to ensure Shift collection exists: ${errorMessage}`,
       { variant: "error" },
@@ -171,10 +170,9 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      sdk.window.showToast(
-        `[Shift] Failed to launch agent: ${errorMessage}`,
-        { variant: "error" },
-      );
+      sdk.window.showToast(`[Shift] Failed to launch agent: ${errorMessage}`, {
+        variant: "error",
+      });
     }
   };
 
@@ -259,13 +257,16 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     }
   };
 
-  const loadCurrentSessions = async () => {
+  const loadCurrentSessions = () => {
     try {
       const collections = sdk.replay.getCollections();
       for (const collection of collections) {
-        if (!collection.sessionIds || !collection.id) continue;
-        for (const sessionId of collection.sessionIds) {
-          sessionToCollectionId.set(sessionId, collection.id);
+        const { sessionIds, id } = collection ?? {};
+        if (!Array.isArray(sessionIds) || typeof id !== "string") {
+          continue;
+        }
+        for (const sessionId of sessionIds) {
+          sessionToCollectionId.set(sessionId, id);
         }
       }
     } catch (error) {

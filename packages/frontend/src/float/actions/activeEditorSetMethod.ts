@@ -42,9 +42,7 @@ export const activeEditorSetMethod: ActionDefinition<ActiveEditorSetMethodInput>
 
           replaceEditorContent(view, modifiedRequest);
 
-          return actionSuccess(
-            `Method set to ${method} in active editor`,
-          );
+          return actionSuccess(`Method set to ${method} in active editor`);
         } catch (error) {
           return actionError("Failed to set method", error);
         }

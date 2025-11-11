@@ -76,17 +76,20 @@ const config = useConfigStore();
           Auto-create Shift Collection
         </label>
         <p class="text-sm text-surface-400">
-          Automatically create the Shift collection for this project when needed.
+          Automatically create the Shift collection for this project when
+          needed.
         </p>
       </div>
 
       <div class="flex items-center gap-2">
         <Checkbox
-          inputId="shift-auto-create"
           v-model="config.autoCreateShiftCollection"
+          input-id="shift-auto-create"
           binary
         />
-        <label class="text-sm" for="shift-auto-create">Enable auto-create</label>
+        <label class="text-sm" for="shift-auto-create"
+          >Enable auto-create</label
+        >
       </div>
     </div>
   </div>

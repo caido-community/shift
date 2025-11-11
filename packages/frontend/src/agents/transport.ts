@@ -13,33 +13,32 @@ import {
 import { BASE_SYSTEM_PROMPT } from "@/agents/prompt";
 import { type TodoManager } from "@/agents/todos";
 import {
-  addFindingTool,
-  addEnvironmentTool,
   addCookieTool,
+  addEnvironmentTool,
+  addFindingTool,
   addLearningTool,
   addTodoTool,
-  deleteEnvironmentTool,
   deleteCookieTool,
+  deleteEnvironmentTool,
+  environementContextTool,
   fetchReplayEntriesTool,
   grepRequestTool,
   grepResponseTool,
-  environementContextTool,
-  navigateReplayEntryTool,
   removeLearningsTool,
   removeRequestHeaderTool,
   removeRequestQueryTool,
-  updateEnvironmentTool,
   replaceRequestTextTool,
   runJavaScriptTool,
   searchRequestsTool,
   sendRequestTool,
   setRequestBodyTool,
-  updateCookieTool,
   setRequestHeaderTool,
   setRequestMethodTool,
   setRequestPathTool,
   setRequestQueryTool,
   setRequestRawTool,
+  updateCookieTool,
+  updateEnvironmentTool,
   updateLearningTool,
   updateTodoTool,
 } from "@/agents/tools";
@@ -211,15 +210,15 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
             return {
               messages: [
                 ...step.messages,
-            {
-              role: "user",
-              content: contextMessages({
-                currentRequest: this.toolContext.replaySession,
-                todoManager: this.toolContext.todoManager,
-                learnings: configStore.learnings,
-                environmentSummaries,
-              }),
-            },
+                {
+                  role: "user",
+                  content: contextMessages({
+                    currentRequest: this.toolContext.replaySession,
+                    todoManager: this.toolContext.todoManager,
+                    learnings: configStore.learnings,
+                    environmentSummaries,
+                  }),
+                },
               ],
             };
           },

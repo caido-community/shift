@@ -30,9 +30,7 @@ export const removeLearnings: ActionDefinition<RemoveLearningsInput> = {
   execute: async (_sdk, { indexes }) => {
     try {
       const configStore = useConfigStore();
-      const uniqueIndexes = [...new Set(indexes)].filter(
-        (index) => index >= 0,
-      );
+      const uniqueIndexes = [...new Set(indexes)].filter((index) => index >= 0);
 
       if (uniqueIndexes.length === 0) {
         return {
@@ -52,4 +50,3 @@ export const removeLearnings: ActionDefinition<RemoveLearningsInput> = {
     }
   },
 };
-

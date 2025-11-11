@@ -36,7 +36,7 @@ const ReplaceRequestTextSchema = z
   );
 
 export const replaceRequestTextTool = tool({
-  description:`
+  description: `
   The replaceRequestText tool is used to find and replace specific text strings anywhere in the HTTP request (headers, body, path, etc.). 
   ONLY use this tool if you cannot use the other more specific tools to achieve the same result.
   Supports literal string matching by default, and can optionally use regular expressions.
@@ -53,7 +53,9 @@ export const replaceRequestTextTool = tool({
           regex = new RegExp(input.match, normalizedFlags);
         } catch (regexError) {
           const message =
-            regexError instanceof Error ? regexError.message : String(regexError);
+            regexError instanceof Error
+              ? regexError.message
+              : String(regexError);
           return { error: `Invalid regex pattern: ${message}` };
         }
       }

@@ -1,12 +1,12 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { type ToolContext } from "@/agents/types";
 import {
   fetchAgentEnvironments,
   findAgentEnvironment,
   findAgentEnvironmentVariable,
 } from "@/agents/utils/environment";
-import { type ToolContext } from "@/agents/types";
 
 const EnvironementContextSchema = z
   .object({
@@ -65,13 +65,12 @@ export const environementContextTool = tool({
     }
 
     if (environmentId !== undefined || environmentName !== undefined) {
-      const environment =
-        findAgentEnvironment(environments, {
-          id: environmentId,
-          name: environmentName,
-        }) ?? null;
+      const environment = findAgentEnvironment(environments, {
+        id: environmentId,
+        name: environmentName,
+      });
 
-      if (environment === null) {
+      if (environment === undefined) {
         return {
           totalEnvironments: environments.length,
           error: "Environment not found.",
@@ -79,10 +78,12 @@ export const environementContextTool = tool({
       }
 
       if (variableName !== undefined) {
-        const variable =
-          findAgentEnvironmentVariable(environment, variableName) ?? null;
+        const variable = findAgentEnvironmentVariable(
+          environment,
+          variableName,
+        );
 
-        if (variable === null) {
+        if (variable === undefined) {
           return {
             environment: {
               id: environment.id,
@@ -113,5 +114,3 @@ export const environementContextTool = tool({
     };
   },
 });
-
-

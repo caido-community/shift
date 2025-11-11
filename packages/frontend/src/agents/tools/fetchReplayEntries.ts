@@ -12,33 +12,24 @@ const FetchReplayEntriesSchema = z.object({
     ),
 });
 
-type ReplayEntryNode = {
-  id?: string | null;
-  createdAt?: string | null;
-  request?: {
-    id?: string | null;
-    length?: number | null;
-    createdAt?: string | null;
-    host?: string | null;
-    port?: number | null;
-    method?: string | null;
-    path?: string | null;
-    query?: string | null;
-    response?: {
-      id?: string | null;
-      createdAt?: string | null;
-      length?: number | null;
-      roundtripTime?: number | null;
-      statusCode?: number | null;
-    } | null;
-  } | null;
-} | null;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const asString = (value: unknown): string | undefined =>
+  typeof value === "string" ? value : undefined;
+
+const asNumber = (value: unknown): number | undefined =>
+  typeof value === "number" ? value : undefined;
+
+const asRecord = (
+  value: unknown,
+): Record<string, unknown> | undefined => (isRecord(value) ? value : undefined);
 
 export const fetchReplayEntriesTool = tool({
   description: `List the entries that belong to a Caido replay session.
 Use this before grepRequest/grepResponse when you need to understand which requests and responses are present in the replay tab.
 The tool returns each entry, some metadata (path, method, etc) and requestId and responseId (if available).`,
-//These entries can be considered as "checkpoints" that you can revert to using the navigateReplayEntry tool.
+  //These entries can be considered as "checkpoints" that you can revert to using the navigateReplayEntry tool.
   inputSchema: FetchReplayEntriesSchema,
   execute: async (input, { experimental_context }) => {
     const context = experimental_context as ToolContext;
@@ -59,40 +50,51 @@ The tool returns each entry, some metadata (path, method, etc) and requestId and
         };
       }
 
-      const nodes = (session.entries?.nodes ?? []) as ReplayEntryNode[];
-      const entries = nodes.map((node) => {
-        const entryId = node?.id ?? undefined;
-        const request = node?.request ?? undefined;
-        const requestId = request?.id ?? undefined;
-        const responseId = request?.response?.id ?? undefined;
+      const rawNodes = Array.isArray(session.entries?.nodes)
+        ? session.entries?.nodes ?? []
+        : [];
+      const entries = rawNodes.map((rawNode) => {
+        const node = asRecord(rawNode);
+        const entryIdValue = node?.["id"];
+        const entryId =
+          typeof entryIdValue === "string" || typeof entryIdValue === "number"
+            ? String(entryIdValue)
+            : undefined;
+        const requestValue =
+          node !== undefined ? asRecord(node["request"]) : undefined;
+        const responseValue =
+          requestValue !== undefined
+            ? asRecord(requestValue["response"])
+            : undefined;
         const requestDetails =
-          request !== undefined
+          requestValue !== undefined
             ? {
-                id: requestId,
-                length: request?.length ?? undefined,
-                createdAt: request?.createdAt ?? undefined,
-                host: request?.host ?? undefined,
-                port: request?.port ?? undefined,
-                method: request?.method ?? undefined,
-                path: request?.path ?? undefined,
-                query: request?.query ?? undefined,
+                id: asString(requestValue["id"]),
+                length: asNumber(requestValue["length"]),
+                createdAt: asString(requestValue["createdAt"]),
+                host: asString(requestValue["host"]),
+                port: asNumber(requestValue["port"]),
+                method: asString(requestValue["method"]),
+                path: asString(requestValue["path"]),
+                query: asString(requestValue["query"]),
                 response:
-                  request?.response !== undefined && request?.response !== null
+                  responseValue !== undefined
                     ? {
-                        id: responseId,
-                        createdAt: request.response.createdAt ?? undefined,
-                        length: request.response.length ?? undefined,
-                        roundtripTime: request.response.roundtripTime ?? undefined,
-                        statusCode: request.response.statusCode ?? undefined,
+                        id: asString(responseValue["id"]),
+                        createdAt: asString(responseValue["createdAt"]),
+                        length: asNumber(responseValue["length"]),
+                        roundtripTime: asNumber(responseValue["roundtripTime"]),
+                        statusCode: asNumber(responseValue["statusCode"]),
                       }
                     : undefined,
               }
             : undefined;
+        const responseId = requestDetails?.response?.id;
         return {
           entryIndex: entryId,
-          requestId,
+          requestId: requestDetails?.id,
           responseId,
-          createdAt: node?.createdAt ?? undefined,
+          createdAt: asString(node?.["createdAt"]),
           request: requestDetails,
         };
       });
@@ -113,5 +115,3 @@ The tool returns each entry, some metadata (path, method, etc) and requestId and
     }
   },
 });
-
-

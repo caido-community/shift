@@ -1,11 +1,25 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import {
-  fetchAgentEnvironmentById,
-  AgentEnvironment,
-} from "@/agents/utils/environment";
 import { type ToolContext } from "@/agents/types";
+import {
+  type AgentEnvironment,
+  fetchAgentEnvironmentById,
+} from "@/agents/utils/environment";
+
+type CreateEnvironmentMutation =
+  ToolContext["sdk"]["graphql"]["createEnvironment"];
+type CreateEnvironmentArgs = Parameters<CreateEnvironmentMutation>[0];
+type CreateEnvironmentInput = CreateEnvironmentArgs extends {
+  input: infer Input;
+}
+  ? Input
+  : never;
+type CreateEnvironmentVariableInput = CreateEnvironmentInput extends {
+  variables: Array<infer Variable>;
+}
+  ? Variable
+  : never;
 
 const EnvironmentVariableSchema = z.object({
   name: z
@@ -41,10 +55,10 @@ const ensureShiftPrefix = (name: string): string =>
   name.startsWith("[Shift] ") ? name : `[Shift] ${name}`;
 
 const normalizeEnvironmentResult = (
-  environment: AgentEnvironment | null | undefined,
+  environment: AgentEnvironment | undefined,
 ) => {
-  if (environment === null || environment === undefined) {
-    return null;
+  if (environment === undefined) {
+    return undefined;
   }
 
   return {
@@ -61,11 +75,11 @@ export const addEnvironmentTool = tool({
     const { sdk } = context;
 
     const normalizedName = ensureShiftPrefix(name.trim());
-    const payload =
+    const payload: CreateEnvironmentVariableInput[] =
       variables?.map((variable) => ({
         name: variable.name,
         value: variable.value,
-        kind: variable.kind ?? "PLAIN",
+        kind: (variable.kind ?? "PLAIN") as CreateEnvironmentVariableInput["kind"],
       })) ?? [];
 
     try {
@@ -76,15 +90,19 @@ export const addEnvironmentTool = tool({
         },
       });
 
+      const environmentPayload = (
+        result as {
+          createEnvironment?: {
+            environment?: { id?: unknown };
+          };
+        }
+      )?.createEnvironment?.environment;
       const createdEnvironmentId =
-        (result as {
-          createEnvironment?: { environment?: { id?: string | null } | null };
-        })?.createEnvironment?.environment?.id ?? null;
+        typeof environmentPayload?.id === "string"
+          ? environmentPayload.id
+          : undefined;
 
-      if (
-        createdEnvironmentId === null ||
-        typeof createdEnvironmentId !== "string"
-      ) {
+      if (createdEnvironmentId === undefined) {
         return {
           error: "Environment creation did not return a usable identifier.",
         };
@@ -110,5 +128,3 @@ export const addEnvironmentTool = tool({
     }
   },
 });
-
-

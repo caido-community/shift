@@ -22,10 +22,7 @@ export const deleteScope: ActionDefinition<DeleteScopeInput> = {
   name: "deleteScope",
   description: "Delete a scope by id",
   inputSchema: deleteScopeSchema,
-  execute: async (
-    sdk: FrontendSDK,
-    { id }: DeleteScopeInput["parameters"],
-  ) => {
+  execute: async (sdk: FrontendSDK, { id }: DeleteScopeInput["parameters"]) => {
     try {
       const deleted = await sdk.scopes.deleteScope(id);
       if (!deleted) {

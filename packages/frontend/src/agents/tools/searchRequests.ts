@@ -32,8 +32,7 @@ const SearchRequestsSchema = z.object({
 });
 
 export const searchRequestsTool = tool({
-  description:
-    `This is your Caido search tool. Use this to look at requests that come through Caido's proxy. This is useful for:
+  description: `This is your Caido search tool. Use this to look at requests that come through Caido's proxy. This is useful for:
     * Investigation of details of how the app/api/domain works
     * Fetching IDs, session cookies, session tokens, etc needed to recreate requests
     * Looking for requests that are successful to learn from them (what auth, CSRF tokens, etc are being used)
@@ -125,4 +124,3 @@ export const searchRequestsTool = tool({
     }
   },
 });
-

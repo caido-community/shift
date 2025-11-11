@@ -25,7 +25,7 @@ export type UpdateLearningInput = z.infer<typeof updateLearningSchema>;
 
 export const updateLearning: ActionDefinition<UpdateLearningInput> = {
   name: "updateLearning",
-  description:`
+  description: `
     Replace the content of an existing project learning entry by its index.
     When updating a learning, you should provide the complete value, not a summary.
     Make this learning concise, but informative for yourself in the future to understand things about the target.
@@ -51,4 +51,3 @@ export const updateLearning: ActionDefinition<UpdateLearningInput> = {
     }
   },
 };
-

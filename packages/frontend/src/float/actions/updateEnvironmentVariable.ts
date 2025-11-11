@@ -42,86 +42,79 @@ export type UpdateEnvironmentVariableInput = z.infer<
   typeof updateEnvironmentVariableSchema
 >;
 
-export const updateEnvironmentVariable: ActionDefinition<
-  UpdateEnvironmentVariableInput
-> = {
-  name: "updateEnvironmentVariable",
-  description:
-    "Create or update a variable in an environment by id (defaults to the selected environment, or Global if none selected)",
-  inputSchema: updateEnvironmentVariableSchema,
-  execute: async (
-    sdk: FrontendSDK,
-    {
-      environmentId,
-      variable,
-    }: UpdateEnvironmentVariableInput["parameters"],
-  ) => {
-    try {
-      const environment = await resolveEnvironment(sdk, environmentId);
+export const updateEnvironmentVariable: ActionDefinition<UpdateEnvironmentVariableInput> =
+  {
+    name: "updateEnvironmentVariable",
+    description:
+      "Create or update a variable in an environment by id (defaults to the selected environment, or Global if none selected)",
+    inputSchema: updateEnvironmentVariableSchema,
+    execute: async (
+      sdk: FrontendSDK,
+      { environmentId, variable }: UpdateEnvironmentVariableInput["parameters"],
+    ) => {
+      try {
+        const environment = await resolveEnvironment(sdk, environmentId);
 
-      if (environment === null) {
-        return {
-          success: false,
-          error: "Unable to resolve environment to update",
-        };
-      }
-
-      const variables = (environment.variables ?? []).reduce<
-        NormalizedEnvironmentVariable[]
-      >((acc, existingVariable) => {
-        if (
-          existingVariable === null ||
-          existingVariable === undefined ||
-          typeof existingVariable.name !== "string" ||
-          typeof existingVariable.value !== "string"
-        ) {
-          return acc;
+        if (environment === undefined) {
+          return {
+            success: false,
+            error: "Unable to resolve environment to update",
+          };
         }
 
-        acc.push(
-          normalizeEnvironmentVariable({
-            name: existingVariable.name,
-            value: existingVariable.value,
-            kind:
-              typeof existingVariable.kind === "string"
-                ? existingVariable.kind
-                : undefined,
-          }),
+        const variables = (environment.variables ?? []).reduce<
+          NormalizedEnvironmentVariable[]
+        >((acc, existingVariable) => {
+          if (
+            existingVariable === null ||
+            existingVariable === undefined ||
+            typeof existingVariable.name !== "string" ||
+            typeof existingVariable.value !== "string"
+          ) {
+            return acc;
+          }
+
+          acc.push(
+            normalizeEnvironmentVariable({
+              name: existingVariable.name,
+              value: existingVariable.value,
+              kind:
+                typeof existingVariable.kind === "string"
+                  ? existingVariable.kind
+                  : undefined,
+            }),
+          );
+
+          return acc;
+        }, []);
+
+        const normalizedVariable = normalizeEnvironmentVariable({
+          name: variable.name,
+          value: variable.value,
+          kind: variable.kind,
+        });
+        const index = variables.findIndex(
+          (existingVariable) => existingVariable.name === variable.name,
         );
 
-        return acc;
-      }, []);
+        if (index >= 0) {
+          variables[index] = normalizedVariable;
+        } else {
+          variables.push(normalizedVariable);
+        }
 
-      const normalizedVariable = normalizeEnvironmentVariable({
-        name: variable.name,
-        value: variable.value,
-        kind: variable.kind,
-      });
-      const index = variables.findIndex(
-        (existingVariable) => existingVariable.name === variable.name,
-      );
+        await sdk.graphql.updateEnvironment({
+          id: environment.id,
+          input: {
+            name: environment.name,
+            version: environment.version,
+            variables,
+          },
+        });
 
-      if (index >= 0) {
-        variables[index] = normalizedVariable;
-      } else {
-        variables.push(normalizedVariable);
+        return actionSuccess(`Variable ${variable.name} updated successfully`);
+      } catch (error) {
+        return actionError("Failed to update environment variable", error);
       }
-
-      await sdk.graphql.updateEnvironment({
-        id: environment.id,
-        input: {
-          name: environment.name,
-          version: environment.version,
-          variables,
-        },
-      });
-
-      return actionSuccess(
-        `Variable ${variable.name} updated successfully`,
-      );
-    } catch (error) {
-      return actionError("Failed to update environment variable", error);
-    }
-  },
-};
-
+    },
+  };

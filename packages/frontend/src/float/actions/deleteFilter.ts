@@ -17,10 +17,7 @@ export const deleteFilter: ActionDefinition<DeleteFilterInput> = {
   name: "deleteFilter",
   description: "Delete a filter by ID",
   inputSchema: deleteFilterSchema,
-  execute: async (
-    sdk: FrontendSDK,
-    { id }: DeleteFilterInput["parameters"],
-  ) =>
+  execute: async (sdk: FrontendSDK, { id }: DeleteFilterInput["parameters"]) =>
     runAction(
       () => sdk.filters.delete(id),
       "Filter deleted successfully",

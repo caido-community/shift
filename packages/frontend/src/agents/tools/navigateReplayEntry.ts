@@ -53,5 +53,3 @@ Use this after listing entries with fetchReplayEntries to focus the replay tab o
     }
   },
 });
-
-

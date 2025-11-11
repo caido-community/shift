@@ -73,16 +73,23 @@ const commitLearning = async (index: number) => {
   }
 };
 
-const handleEditorKeydown = async (
-  event: KeyboardEvent,
-  index: number,
-) => {
+const handleEditorKeydown = async (event: KeyboardEvent, index: number) => {
   if (
     (event.key === "Enter" && event.metaKey) ||
     (event.key === "Enter" && event.ctrlKey)
   ) {
     event.preventDefault();
     await commitLearning(index);
+  }
+};
+
+const handleNewLearningKeydown = (event: KeyboardEvent) => {
+  if (
+    (event.key === "Enter" && event.ctrlKey) ||
+    (event.key === "Enter" && event.metaKey)
+  ) {
+    event.preventDefault();
+    void handleAddLearning();
   }
 };
 
@@ -145,8 +152,8 @@ const handleClearAll = async () => {
 
     <div class="flex items-center justify-between gap-2">
       <div class="text-sm text-surface-400">
-        {{ rows.length }} learning{{ rows.length === 1 ? "" : "s" }} stored
-        for this project.
+        {{ rows.length }} learning{{ rows.length === 1 ? "" : "s" }} stored for
+        this project.
       </div>
       <div class="flex gap-2">
         <Button
@@ -191,7 +198,7 @@ const handleClearAll = async () => {
         v-else
         v-model:selection="selectedRows"
         :value="rows"
-        :dataKey="'index'"
+        :data-key="'index'"
         selection-mode="multiple"
         scrollable
         scroll-height="100%"
@@ -247,17 +254,7 @@ const handleClearAll = async () => {
         placeholder="Paste IDs, tokens, URLs, or other durable notes here..."
         class="w-full"
         :disabled="addIsPending"
-        @keydown="
-          (event: KeyboardEvent) => {
-            if (
-              (event.key === 'Enter' && event.ctrlKey) ||
-              (event.key === 'Enter' && event.metaKey)
-            ) {
-              event.preventDefault();
-              handleAddLearning();
-            }
-          }
-        "
+        @keydown="handleNewLearningKeydown"
       />
       <div class="flex justify-end">
         <Button
@@ -272,4 +269,3 @@ const handleClearAll = async () => {
     </div>
   </div>
 </template>
-

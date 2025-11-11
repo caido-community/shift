@@ -14,28 +14,23 @@ type EnvironmentResult = Awaited<
   ReturnType<FrontendSDK["graphql"]["environment"]>
 >;
 
-type EnvironmentContextResult = Awaited<
-  ReturnType<FrontendSDK["graphql"]["environmentContext"]>
->;
+type Environment = EnvironmentResult extends { environment?: infer T }
+  ? NonNullable<T>
+  : never;
 
-type Environment =
-  EnvironmentResult extends { environment?: infer T }
-    ? NonNullable<T>
-    : never;
+type EnvironmentVariable = Environment extends {
+  variables?: infer V;
+}
+  ? V extends Array<infer P>
+    ? P
+    : { name: string; value: string; kind?: string }
+  : { name: string; value: string; kind?: string };
 
-type EnvironmentVariable =
-  Environment extends {
-    variables?: infer V;
-  }
-    ? V extends Array<infer P>
-      ? P
-      : { name: string; value: string; kind?: string | null }
-    : { name: string; value: string; kind?: string | null };
-
-type EnvironmentVariableKindValue =
-  EnvironmentVariable extends { kind?: infer K }
-    ? NonNullable<K>
-    : string;
+type EnvironmentVariableKindValue = EnvironmentVariable extends {
+  kind?: infer K;
+}
+  ? NonNullable<K>
+  : string;
 
 export type NormalizedEnvironmentVariable = {
   name: string;
@@ -125,18 +120,19 @@ export const runAction = async (
 export const resolveEnvironment = async (
   sdk: FrontendSDK,
   environmentId?: string,
-): Promise<Environment | null> => {
-  const fetchEnvironment = async (id: string): Promise<Environment | null> => {
+): Promise<Environment | undefined> => {
+  const fetchEnvironment = async (
+    id: string,
+  ): Promise<Environment | undefined> => {
     const environmentResult = await sdk.graphql.environment({ id });
-    return environmentResult?.environment ?? null;
+    return environmentResult?.environment ?? undefined;
   };
 
   if (environmentId !== undefined && environmentId.length > 0) {
     return fetchEnvironment(environmentId);
   }
 
-  const contextResult =
-    (await sdk.graphql.environmentContext()) as EnvironmentContextResult;
+  const contextResult = await sdk.graphql.environmentContext();
   const contextEnvironment =
     contextResult?.environmentContext?.selected ??
     contextResult?.environmentContext?.global;
@@ -146,7 +142,7 @@ export const resolveEnvironment = async (
     contextEnvironment === null ||
     contextEnvironment.id === undefined
   ) {
-    return null;
+    return undefined;
   }
 
   return fetchEnvironment(contextEnvironment.id);
@@ -154,7 +150,7 @@ export const resolveEnvironment = async (
 
 export const normalizeEnvironmentVariable = (
   variable: Pick<EnvironmentVariable, "name" | "value"> & {
-    kind?: EnvironmentVariableKindValue | string | null;
+    kind?: string;
   },
 ): NormalizedEnvironmentVariable => ({
   name: variable.name,

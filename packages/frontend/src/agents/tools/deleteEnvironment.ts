@@ -1,11 +1,11 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { type ToolContext } from "@/agents/types";
 import {
   fetchAgentEnvironments,
   findAgentEnvironment,
 } from "@/agents/utils/environment";
-import { type ToolContext } from "@/agents/types";
 
 const DeleteEnvironmentSchema = z
   .object({
@@ -40,23 +40,22 @@ export const deleteEnvironmentTool = tool({
     const { sdk } = context;
 
     const environments = await fetchAgentEnvironments(sdk);
-    const environment =
-      findAgentEnvironment(environments, {
-        id: environmentId,
-        name: environmentName,
-      }) ?? null;
+    const environment = findAgentEnvironment(environments, {
+      id: environmentId,
+      name: environmentName,
+    });
 
-    if (environment === null) {
+    if (environment === undefined) {
       return {
         error: "Environment not found.",
       };
     }
 
     const resolvedEnvironmentId = environment.id.startsWith("name:")
-      ? null
+      ? undefined
       : environment.id;
 
-    if (resolvedEnvironmentId === null) {
+    if (resolvedEnvironmentId === undefined) {
       return {
         environment: {
           id: environment.id,
@@ -92,5 +91,3 @@ export const deleteEnvironmentTool = tool({
     }
   },
 });
-
-

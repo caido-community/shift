@@ -1,3 +1,8 @@
+import { registeredActions } from "@/float/actions";
+import { getContext } from "@/float/context";
+import { type ActionResult } from "@/float/types";
+import { type FrontendSDK } from "@/types";
+import { getSelectedReplayTabSessionId } from "@/utils";
 type StepDecision = "step" | "continue" | "repeat" | "pause" | "stop";
 
 interface TestShiftConsoleControl {
@@ -68,7 +73,9 @@ const ensureConsoleControl = (): TestShiftConsoleControl => {
         if (controlResolver !== undefined) {
           dispatchDecision("continue");
         } else {
-          console.info("[Shift Test] Continuing without further confirmations.");
+          console.info(
+            "[Shift Test] Continuing without further confirmations.",
+          );
         }
       },
       pause: () => {
@@ -202,12 +209,7 @@ export const setupTestShift = (sdk: FrontendSDK) => {
         ensureSelectionInEditor(sdk);
       },
       runAction: async (name, parameters) => {
-        const result = await runActionByName(
-          sdk,
-          name,
-          parameters,
-          suffix,
-        );
+        const result = await runActionByName(sdk, name, parameters, suffix);
         results.push(result);
         return result;
       },
@@ -335,14 +337,6 @@ export const setupTestShift = (sdk: FrontendSDK) => {
 
   window.testShift = runner;
 };
-import { registeredActions } from "@/float/actions";
-import { getContext } from "@/float/context";
-import { getSelectedReplayTabSessionId } from "@/utils";
-import {
-  type ActionDefinition,
-  type ActionResult,
-} from "@/float/types";
-import { type FrontendSDK } from "@/types";
 
 type TestResult = {
   name: string;
@@ -404,7 +398,7 @@ const INSTRUCTION_MESSAGE = [
   "                               → resume confirmations after continuing",
   "",
   "Prerequisites:",
-  "  • Run inside the Caido dev shell (window.name === \"dev\").",
+  '  • Run inside the Caido dev shell (window.name === "dev").',
   "  • Switch to a temporary project – the test creates and deletes data.",
   "  • Open a Replay tab so request-focused actions have an editor.",
   "",
@@ -449,9 +443,7 @@ const runActionByName = async (
   parameters: Record<string, unknown>,
   suffix: string,
 ): Promise<TestResult> => {
-  const action = ACTIONS_BY_NAME.get(name) as
-    | ActionDefinition
-    | undefined;
+  const action = ACTIONS_BY_NAME.get(name);
 
   if (action === undefined) {
     const message = `Action ${name} is not registered`;
@@ -463,27 +455,19 @@ const runActionByName = async (
     };
   }
 
-  console.groupCollapsed(
-    `[Shift Test] ${name}`,
-    JSON.stringify(parameters),
-  );
+  console.groupCollapsed(`[Shift Test] ${name}`, JSON.stringify(parameters));
   console.log("[Shift Test] parameters", parameters);
 
   let result: ActionResult;
   try {
-    result = await action.execute(
-      sdk,
-      parameters,
-      getContext(sdk),
-    );
+    result = await action.execute(sdk, parameters, getContext(sdk));
   } catch (error) {
     console.error("[Shift Test] execution threw", error);
     console.groupEnd();
     return {
       name,
       success: false,
-      message:
-        error instanceof Error ? error.message : String(error),
+      message: error instanceof Error ? error.message : String(error),
     };
   }
 
@@ -505,10 +489,7 @@ const runActionByName = async (
   };
 };
 
-const hydrateConvertWorkflowId = (
-  sdk: FrontendSDK,
-  state: TestState,
-) => {
+const hydrateConvertWorkflowId = (sdk: FrontendSDK, state: TestState) => {
   if (state.convertWorkflowId !== undefined) {
     return;
   }
@@ -585,19 +566,26 @@ const testPlan: TestStep[] = [
     await runAction("navigate", { path: "#/http-history" });
   },
   async ({ runAction }) => {
-    await runAction("httpqlSetQuery", { query: "resp.raw.cont:\"Shift Test"+Math.random()+"\" " });
+    await runAction("httpqlSetQuery", {
+      query: 'resp.raw.cont:"Shift Test' + Math.random() + '" ',
+    });
   },
   async ({ runAction }) => {
     await runAction("toast", { content: "Shift Float test toast" });
   },
-  async ({ runAction, suffix, setReplaySessionIdFromDOM, delay: localDelay }) => {
+  async ({
+    runAction,
+    suffix,
+    setReplaySessionIdFromDOM,
+    delay: localDelay,
+  }) => {
     await runAction("navigate", { path: "#/replay" });
     await localDelay(1000);
     const rawRequest = [
       `GET /shift-test-${suffix}?foo=bar HTTP/1.1`,
       "Host: example.com",
       "",
-      ""
+      "",
     ].join("\r\n");
     await runAction("createReplaySession", {
       rawRequest,
@@ -625,10 +613,7 @@ const testPlan: TestStep[] = [
     ].join("\r\n");
     await runAction("replayRequestReplace", { text: newRequest });
   },
-  async ({
-    ensureActiveEditorSelection,
-    runAction,
-  }) => {
+  async ({ ensureActiveEditorSelection, runAction }) => {
     ensureActiveEditorSelection();
     await runAction("activeEditorReplaceSelection", {
       text: "replaced-selection",
@@ -691,7 +676,7 @@ const testPlan: TestStep[] = [
       matcher: "X-Shift-Rule",
       replacerType: "ReplacerTerm",
       replacer: "RuleValue",
-      query: "req.method.eq:\"GET\"",
+      query: 'req.method.eq:"GET"',
     });
   },
   async ({ runAction, suffix }) => {
@@ -725,7 +710,7 @@ const testPlan: TestStep[] = [
     const filterName = `Shift Test Filter ${suffix}`;
     await runAction("addFilter", {
       name: filterName,
-      query: "req.method.eq:\"GET\"",
+      query: 'req.method.eq:"GET"',
       alias: `shifttest`,
     });
 
@@ -742,13 +727,13 @@ const testPlan: TestStep[] = [
       id: state.filterId ?? "",
       name: `Shift Test Filter ${suffix} Updated`,
       alias: `shifttest`,
-      query: "req.method.eq:\"POST\"",
+      query: 'req.method.eq:"POST"',
     });
   },
   async ({ runAction, state }) => {
     await runAction("filterAppendQuery", {
       id: state.filterId ?? "",
-      appendQuery: "AND req.host.cont:\"example.com\"",
+      appendQuery: 'AND req.host.cont:"example.com"',
     });
   },
   async ({ runAction, state }) => {
@@ -777,7 +762,7 @@ const testPlan: TestStep[] = [
     await runAction("updateScope", {
       id: state.scopeId ?? "",
       name: `Shift Scope ${suffix} Updated`,
-      allowlist: ["*rhynorater.com*","*shift.dev*"],
+      allowlist: ["*rhynorater.com*", "*shift.dev*"],
       denylist: [],
     });
   },
@@ -849,7 +834,9 @@ const testPlan: TestStep[] = [
     });
   },
   async ({ ensureConvertWorkflowId }) => {
-    ensureConvertWorkflowId();
+    await Promise.resolve().then(() => {
+      ensureConvertWorkflowId();
+    });
   },
   async ({ runAction, state }) => {
     if (state.convertWorkflowId === undefined) {
@@ -871,4 +858,3 @@ const testPlan: TestStep[] = [
     });
   },
 ];
-

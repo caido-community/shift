@@ -40,7 +40,8 @@ export type CreateEnvironmentInput = z.infer<typeof createEnvironmentSchema>;
 
 export const createEnvironment: ActionDefinition<CreateEnvironmentInput> = {
   name: "createEnvironment",
-  description: "Create a new environment optionally pre-populated with variables",
+  description:
+    "Create a new environment optionally pre-populated with variables",
   inputSchema: createEnvironmentSchema,
   execute: async (
     sdk: FrontendSDK,
@@ -71,4 +72,3 @@ export const createEnvironment: ActionDefinition<CreateEnvironmentInput> = {
     }
   },
 };
-

@@ -42,5 +42,3 @@ export const updateCookieTool = tool({
     }
   },
 });
-
-

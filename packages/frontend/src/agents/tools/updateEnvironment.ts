@@ -1,27 +1,26 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { type ToolContext } from "@/agents/types";
 import {
   fetchAgentEnvironmentById,
   fetchAgentEnvironments,
   findAgentEnvironment,
 } from "@/agents/utils/environment";
-import { type ToolContext } from "@/agents/types";
 
 type UpdateEnvironmentMutation =
   ToolContext["sdk"]["graphql"]["updateEnvironment"];
 type UpdateEnvironmentArgs = Parameters<UpdateEnvironmentMutation>[0];
-type UpdateEnvironmentInput =
-  UpdateEnvironmentArgs extends { input: infer Input } ? Input : never;
-type EnvironmentVariableInput =
-  UpdateEnvironmentInput extends { variables: Array<infer Variable> }
-    ? Variable
-    : never;
-type EnvironmentVersion =
-  UpdateEnvironmentInput extends { version: infer Version }
-    ? Version
-    : number;
-
+type UpdateEnvironmentInput = UpdateEnvironmentArgs extends {
+  input: infer Input;
+}
+  ? Input
+  : never;
+type EnvironmentVariableInput = UpdateEnvironmentInput extends {
+  variables: Array<infer Variable>;
+}
+  ? Variable
+  : never;
 const UpdateEnvironmentSchema = z
   .object({
     environmentId: z
@@ -66,13 +65,10 @@ const UpdateEnvironmentSchema = z
       path: ["environmentId"],
     },
   )
-  .refine(
-    (input) => input.remove === true || input.value !== undefined,
-    {
-      message: "Provide a value unless remove is set to true.",
-      path: ["value"],
-    },
-  );
+  .refine((input) => input.remove === true || input.value !== undefined, {
+    message: "Provide a value unless remove is set to true.",
+    path: ["value"],
+  });
 
 export const updateEnvironmentTool = tool({
   description: `Create, update, or delete a variable within a Shift environment.`,
@@ -85,23 +81,22 @@ export const updateEnvironmentTool = tool({
     const { sdk } = context;
 
     const environments = await fetchAgentEnvironments(sdk);
-    const environment =
-      findAgentEnvironment(environments, {
-        id: environmentId,
-        name: environmentName,
-      }) ?? null;
+    const environment = findAgentEnvironment(environments, {
+      id: environmentId,
+      name: environmentName,
+    });
 
-    if (environment === null) {
+    if (environment === undefined) {
       return {
         error: "Environment not found.",
       };
     }
 
     const resolvedEnvironmentId = environment.id.startsWith("name:")
-      ? null
+      ? undefined
       : environment.id;
 
-    if (resolvedEnvironmentId === null) {
+    if (resolvedEnvironmentId === undefined) {
       return {
         environment: {
           id: environment.id,
@@ -168,7 +163,7 @@ export const updateEnvironmentTool = tool({
         id: resolvedEnvironmentId,
         input: {
           name: latestEnvironment.name,
-          version: versionValue as EnvironmentVersion,
+          version: versionValue,
           variables: toGraphQLVariables(filteredVariables),
         },
       });
@@ -204,7 +199,7 @@ export const updateEnvironmentTool = tool({
       id: resolvedEnvironmentId,
       input: {
         name: latestEnvironment.name,
-        version: versionValue as EnvironmentVersion,
+        version: versionValue,
         variables: toGraphQLVariables(existingVariables),
       },
     });
@@ -221,5 +216,3 @@ export const updateEnvironmentTool = tool({
     };
   },
 });
-
-
