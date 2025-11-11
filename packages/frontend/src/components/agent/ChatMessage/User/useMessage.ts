@@ -33,8 +33,10 @@ export const useUserMessage = () => {
     }
 
     const text = (message.parts as MessagePartLike[])
-      .filter((p) => p.type === "text" && p.text !== undefined)
-      .map((p) => p.text as string)
+      .filter(
+        (p) => p !== undefined && p.type === "text" && p.text !== undefined,
+      )
+      .map((p) => p?.text ?? "")
       .join("");
 
     //TODO: figure out if there is a cleaner way, it breaks randomly if we dont do this

@@ -8,6 +8,7 @@ import { LearningsContainer } from "@/components/learnings";
 import { PromptsContainer } from "@/components/prompts";
 import { RenamingContainer } from "@/components/renaming";
 import { SettingsContainer } from "@/components/settings";
+import { TutorialContainer } from "@/components/tutorial";
 
 const page = ref<
   "Custom Prompts" | "Learnings" | "AI Session Renaming" | "Settings"
@@ -32,6 +33,13 @@ const items = [
     isActive: () => page.value === "AI Session Renaming",
     onClick: () => {
       page.value = "AI Session Renaming";
+    },
+  },
+  {
+    label: "Tutorial",
+    isActive: () => page.value === "Tutorial",
+    onClick: () => {
+      page.value = "Tutorial";
     },
   },
   {

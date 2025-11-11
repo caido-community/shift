@@ -17,7 +17,7 @@ export const setupFloat = (sdk: FrontendSDK) => {
     run: () => spawnFloat(sdk),
     group: "Shift",
   });
-  sdk.shortcuts.register("shift:toggle-float", ["shift", "space"]);
+  sdk.shortcuts.register("shift:toggle-float", ["shift", "control", "k"]);
 
   document.addEventListener("mousemove", (e) => {
     lastCursorX = e.clientX;

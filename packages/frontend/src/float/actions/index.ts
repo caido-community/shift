@@ -6,6 +6,7 @@ import { activeEditorReplaceBody } from "@/float/actions/activeEditorReplaceBody
 import { activeEditorReplaceByString } from "@/float/actions/activeEditorReplaceByString";
 import { activeEditorReplaceSelection } from "@/float/actions/activeEditorReplaceSelection";
 import { activeEditorSetMethod } from "@/float/actions/activeEditorSetMethod";
+import { activeEditorSetRaw } from "@/float/actions/activeEditorSetRaw";
 import { activeEditorUpdatePath } from "@/float/actions/activeEditorUpdatePath";
 import { addFilter } from "@/float/actions/addFilter";
 import { addLearning } from "@/float/actions/addLearning";
@@ -28,7 +29,7 @@ import { removeHostedFile } from "@/float/actions/removeHostedFile";
 import { removeLearnings } from "@/float/actions/removeLearnings";
 import { renameReplayTab } from "@/float/actions/renameReplayTab";
 import { replayRequestReplace } from "@/float/actions/replayRequestReplace";
-import { runConvertWorkflow } from "@/float/actions/runConvertWorkflow";
+import { runWorkflow } from "@/float/actions/runWorkflow";
 import { sendReplayTab } from "@/float/actions/sendReplayTab";
 import { toast } from "@/float/actions/toast";
 import { updateEnvironmentVariable } from "@/float/actions/updateEnvironmentVariable";
@@ -55,6 +56,7 @@ export const registeredActions = [
   activeEditorUpdatePath,
   activeEditorRemoveHeader,
   activeEditorSetMethod,
+  activeEditorSetRaw,
   replayRequestReplace,
   navigate,
   renameReplayTab,
@@ -68,7 +70,7 @@ export const registeredActions = [
   removeHostedFile,
   createReplaySession,
   createAutomateSession,
-  runConvertWorkflow,
+  runWorkflow,
   createFinding,
   createHostedFileAdvanced,
   createEnvironment,

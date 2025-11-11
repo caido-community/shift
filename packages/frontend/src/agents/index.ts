@@ -15,5 +15,5 @@ export const setupAgents = (sdk: FrontendSDK) => {
     run: () => uiStore.toggleDrawer(),
   });
 
-  sdk.shortcuts.register("shift:toggle-drawer", ["shift", "meta", "i"]);
+  sdk.shortcuts.register("shift:toggle-drawer", ["shift", "control", "i"]);
 };

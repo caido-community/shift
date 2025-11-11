@@ -39,7 +39,7 @@ export const toast: ActionDefinition<ToastInput> = {
 
     return {
       success: true,
-      frontend_message: content,
+      frontend_message: "",
     };
   },
 };
