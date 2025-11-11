@@ -11,7 +11,11 @@ import { SettingsContainer } from "@/components/settings";
 import { TutorialContainer } from "@/components/tutorial";
 
 const page = ref<
-  "Custom Prompts" | "Learnings" | "AI Session Renaming" | "Settings"
+  | "Custom Prompts"
+  | "Learnings"
+  | "AI Session Renaming"
+  | "Settings"
+  | "Tutorial"
 >("Custom Prompts");
 const items = [
   {
@@ -61,6 +65,8 @@ const component = computed(() => {
       return LearningsContainer;
     case "Settings":
       return SettingsContainer;
+    case "Tutorial":
+      return TutorialContainer;
     default:
       return PromptsContainer;
   }
