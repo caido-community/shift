@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Button from "primevue/button";
+import Checkbox from "primevue/checkbox";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import Textarea from "primevue/textarea";
@@ -33,6 +34,31 @@ const rows = computed<LearningRow[]>(() =>
 );
 
 const selectedRows = ref<LearningRow[]>([]);
+
+const isRowSelected = (row: LearningRow) =>
+  selectedRows.value.some((selected) => selected.index === row.index);
+
+const allRowsSelected = computed(
+  () => rows.value.length > 0 && rows.value.every(isRowSelected),
+);
+
+const toggleRowSelection = (row: LearningRow) => {
+  if (isRowSelected(row)) {
+    selectedRows.value = selectedRows.value.filter(
+      (selected) => selected.index !== row.index,
+    );
+  } else {
+    selectedRows.value = [...selectedRows.value, row];
+  }
+};
+
+const toggleSelectAll = () => {
+  if (allRowsSelected.value) {
+    selectedRows.value = [];
+  } else {
+    selectedRows.value = [...rows.value];
+  }
+};
 const isClearDisabled = computed(() => rows.value.length === 0);
 
 const newLearning = ref("");
@@ -177,7 +203,7 @@ const handleClearAll = async () => {
       </div>
     </div>
 
-    <div class="flex-1 overflow-hidden">
+    <div class="flex-1 max-h-[55vh] overflow-hidden">
       <div
         v-if="rows.length === 0"
         class="flex flex-col items-center justify-center h-full text-center gap-4 p-6 border border-dashed border-surface-700 rounded-lg"
@@ -209,7 +235,25 @@ const handleClearAll = async () => {
           table: { class: 'h-full w-full align-top' },
         }"
       >
-        <Column selection-mode="multiple" class="w-12" />
+        <Column class="w-12">
+          <template #header>
+            <Checkbox
+              binary
+              :model-value="allRowsSelected"
+              aria-label="Toggle select all learnings"
+              @click.stop="toggleSelectAll"
+            />
+          </template>
+          <template #body="{ data }">
+            <Checkbox
+              binary
+              :model-value="isRowSelected(data)"
+              :disabled="isRowPending(data.index)"
+              aria-label="Toggle learning selection"
+              @click.stop="toggleRowSelection(data)"
+            />
+          </template>
+        </Column>
         <Column header="Learning" class="flex-1">
           <template #body="{ data }">
             <div class="flex flex-col gap-1">

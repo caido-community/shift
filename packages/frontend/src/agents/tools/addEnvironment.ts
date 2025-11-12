@@ -79,7 +79,8 @@ export const addEnvironmentTool = tool({
       variables?.map((variable) => ({
         name: variable.name,
         value: variable.value,
-        kind: (variable.kind ?? "PLAIN") as CreateEnvironmentVariableInput["kind"],
+        kind: (variable.kind ??
+          "PLAIN") as CreateEnvironmentVariableInput["kind"],
       })) ?? [];
 
     try {

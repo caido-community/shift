@@ -70,29 +70,24 @@ export const init = (sdk: FrontendSDK) => {
       const text = selection.toString();
       if (text.length === 0) return;
 
-      const handleConfirm = (value: string) => {
+      const handleConfirm = async (value: string) => {
         dialog.close();
         if (value.trim() === "") {
           return;
         }
 
-        void (async () => {
-          try {
-            await configStore.addLearning(value);
-            sdk.window.showToast(`Learning stored for this project`, {
-              variant: "info",
-            });
-          } catch (error) {
-            const message =
-              error instanceof Error ? error.message : "Unknown error";
-            sdk.window.showToast(
-              `[Shift] Failed to store learning: ${message}`,
-              {
-                variant: "error",
-              },
-            );
-          }
-        })();
+        try {
+          await configStore.addLearning(value);
+          sdk.window.showToast(`Learning stored for this project`, {
+            variant: "info",
+          });
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Unknown error";
+          sdk.window.showToast(`[Shift] Failed to store learning: ${message}`, {
+            variant: "error",
+          });
+        }
       };
 
       const handleCancel = () => {

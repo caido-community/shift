@@ -21,9 +21,8 @@ const asString = (value: unknown): string | undefined =>
 const asNumber = (value: unknown): number | undefined =>
   typeof value === "number" ? value : undefined;
 
-const asRecord = (
-  value: unknown,
-): Record<string, unknown> | undefined => (isRecord(value) ? value : undefined);
+const asRecord = (value: unknown): Record<string, unknown> | undefined =>
+  isRecord(value) ? value : undefined;
 
 export const fetchReplayEntriesTool = tool({
   description: `List the entries that belong to a Caido replay session.
@@ -51,7 +50,7 @@ The tool returns each entry, some metadata (path, method, etc) and requestId and
       }
 
       const rawNodes = Array.isArray(session.entries?.nodes)
-        ? session.entries?.nodes ?? []
+        ? (session.entries?.nodes ?? [])
         : [];
       const entries = rawNodes.map((rawNode) => {
         const node = asRecord(rawNode);

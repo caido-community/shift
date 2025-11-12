@@ -127,12 +127,13 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
       throw new Error(initialSession.error);
     }
 
-    // const currentRequest = this.toolContext.replaySession.request;
-    // currentRequest.raw = initialSession.session.request.raw;
-    // currentRequest.host = initialSession.session.request.host;
-    // currentRequest.port = initialSession.session.request.port;
-    // currentRequest.isTLS = initialSession.session.request.isTLS;
-    // currentRequest.SNI = initialSession.session.request.SNI;
+    //Dont touch these, it updates the request editor
+    const currentRequest = this.toolContext.replaySession.request;
+    currentRequest.raw = initialSession.session.request.raw;
+    currentRequest.host = initialSession.session.request.host;
+    currentRequest.port = initialSession.session.request.port;
+    currentRequest.isTLS = initialSession.session.request.isTLS;
+    currentRequest.SNI = initialSession.session.request.SNI;
 
     const prompt = convertToModelMessages(sanitizeUiMessages(messages));
     const configStore = useConfigStore();
