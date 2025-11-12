@@ -138,25 +138,6 @@ export const useAgentsStore = defineStore("stores.agents", () => {
     return getToolContext(selectedId.value);
   });
 
-  // TODO: Temporary workaround for abort error, seems to be a bug in the ai-sdk
-  const error = computed(() => selectedAgent.value?.error);
-  watch(error, (error) => {
-    if (selectedId.value === undefined) return;
-
-    // recover from abort error
-    if (error?.message !== undefined && error.message.includes("abort")) {
-      const agent = getAgent(selectedId.value);
-      if (agent !== undefined) {
-        agent.clearError();
-        agent.messages.map((m) => {
-          if (m.metadata?.state === "streaming") {
-            m.metadata.state = "abort";
-          }
-        });
-      }
-    }
-  });
-
   return {
     agents: computed(() =>
       Array.from(agents.value.values()).map((e) => e.chat),

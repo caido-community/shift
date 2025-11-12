@@ -229,11 +229,6 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
             const errorText =
               error instanceof Error ? error.message : String(error);
 
-            // TODO: Temporary workaround for abort error, seems to be a bug in the ai-sdk
-            if (errorText.includes("abort")) {
-              return;
-            }
-
             writer.write({
               type: "error",
               errorText,
