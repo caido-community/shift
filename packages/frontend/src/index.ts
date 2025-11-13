@@ -11,7 +11,7 @@ import App from "./views/App.vue";
 
 import { setupAgents } from "@/agents";
 import { setupReplayCollectionCorrelation } from "@/agents/collectionAutoExecute";
-import { InputDialog } from "@/components/inputDialog";
+import { GenericInputDialog } from "@/components/inputDialog";
 import { createDOMManager } from "@/dom";
 import { setupFloat } from "@/float";
 import { setupTestShift } from "@/float/testShift";
@@ -96,7 +96,7 @@ export const init = (sdk: FrontendSDK) => {
 
       dialog = sdk.window.showDialog(
         {
-          component: InputDialog,
+          component: GenericInputDialog,
           props: {
             title: "Add Learning",
             placeholder: "Enter learning content...",

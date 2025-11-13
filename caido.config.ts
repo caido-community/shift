@@ -43,6 +43,7 @@ export default defineConfig({
               "@lezer/common",
               "@lezer/highlight",
               "@lezer/lr",
+              "vue"
             ],
           },
         },

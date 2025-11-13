@@ -4,7 +4,7 @@ import {
 } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
 
 import { type CustomPrompt } from "@/agents/types";
-import InputDialog from "@/components/inputDialog/Container.vue";
+import { LaunchInputDialog } from "@/components/inputDialog";
 import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
 import { useUIStore } from "@/stores/ui";
@@ -57,13 +57,81 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     prompts: CustomPrompt[],
   ) => {
     let dialog: { close: () => void } = { close: () => {} };
-    const handleConfirm = (instruction: string) => {
+    const handleConfirm = (payloadString: string) => {
       dialog.close();
 
-      // If instruction is empty, user cancelled - do nothing
-      if (!instruction || instruction.trim() === "") {
+      if (!payloadString) {
         return;
       }
+
+      type LaunchPayload = {
+        selections?: Array<{ selection: string; comment?: string }>;
+        instructions?: string;
+        maxInteractions?: number;
+      };
+
+      let payload: LaunchPayload | undefined;
+      try {
+        payload = JSON.parse(payloadString) as LaunchPayload;
+      } catch {
+        sdk.window.showToast(
+          "[Shift] Unable to parse launch instructions. Please try again.",
+          { variant: "error" },
+        );
+        return;
+      }
+
+      const selections = Array.isArray(payload?.selections)
+        ? payload!.selections.filter(
+            (entry): entry is { selection: string; comment?: string } =>
+              typeof entry?.selection === "string" &&
+              entry.selection.trim().length > 0,
+          )
+        : [];
+
+      const instructionsText =
+        typeof payload?.instructions === "string"
+          ? payload.instructions.trim()
+          : "";
+
+      if (selections.length === 0 && instructionsText.length === 0) {
+        return;
+      }
+
+      const requestedMaxInteractions =
+        typeof payload?.maxInteractions === "number"
+          ? Math.max(1, Math.floor(payload.maxInteractions))
+          : undefined;
+
+      if (
+        requestedMaxInteractions !== undefined &&
+        requestedMaxInteractions !== configStore.maxIterations
+      ) {
+        configStore.maxIterations = requestedMaxInteractions;
+      }
+
+      const formattedSelections =
+        selections.length === 0
+          ? ""
+          : selections
+              .map((entry, index) => {
+                const commentLine =
+                  entry.comment && entry.comment.trim().length > 0
+                    ? `Comment: ${entry.comment.trim()}`
+                    : "Comment: (none)";
+                return `Selection ${index + 1}:\n${entry.selection}\n${commentLine}`;
+              })
+              .join("\n\n");
+
+      const messageSections: string[] = [];
+      if (formattedSelections.length > 0) {
+        messageSections.push(`Selections:\n${formattedSelections}`);
+      }
+      if (instructionsText.length > 0) {
+        messageSections.push(`Instructions:\n${instructionsText}`);
+      }
+
+      const messageBody = messageSections.join("\n\n").trim();
 
       // Launch the agent with the JIT instructions
       (async () => {
@@ -77,7 +145,7 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
           uiStore.setSelectedPrompts(sessionId, promptIds);
 
           await agentsStore.selectedAgent?.sendMessage({
-            text: instruction,
+            text: messageBody,
           });
         } catch (error) {
           const errorMessage =
@@ -96,20 +164,21 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
 
     dialog = sdk.window.showDialog(
       {
-        component: InputDialog,
+        component: LaunchInputDialog,
         props: {
           title: "Instructions",
           placeholder: "Enter your instructions for the agent...",
+          sdk,
           onConfirm: () => handleConfirm,
           onCancel: () => handleCancel,
         },
       },
       {
-        title: "Instructions",
+        title: "Shift Agent Launch Instructions",
         closeOnEscape: true,
         closable: true,
         draggable: true,
-        modal: true,
+        modal: false,
         position: "center",
       },
     );
