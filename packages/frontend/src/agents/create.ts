@@ -3,6 +3,7 @@ import { Chat } from "@ai-sdk/vue";
 import { TodoManager } from "@/agents/todos";
 import { ClientSideChatTransport } from "@/agents/transport";
 import {
+  type AgentRuntimeConfig,
   type CustomUIMessage,
   type ReplaySession,
   type ToolContext,
@@ -13,9 +14,11 @@ import { getReplaySession, writeToRequestEditor } from "@/utils";
 export async function createAgent({
   replaySessionId,
   sdk,
+  config,
 }: {
   replaySessionId: string;
   sdk: FrontendSDK;
+  config: AgentRuntimeConfig;
 }) {
   const initialSession = await getReplaySession(sdk, replaySessionId);
   if (initialSession.kind === "Error") {
@@ -27,6 +30,7 @@ export async function createAgent({
     sdk,
     initialSession: initialSession.session,
     todoManager,
+    config,
   });
 
   const transport = new ClientSideChatTransport(toolContext);
@@ -46,10 +50,12 @@ function buildToolContext({
   sdk,
   initialSession,
   todoManager,
+  config,
 }: {
   sdk: FrontendSDK;
   initialSession: ReplaySession;
   todoManager: TodoManager;
+  config: AgentRuntimeConfig;
 }): ToolContext {
   const requestState = { ...initialSession.request };
 
@@ -80,5 +86,6 @@ function buildToolContext({
       },
     },
     todoManager,
+    config,
   };
 }

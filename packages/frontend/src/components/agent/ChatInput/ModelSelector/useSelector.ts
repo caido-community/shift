@@ -1,6 +1,7 @@
 import { computed } from "vue";
 
 import { type ModelGroup, type ModelItem } from "@/agents/types";
+import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
 
 type Variant = "float" | "chat" | "renaming";
@@ -11,6 +12,7 @@ type GroupWithIcons = Omit<ModelGroup, "items"> & {
 
 export const useSelector = (variant: Variant) => {
   const configStore = useConfigStore();
+  const agentsStore = useAgentsStore();
 
   const modelId = computed<string>({
     get() {
@@ -35,6 +37,17 @@ export const useSelector = (variant: Variant) => {
           break;
         case "chat":
           configStore.agentsModel = value;
+          {
+            const selectedAgentId = agentsStore.selectedId;
+            if (
+              typeof selectedAgentId === "string" &&
+              selectedAgentId.length > 0
+            ) {
+              agentsStore.updateAgentConfig(selectedAgentId, {
+                model: value,
+              });
+            }
+          }
           break;
         default:
           throw new Error(`Unknown variant: ${variant}`);

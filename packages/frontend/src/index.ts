@@ -24,7 +24,7 @@ export const init = (sdk: FrontendSDK) => {
 
   app.use(PrimeVue, {
     unstyled: true,
-    pt: Classic,
+    pt: Classic
   });
 
   app.directive("tooltip", Tooltip);

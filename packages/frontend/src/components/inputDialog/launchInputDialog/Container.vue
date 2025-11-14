@@ -2,8 +2,13 @@
 import Button from "primevue/button";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
+import type { LaunchInputDialogResult } from "./types";
+
+import { ModelSelector } from "@/components/agent/ChatInput/ModelSelector";
+import { PromptSelector } from "@/components/agent/ChatInput/PromptSelector";
 import { useSDK } from "@/plugins/sdk";
 import { useConfigStore } from "@/stores/config";
+import { useUIStore } from "@/stores/ui";
 import type { FrontendSDK } from "@/types";
 
 type SelectionEntry = {
@@ -16,13 +21,17 @@ const props = defineProps<{
   title: string;
   placeholder?: string;
   sdk?: FrontendSDK;
-  onConfirm: (value: string) => void;
+  onConfirm: (value: LaunchInputDialogResult) => void;
   onCancel: () => void;
 }>();
 
 const injectedSdk = useSDK() as FrontendSDK | undefined;
 const sdk = computed<FrontendSDK | undefined>(() => props.sdk ?? injectedSdk);
 const configStore = useConfigStore();
+const uiStore = useUIStore();
+
+// Use a temporary ID for prompt selection in the dialog
+const dialogAgentId = "__launch_dialog__";
 
 const entries = ref<SelectionEntry[]>([{ id: 0, selection: "", comment: "" }]);
 let nextId = 1;
@@ -78,16 +87,19 @@ const handleConfirm = () => {
       selection: entry.selection.trim(),
       comment: entry.comment.trim(),
     }))
-    .filter(
-      (entry) => entry.selection.length > 0 || entry.comment.length > 0,
-    );
-  props.onConfirm(
-    JSON.stringify({
-      selections,
-      instructions: instructions.value.trim(),
-      maxInteractions: maxInteractions.value,
-    }),
-  );
+    .filter((entry) => entry.selection.length > 0 || entry.comment.length > 0);
+  
+  // Get the selected model and prompts
+  const model = configStore.agentsModel;
+  const selectedPromptIds = uiStore.getSelectedPrompts(dialogAgentId);
+  
+  props.onConfirm({
+    selections,
+    instructions: instructions.value.trim(),
+    maxInteractions: maxInteractions.value,
+    model,
+    selectedPromptIds,
+  });
 };
 
 const handleCancel = () => {
@@ -140,43 +152,78 @@ watch(
 <template>
   <div class="flex w-[520px] flex-col gap-4 p-3">
     <section class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-surface-200" for="model">
+        Model
+      </label>
+      <div class="w-full">
+        <ModelSelector variant="chat" />
+      </div>
+      <p class="text-xs text-surface-400">
+        Select the model to use for this agent.
+      </p>
+    </section>
+
+    <section class="flex flex-col gap-2">
+      <div class="flex items-start gap-4">
+        <div class="flex-1 flex flex-col gap-2">
+          <label class="text-sm font-medium text-surface-200" for="prompts">
+            Custom Prompts
+          </label>
+          <div class="w-full flex items-center h-10">
+            <PromptSelector :agent-id="dialogAgentId" :is-settings="true" />
+          </div>
+          <p class="text-xs text-surface-400">
+            Select custom prompts to include with this agent.
+          </p>
+        </div>
+        <div class="flex flex-col gap-2 pl-4 border-l border-surface-600">
+          <label
+            class="text-sm font-medium text-surface-200"
+            for="max-interactions"
+          >
+            Max interactions
+          </label>
+          <div class="flex items-center h-10">
+            <input
+              id="max-interactions"
+              :value="maxInteractions"
+              min="1"
+              type="number"
+              class="w-32 rounded-md border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 focus:outline-none focus:ring-1 focus:ring-secondary-500"
+              @input="handleMaxInteractionsInput"
+            />
+          </div>
+          <p class="text-xs text-surface-400">
+            Max agent steps.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="flex flex-col gap-2">
       <label class="text-sm font-medium text-surface-200" for="instructions">
         Additional instructions
       </label>
       <textarea
         id="instructions"
-        autofocus
         v-model="instructions"
+        autofocus
         :placeholder="
           props.placeholder || 'Add overall instructions for the agent...'
         "
-        class="w-full min-h-[96px] rounded-md border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        class="w-full min-h-[96px] rounded-md border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 focus:outline-none focus:ring-1 focus:ring-secondary-500"
       />
       <p class="text-xs text-surface-400">
         Add last minute instructions for the agent.
       </p>
     </section>
-
-    <section class="flex flex-col gap-2">
-      <label class="text-sm font-medium text-surface-200" for="max-interactions">
-        Max interactions
-      </label>
-      <input
-        id="max-interactions"
-        :value="maxInteractions"
-        min="1"
-        type="number"
-        class="w-32 rounded-md border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        @input="handleMaxInteractionsInput"
-      />
-      <p class="text-xs text-surface-400">
-        Controls how many steps the agent can take before stopping.
-      </p>
-    </section>
     <label class="text-sm font-medium text-surface-200" for="selections">
       Highlighted Selections
     </label>
-    <section class="flex max-h-[320px] flex-col gap-3 overflow-y-auto pr-1" @keydown="handleSelectionsKeydown">
+    <section
+      class="flex max-h-[320px] flex-col gap-3 overflow-y-auto pr-1"
+      @keydown="handleSelectionsKeydown"
+    >
       <article
         v-for="entry in entries"
         :key="entry.id"
@@ -210,13 +257,13 @@ watch(
 
         <input
           v-model="entry.comment"
-          class="w-full rounded-md border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full rounded-md border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 focus:outline-none focus:ring-1 focus:ring-secondary-500"
           placeholder="Add a comment about this selection..."
         />
       </article>
     </section>
     <p class="text-xs text-surface-400">
-      Highlight text in the Caido editor. The latest selection appears above. 
+      Highlight text in the Caido editor. The latest selection appears above.
     </p>
 
     <button

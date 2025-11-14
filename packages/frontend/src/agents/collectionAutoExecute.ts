@@ -3,15 +3,17 @@ import {
   type UpdatedReplaySessionSubscription,
 } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
 
-import { type CustomPrompt } from "@/agents/types";
+import {
+  type AgentRuntimeConfigInput,
+  type CustomPrompt,
+} from "@/agents/types";
 import { LaunchInputDialog } from "@/components/inputDialog";
+import type { LaunchInputDialogResult } from "@/components/inputDialog/launchInputDialog/types";
 import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
 import { useUIStore } from "@/stores/ui";
 import { type FrontendSDK } from "@/types";
 const SHIFT_COLLECTION_NAME = "Shift";
-const DEFAULT_SHIFT_MESSAGE =
-  "Shift agent auto-launched from the Shift collection. Proceed with testing.";
 
 export const ensureShiftCollection = async (sdk: FrontendSDK) => {
   try {
@@ -57,95 +59,39 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     prompts: CustomPrompt[],
   ) => {
     let dialog: { close: () => void } = { close: () => {} };
-    const handleConfirm = (payloadString: string) => {
+    const handleConfirm = (payload: LaunchInputDialogResult) => {
       dialog.close();
 
-      if (!payloadString) {
-        return;
-      }
+      const { selections, instructions, maxInteractions, selectedPromptIds, model } = payload;
 
-      type LaunchPayload = {
-        selections?: Array<{ selection: string; comment?: string }>;
-        instructions?: string;
-        maxInteractions?: number;
+      // Convert selected prompt IDs to CustomPrompt objects
+      // If user selected prompts in the dialog, use those; otherwise fall back to collection prompts
+      const promptsToUse = selectedPromptIds && selectedPromptIds.length > 0
+        ? configStore.customPrompts.filter((prompt) => selectedPromptIds.includes(prompt.id))
+        : prompts;
+
+      const agentOptions: AgentRuntimeConfigInput = {
+        maxIterations: maxInteractions,
+        selections,
+        customPrompts: promptsToUse,
+        model,
       };
-
-      let payload: LaunchPayload | undefined;
-      try {
-        payload = JSON.parse(payloadString) as LaunchPayload;
-      } catch {
-        sdk.window.showToast(
-          "[Shift] Unable to parse launch instructions. Please try again.",
-          { variant: "error" },
-        );
-        return;
-      }
-
-      const selections = Array.isArray(payload?.selections)
-        ? payload!.selections.filter(
-            (entry): entry is { selection: string; comment?: string } =>
-              typeof entry?.selection === "string" &&
-              entry.selection.trim().length > 0,
-          )
-        : [];
-
-      const instructionsText =
-        typeof payload?.instructions === "string"
-          ? payload.instructions.trim()
-          : "";
-
-      if (selections.length === 0 && instructionsText.length === 0) {
-        return;
-      }
-
-      const requestedMaxInteractions =
-        typeof payload?.maxInteractions === "number"
-          ? Math.max(1, Math.floor(payload.maxInteractions))
-          : undefined;
-
-      if (
-        requestedMaxInteractions !== undefined &&
-        requestedMaxInteractions !== configStore.maxIterations
-      ) {
-        configStore.maxIterations = requestedMaxInteractions;
-      }
-
-      const formattedSelections =
-        selections.length === 0
-          ? ""
-          : selections
-              .map((entry, index) => {
-                const commentLine =
-                  entry.comment && entry.comment.trim().length > 0
-                    ? `Comment: ${entry.comment.trim()}`
-                    : "Comment: (none)";
-                return `Selection ${index + 1}:\n${entry.selection}\n${commentLine}`;
-              })
-              .join("\n\n");
-
-      const messageSections: string[] = [];
-      if (formattedSelections.length > 0) {
-        messageSections.push(`Selections:\n${formattedSelections}`);
-      }
-      if (instructionsText.length > 0) {
-        messageSections.push(`Instructions:\n${instructionsText}`);
-      }
-
-      const messageBody = messageSections.join("\n\n").trim();
 
       // Launch the agent with the JIT instructions
       (async () => {
         try {
-          await agentsStore.addAgent(sessionId);
+          await agentsStore.addAgent(sessionId, agentOptions);
           await agentsStore.selectAgent(sessionId);
           sdk.replay.openTab(sessionId);
-          // Set all selected prompts for this agent
+          // Set the selected prompts from the dialog (or fall back to collection prompts)
           const uiStore = useUIStore();
-          const promptIds = prompts.map((prompt) => prompt.id);
+          const promptIds = selectedPromptIds && selectedPromptIds.length > 0
+            ? selectedPromptIds
+            : prompts.map((prompt) => prompt.id);
           uiStore.setSelectedPrompts(sessionId, promptIds);
 
           await agentsStore.selectedAgent?.sendMessage({
-            text: messageBody,
+            text: instructions.trim() || "Proceed with testing.",
           });
         } catch (error) {
           const errorMessage =
@@ -217,8 +163,12 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
       return;
     }
 
+    const agentOptions: AgentRuntimeConfigInput = {
+      customPrompts: prompts,
+    };
+
     try {
-      const entry = await agentsStore.addAgent(sessionId);
+      const entry = await agentsStore.addAgent(sessionId, agentOptions);
       await agentsStore.selectAgent(sessionId);
       sdk.replay.openTab(sessionId);
 
@@ -228,10 +178,7 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
         uiStore.setSelectedPrompts(sessionId, promptIds);
       }
 
-      const message =
-        collectionName === SHIFT_COLLECTION_NAME && prompts.length === 0
-          ? DEFAULT_SHIFT_MESSAGE
-          : "Proceed with testing.";
+      const message = "Proceed with testing.";
 
       await entry.chat.sendMessage({
         text: message,
