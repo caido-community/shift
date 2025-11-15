@@ -46,6 +46,7 @@ const createIndicator = (
   indicator.classList.add(
     BASE_INDICATOR_CLASS,
     variantClass,
+    sessionState?.status === "streaming" ? "text-success-500" : sessionState?.status === "error" ? "text-error-500" : "just-ready",
     "fa-solid",
     "fa-brain",
     "inline",
@@ -133,8 +134,7 @@ const computeAutoLaunchCollectionIds = (
       error,
     );
   }
-
-  return ids;
+return ids;
 };
 
 const isOnReplayHash = () => window.location.hash === REPLAY_HASH;
@@ -197,7 +197,6 @@ export const useAgentIndicatorManager = (sdk: FrontendSDK) => {
       if (collectionId === null || collectionId.length === 0) {
         return;
       }
-
       if (autoLaunchIds.has(collectionId)) {
         createIndicator(
           nameNode,
@@ -369,6 +368,13 @@ export const useAgentIndicatorManager = (sdk: FrontendSDK) => {
     if (isOnReplayHash()) {
       observeReplayTree();
     }
+    sdk.projects.onCurrentProjectChange((event) => {
+      if (event.projectId !== undefined) {
+        setTimeout(() => {
+          updateIndicators();
+        }, 1000);
+      }
+    });
 
     unsubscribeLocation = onLocationChange(({ newHash }) => {
       if (newHash === REPLAY_HASH) {

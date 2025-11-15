@@ -23,7 +23,7 @@ export const ensureShiftCollection = async (sdk: FrontendSDK) => {
     // If collections is empty, wait 500ms and retry
     if (collections.length === 0) {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      collections = sdk.replay.getCollections();
+      return void ensureShiftCollection(sdk);
     }
     
     const existing = collections.find(
