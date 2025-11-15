@@ -121,13 +121,12 @@ export const init = (sdk: FrontendSDK) => {
 
   const domManager = createDOMManager(sdk);
   domManager.drawer.start();
-  domManager.session.start();
   domManager.indicators.start();
 
-  domManager.session.onSelected((sessionId) => {
+  sdk.replay.onCurrentSessionChange((event) => {
     const agentStore = useAgentsStore();
-    if (sessionId !== undefined) {
-      agentStore.selectAgent(sessionId);
+    if (event.sessionId !== undefined) {
+      agentStore.selectAgent(event.sessionId);
     }
   });
 };
