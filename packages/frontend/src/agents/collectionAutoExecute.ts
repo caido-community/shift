@@ -18,7 +18,14 @@ const SHIFT_COLLECTION_NAME = "Shift";
 export const ensureShiftCollection = async (sdk: FrontendSDK) => {
   try {
     const configStore = useConfigStore();
-    const collections = sdk.replay.getCollections();
+    let collections = sdk.replay.getCollections();
+    
+    // If collections is empty, wait 500ms and retry
+    if (collections.length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      collections = sdk.replay.getCollections();
+    }
+    
     const existing = collections.find(
       (collection: { id: string; name?: string }) =>
         collection.name === SHIFT_COLLECTION_NAME,
@@ -334,4 +341,9 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
 
   subscribeToCreatedReplaySession();
   subscribeToUpdatedReplaySession();
+
+  // Subscribe to project changes and ensure Shift collection
+  sdk.projects.onCurrentProjectChange(() => {
+    void ensureShiftCollection(sdk);
+  });
 };
