@@ -69,7 +69,14 @@ export const runJavaScriptTool = tool({
         }
 
         const [environmentName, variableName] = parts;
-        if (!environmentName || !variableName) {
+        if (
+          environmentName === undefined ||
+          environmentName === null ||
+          environmentName === "" ||
+          variableName === undefined ||
+          variableName === null ||
+          variableName === ""
+        ) {
           response.error = `Invalid storeOutput format. Expected EnvironmentName.variableName, got: ${input.storeOutput}`;
           return response;
         }

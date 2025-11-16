@@ -44,7 +44,15 @@ export async function substituteEnvironmentVariables(
     const environmentName = match[1];
     const variableName = match[2];
 
-    if (!environmentName || !variableName || match.index === undefined) {
+    if (
+      environmentName === undefined ||
+      environmentName === null ||
+      environmentName === "" ||
+      variableName === undefined ||
+      variableName === null ||
+      variableName === "" ||
+      match.index === undefined
+    ) {
       continue;
     }
 
