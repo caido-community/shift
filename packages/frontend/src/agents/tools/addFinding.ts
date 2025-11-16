@@ -2,10 +2,11 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { type ToolContext } from "@/agents/types";
+import { substituteEnvironmentVariables } from "@/agents/utils/substituteEnvironmentVariables";
 
 const AddFindingSchema = z.object({
-  title: z.string().min(1),
-  markdown: z.string().min(1),
+  title: z.string().min(1).describe("The title of the finding. Supports environment variable substitution."),
+  markdown: z.string().min(1).describe("The markdown description of the finding. Supports environment variable substitution."),
 });
 
 export const addFindingTool = tool({
@@ -15,6 +16,9 @@ export const addFindingTool = tool({
   execute: async (input, { experimental_context }) => {
     const context = experimental_context as ToolContext;
     try {
+      const title = await substituteEnvironmentVariables(input.title, context);
+      const markdown = await substituteEnvironmentVariables(input.markdown, context);
+      
       const sessionId = context.replaySession.id;
       const requestId =
         (await context.sdk.graphql
@@ -24,8 +28,8 @@ export const addFindingTool = tool({
           )) ?? "0";
 
       await context.sdk.findings.createFinding(requestId, {
-        title: input.title,
-        description: input.markdown,
+        title,
+        description: markdown,
         reporter: "Shift Agent",
       });
 

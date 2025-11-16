@@ -17,7 +17,7 @@ export const createFindingSchema = z.object({
       .string()
       .describe(
         "The description of the finding. This supports markdown. When writing finding descriptions, keep it short and concise while still providing enough context to understand the finding.",
-      ),
+      )
   }),
 });
 
@@ -31,19 +31,19 @@ export const createFinding: ActionDefinition<createFindingInput> = {
     sdk: FrontendSDK,
     { title, description }: createFindingInput["parameters"],
   ) => {
-    const requestID = await getCurrentRequestID(sdk);
-    if (requestID === undefined) {
-      return {
-        success: false,
-        error: "No request found to create a finding for",
-      };
-    }
-
     try {
+      const requestID = await getCurrentRequestID(sdk);
+      if (requestID === undefined) {
+        return {
+          success: false,
+          error: "No request found to create a finding for",
+        };
+      }
+
       const finding = await sdk.findings.createFinding(requestID, {
         title,
         description,
-        reporter: "shift",
+        reporter: "Shift Agent",
       });
 
       if (finding === undefined) {

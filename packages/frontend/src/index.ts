@@ -49,7 +49,7 @@ export const init = (sdk: FrontendSDK) => {
   });
 
   sdk.sidebar.registerItem("Shift", "/shift", {
-    icon: "fas fa-robot",
+    icon: "fas fa-wand-magic-sparkles",
   });
 
   setupAgents(sdk);
@@ -127,6 +127,26 @@ export const init = (sdk: FrontendSDK) => {
     const agentStore = useAgentsStore();
     if (event.sessionId !== undefined) {
       agentStore.selectAgent(event.sessionId);
+    }
+  });
+
+  // Messy because we dont have a proper way to get the current session id from the sdk yet.
+  const setCurrentSession = () => {
+    const agentStore = useAgentsStore();
+    const currentSessionId = document.querySelector('div[data-is-selected="true"]')?.getAttribute('data-session-id') ?? ""
+    if (currentSessionId.length > 0) {
+      agentStore.selectAgent(currentSessionId);
+    }
+  } 
+  if (location.hash.startsWith("#/replay")) {
+    setCurrentSession();
+  }
+  sdk.navigation.onPageChange((event) => {
+    const agentStore = useAgentsStore();
+    if (agentStore.selectedAgent === undefined) {   
+      setTimeout(() => {
+        setCurrentSession();
+      }, 500);
     }
   });
 };

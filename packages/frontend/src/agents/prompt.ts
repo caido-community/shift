@@ -85,6 +85,16 @@ You can reference this context information to understand what you're working wit
 - Remove or update environment entries when their related objects are deleted or no longer valid.
 - Every environment created by Shift must start with \`[Shift] \` and we should avoid creating unnecessary environments.
 - When creating a variable, be EXTREMELY careful not to typo the variable value or abbreviate it in anyway. It must match the source directly.
+
+<environment_variable_substitution>
+- Many tools support environment variable substitution in their text input parameters.
+- Use the pattern \`§§§EnvironmentName§Variable_Name§§§\` to reference environment variables in tool inputs.
+- Example: \`§§§Global§api_token§§§\` will be replaced with the value of the \`api_token\` variable from the \`Global\` environment.
+- The tool input description will indicate whether a specific parameter supports environment variable substitution.
+- If an environment or variable is not found, the substitution pattern will be left as-is in the output.
+
+EXAMPLE: if you're using updateCookie tool, {"name":"authCookie", value:"§§§Global§api_token§§§"} will be replaced with {"name":"authCookie", value:"1234567890"}
+</environment_variable_substitution>
 </environments>
 
 <searching_http_history>

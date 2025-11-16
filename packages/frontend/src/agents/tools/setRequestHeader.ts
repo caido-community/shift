@@ -3,27 +3,31 @@ import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
 import { type ToolContext } from "@/agents/types";
+import { substituteEnvironmentVariables } from "@/agents/utils/substituteEnvironmentVariables";
 
 const SetRequestHeaderSchema = z.object({
   name: z
     .string()
     .min(1)
     .describe(
-      "The header name (e.g., Authorization, Content-Type, User-Agent)",
+      "The header name (e.g., Authorization, Content-Type, User-Agent). Supports environment variable substitution.",
     ),
-  value: z.string().describe("The header value"),
+  value: z.string().describe("The header value. Supports environment variable substitution."),
 });
 
 export const setRequestHeaderTool = tool({
   description:
     "Add or update an HTTP header in the current request. Use this to set authentication tokens, content types, user agents, or any other HTTP headers needed for testing. If the header exists, it will be replaced.",
   inputSchema: SetRequestHeaderSchema,
-  execute: (input, { experimental_context }) => {
+  execute: async (input, { experimental_context }) => {
     const context = experimental_context as ToolContext;
     try {
+      const name = await substituteEnvironmentVariables(input.name, context);
+      const value = await substituteEnvironmentVariables(input.value, context);
+      
       const hasChanged = context.replaySession.updateRequestRaw((draft) => {
         return HttpForge.create(draft)
-          .setHeader(input.name, input.value)
+          .setHeader(name, value)
           .build();
       });
 

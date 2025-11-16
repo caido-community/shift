@@ -75,10 +75,21 @@ export async function getReplaySession(
   const activeEntry = sessionResult.replaySession?.activeEntry;
 
   if (activeEntry === undefined || activeEntry === null) {
+    // No active entry found, this is a new session
     return {
-      kind: "Error",
-      error: "No active entry found",
-    };
+      kind: "Ok",
+      session: {
+        id: replaySessionId,
+        activeEntryId: "",
+        request: {
+          raw: "",
+          host: "",
+          port: 0,
+          isTLS: false,
+          SNI: "",
+        },
+      },
+    } as ReplayRequest;
   }
 
   const entryResult = await sdk.graphql.replayEntry({

@@ -2,14 +2,15 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import { type ToolContext } from "@/agents/types";
+import { substituteEnvironmentVariables } from "@/agents/utils/substituteEnvironmentVariables";
 
 const ReplaceRequestTextSchema = z
   .object({
     match: z
       .string()
       .min(1)
-      .describe("The text string or regex pattern to find and replace"),
-    replace: z.string().describe("The replacement text"),
+      .describe("The text string or regex pattern to find and replace. Supports environment variable substitution."),
+    replace: z.string().describe("The replacement text. Supports environment variable substitution."),
     useRegex: z
       .boolean()
       .optional()
@@ -42,15 +43,18 @@ export const replaceRequestTextTool = tool({
   Supports literal string matching by default, and can optionally use regular expressions.
   `,
   inputSchema: ReplaceRequestTextSchema,
-  execute: (input, { experimental_context }) => {
+  execute: async (input, { experimental_context }) => {
     const context = experimental_context as ToolContext;
     try {
+      const match = await substituteEnvironmentVariables(input.match, context);
+      const replace = await substituteEnvironmentVariables(input.replace, context);
+      
       let regex: RegExp | undefined;
       if (input.useRegex) {
         const flags = input.flags ?? "g";
         const normalizedFlags = flags.includes("g") ? flags : `${flags}g`;
         try {
-          regex = new RegExp(input.match, normalizedFlags);
+          regex = new RegExp(match, normalizedFlags);
         } catch (regexError) {
           const message =
             regexError instanceof Error
@@ -61,14 +65,14 @@ export const replaceRequestTextTool = tool({
       }
 
       const hasChanged = context.replaySession.updateRequestRaw((draft) => {
-        if (input.match === "") return draft;
+        if (match === "") return draft;
         if (regex !== undefined) {
-          return draft.replace(regex, input.replace);
+          return draft.replace(regex, replace);
         }
         if (typeof draft.replaceAll === "function") {
-          return draft.replaceAll(input.match, input.replace);
+          return draft.replaceAll(match, replace);
         }
-        return draft.split(input.match).join(input.replace);
+        return draft.split(match).join(replace);
       });
 
       return {

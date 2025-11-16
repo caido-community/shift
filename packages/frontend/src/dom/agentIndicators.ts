@@ -48,7 +48,7 @@ const createIndicator = (
     variantClass,
     sessionState?.status === "streaming" ? "text-success-500" : sessionState?.status === "error" ? "text-error-500" : "just-ready",
     "fa-solid",
-    "fa-brain",
+    "fa-wand-magic-sparkles",
     "inline",
   );
   indicator.title = tooltip;
