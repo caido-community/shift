@@ -8,7 +8,9 @@ import { substituteEnvironmentVariables } from "@/agents/utils/substituteEnviron
 const SetRequestBodySchema = z.object({
   body: z
     .string()
-    .describe("The request body content (JSON, form data, raw text, etc.). Supports environment variable substitution."),
+    .describe(
+      "The request body content (JSON, form data, raw text, etc.). Supports environment variable substitution.",
+    ),
 });
 
 export const setRequestBodyTool = tool({
@@ -19,7 +21,7 @@ export const setRequestBodyTool = tool({
     const context = experimental_context as ToolContext;
     try {
       const body = await substituteEnvironmentVariables(input.body, context);
-      
+
       const hasChanged = context.replaySession.updateRequestRaw((draft) => {
         return HttpForge.create(draft).body(body).build();
       });

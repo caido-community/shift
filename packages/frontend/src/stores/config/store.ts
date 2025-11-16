@@ -80,7 +80,6 @@ export const useConfigStore = defineStore("stores.config", () => {
     }
   });
 
-
   const openRouterApiKey = computed({
     get() {
       return _openRouterApiKey.value;
@@ -464,7 +463,6 @@ export const useConfigStore = defineStore("stores.config", () => {
     projectHistoryById.value = { ...projectHistoryById.value, [id]: next };
     await saveSettings();
   };
-
 
   const selectedModel = computed(() => {
     return models

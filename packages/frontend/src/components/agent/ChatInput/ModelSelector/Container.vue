@@ -41,9 +41,9 @@ const { groups, modelId, selectedModel } = useSelector(props.variant);
       dropdownicon: { class: 'h-2 mb-0.5' },
       header: {
         style: {
-          background: 'none'
+          background: 'none',
         },
-      }
+      },
     }"
   >
     <template #value>

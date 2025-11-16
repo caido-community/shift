@@ -12,7 +12,9 @@ const SetRequestHeaderSchema = z.object({
     .describe(
       "The header name (e.g., Authorization, Content-Type, User-Agent). Supports environment variable substitution.",
     ),
-  value: z.string().describe("The header value. Supports environment variable substitution."),
+  value: z
+    .string()
+    .describe("The header value. Supports environment variable substitution."),
 });
 
 export const setRequestHeaderTool = tool({
@@ -24,11 +26,9 @@ export const setRequestHeaderTool = tool({
     try {
       const name = await substituteEnvironmentVariables(input.name, context);
       const value = await substituteEnvironmentVariables(input.value, context);
-      
+
       const hasChanged = context.replaySession.updateRequestRaw((draft) => {
-        return HttpForge.create(draft)
-          .setHeader(name, value)
-          .build();
+        return HttpForge.create(draft).setHeader(name, value).build();
       });
 
       return {

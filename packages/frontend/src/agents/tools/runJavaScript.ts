@@ -69,6 +69,10 @@ export const runJavaScriptTool = tool({
         }
 
         const [environmentName, variableName] = parts;
+        if (!environmentName || !variableName) {
+          response.error = `Invalid storeOutput format. Expected EnvironmentName.variableName, got: ${input.storeOutput}`;
+          return response;
+        }
         const { sdk } = context;
 
         const environments = await fetchAgentEnvironments(sdk);
@@ -114,7 +118,8 @@ export const runJavaScriptTool = tool({
           variables.map((variable) => ({
             name: variable.name,
             value: variable.value,
-            kind: (variable.kind ?? "PLAIN") as EnvironmentVariableInput["kind"],
+            kind: (variable.kind ??
+              "PLAIN") as EnvironmentVariableInput["kind"],
           }));
 
         const nextVariable = {

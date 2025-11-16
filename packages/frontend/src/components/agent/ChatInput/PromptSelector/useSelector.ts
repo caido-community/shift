@@ -10,7 +10,9 @@ export const useSelector = (agentId?: string) => {
   const uiStore = useUIStore();
   const agentStore = useAgentsStore();
 
-  const effectiveAgentId = computed(() => agentId ?? agentStore.selectedId ?? "");
+  const effectiveAgentId = computed(
+    () => agentId ?? agentStore.selectedId ?? "",
+  );
 
   const selectedPromptIds = computed({
     get() {

@@ -5,8 +5,18 @@ import { type ToolContext } from "@/agents/types";
 import { substituteEnvironmentVariables } from "@/agents/utils/substituteEnvironmentVariables";
 
 const AddFindingSchema = z.object({
-  title: z.string().min(1).describe("The title of the finding. Supports environment variable substitution."),
-  markdown: z.string().min(1).describe("The markdown description of the finding. Supports environment variable substitution."),
+  title: z
+    .string()
+    .min(1)
+    .describe(
+      "The title of the finding. Supports environment variable substitution.",
+    ),
+  markdown: z
+    .string()
+    .min(1)
+    .describe(
+      "The markdown description of the finding. Supports environment variable substitution.",
+    ),
 });
 
 export const addFindingTool = tool({
@@ -17,8 +27,11 @@ export const addFindingTool = tool({
     const context = experimental_context as ToolContext;
     try {
       const title = await substituteEnvironmentVariables(input.title, context);
-      const markdown = await substituteEnvironmentVariables(input.markdown, context);
-      
+      const markdown = await substituteEnvironmentVariables(
+        input.markdown,
+        context,
+      );
+
       const sessionId = context.replaySession.id;
       const requestId =
         (await context.sdk.graphql

@@ -88,11 +88,11 @@ const handleConfirm = () => {
       comment: entry.comment.trim(),
     }))
     .filter((entry) => entry.selection.length > 0 || entry.comment.length > 0);
-  
+
   // Get the selected model and prompts
   const model = configStore.agentsModel;
   const selectedPromptIds = uiStore.getSelectedPrompts(dialogAgentId);
-  
+
   props.onConfirm({
     selections,
     instructions: instructions.value.trim(),
@@ -193,9 +193,7 @@ watch(
               @input="handleMaxInteractionsInput"
             />
           </div>
-          <p class="text-xs text-surface-400">
-            Max agent steps.
-          </p>
+          <p class="text-xs text-surface-400">Max agent steps.</p>
         </div>
       </div>
     </section>

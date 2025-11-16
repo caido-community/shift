@@ -20,7 +20,7 @@ export const setRequestRawTool = tool({
     const context = experimental_context as ToolContext;
     try {
       const raw = await substituteEnvironmentVariables(input.raw, context);
-      
+
       const hasChanged = context.replaySession.updateRequestRaw(() => {
         const normalized = raw.replace(/\r?\n/g, "\r\n");
         return normalized;

@@ -18,14 +18,14 @@ const SHIFT_COLLECTION_NAME = "Shift";
 export const ensureShiftCollection = async (sdk: FrontendSDK) => {
   try {
     const configStore = useConfigStore();
-    let collections = sdk.replay.getCollections();
-    
+    const collections = sdk.replay.getCollections();
+
     // If collections is empty, wait 500ms and retry
     if (collections.length === 0) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       return void ensureShiftCollection(sdk);
     }
-    
+
     const existing = collections.find(
       (collection: { id: string; name?: string }) =>
         collection.name === SHIFT_COLLECTION_NAME,
@@ -69,13 +69,22 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     const handleConfirm = (payload: LaunchInputDialogResult) => {
       dialog.close();
 
-      const { selections, instructions, maxInteractions, selectedPromptIds, model } = payload;
+      const {
+        selections,
+        instructions,
+        maxInteractions,
+        selectedPromptIds,
+        model,
+      } = payload;
 
       // Convert selected prompt IDs to CustomPrompt objects
       // If user selected prompts in the dialog, use those; otherwise fall back to collection prompts
-      const promptsToUse = selectedPromptIds && selectedPromptIds.length > 0
-        ? configStore.customPrompts.filter((prompt) => selectedPromptIds.includes(prompt.id))
-        : prompts;
+      const promptsToUse =
+        selectedPromptIds && selectedPromptIds.length > 0
+          ? configStore.customPrompts.filter((prompt) =>
+              selectedPromptIds.includes(prompt.id),
+            )
+          : prompts;
 
       const agentOptions: AgentRuntimeConfigInput = {
         maxIterations: maxInteractions,
@@ -92,9 +101,10 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
           sdk.replay.openTab(sessionId);
           // Set the selected prompts from the dialog (or fall back to collection prompts)
           const uiStore = useUIStore();
-          const promptIds = selectedPromptIds && selectedPromptIds.length > 0
-            ? selectedPromptIds
-            : prompts.map((prompt) => prompt.id);
+          const promptIds =
+            selectedPromptIds && selectedPromptIds.length > 0
+              ? selectedPromptIds
+              : prompts.map((prompt) => prompt.id);
           uiStore.setSelectedPrompts(sessionId, promptIds);
 
           await agentsStore.selectedAgent?.sendMessage({

@@ -25,7 +25,6 @@ const handleEditPrompt = (prompt: CustomPrompt, event: Event) => {
   event.stopPropagation();
   uiStore.openEditPromptDialog(prompt);
 };
-
 </script>
 
 <template>
@@ -43,8 +42,8 @@ const handleEditPrompt = (prompt: CustomPrompt, event: Event) => {
     />
 
     <Popover
-      ref="popoverRef"
       id="prompt-selector-popover"
+      ref="popoverRef"
       position="top"
       :pt="{
         root: {

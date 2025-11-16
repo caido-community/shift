@@ -9,8 +9,14 @@ const ReplaceRequestTextSchema = z
     match: z
       .string()
       .min(1)
-      .describe("The text string or regex pattern to find and replace. Supports environment variable substitution."),
-    replace: z.string().describe("The replacement text. Supports environment variable substitution."),
+      .describe(
+        "The text string or regex pattern to find and replace. Supports environment variable substitution.",
+      ),
+    replace: z
+      .string()
+      .describe(
+        "The replacement text. Supports environment variable substitution.",
+      ),
     useRegex: z
       .boolean()
       .optional()
@@ -47,8 +53,11 @@ export const replaceRequestTextTool = tool({
     const context = experimental_context as ToolContext;
     try {
       const match = await substituteEnvironmentVariables(input.match, context);
-      const replace = await substituteEnvironmentVariables(input.replace, context);
-      
+      const replace = await substituteEnvironmentVariables(
+        input.replace,
+        context,
+      );
+
       let regex: RegExp | undefined;
       if (input.useRegex) {
         const flags = input.flags ?? "g";

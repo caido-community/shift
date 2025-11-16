@@ -17,7 +17,7 @@ export const createFindingSchema = z.object({
       .string()
       .describe(
         "The description of the finding. This supports markdown. When writing finding descriptions, keep it short and concise while still providing enough context to understand the finding.",
-      )
+      ),
   }),
 });
 

@@ -46,7 +46,11 @@ const createIndicator = (
   indicator.classList.add(
     BASE_INDICATOR_CLASS,
     variantClass,
-    sessionState?.status === "streaming" ? "text-success-500" : sessionState?.status === "error" ? "text-error-500" : "just-ready",
+    sessionState?.status === "streaming"
+      ? "text-success-500"
+      : sessionState?.status === "error"
+        ? "text-error-500"
+        : "just-ready",
     "fa-solid",
     "fa-wand-magic-sparkles",
     "inline",
@@ -134,7 +138,7 @@ const computeAutoLaunchCollectionIds = (
       error,
     );
   }
-return ids;
+  return ids;
 };
 
 const isOnReplayHash = () => window.location.hash === REPLAY_HASH;

@@ -28,11 +28,9 @@ export const addCookieTool = tool({
     try {
       const name = await substituteEnvironmentVariables(input.name, context);
       const value = await substituteEnvironmentVariables(input.value, context);
-      
+
       const hasChanged = context.replaySession.updateRequestRaw((draft) => {
-        return HttpForge.create(draft)
-          .addCookie(name, value)
-          .build();
+        return HttpForge.create(draft).addCookie(name, value).build();
       });
 
       return {

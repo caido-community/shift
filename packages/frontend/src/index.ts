@@ -24,7 +24,7 @@ export const init = (sdk: FrontendSDK) => {
 
   app.use(PrimeVue, {
     unstyled: true,
-    pt: Classic
+    pt: Classic,
   });
 
   app.directive("tooltip", Tooltip);
@@ -133,17 +133,20 @@ export const init = (sdk: FrontendSDK) => {
   // Messy because we dont have a proper way to get the current session id from the sdk yet.
   const setCurrentSession = () => {
     const agentStore = useAgentsStore();
-    const currentSessionId = document.querySelector('div[data-is-selected="true"]')?.getAttribute('data-session-id') ?? ""
+    const currentSessionId =
+      document
+        .querySelector('div[data-is-selected="true"]')
+        ?.getAttribute("data-session-id") ?? "";
     if (currentSessionId.length > 0) {
       agentStore.selectAgent(currentSessionId);
     }
-  } 
+  };
   if (location.hash.startsWith("#/replay")) {
     setCurrentSession();
   }
   sdk.navigation.onPageChange((event) => {
     const agentStore = useAgentsStore();
-    if (agentStore.selectedAgent === undefined) {   
+    if (agentStore.selectedAgent === undefined) {
       setTimeout(() => {
         setCurrentSession();
       }, 500);
