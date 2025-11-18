@@ -36,13 +36,18 @@ export const useForm = () => {
 
   // Watch for changes in autoExecuteCollection and disable JIT instructions when None is selected
   watch(autoExecuteCollection, (newValue, oldValue) => {
-    // Only run the watcher if the value actually changed (not during initial setup)
-    if (oldValue !== undefined) {
-      if (!newValue || newValue === "") {
-        promptForJitInstructions.value = false;
-      } else {
-        promptForJitInstructions.value = true;
-      }
+    // If autoExecuteCollection changed, and the new value isn't none (""), and old !== ""
+    if (oldValue === "") {
+      return;
+    }
+    if (
+      newValue !== undefined &&
+      oldValue !== undefined &&
+      newValue !== oldValue &&
+      newValue !== "" &&
+      oldValue !== ""
+    ) {
+      promptForJitInstructions.value = true;
     }
   });
 
@@ -123,16 +128,11 @@ export const useForm = () => {
     const projectJitInstructions = configStore.getProjectJitInstructions(
       prompt.id,
     );
-    if (
-      projectJitInstructions !== undefined &&
-      projectJitInstructions !== false
-    ) {
+    if (projectJitInstructions !== undefined) {
       promptForJitInstructions.value = projectJitInstructions;
     } else {
       // Default to true if a collection is selected, false if None
-      promptForJitInstructions.value =
-        autoExecuteCollection.value !== "" &&
-        autoExecuteCollection.value !== undefined;
+      promptForJitInstructions.value = true;
     }
 
     showDialog.value = true;
