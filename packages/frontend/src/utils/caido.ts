@@ -97,6 +97,7 @@ export async function getReplaySession(
     kind: "Ok",
     session: {
       id: replaySessionId,
+      activeEntryId: activeEntry.id,
       request: {
         raw: replayEntry.raw,
         host: replayEntry.connection.host,

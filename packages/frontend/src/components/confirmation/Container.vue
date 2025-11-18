@@ -5,7 +5,7 @@ import Textarea from "primevue/textarea";
 const props = defineProps<{
   fileName: string;
   content: string;
-  onConfirm: () => void;
+  onConfirm: (content: string) => void;
 }>();
 
 const ctrl = useKeyModifier("Control");
@@ -14,8 +14,12 @@ const meta = useKeyModifier("Meta");
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === "Enter" && (ctrl.value === true || meta.value === true)) {
     event.preventDefault();
-    props.onConfirm();
+    handleConfirm();
   }
+};
+
+const handleConfirm = () => {
+  props.onConfirm(props.content);
 };
 </script>
 
@@ -27,7 +31,7 @@ const handleKeydown = (event: KeyboardEvent) => {
     <Textarea :value="props.content" readonly class="flex-1 w-full" />
     <button
       class="bg-primary-700 border border-primary-700 rounded-md cursor-pointer text-white px-4 py-2"
-      @click="props.onConfirm"
+      @click="handleConfirm"
     >
       Confirm (Ctrl+Enter)
     </button>

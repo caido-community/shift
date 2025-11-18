@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { runAction } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -19,21 +20,10 @@ export const removeHostedFile: ActionDefinition<RemoveHostedFileInput> = {
   execute: async (
     sdk: FrontendSDK,
     { id }: RemoveHostedFileInput["parameters"],
-  ) => {
-    try {
-      await sdk.files.delete(id);
-    } catch (error) {
-      return {
-        success: false,
-        error: `Failed to remove hosted file: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      };
-    }
-
-    return {
-      success: true,
-      frontend_message: "Hosted file removed successfully",
-    };
-  },
+  ) =>
+    runAction(
+      () => sdk.files.delete(id),
+      "Hosted file removed successfully",
+      "Failed to remove hosted file",
+    ),
 };

@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import Button from "primevue/button";
+import Checkbox from "primevue/checkbox";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import Textarea from "primevue/textarea";
+import { onMounted } from "vue";
 
 import { useForm } from "./useForm";
+
+import { useUIStore } from "@/stores/ui";
 
 const {
   customPrompts,
@@ -17,6 +21,10 @@ const {
   gistUrl,
   isGistMode,
   isLoadingGist,
+  projectSpecificPrompt,
+  autoExecuteCollection,
+  promptForJitInstructions,
+  collections,
   openEditDialog,
   openCreateDialog,
   closeDialog,
@@ -25,6 +33,12 @@ const {
   handleGistUrlChange,
   refreshGist,
 } = useForm();
+
+const uiStore = useUIStore();
+
+onMounted(() => {
+  uiStore.setEditPromptCallback(openEditDialog);
+});
 </script>
 
 <template>
@@ -172,6 +186,48 @@ const {
         </div>
 
         <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium">Auto Execute Collection</label>
+          <select
+            v-model="autoExecuteCollection"
+            class="w-full p-2 border border-surface-600 bg-surface-800 text-surface-100 rounded"
+          >
+            <option
+              v-for="collection in collections"
+              :key="collection.value"
+              :value="collection.value"
+            >
+              {{ collection.label }}
+            </option>
+          </select>
+          <!-- Debug info -->
+          <p class="text-xs text-surface-500">
+            If a Replay Collection with this exact name exists, it will be
+            auto-selected when this modal loads
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <Checkbox
+            v-model="promptForJitInstructions"
+            binary
+            :disabled="!autoExecuteCollection || autoExecuteCollection === ''"
+            :class="{
+              'opacity-50':
+                !autoExecuteCollection || autoExecuteCollection === '',
+            }"
+          />
+          <label
+            class="text-sm font-medium"
+            :class="{
+              'text-surface-500':
+                !autoExecuteCollection || autoExecuteCollection === '',
+            }"
+          >
+            Prompt for a starting message on collection-based launch
+          </label>
+        </div>
+
+        <div class="flex flex-col gap-2">
           <label class="text-sm font-medium">
             Content
             <span v-if="isGistMode" class="text-xs text-surface-500 ml-2"
@@ -186,6 +242,25 @@ const {
             :readonly="isGistMode"
             :class="{ 'opacity-60': isGistMode }"
           />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium">
+            Project-Specific Prompt
+            <span class="text-xs text-surface-500 ml-2"
+              >(optional, unique per project)</span
+            >
+          </label>
+          <Textarea
+            v-model="projectSpecificPrompt"
+            placeholder="Enter project-specific prompt content that will be appended to the main prompt"
+            rows="4"
+            class="w-full"
+          />
+          <p class="text-xs text-surface-500">
+            This content will be automatically appended to the main prompt
+            content when used in this project
+          </p>
         </div>
 
         <div class="flex justify-end gap-3 pt-4">

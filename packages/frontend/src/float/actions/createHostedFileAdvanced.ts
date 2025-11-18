@@ -1,8 +1,8 @@
 import { z } from "zod";
 
+import { actionError, hostedFileConfirmation } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
-import { showConfirmationDialog } from "@/utils";
 
 export const createHostedFileAdvancedSchema = z.object({
   name: z.literal("createHostedFileAdvanced"),
@@ -37,34 +37,12 @@ export const createHostedFileAdvanced: ActionDefinition<CreateHostedFileAdvanced
           const result = eval(js_script);
           content = String(result);
         } catch (evalError) {
-          return {
-            success: false,
-            error: `Failed to execute JavaScript: ${
-              evalError instanceof Error ? evalError.message : "Unknown error"
-            }`,
-          };
+          return actionError("Failed to execute JavaScript", evalError);
         }
-        const dialog = showConfirmationDialog(sdk, {
+
+        hostedFileConfirmation(sdk, {
           fileName: file_name,
           content,
-          onConfirm: async (content) => {
-            dialog.close();
-
-            const file = new File([content], file_name);
-            const result = await sdk.files.create(file);
-
-            if (result === undefined) {
-              sdk.window.showToast("Failed to create file", {
-                variant: "error",
-              });
-
-              return;
-            }
-
-            sdk.window.showToast("File created successfully", {
-              variant: "success",
-            });
-          },
         });
 
         return {
@@ -72,12 +50,7 @@ export const createHostedFileAdvanced: ActionDefinition<CreateHostedFileAdvanced
           frontend_message: "",
         };
       } catch (error) {
-        return {
-          success: false,
-          error: `Failed to create hosted file: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`,
-        };
+        return actionError("Failed to create hosted file", error);
       }
     },
   };

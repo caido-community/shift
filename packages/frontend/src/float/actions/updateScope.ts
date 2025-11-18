@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -32,22 +33,23 @@ export const updateScope: ActionDefinition<UpdateScopeInput> = {
     sdk: FrontendSDK,
     { id, name, allowlist, denylist }: UpdateScopeInput["parameters"],
   ) => {
-    const updated = await sdk.scopes.updateScope(id, {
-      name,
-      allowlist,
-      denylist,
-    });
+    try {
+      const updated = await sdk.scopes.updateScope(id, {
+        name,
+        allowlist,
+        denylist,
+      });
 
-    if (updated === undefined) {
-      return {
-        success: false,
-        error: "Failed to update scope",
-      };
+      if (updated === undefined) {
+        return {
+          success: false,
+          error: "Failed to update scope",
+        };
+      }
+
+      return actionSuccess(`Scope ${updated.name} updated successfully`);
+    } catch (error) {
+      return actionError("Failed to update scope", error);
     }
-
-    return {
-      success: true,
-      frontend_message: `Scope ${updated.name} updated successfully`,
-    };
   },
 };

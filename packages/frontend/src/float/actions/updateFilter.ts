@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -27,17 +28,9 @@ export const updateFilter: ActionDefinition<UpdateFilterInput> = {
     try {
       await sdk.filters.update(id, { name, alias, query });
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to update filter: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      };
+      return actionError("Failed to update filter", error);
     }
 
-    return {
-      success: true,
-      frontend_message: `Filter ${id} updated successfully`,
-    };
+    return actionSuccess(`Filter ${id} updated successfully`);
   },
 };

@@ -1,6 +1,12 @@
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import {
+  actionError,
+  actionSuccess,
+  replaceEditorContent,
+  withActiveEditorView,
+} from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -27,66 +33,47 @@ export const activeEditorAddHeader: ActionDefinition<ActiveEditorAddHeaderInput>
     execute: (
       sdk: FrontendSDK,
       { header, replace }: ActiveEditorAddHeaderInput["parameters"],
-    ) => {
-      const view = sdk.window.getActiveEditor()?.getEditorView();
-
-      if (view === undefined) {
-        return {
-          success: false,
-          error: "No active editor view found",
-        };
-      }
-
-      const headerParts = header.split(":");
-      if (headerParts.length < 2) {
-        return {
-          success: false,
-          error: "Header must be in format 'Name: Value'",
-        };
-      }
-
-      const headerName = headerParts[0]?.trim();
-      if (headerName === undefined) {
-        return {
-          success: false,
-          error: "Header name is undefined",
-        };
-      }
-
-      const headerValue = headerParts.slice(1).join(":").trim();
-
-      try {
-        const currentText = view.state.doc.toString();
-        let modifiedRequest: string;
-
-        if (replace) {
-          modifiedRequest = HttpForge.create(currentText)
-            .setHeader(headerName, headerValue)
-            .build();
-        } else {
-          modifiedRequest = HttpForge.create(currentText)
-            .addHeader(headerName, headerValue)
-            .build();
+    ) =>
+      withActiveEditorView(sdk, (view) => {
+        const headerParts = header.split(":");
+        if (headerParts.length < 2) {
+          return {
+            success: false,
+            error: "Header must be in format 'Name: Value'",
+          };
         }
 
-        view.dispatch({
-          changes: {
-            from: 0,
-            to: view.state.doc.length,
-            insert: modifiedRequest,
-          },
-        });
-        view.focus();
+        const headerName = headerParts[0]?.trim();
+        if (headerName === undefined) {
+          return {
+            success: false,
+            error: "Header name is undefined",
+          };
+        }
 
-        return {
-          success: true,
-          frontend_message: `Header ${headerName} ${replace ? "set" : "added"} in active editor`,
-        };
-      } catch (error) {
-        return {
-          success: false,
-          error: `Failed to modify header: ${error instanceof Error ? error.message : "Unknown error"}`,
-        };
-      }
-    },
+        const headerValue = headerParts.slice(1).join(":").trim();
+
+        try {
+          const currentText = view.state.doc.toString();
+          let modifiedRequest: string;
+
+          if (replace) {
+            modifiedRequest = HttpForge.create(currentText)
+              .setHeader(headerName, headerValue)
+              .build();
+          } else {
+            modifiedRequest = HttpForge.create(currentText)
+              .addHeader(headerName, headerValue)
+              .build();
+          }
+
+          replaceEditorContent(view, modifiedRequest);
+
+          return actionSuccess(
+            `Header ${headerName} ${replace ? "set" : "added"} in active editor`,
+          );
+        } catch (error) {
+          return actionError("Failed to modify header", error);
+        }
+      }),
   };

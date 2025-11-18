@@ -21,14 +21,19 @@ function streamActions(input: ActionQuery) {
   });
   const model = openrouter(configStore.floatModel);
 
+  const learnings = configStore.learnings.map((value, index) => ({
+    index,
+    value,
+  }));
+
   const prompt = `
   <context>
   ${JSON.stringify(input.context)}
   </context>
 
-  <memory>
-  ${configStore.memory.trim()}
-  </memory>
+  <learnings>
+  ${JSON.stringify(learnings, null, 2)}
+  </learnings>
 
   <user>
   ${input.content}

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 
 export const sendReplayTabSchema = z.object({
@@ -19,7 +20,7 @@ export const sendReplayTab: ActionDefinition<SendReplayTabInput> = {
         "[aria-label=Send]",
       ) as HTMLElement;
 
-      if (sendButton === undefined) {
+      if (sendButton === null) {
         return {
           success: false,
           error: "Send request button not found",
@@ -28,17 +29,9 @@ export const sendReplayTab: ActionDefinition<SendReplayTabInput> = {
 
       sendButton.click();
 
-      return {
-        success: true,
-        frontend_message: "Replay tab request sent",
-      };
+      return actionSuccess("Replay tab request sent");
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to send replay tab request: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      };
+      return actionError("Failed to send replay tab request", error);
     }
   },
 };

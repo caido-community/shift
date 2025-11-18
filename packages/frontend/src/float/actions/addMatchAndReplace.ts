@@ -14,6 +14,7 @@ import {
 } from "@caido/sdk-frontend";
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -208,17 +209,11 @@ export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
         await sdk.matchReplace.toggleRule(res.id, true);
       }
 
-      return {
-        success: true,
-        frontend_message: `Match and replace rule ${name} created successfully`,
-      };
+      return actionSuccess(
+        `Match and replace rule ${name} created successfully`,
+      );
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to create match and replace rule: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
-      };
+      return actionError("Failed to create match and replace rule", error);
     }
   },
 };

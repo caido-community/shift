@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -22,17 +23,18 @@ export const deleteScope: ActionDefinition<DeleteScopeInput> = {
   description: "Delete a scope by id",
   inputSchema: deleteScopeSchema,
   execute: async (sdk: FrontendSDK, { id }: DeleteScopeInput["parameters"]) => {
-    const deleted = await sdk.scopes.deleteScope(id);
-    if (!deleted) {
-      return {
-        success: false,
-        error: "Failed to delete scope",
-      };
-    }
+    try {
+      const deleted = await sdk.scopes.deleteScope(id);
+      if (!deleted) {
+        return {
+          success: false,
+          error: "Failed to delete scope",
+        };
+      }
 
-    return {
-      success: true,
-      frontend_message: `Scope with ID ${id} deleted successfully`,
-    };
+      return actionSuccess(`Scope with ID ${id} deleted successfully`);
+    } catch (error) {
+      return actionError("Failed to delete scope", error);
+    }
   },
 };

@@ -4,12 +4,24 @@ import Checkbox from "primevue/checkbox";
 import Popover from "primevue/popover";
 import { ref } from "vue";
 
+import { useChat } from "../useChat";
+
 import { useSelector } from "./useSelector";
 
+import { type CustomPrompt } from "@/agents/types";
+import { useUIStore } from "@/stores/ui";
+
 const { promptOptions, isSelected, togglePrompt } = useSelector();
+const uiStore = useUIStore();
+const { isAgentIdle } = useChat();
 
 const popoverRef = ref<InstanceType<typeof Popover>>();
 const onToggle = (event: MouseEvent) => popoverRef.value?.toggle(event);
+
+const handleEditPrompt = (prompt: CustomPrompt, event: Event) => {
+  event.stopPropagation();
+  uiStore.openEditPromptDialog(prompt);
+};
 </script>
 
 <template>
@@ -17,6 +29,7 @@ const onToggle = (event: MouseEvent) => popoverRef.value?.toggle(event);
     <Button
       severity="tertiary"
       icon="fas fa-plus"
+      :disabled="!isAgentIdle"
       :pt="{
         root: {
           class:
@@ -54,9 +67,22 @@ const onToggle = (event: MouseEvent) => popoverRef.value?.toggle(event);
               @click.stop
               @update:model-value="togglePrompt(prompt.id)"
             />
-            <span class="text-surface-200 text-sm font-mono truncate">{{
+            <span class="text-surface-200 text-sm font-mono truncate flex-1">{{
               prompt.title
             }}</span>
+            <Button
+              v-if="!prompt.isDefault"
+              icon="fas fa-edit"
+              size="small"
+              severity="secondary"
+              outlined
+              :pt="{
+                root: {
+                  class: 'h-6 w-6 p-0 text-surface-400 hover:text-surface-200',
+                },
+              }"
+              @click="handleEditPrompt(prompt, $event)"
+            />
           </div>
           <div
             v-if="promptOptions.length === 0"

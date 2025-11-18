@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -26,22 +27,23 @@ export const addScope: ActionDefinition<AddScopeInput> = {
     sdk: FrontendSDK,
     { name, allowlist, denylist }: AddScopeInput["parameters"],
   ) => {
-    const scope = await sdk.scopes.createScope({
-      name,
-      allowlist,
-      denylist,
-    });
+    try {
+      const scope = await sdk.scopes.createScope({
+        name,
+        allowlist,
+        denylist,
+      });
 
-    if (scope === undefined) {
-      return {
-        success: false,
-        error: "Failed to create scope",
-      };
+      if (scope === undefined) {
+        return {
+          success: false,
+          error: "Failed to create scope",
+        };
+      }
+
+      return actionSuccess(`Scope ${scope.name} created successfully`);
+    } catch (error) {
+      return actionError("Failed to create scope", error);
     }
-
-    return {
-      success: true,
-      frontend_message: `Scope ${scope.name} created successfully`,
-    };
   },
 };

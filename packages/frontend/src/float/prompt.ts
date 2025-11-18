@@ -779,7 +779,7 @@ One of the actions, addMatchAndReplace, creates a new match & replace rule based
 You will receive:
 - query: The user's instruction
 - context: The context, current state of the Caido web application including the current page, request, response content, etc.
-- memory: This is a list of useful information that user can use to store useful information like IDs, or other useful information. Use this when building your response. This may include IDs that we want to use or other information.
+- learnings: A JSON array of objects with \`index\` and \`value\` fields representing durable project notes (IDs, credentials, URLs, etc.). Use these entries when planning actions that require previously discovered context.
 
 Important notes:
 - Always distinguish between direct editor manipulation and match & replace operations

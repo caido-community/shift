@@ -29,12 +29,12 @@ const selectedPrompts = computed(() =>
 
 <template>
   <div class="relative flex items-center gap-2">
-    <div class="relative w-64">
+    <div class="relative w-52">
       <div
         ref="listRef"
         class="flex items-center gap-2 overflow-x-auto flex-nowrap w-full scrollbar-hidden relative z-10"
       >
-        <div class="flex-1 min-w-0" aria-hidden="true" />
+        <div class="flex-1 min-w-0 shrink" aria-hidden="true" />
         <div
           v-for="prompt in selectedPrompts"
           :key="prompt.id"

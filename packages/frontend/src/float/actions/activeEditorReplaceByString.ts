@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+import {
+  actionError,
+  actionSuccess,
+  replaceEditorContent,
+  withActiveEditorView,
+} from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
@@ -27,36 +33,17 @@ export const activeEditorReplaceByString: ActionDefinition<ActiveEditorReplaceBy
     execute: (
       sdk: FrontendSDK,
       { match, replace }: ActiveEditorReplaceByStringInput["parameters"],
-    ) => {
-      const view = sdk.window.getActiveEditor()?.getEditorView();
+    ) =>
+      withActiveEditorView(sdk, (view) => {
+        try {
+          const currentText = view.state.doc.toJSON().join("\r\n");
+          const newText = currentText.replace(match, replace);
 
-      if (view === undefined) {
-        return {
-          success: false,
-          error: "No active editor view found",
-        };
-      }
+          replaceEditorContent(view, newText);
 
-      try {
-        const currentText = view.state.doc.toJSON().join("\r\n");
-        const newText = currentText.replace(match, replace);
-
-        view.dispatch({
-          changes: { from: 0, to: view.state.doc.length, insert: newText },
-        });
-        view.focus();
-
-        return {
-          success: true,
-          frontend_message: "Text replaced in active editor",
-        };
-      } catch (error) {
-        return {
-          success: false,
-          error: `Failed to replace text: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`,
-        };
-      }
-    },
+          return actionSuccess("Text replaced in active editor");
+        } catch (error) {
+          return actionError("Failed to replace text", error);
+        }
+      }),
   };

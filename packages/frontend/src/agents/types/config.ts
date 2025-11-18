@@ -38,6 +38,7 @@ export type CustomPrompt = {
   content: string;
   isDefault?: boolean;
   gistUrl?: string;
+  projectSpecificPrompt?: string;
 };
 
 export type AISessionRenamingConfig = {
