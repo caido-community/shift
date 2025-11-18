@@ -1,6 +1,8 @@
 import { type UIMessage } from "ai";
 import { z } from "zod";
 
+import type { AgentRuntimeConfig } from "./runtime";
+
 import { type TodoManager } from "@/agents/todos";
 import { type FrontendSDK } from "@/types";
 
@@ -8,6 +10,7 @@ export type ToolContext = {
   sdk: FrontendSDK;
   replaySession: ReplaySession;
   todoManager: TodoManager;
+  config: AgentRuntimeConfig;
 };
 
 export type ReplaySession = {

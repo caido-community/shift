@@ -4,19 +4,22 @@ import Checkbox from "primevue/checkbox";
 import Popover from "primevue/popover";
 import { ref } from "vue";
 
-import { useChat } from "../useChat";
-
 import { useSelector } from "./useSelector";
 
 import { type CustomPrompt } from "@/agents/types";
 import { useUIStore } from "@/stores/ui";
 
-const { promptOptions, isSelected, togglePrompt } = useSelector();
+const props = defineProps<{
+  agentId?: string;
+}>();
+
+const { promptOptions, isSelected, togglePrompt } = useSelector(props.agentId);
 const uiStore = useUIStore();
-const { isAgentIdle } = useChat();
 
 const popoverRef = ref<InstanceType<typeof Popover>>();
-const onToggle = (event: MouseEvent) => popoverRef.value?.toggle(event);
+const onToggle = (event: MouseEvent) => {
+  popoverRef.value?.toggle(event);
+};
 
 const handleEditPrompt = (prompt: CustomPrompt, event: Event) => {
   event.stopPropagation();
@@ -29,7 +32,6 @@ const handleEditPrompt = (prompt: CustomPrompt, event: Event) => {
     <Button
       severity="tertiary"
       icon="fas fa-plus"
-      :disabled="!isAgentIdle"
       :pt="{
         root: {
           class:
@@ -40,12 +42,13 @@ const handleEditPrompt = (prompt: CustomPrompt, event: Event) => {
     />
 
     <Popover
+      id="prompt-selector-popover"
       ref="popoverRef"
       position="top"
       :pt="{
         root: {
           class:
-            'bg-surface-800 border border-surface-700 rounded-md shadow-lg',
+            'bg-surface-800 border border-surface-700 rounded-md shadow-lg !z-[1202]',
         },
         content: {
           class: 'p-1 rounded-md',

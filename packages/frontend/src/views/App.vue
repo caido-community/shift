@@ -96,10 +96,12 @@ const handleLabel = (
       <template #content>
         <div class="flex justify-between items-center p-4">
           <div>
-            <h3 class="text-lg font-semibold">Shift Agents</h3>
+            <h3 class="text-lg font-semibold">
+              <i class="fas fa-wand-magic-sparkles"></i> Shift Agents
+            </h3>
             <p class="text-sm text-surface-300">
-              Shift Agents is a tool that allows you to delegate replay sessions
-              into agent hands
+              Shift Agents allows you to delegate a replay session to an AI
+              agent.
             </p>
           </div>
         </div>

@@ -67,17 +67,18 @@ export const useConfigStore = defineStore("stores.config", () => {
     return true;
   };
 
-  const getActiveProjectId = () => {
-    const projectNameElement = document.querySelector(
-      ".c-current-project[data-project-id]",
-    );
-    if (projectNameElement === null) {
-      return "";
+  const _projectId = ref<string>("");
+
+  // Initialize project ID asynchronously
+  sdk.graphql.currentProject().then((project) => {
+    _projectId.value = project?.currentProject?.project?.id ?? "";
+  });
+
+  sdk.projects.onCurrentProjectChange((event) => {
+    if (event.projectId !== undefined) {
+      _projectId.value = event.projectId;
     }
-    const id = projectNameElement.getAttribute("data-project-id");
-    return id ?? "";
-  };
-  const _projectId = ref<string>(getActiveProjectId());
+  });
 
   const openRouterApiKey = computed({
     get() {
@@ -462,22 +463,6 @@ export const useConfigStore = defineStore("stores.config", () => {
     projectHistoryById.value = { ...projectHistoryById.value, [id]: next };
     await saveSettings();
   };
-
-  const monitorProjectChanges = async () => {
-    try {
-      const iterator = sdk.graphql.updatedProject();
-      for await (const _ of iterator) {
-        // TODO: figure out a better way
-        setTimeout(() => {
-          _projectId.value = getActiveProjectId();
-        }, 100);
-      }
-    } catch {
-      // do nothing
-    }
-  };
-
-  monitorProjectChanges();
 
   const selectedModel = computed(() => {
     return models

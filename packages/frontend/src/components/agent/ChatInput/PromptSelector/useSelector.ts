@@ -5,17 +5,21 @@ import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
 import { useUIStore } from "@/stores/ui";
 
-export const useSelector = () => {
+export const useSelector = (agentId?: string) => {
   const configStore = useConfigStore();
   const uiStore = useUIStore();
   const agentStore = useAgentsStore();
 
+  const effectiveAgentId = computed(
+    () => agentId ?? agentStore.selectedId ?? "",
+  );
+
   const selectedPromptIds = computed({
     get() {
-      return uiStore.getSelectedPrompts(agentStore.selectedId ?? "");
+      return uiStore.getSelectedPrompts(effectiveAgentId.value);
     },
     set(value: string[]) {
-      uiStore.setSelectedPrompts(agentStore.selectedId ?? "", value);
+      uiStore.setSelectedPrompts(effectiveAgentId.value, value);
     },
   });
 

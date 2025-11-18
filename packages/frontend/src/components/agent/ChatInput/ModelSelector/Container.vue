@@ -22,6 +22,7 @@ const { groups, modelId, selectedModel } = useSelector(props.variant);
     option-group-children="items"
     filter
     filter-placeholder="Search models..."
+    overlay-class="!z-[1202]"
     :overlay-style="{
       backgroundColor:
         variant === 'chat' ? 'var(--p-surface-900)' : 'var(--p-surface-800)',

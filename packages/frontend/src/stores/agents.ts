@@ -1,15 +1,23 @@
 import type { Chat } from "@ai-sdk/vue";
 import { defineStore } from "pinia";
-import { computed, markRaw, ref, shallowRef, watch } from "vue";
+import { computed, markRaw, reactive, ref, shallowRef, watch } from "vue";
 import type { WatchStopHandle } from "vue";
 
 import { createAgent } from "@/agents/create";
-import type { CustomUIMessage, ToolContext } from "@/agents/types";
+import {
+  type AgentRuntimeConfig,
+  type AgentRuntimeConfigInput,
+  createAgentRuntimeConfig,
+  type CustomUIMessage,
+  type ToolContext,
+} from "@/agents/types";
 import { useSDK } from "@/plugins/sdk";
+import { useUIStore } from "@/stores/ui";
 
 type AgentEntry = {
   chat: Chat<CustomUIMessage>;
   context: ToolContext;
+  config: AgentRuntimeConfig;
 };
 
 type AgentStatusSnapshot = {
@@ -26,6 +34,7 @@ export const useAgentsStore = defineStore("stores.agents", () => {
   const selectedId = ref<string | undefined>(undefined);
 
   const sdk = useSDK();
+  const uiStore = useUIStore();
 
   const agentStateListeners = new Set<AgentStateListener>();
   const agentStateWatchers = new Map<string, WatchStopHandle>();
@@ -73,23 +82,33 @@ export const useAgentsStore = defineStore("stores.agents", () => {
     agentStateWatchers.set(sessionId, stopHandle);
   };
 
-  async function addAgent(replaySessionId: string) {
+  async function addAgent(
+    replaySessionId: string,
+    options?: AgentRuntimeConfigInput,
+  ) {
     if (agents.value.has(replaySessionId)) {
+      if (options !== undefined) {
+        updateAgentConfig(replaySessionId, options);
+      }
       return agents.value.get(replaySessionId)!;
     }
 
+    const config = reactive(createAgentRuntimeConfig(options));
     const { chat, toolContext } = await createAgent({
       replaySessionId,
       sdk,
+      config,
     });
 
     const entry: AgentEntry = {
       chat: markRaw(chat),
       context: toolContext,
+      config,
     };
 
     agents.value.set(replaySessionId, entry);
     registerAgentWatcher(replaySessionId, chat);
+    syncUiPrompts(replaySessionId, config);
     return entry;
   }
 
@@ -106,6 +125,65 @@ export const useAgentsStore = defineStore("stores.agents", () => {
 
   function getToolContext(replaySessionId: string) {
     return agents.value.get(replaySessionId)?.context;
+  }
+
+  function getAgentConfig(replaySessionId: string) {
+    return agents.value.get(replaySessionId)?.config;
+  }
+
+  function syncUiPrompts(replaySessionId: string, config: AgentRuntimeConfig) {
+    const promptIds = config.customPrompts
+      .map((prompt) => prompt.id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
+    uiStore.setSelectedPrompts(replaySessionId, promptIds);
+  }
+
+  function applyConfigUpdates(
+    target: AgentRuntimeConfig,
+    updates: AgentRuntimeConfigInput,
+  ) {
+    if ("model" in updates) {
+      target.model = updates.model;
+    }
+
+    if ("maxIterations" in updates) {
+      target.maxIterations = updates.maxIterations;
+    }
+
+    if ("selections" in updates) {
+      target.selections = updates.selections ? [...updates.selections] : [];
+    }
+
+    if ("customPrompts" in updates) {
+      target.customPrompts = updates.customPrompts
+        ? [...updates.customPrompts]
+        : [];
+    }
+  }
+
+  function updateAgentConfig(
+    replaySessionId: string,
+    updates:
+      | AgentRuntimeConfigInput
+      | ((current: AgentRuntimeConfig) => AgentRuntimeConfigInput | void),
+  ) {
+    const entry = agents.value.get(replaySessionId);
+    if (entry === undefined) {
+      return;
+    }
+
+    const resolvedUpdates =
+      typeof updates === "function" ? updates(entry.config) : updates;
+
+    if (!resolvedUpdates) {
+      return;
+    }
+
+    applyConfigUpdates(entry.config, resolvedUpdates);
+
+    if ("customPrompts" in resolvedUpdates) {
+      syncUiPrompts(replaySessionId, entry.config);
+    }
   }
 
   async function abortSelectedAgent() {
@@ -145,11 +223,13 @@ export const useAgentsStore = defineStore("stores.agents", () => {
     addAgent,
     getAgent,
     getToolContext,
+    getAgentConfig,
     selectedAgent,
     selectedToolContext,
     selectedId,
     selectAgent,
     abortSelectedAgent,
     subscribeToAgentStates,
+    updateAgentConfig,
   };
 });

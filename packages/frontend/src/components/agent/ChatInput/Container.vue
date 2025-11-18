@@ -55,12 +55,12 @@ watch(
       @keydown="handleKeydown"
     />
 
-    <div class="flex justify-between gap-2 items-center">
-      <div class="flex gap-2">
+    <div class="flex gap-2 items-center min-w-0">
+      <div class="flex gap-2 shrink-0">
         <ModelSelector variant="chat" />
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 min-w-0 flex-1 justify-end">
         <PromptSelector />
         <Button
           v-if="isAgentIdle"
@@ -70,8 +70,8 @@ watch(
           :pt="{
             root: {
               class: canSendMessage
-                ? 'bg-surface-700/50 text-surface-200 text-sm py-1.5 px-2 flex items-center justify-center rounded-md hover:text-white transition-colors duration-200 h-8 w-8 cursor-pointer'
-                : 'bg-surface-700/20 text-surface-400 text-sm py-1.5 px-2 flex items-center justify-center rounded-md h-8 w-8 cursor-not-allowed',
+                ? 'bg-surface-700/50 text-surface-200 text-sm py-1.5 px-2 flex items-center justify-center rounded-md hover:text-white transition-colors duration-200 h-8 w-8 cursor-pointer shrink-0'
+                : 'bg-surface-700/20 text-surface-400 text-sm py-1.5 px-2 flex items-center justify-center rounded-md h-8 w-8 cursor-not-allowed shrink-0',
             },
           }"
           @click="handleSend"
@@ -83,7 +83,7 @@ watch(
           :pt="{
             root: {
               class:
-                'bg-red-400/10 text-red-400 py-1 px-1.5 flex items-center justify-center rounded-md hover:bg-red-400/20 transition-colors duration-200 h-8 w-8 cursor-pointer',
+                'bg-red-400/10 text-red-400 py-1 px-1.5 flex items-center justify-center rounded-md hover:bg-red-400/20 transition-colors duration-200 h-8 w-8 cursor-pointer shrink-0',
             },
             icon: {
               class: 'text-sm',

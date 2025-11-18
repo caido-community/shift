@@ -3,20 +3,29 @@ import {
   type UpdatedReplaySessionSubscription,
 } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
 
-import { type CustomPrompt } from "@/agents/types";
-import InputDialog from "@/components/inputDialog/Container.vue";
+import {
+  type AgentRuntimeConfigInput,
+  type CustomPrompt,
+} from "@/agents/types";
+import { LaunchInputDialog } from "@/components/inputDialog";
+import type { LaunchInputDialogResult } from "@/components/inputDialog/launchInputDialog/types";
 import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
 import { useUIStore } from "@/stores/ui";
 import { type FrontendSDK } from "@/types";
 const SHIFT_COLLECTION_NAME = "Shift";
-const DEFAULT_SHIFT_MESSAGE =
-  "Shift agent auto-launched from the Shift collection. Proceed with testing.";
 
 export const ensureShiftCollection = async (sdk: FrontendSDK) => {
   try {
     const configStore = useConfigStore();
     const collections = sdk.replay.getCollections();
+
+    // If collections is empty, wait 500ms and retry
+    if (collections.length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return void ensureShiftCollection(sdk);
+    }
+
     const existing = collections.find(
       (collection: { id: string; name?: string }) =>
         collection.name === SHIFT_COLLECTION_NAME,
@@ -57,27 +66,49 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     prompts: CustomPrompt[],
   ) => {
     let dialog: { close: () => void } = { close: () => {} };
-    const handleConfirm = (instruction: string) => {
+    const handleConfirm = (payload: LaunchInputDialogResult) => {
       dialog.close();
 
-      // If instruction is empty, user cancelled - do nothing
-      if (!instruction || instruction.trim() === "") {
-        return;
-      }
+      const {
+        selections,
+        instructions,
+        maxInteractions,
+        selectedPromptIds,
+        model,
+      } = payload;
+
+      // Convert selected prompt IDs to CustomPrompt objects
+      // If user selected prompts in the dialog, use those; otherwise fall back to collection prompts
+      const promptsToUse =
+        selectedPromptIds && selectedPromptIds.length > 0
+          ? configStore.customPrompts.filter((prompt) =>
+              selectedPromptIds.includes(prompt.id),
+            )
+          : prompts;
+
+      const agentOptions: AgentRuntimeConfigInput = {
+        maxIterations: maxInteractions,
+        selections,
+        customPrompts: promptsToUse,
+        model,
+      };
 
       // Launch the agent with the JIT instructions
       (async () => {
         try {
-          await agentsStore.addAgent(sessionId);
+          await agentsStore.addAgent(sessionId, agentOptions);
           await agentsStore.selectAgent(sessionId);
           sdk.replay.openTab(sessionId);
-          // Set all selected prompts for this agent
+          // Set the selected prompts from the dialog (or fall back to collection prompts)
           const uiStore = useUIStore();
-          const promptIds = prompts.map((prompt) => prompt.id);
+          const promptIds =
+            selectedPromptIds && selectedPromptIds.length > 0
+              ? selectedPromptIds
+              : prompts.map((prompt) => prompt.id);
           uiStore.setSelectedPrompts(sessionId, promptIds);
 
           await agentsStore.selectedAgent?.sendMessage({
-            text: instruction,
+            text: instructions.trim() || "Proceed with testing.",
           });
         } catch (error) {
           const errorMessage =
@@ -96,20 +127,21 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
 
     dialog = sdk.window.showDialog(
       {
-        component: InputDialog,
+        component: LaunchInputDialog,
         props: {
           title: "Instructions",
           placeholder: "Enter your instructions for the agent...",
+          sdk,
           onConfirm: () => handleConfirm,
           onCancel: () => handleCancel,
         },
       },
       {
-        title: "Instructions",
+        title: "Shift Agent Launch Instructions",
         closeOnEscape: true,
         closable: true,
         draggable: true,
-        modal: true,
+        modal: false,
         position: "center",
       },
     );
@@ -148,8 +180,12 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
       return;
     }
 
+    const agentOptions: AgentRuntimeConfigInput = {
+      customPrompts: prompts,
+    };
+
     try {
-      const entry = await agentsStore.addAgent(sessionId);
+      const entry = await agentsStore.addAgent(sessionId, agentOptions);
       await agentsStore.selectAgent(sessionId);
       sdk.replay.openTab(sessionId);
 
@@ -159,10 +195,7 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
         uiStore.setSelectedPrompts(sessionId, promptIds);
       }
 
-      const message =
-        collectionName === SHIFT_COLLECTION_NAME && prompts.length === 0
-          ? DEFAULT_SHIFT_MESSAGE
-          : "Proceed with testing.";
+      const message = "Proceed with testing.";
 
       await entry.chat.sendMessage({
         text: message,
@@ -318,4 +351,9 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
 
   subscribeToCreatedReplaySession();
   subscribeToUpdatedReplaySession();
+
+  // Subscribe to project changes and ensure Shift collection
+  sdk.projects.onCurrentProjectChange(() => {
+    void ensureShiftCollection(sdk);
+  });
 };

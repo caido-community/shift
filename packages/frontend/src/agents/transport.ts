@@ -43,6 +43,8 @@ import {
   updateTodoTool,
 } from "@/agents/tools";
 import {
+  type AgentPromptConfig,
+  type AgentRuntimeConfig,
   type CustomUIMessage,
   type ReplaySession,
   type ToolContext,
@@ -137,6 +139,7 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
 
     const prompt = convertToModelMessages(sanitizeUiMessages(messages));
     const configStore = useConfigStore();
+    const runtimeConfig = this.toolContext.config;
 
     const openrouter = createOpenRouter({
       apiKey: configStore.openRouterApiKey,
@@ -149,15 +152,21 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
       },
     });
 
-    const model = openrouter(configStore.agentsModel);
+    const modelId = runtimeConfig.model ?? configStore.agentsModel;
+    const model = openrouter(modelId);
+    const maxIterations =
+      runtimeConfig.maxIterations ?? configStore.maxIterations;
     const stream = createUIMessageStream<CustomUIMessage>({
       execute: ({ writer }) => {
         const result = streamText({
           model,
-          system: buildSystemPrompt(this.toolContext.replaySession.id),
+          system: buildSystemPrompt(
+            this.toolContext.replaySession.id,
+            runtimeConfig,
+          ),
           messages: prompt,
           abortSignal: abortSignal,
-          stopWhen: stepCountIs(configStore.maxIterations),
+          stopWhen: stepCountIs(maxIterations),
           tools: {
             sendRequest: sendRequestTool,
             updateTodo: updateTodoTool,
@@ -377,30 +386,123 @@ function contextMessages({
   return contextContent.trim();
 }
 
-function buildSystemPrompt(agentId: string) {
+function buildSystemPrompt(agentId: string, runtimeConfig: AgentRuntimeConfig) {
   const configStore = useConfigStore();
   const uiStore = useUIStore();
 
   const selectedPromptsIds = uiStore.getSelectedPrompts(agentId);
 
-  const selectedPrompts = configStore.customPrompts.filter((prompt) =>
-    selectedPromptsIds.includes(prompt.id),
-  );
+  const selectedPrompts = configStore.customPrompts.filter((prompt) => {
+    if (!selectedPromptsIds.includes(prompt.id)) {
+      return false;
+    }
+    return true;
+  });
+
+  const promptEntries: Array<{ id?: string; content: string }> = [];
+  const seenIds = new Set<string>();
+
+  const resolvePromptContent = (prompt: AgentPromptConfig): string => {
+    const promptId = prompt.id;
+    if (typeof promptId === "string" && promptId.length > 0) {
+      seenIds.add(promptId);
+    }
+
+    const providedContent = prompt.content;
+    if (
+      typeof providedContent === "string" &&
+      providedContent.trim().length > 0
+    ) {
+      return providedContent;
+    }
+
+    if (typeof promptId !== "string" || promptId.length === 0) {
+      return "";
+    }
+
+    const fallback = configStore.customPrompts.find(
+      (candidate) => candidate.id === promptId,
+    );
+    if (!fallback) {
+      return "";
+    }
+
+    const projectSpecificContent = configStore.getProjectSpecificPrompt(
+      fallback.id,
+    );
+    if (
+      typeof projectSpecificContent === "string" &&
+      projectSpecificContent.trim().length > 0
+    ) {
+      return `${fallback.content}\n\n${projectSpecificContent}`;
+    }
+    return fallback.content;
+  };
+
+  for (const prompt of selectedPrompts) {
+    const promptId =
+      typeof prompt.id === "string" && prompt.id.length > 0
+        ? prompt.id
+        : undefined;
+    const promptContent =
+      typeof prompt.content === "string" ? prompt.content : "";
+    const projectSpecificContent =
+      promptId !== undefined
+        ? configStore.getProjectSpecificPrompt(promptId)
+        : null;
+    const fullContent =
+      typeof projectSpecificContent === "string" &&
+      projectSpecificContent.trim().length > 0
+        ? `${promptContent}\n\n${projectSpecificContent}`
+        : promptContent;
+    promptEntries.push({ id: promptId, content: fullContent });
+    if (promptId !== undefined) {
+      seenIds.add(promptId);
+    }
+  }
+
+  for (const configPrompt of runtimeConfig.customPrompts) {
+    const promptId =
+      typeof configPrompt.id === "string" && configPrompt.id.length > 0
+        ? configPrompt.id
+        : undefined;
+    if (promptId !== undefined && seenIds.has(promptId)) {
+      continue;
+    }
+    const content = resolvePromptContent(configPrompt);
+    if (content.trim().length === 0) {
+      continue;
+    }
+
+    promptEntries.push({
+      id: configPrompt.id,
+      content,
+    });
+  }
+
+  if (runtimeConfig.selections.length > 0) {
+    const formattedSelections = runtimeConfig.selections
+      .map((entry, index) => {
+        const comment = entry.comment;
+        const commentLine =
+          typeof comment === "string" && comment.trim().length > 0
+            ? `Comment: ${comment.trim()}`
+            : "Comment: (none)";
+        return `Selection ${index + 1}:\n${entry.selection}\n${commentLine}`;
+      })
+      .join("\n\n");
+
+    promptEntries.push({
+      content: `User-provided selections to consider - YOU MUST use these to create a preliminary todo list:\n\n${formattedSelections}`,
+    });
+  }
 
   let prompt = `<system_prompt>${BASE_SYSTEM_PROMPT}</system_prompt>`;
 
-  if (selectedPrompts.length > 0) {
+  if (promptEntries.length > 0) {
     prompt += `\n<additional_instructions>\n`;
-    prompt += selectedPrompts
-      .map((prompt) => {
-        const projectSpecificContent = configStore.getProjectSpecificPrompt(
-          prompt.id,
-        );
-        const fullContent = projectSpecificContent
-          ? `${prompt.content}\n\n${projectSpecificContent}`
-          : prompt.content;
-        return `<prompt>${fullContent}</prompt>`;
-      })
+    prompt += promptEntries
+      .map((entry) => `<prompt>${entry.content}</prompt>`)
       .join("\n");
     prompt += `\n</additional_instructions>`;
   }
