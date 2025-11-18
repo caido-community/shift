@@ -1,18 +1,50 @@
-import { computed } from "vue";
+import { type Component, computed } from "vue";
 
-import { type ModelGroup, type ModelItem } from "@/agents/types";
+import {
+  AnthropicIcon,
+  DeepseekIcon,
+  GoogleIcon,
+  OpenAIIcon,
+  QwenIcon,
+  XAIIcon,
+} from "./icons";
+import UnknownIcon from "./icons/Unknown.vue";
+
+import { type ModelItem, Provider } from "@/agents/types/config";
 import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
+import { useModelsStore } from "@/stores/models";
 
 type Variant = "float" | "chat" | "renaming";
-type AugmentedModelItem = ModelItem & { icon: ModelGroup["icon"] };
-type GroupWithIcons = Omit<ModelGroup, "items"> & {
-  items: AugmentedModelItem[];
+type AugmentedModelItem = ModelItem & { icon: Component };
+
+export const getIcon = (model: ModelItem) => {
+  if (model.provider === Provider.OpenRouter) {
+    if (model.id.startsWith("openrouter/anthropic/")) return AnthropicIcon;
+    if (model.id.startsWith("openrouter/openai/")) return OpenAIIcon;
+    if (model.id.startsWith("openrouter/google/")) return GoogleIcon;
+    if (model.id.startsWith("openrouter/deepseek/")) return DeepseekIcon;
+    if (model.id.startsWith("openrouter/x-ai/")) return XAIIcon;
+    if (model.id.startsWith("openrouter/qwen/")) return QwenIcon;
+    if (model.id.startsWith("openrouter/moonshotai/")) return UnknownIcon;
+  }
+  switch (model.provider) {
+    case Provider.OpenAI:
+      return OpenAIIcon;
+    case Provider.Anthropic:
+      return AnthropicIcon;
+    case Provider.Google:
+      return GoogleIcon;
+    case Provider.OpenRouter:
+    default:
+      return UnknownIcon;
+  }
 };
 
 export const useSelector = (variant: Variant) => {
   const configStore = useConfigStore();
   const agentsStore = useAgentsStore();
+  const modelsStore = useModelsStore();
 
   const modelId = computed<string>({
     get() {
@@ -55,36 +87,25 @@ export const useSelector = (variant: Variant) => {
     },
   });
 
-  const groups = computed<GroupWithIcons[]>(() =>
-    configStore.models
-      .map((group) => {
-        const filteredItems = group.items
-          .filter(
-            (item) => item.onlyFor === undefined || item.onlyFor === variant,
-          )
-          .map((item) => ({ ...item, icon: group.icon }));
-
-        return {
-          label: group.label,
-          icon: group.icon,
-          items: filteredItems,
-        };
-      })
-      .filter((group) => group.items.length > 0),
+  // Return flat list of models with icons, filtered by active provider via modelsStore
+  const models = computed<AugmentedModelItem[]>(() =>
+    modelsStore.activeModels.map((item) => ({
+      ...item,
+      icon: getIcon(item),
+    })),
   );
 
   const selectedModel = computed<AugmentedModelItem | undefined>(() => {
-    const group = groups.value.find((g) =>
-      g.items.some((i) => i.id === modelId.value),
-    );
-    if (group === undefined) return undefined;
-    const item = group.items.find((i) => i.id === modelId.value);
-    return item;
+    // We want to find the model even if it's not in the active list (e.g. provider switched)
+    // So we check allModels
+    const item = modelsStore.allModels.find((i) => i.id === modelId.value);
+    if (!item) return undefined;
+    return { ...item, icon: getIcon(item) };
   });
 
   return {
     modelId,
-    groups,
+    models,
     selectedModel,
   };
 };

@@ -18,12 +18,24 @@ export type OpenRouterConfig = {
   reasoning?: ReasoningConfig;
 };
 
+export enum Provider {
+  OpenRouter = "OpenRouter",
+  OpenAI = "OpenAI",
+  Anthropic = "Anthropic",
+  Google = "Google",
+}
+
 export type ModelItem = {
   name: string;
   id: string;
-  isRecommended?: boolean;
+  provider: Provider;
   isReasoningModel?: boolean;
-  onlyFor?: "float" | "chat" | "renaming";
+  enabled?: boolean;
+};
+
+export type ModelUserConfig = {
+  id: string;
+  enabled: boolean;
 };
 
 export type ModelGroup = {

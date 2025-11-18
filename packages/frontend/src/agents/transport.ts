@@ -1,4 +1,3 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import {
   type ChatRequestOptions,
   type ChatTransport,
@@ -56,6 +55,7 @@ import {
 import { markdownJoinerTransform } from "@/agents/utils/markdownJoiner";
 import { useConfigStore } from "@/stores/config";
 import { useUIStore } from "@/stores/ui";
+import { type FrontendSDK } from "@/types";
 import { getReplaySession, isPresent } from "@/utils";
 
 function sanitizeValue(value: unknown): unknown {
@@ -107,7 +107,10 @@ function sanitizeUiMessages(messages: UIMessage[]): UIMessage[] {
 }
 
 export class ClientSideChatTransport implements ChatTransport<UIMessage> {
-  constructor(private toolContext: ToolContext) {}
+  constructor(
+    private toolContext: ToolContext,
+    private sdk: FrontendSDK,
+  ) {}
 
   async sendMessages(
     options: {
@@ -141,21 +144,18 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
     const configStore = useConfigStore();
     const runtimeConfig = this.toolContext.config;
 
-    const openrouter = createOpenRouter({
-      apiKey: configStore.openRouterApiKey,
-      extraBody: {
-        parallel_tool_calls: true,
-        reasoning: {
-          max_tokens: configStore.reasoningConfig.max_tokens,
-          enabled: configStore.reasoningConfig.enabled,
-        },
+    const modelId = runtimeConfig.model ?? configStore.agentsModel;
+    const maxIterations =
+      runtimeConfig.maxIterations ?? configStore.maxIterations;
+
+    const provider = this.sdk.ai.createProvider();
+    // @ts-ignore
+    const model = provider(modelId, {
+      reasoning: {
+        effort: "high",
       },
     });
 
-    const modelId = runtimeConfig.model ?? configStore.agentsModel;
-    const model = openrouter(modelId);
-    const maxIterations =
-      runtimeConfig.maxIterations ?? configStore.maxIterations;
     const stream = createUIMessageStream<CustomUIMessage>({
       execute: ({ writer }) => {
         const result = streamText({

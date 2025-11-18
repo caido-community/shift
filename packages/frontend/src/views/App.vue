@@ -5,6 +5,7 @@ import MenuBar from "primevue/menubar";
 import { computed, ref } from "vue";
 
 import { LearningsContainer } from "@/components/learnings";
+import { ModelsContainer } from "@/components/models";
 import { PromptsContainer } from "@/components/prompts";
 import { RenamingContainer } from "@/components/renaming";
 import { SettingsContainer } from "@/components/settings";
@@ -12,17 +13,26 @@ import { TutorialContainer } from "@/components/tutorial";
 
 const page = ref<
   | "Custom Prompts"
+  | "Models"
   | "Learnings"
   | "AI Session Renaming"
   | "Settings"
   | "Tutorial"
 >("Custom Prompts");
+
 const items = [
   {
     label: "Custom Prompts",
     isActive: () => page.value === "Custom Prompts",
     onClick: () => {
       page.value = "Custom Prompts";
+    },
+  },
+  {
+    label: "Models",
+    isActive: () => page.value === "Models",
+    onClick: () => {
+      page.value = "Models";
     },
   },
   {
@@ -59,6 +69,8 @@ const component = computed(() => {
   switch (page.value) {
     case "Custom Prompts":
       return PromptsContainer;
+    case "Models":
+      return ModelsContainer;
     case "AI Session Renaming":
       return RenamingContainer;
     case "Learnings":
@@ -122,7 +134,7 @@ const handleLabel = (
     </MenuBar>
 
     <Card
-      class="h-full"
+      class="h-full min-h-0"
       :pt="{
         body: { class: 'h-full p-0' },
         content: { class: 'h-fit flex flex-col h-full gap-1 overflow-hidden' },

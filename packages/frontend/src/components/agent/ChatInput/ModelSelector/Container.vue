@@ -8,18 +8,17 @@ const props = defineProps<{
   disabled?: boolean;
 }>();
 
-const { groups, modelId, selectedModel } = useSelector(props.variant);
+// Using 'models' instead of 'groups'
+const { models, modelId, selectedModel } = useSelector(props.variant);
 </script>
 
 <template>
   <Select
     v-model="modelId"
     :disabled="props.disabled === true"
-    :options="groups"
+    :options="models"
     option-label="name"
     option-value="id"
-    option-group-label="label"
-    option-group-children="items"
     filter
     filter-placeholder="Search models..."
     overlay-class="!z-[1202]"
@@ -65,11 +64,7 @@ const { groups, modelId, selectedModel } = useSelector(props.variant);
       </div>
     </template>
 
-    <template #optiongroup="slotProps">
-      <div class="py-1 text-xs font-medium text-surface-400">
-        {{ slotProps.option.label }}
-      </div>
-    </template>
+    <!-- Removed optiongroup slot -->
 
     <template #option="slotProps">
       <div class="flex items-center gap-2 text-surface-300 text-sm">

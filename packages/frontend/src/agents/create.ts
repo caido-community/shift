@@ -33,7 +33,7 @@ export async function createAgent({
     config,
   });
 
-  const transport = new ClientSideChatTransport(toolContext);
+  const transport = new ClientSideChatTransport(toolContext, sdk);
 
   const chat = new Chat<CustomUIMessage>({
     id: replaySessionId,

@@ -1,5 +1,4 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { streamObject } from "ai";
+import { generateObject } from "ai";
 
 import { registeredActions } from "@/float/actions";
 import { SYSTEM_PROMPT } from "@/float/prompt";
@@ -14,12 +13,11 @@ import {
 import { useConfigStore } from "@/stores/config";
 import { type FrontendSDK } from "@/types";
 
-function streamActions(input: ActionQuery) {
+async function generateActions(sdk: FrontendSDK, input: ActionQuery) {
   const configStore = useConfigStore();
-  const openrouter = createOpenRouter({
-    apiKey: configStore.openRouterApiKey,
-  });
-  const model = openrouter(configStore.floatModel);
+  const provider = sdk.ai.createProvider();
+  // @ts-ignore
+  const model = provider(configStore.floatModel);
 
   const learnings = configStore.learnings.map((value, index) => ({
     index,
@@ -40,19 +38,16 @@ function streamActions(input: ActionQuery) {
   </user>
   `.trim();
 
-  const { elementStream } = streamObject({
+  const { object } = await generateObject({
     model,
     temperature: 0,
     output: "array",
     schema: ActionSchema,
     system: SYSTEM_PROMPT,
     prompt,
-    onError: ({ error }) => {
-      throw error;
-    },
   });
 
-  return elementStream;
+  return object;
 }
 
 const execute = async (
@@ -102,27 +97,27 @@ export async function* queryShiftStream(
 ): AsyncGenerator<QueryShiftEvent, ActionsExecutionResult, void> {
   yield { state: "Streaming" };
   try {
-    const stream = streamActions(input);
-    const executed: Action[] = [];
-    for await (const action of stream) {
-      yield { state: "Streaming", actions: [action] };
-      const result = await execute(sdk, [action], input.context);
-      if (!result.success) {
-        yield { state: "Error", error: result.error };
-        return result;
-      }
-      executed.push(action);
-    }
+    const actions = await generateActions(sdk, input);
 
-    if (executed.length === 0) {
+    if (actions.length === 0) {
       sdk.window.showToast("No actions were generated for your request", {
         variant: "info",
         duration: 3000,
       });
+      yield { state: "Done" };
+      return { success: true, actions: [] };
+    }
+
+    yield { state: "Streaming", actions };
+
+    const result = await execute(sdk, actions, input.context);
+    if (!result.success) {
+      yield { state: "Error", error: result.error };
+      return result;
     }
 
     yield { state: "Done" };
-    return { success: true, actions: executed };
+    return { success: true, actions };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     yield { state: "Error", error: msg };
