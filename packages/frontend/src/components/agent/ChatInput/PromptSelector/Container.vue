@@ -39,7 +39,7 @@ const selectedPrompts = computed(() =>
         ref="listRef"
         class="flex items-center gap-2 overflow-x-auto flex-nowrap w-full scrollbar-hidden relative z-10 min-h-6"
       >
-        <div class="flex-1 min-w-0" aria-hidden="true" />
+        <div class="flex-1 min-w-0 shrink" aria-hidden="true" />
         <div
           v-for="prompt in selectedPrompts"
           :key="prompt.id"
