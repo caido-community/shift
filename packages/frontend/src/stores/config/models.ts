@@ -7,6 +7,7 @@ import {
   QwenIcon,
   XAIIcon,
 } from "@/components/agent/ChatInput/ModelSelector/icons";
+import Unknown from "@/components/agent/ChatInput/ModelSelector/icons/Unknown.vue";
 
 export const models: ModelGroup[] = [
   {
@@ -124,6 +125,17 @@ export const models: ModelGroup[] = [
       {
         name: "Qwen3 Coder",
         id: "qwen/qwen3-coder",
+      },
+    ],
+  },
+  {
+    label: "MoonshotAI",
+    icon: Unknown,
+    items: [
+      {
+        name: "Kimi K2 Thinking",
+        id: "moonshotai/kimi-k2-thinking",
+        isReasoningModel: true,
       },
     ],
   },
