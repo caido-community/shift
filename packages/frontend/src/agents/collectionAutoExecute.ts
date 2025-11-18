@@ -185,9 +185,7 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
     };
 
     try {
-      const entry = await agentsStore.addAgent(sessionId, agentOptions);
-      await agentsStore.selectAgent(sessionId);
-      sdk.replay.openTab(sessionId);
+      await agentsStore.addAgent(sessionId, agentOptions);
 
       if (prompts.length > 0) {
         const uiStore = useUIStore();
@@ -195,9 +193,9 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
         uiStore.setSelectedPrompts(sessionId, promptIds);
       }
 
-      const message = "Proceed with testing.";
+      const message = "Proceed with testing as defined in prompts.";
 
-      await entry.chat.sendMessage({
+      await agentsStore.getAgent(sessionId)?.sendMessage({
         text: message,
       });
     } catch (error) {
