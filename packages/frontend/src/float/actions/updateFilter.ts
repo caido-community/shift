@@ -7,10 +7,10 @@ import { type FrontendSDK } from "@/types";
 export const updateFilterSchema = z.object({
   name: z.literal("updateFilter"),
   parameters: z.object({
-    id: z.string().min(1).describe("ID of the filter to update"),
-    name: z.string().min(1).describe("New name for the filter"),
-    alias: z.string().min(1).describe("New alias for the filter"),
-    query: z.string().min(1).describe("New HTTPQL query for the filter"),
+    id: z.string().describe("ID of the filter to update (non-empty)"),
+    filterName: z.string().describe("New name for the filter (non-empty)"),
+    alias: z.string().describe("New alias for the filter (non-empty)"),
+    query: z.string().describe("New HTTPQL query for the filter (non-empty)"),
   }),
 });
 
@@ -23,10 +23,10 @@ export const updateFilter: ActionDefinition<UpdateFilterInput> = {
   inputSchema: updateFilterSchema,
   execute: async (
     sdk: FrontendSDK,
-    { id, name, alias, query }: UpdateFilterInput["parameters"],
+    { id, filterName, alias, query }: UpdateFilterInput["parameters"],
   ) => {
     try {
-      await sdk.filters.update(id, { name, alias, query });
+      await sdk.filters.update(id, { name: filterName, alias, query });
     } catch (error) {
       return actionError("Failed to update filter", error);
     }

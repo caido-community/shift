@@ -6,7 +6,9 @@ import { type FrontendSDK } from "@/types";
 export const navigateSchema = z.object({
   name: z.literal("navigate"),
   parameters: z.object({
-    path: z.string().min(1).describe("Path of the sidebar tab to navigate to."),
+    path: z
+      .string()
+      .describe("Path of the sidebar tab to navigate to (non-empty)."),
   }),
 });
 

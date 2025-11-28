@@ -9,9 +9,8 @@ export const deleteScopeSchema = z.object({
   parameters: z.object({
     id: z
       .string()
-      .min(1)
       .describe(
-        "The ID of the scope to delete. This must be a number in a string.",
+        "The ID of the scope to delete (non-empty). This must be a number in a string.",
       ),
   }),
 });

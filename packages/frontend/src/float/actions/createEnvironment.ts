@@ -11,27 +11,25 @@ import { type FrontendSDK } from "@/types";
 const environmentVariableSchema = z.object({
   name: z
     .string()
-    .min(1)
-    .describe("The name of the environment variable to set."),
+    .describe("The name of the environment variable to set (non-empty)."),
   value: z.string().describe("The value assigned to the environment variable."),
   kind: z
     .string()
-    .min(1)
-    .default("PLAIN")
     .describe(
-      "The kind of the environment variable. Defaults to PLAIN if omitted.",
+      "The kind of the environment variable. Use PLAIN if not specified.",
     ),
 });
 
 export const createEnvironmentSchema = z.object({
   name: z.literal("createEnvironment"),
   parameters: z.object({
-    name: z.string().min(1).describe("The name of the environment to create."),
+    environmentName: z
+      .string()
+      .describe("The name of the environment to create (non-empty)."),
     variables: z
       .array(environmentVariableSchema)
-      .optional()
       .describe(
-        "Optional list of variables that will be created alongside the environment.",
+        "List of variables that will be created alongside the environment. Use empty array if none.",
       ),
   }),
 });
@@ -45,13 +43,13 @@ export const createEnvironment: ActionDefinition<CreateEnvironmentInput> = {
   inputSchema: createEnvironmentSchema,
   execute: async (
     sdk: FrontendSDK,
-    { name, variables }: CreateEnvironmentInput["parameters"],
+    { environmentName, variables }: CreateEnvironmentInput["parameters"],
   ) => {
     try {
       const result = await sdk.graphql.createEnvironment({
         input: {
-          name,
-          variables: (variables ?? []).map(normalizeEnvironmentVariable),
+          name: environmentName,
+          variables: variables.map(normalizeEnvironmentVariable),
         },
       });
 

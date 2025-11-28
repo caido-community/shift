@@ -7,9 +7,9 @@ import { type FrontendSDK } from "@/types";
 export const addFilterSchema = z.object({
   name: z.literal("addFilter"),
   parameters: z.object({
-    name: z.string().min(1).describe("Name of the filter"),
-    query: z.string().min(1).describe("HTTPQL query for the filter"),
-    alias: z.string().min(1).describe("Alias for the filter"),
+    filterName: z.string().describe("Name of the filter (non-empty)"),
+    query: z.string().describe("HTTPQL query for the filter (non-empty)"),
+    alias: z.string().describe("Alias for the filter (non-empty)"),
   }),
 });
 
@@ -20,10 +20,14 @@ export const addFilter: ActionDefinition<AddFilterInput> = {
   inputSchema: addFilterSchema,
   execute: async (
     sdk: FrontendSDK,
-    { name, query, alias }: AddFilterInput["parameters"],
+    { filterName, query, alias }: AddFilterInput["parameters"],
   ) => {
     try {
-      const newFilter = await sdk.filters.create({ name, query, alias });
+      const newFilter = await sdk.filters.create({
+        name: filterName,
+        query,
+        alias,
+      });
       if (newFilter === undefined) {
         return {
           success: false,
@@ -31,7 +35,7 @@ export const addFilter: ActionDefinition<AddFilterInput> = {
         };
       }
 
-      return actionSuccess(`Filter ${name} created successfully`);
+      return actionSuccess(`Filter ${filterName} created successfully`);
     } catch (error) {
       return actionError("Failed to create filter", error);
     }

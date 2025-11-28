@@ -43,9 +43,11 @@ const replacerTypeEnum = z.enum(["ReplacerTerm", "ReplacerWorkflow"]);
 export const addMatchAndReplaceSchema = z.object({
   name: z.literal("addMatchAndReplace"),
   parameters: z.object({
-    name: z.string().min(1).describe("Name of the match and replace rule"),
+    ruleName: z
+      .string()
+      .describe("Name of the match and replace rule (non-empty)"),
     section: sectionEnum.describe("Section to apply rule to"),
-    operation: z.string().min(1).describe("Operation type for the rule"),
+    operation: z.string().describe("Operation type for the rule (non-empty)"),
     matcherType: matcherTypeEnum
       .nullable()
       .describe(
@@ -91,7 +93,7 @@ export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
   execute: async (
     sdk: FrontendSDK,
     {
-      name,
+      ruleName,
       section,
       operation,
       matcherType,
@@ -199,7 +201,7 @@ export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
       } as MatchReplaceSection;
 
       const res = await sdk.matchReplace.createRule({
-        name: name,
+        name: ruleName,
         section: crSection,
         collectionId: "1",
         query: query || "",
@@ -210,7 +212,7 @@ export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
       }
 
       return actionSuccess(
-        `Match and replace rule ${name} created successfully`,
+        `Match and replace rule ${ruleName} created successfully`,
       );
     } catch (error) {
       return actionError("Failed to create match and replace rule", error);

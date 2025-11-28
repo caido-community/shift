@@ -9,14 +9,13 @@ export const updateLearningSchema = z.object({
   parameters: z.object({
     index: z
       .number()
-      .int()
-      .nonnegative()
-      .describe("Zero-based index of the learning entry to update."),
+      .describe(
+        "Zero-based index of the learning entry to update (integer, >= 0).",
+      ),
     content: z
       .string()
-      .min(1)
       .describe(
-        "The complete replacement text for the selected learning entry.",
+        "The complete replacement text for the selected learning entry (non-empty).",
       ),
   }),
 });

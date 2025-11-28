@@ -6,7 +6,7 @@ import { type FrontendSDK } from "@/types";
 export const runWorkflowSchema = z.object({
   name: z.literal("runWorkflow"),
   parameters: z.object({
-    id: z.string().min(1).describe("Workflow ID to run"),
+    id: z.string().describe("Workflow ID to run (non-empty)"),
     input: z.string().describe("Input data for the workflow."),
   }),
 });

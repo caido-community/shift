@@ -13,7 +13,9 @@ import { type FrontendSDK } from "@/types";
 export const activeEditorRemoveQueryParameterSchema = z.object({
   name: z.literal("activeEditorRemoveQueryParameter"),
   parameters: z.object({
-    name: z.string().min(1).describe("Query parameter name to remove"),
+    paramName: z
+      .string()
+      .describe("Query parameter name to remove (non-empty)"),
   }),
 });
 
@@ -29,20 +31,20 @@ export const activeEditorRemoveQueryParameter: ActionDefinition<ActiveEditorRemo
     inputSchema: activeEditorRemoveQueryParameterSchema,
     execute: (
       sdk: FrontendSDK,
-      { name }: ActiveEditorRemoveQueryParameterInput["parameters"],
+      { paramName }: ActiveEditorRemoveQueryParameterInput["parameters"],
     ) =>
       withActiveEditorView(sdk, (view) => {
         try {
           const currentText = view.state.doc.toString();
 
           const modifiedRequest = HttpForge.create(currentText)
-            .removeQueryParam(name)
+            .removeQueryParam(paramName)
             .build();
 
           replaceEditorContent(view, modifiedRequest);
 
           return actionSuccess(
-            `Query parameter ${name} removed from active editor`,
+            `Query parameter ${paramName} removed from active editor`,
           );
         } catch (error) {
           return actionError("Failed to remove query parameter", error);

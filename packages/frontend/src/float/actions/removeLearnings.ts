@@ -11,12 +11,11 @@ export const removeLearningsSchema = z.object({
       .array(
         z
           .number()
-          .int()
-          .nonnegative()
-          .describe("Zero-based index of a learning entry to remove."),
+          .describe(
+            "Zero-based index of a learning entry to remove (integer, >= 0).",
+          ),
       )
-      .min(1)
-      .describe("One or more learning indexes to delete."),
+      .describe("One or more learning indexes to delete (non-empty array)."),
   }),
 });
 

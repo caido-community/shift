@@ -9,9 +9,8 @@ export const httpqlSetQuerySchema = z.object({
   parameters: z.object({
     query: z
       .string()
-      .min(1)
       .describe(
-        "The query to set for the HTTPQL filter. Follow strictly HTTPQL syntax.",
+        "The query to set for the HTTPQL filter (non-empty). Follow strictly HTTPQL syntax.",
       ),
   }),
 });

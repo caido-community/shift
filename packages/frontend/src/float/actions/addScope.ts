@@ -7,7 +7,7 @@ import { type FrontendSDK } from "@/types";
 export const addScopeSchema = z.object({
   name: z.literal("addScope"),
   parameters: z.object({
-    name: z.string().min(1).describe("The name of the scope."),
+    scopeName: z.string().describe("The name of the scope (non-empty)."),
     allowlist: z
       .array(z.string())
       .describe("The allowlist of the scope. This can be empty."),
@@ -25,11 +25,11 @@ export const addScope: ActionDefinition<AddScopeInput> = {
   inputSchema: addScopeSchema,
   execute: async (
     sdk: FrontendSDK,
-    { name, allowlist, denylist }: AddScopeInput["parameters"],
+    { scopeName, allowlist, denylist }: AddScopeInput["parameters"],
   ) => {
     try {
       const scope = await sdk.scopes.createScope({
-        name,
+        name: scopeName,
         allowlist,
         denylist,
       });

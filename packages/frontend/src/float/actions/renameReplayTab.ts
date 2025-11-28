@@ -6,11 +6,12 @@ import { type FrontendSDK } from "@/types";
 export const renameReplayTabSchema = z.object({
   name: z.literal("renameReplayTab"),
   parameters: z.object({
-    newName: z.string().min(1).describe("New name for the replay tab"),
+    newName: z.string().describe("New name for the replay tab (non-empty)"),
     sessionId: z
       .string()
+      .nullable()
       .describe(
-        'Session ID of the replay tab to rename. This is optional, leave empty for the current tab. If users says, rename "this tab", then most likely he refers to the current tab.',
+        'Session ID of the replay tab to rename. Use null for the current tab. If users says, rename "this tab", then most likely he refers to the current tab.',
       ),
   }),
 });
@@ -29,7 +30,7 @@ export const renameReplayTab: ActionDefinition<RenameReplayTabInput> = {
     const contextSessionId = (context.replay?.value as { sessionId?: string })
       ?.sessionId;
 
-    const targetSessionId = sessionId || contextSessionId;
+    const targetSessionId = sessionId ?? contextSessionId;
     if (targetSessionId === undefined) {
       return {
         success: false,

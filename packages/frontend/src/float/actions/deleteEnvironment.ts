@@ -9,8 +9,7 @@ export const deleteEnvironmentSchema = z.object({
   parameters: z.object({
     id: z
       .string()
-      .min(1)
-      .describe("ID of the environment that should be deleted."),
+      .describe("ID of the environment that should be deleted (non-empty)."),
   }),
 });
 

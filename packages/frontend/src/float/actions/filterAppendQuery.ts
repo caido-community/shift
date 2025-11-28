@@ -7,11 +7,10 @@ import { type FrontendSDK } from "@/types";
 export const filterAppendQuerySchema = z.object({
   name: z.literal("filterAppendQuery"),
   parameters: z.object({
-    id: z.string().min(1).describe("ID of the filter to update"),
+    id: z.string().describe("ID of the filter to update (non-empty)"),
     appendQuery: z
       .string()
-      .min(1)
-      .describe("Text to append to the existing HTTPQL query"),
+      .describe("Text to append to the existing HTTPQL query (non-empty)"),
   }),
 });
 

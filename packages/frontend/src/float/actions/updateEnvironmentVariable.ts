@@ -13,15 +13,14 @@ import { type FrontendSDK } from "@/types";
 const environmentVariableSchema = z.object({
   name: z
     .string()
-    .min(1)
-    .describe("The name of the environment variable to create or update."),
+    .describe(
+      "The name of the environment variable to create or update (non-empty).",
+    ),
   value: z.string().describe("The value assigned to the environment variable."),
   kind: z
     .string()
-    .min(1)
-    .default("PLAIN")
     .describe(
-      "The kind of the environment variable. Defaults to PLAIN when omitted.",
+      "The kind of the environment variable. Use PLAIN if not specified.",
     ),
 });
 
@@ -30,9 +29,9 @@ export const updateEnvironmentVariableSchema = z.object({
   parameters: z.object({
     environmentId: z
       .string()
-      .optional()
+      .nullable()
       .describe(
-        "The ID of the environment to update. Defaults to the selected environment, or Global if none selected.",
+        "The ID of the environment to update. Use null to default to the selected environment, or Global if none selected.",
       ),
     variable: environmentVariableSchema,
   }),
@@ -53,7 +52,10 @@ export const updateEnvironmentVariable: ActionDefinition<UpdateEnvironmentVariab
       { environmentId, variable }: UpdateEnvironmentVariableInput["parameters"],
     ) => {
       try {
-        const environment = await resolveEnvironment(sdk, environmentId);
+        const environment = await resolveEnvironment(
+          sdk,
+          environmentId ?? undefined,
+        );
 
         if (environment === undefined) {
           return {

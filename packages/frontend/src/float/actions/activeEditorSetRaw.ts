@@ -8,8 +8,7 @@ export const activeEditorSetRawSchema = z.object({
   parameters: z.object({
     content: z
       .string()
-      .min(1)
-      .describe("Raw content to set in the active editor"),
+      .describe("Raw content to set in the active editor (non-empty)"),
   }),
 });
 

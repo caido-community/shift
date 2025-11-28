@@ -15,8 +15,9 @@ export const activeEditorUpdatePathSchema = z.object({
   parameters: z.object({
     path: z
       .string()
-      .min(1)
-      .describe("New path for the HTTP request, preserving query parameters"),
+      .describe(
+        "New path for the HTTP request (non-empty), preserving query parameters",
+      ),
   }),
 });
 

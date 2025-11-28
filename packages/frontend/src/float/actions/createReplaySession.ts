@@ -7,15 +7,14 @@ import { type FrontendSDK } from "@/types";
 export const createReplaySessionSchema = z.object({
   name: z.literal("createReplaySession"),
   parameters: z.object({
-    rawRequest: z.string().min(1).describe("Raw HTTP request source"),
-    host: z.string().min(1).describe("Target host"),
-    port: z.number().positive().describe("Target port"),
-    isTls: z.boolean().default(true).describe("Whether to use TLS/SSL"),
-    name: z
+    rawRequest: z.string().describe("Raw HTTP request source (non-empty)"),
+    host: z.string().describe("Target host (non-empty)"),
+    port: z.number().describe("Target port (integer, positive)"),
+    isTls: z.boolean().describe("Whether to use TLS/SSL"),
+    sessionName: z
       .string()
-      .describe(
-        "Optional name for the replay session. This is optional, leave empty for default.",
-      ),
+      .nullable()
+      .describe("Optional name for the replay session. Use null for default."),
   }),
 });
 
@@ -35,7 +34,7 @@ export const createReplaySession: ActionDefinition<CreateReplaySessionInput> = {
       host,
       port,
       isTls,
-      name,
+      sessionName,
     }: CreateReplaySessionInput["parameters"],
   ) => {
     try {
@@ -65,10 +64,10 @@ export const createReplaySession: ActionDefinition<CreateReplaySessionInput> = {
 
       sdk.replay.openTab(sessionId);
 
-      if (name !== undefined) {
+      if (sessionName !== null) {
         await sdk.graphql.renameReplaySession({
           id: sessionId,
-          name,
+          name: sessionName,
         });
       }
 

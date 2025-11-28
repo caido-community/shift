@@ -14,8 +14,7 @@ export const activeEditorReplaceByStringSchema = z.object({
   parameters: z.object({
     match: z
       .string()
-      .min(1)
-      .describe("Substring or pattern to replace (literal)"),
+      .describe("Substring or pattern to replace (literal, non-empty)"),
     replace: z.string().describe("Replacement text"),
   }),
 });

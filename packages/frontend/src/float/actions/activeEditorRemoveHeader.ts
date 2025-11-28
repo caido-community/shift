@@ -15,8 +15,7 @@ export const activeEditorRemoveHeaderSchema = z.object({
   parameters: z.object({
     headerName: z
       .string()
-      .min(1)
-      .describe("Name of the header to remove (case-insensitive)"),
+      .describe("Name of the header to remove (case-insensitive, non-empty)"),
   }),
 });
 

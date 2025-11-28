@@ -13,14 +13,13 @@ export const deleteEnvironmentVariableSchema = z.object({
   parameters: z.object({
     environmentId: z
       .string()
-      .optional()
+      .nullable()
       .describe(
-        "The ID of the environment to update. Defaults to the selected environment, or Global if none selected.",
+        "The ID of the environment to update. Use null to default to the selected environment, or Global if none selected.",
       ),
     variableName: z
       .string()
-      .min(1)
-      .describe("The name of the variable that should be deleted."),
+      .describe("The name of the variable that should be deleted (non-empty)."),
   }),
 });
 
@@ -42,7 +41,10 @@ export const deleteEnvironmentVariable: ActionDefinition<DeleteEnvironmentVariab
       }: DeleteEnvironmentVariableInput["parameters"],
     ) => {
       try {
-        const environment = await resolveEnvironment(sdk, environmentId);
+        const environment = await resolveEnvironment(
+          sdk,
+          environmentId ?? undefined,
+        );
 
         if (environment === undefined) {
           return {

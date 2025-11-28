@@ -7,7 +7,7 @@ import { type FrontendSDK } from "@/types";
 export const createHostedFileAdvancedSchema = z.object({
   name: z.literal("createHostedFileAdvanced"),
   parameters: z.object({
-    file_name: z.string().min(1).describe("Name of the file to create"),
+    file_name: z.string().describe("Name of the file to create (non-empty)"),
     js_script: z
       .string()
       .describe(

@@ -13,10 +13,9 @@ import { type FrontendSDK } from "@/types";
 export const activeEditorAddHeaderSchema = z.object({
   name: z.literal("activeEditorAddHeader"),
   parameters: z.object({
-    header: z.string().min(1).describe("Header in format 'Name: Value'"),
+    header: z.string().describe("Header in format 'Name: Value' (non-empty)"),
     replace: z
       .boolean()
-      .default(true)
       .describe("Replace existing header with same name if it exists"),
   }),
 });

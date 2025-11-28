@@ -9,11 +9,10 @@ export const updateScopeSchema = z.object({
   parameters: z.object({
     id: z
       .string()
-      .min(1)
       .describe(
-        "The ID of the scope to update. This must be a number in a string.",
+        "The ID of the scope to update (non-empty). This must be a number in a string.",
       ),
-    name: z.string().min(1).describe("The name of the scope"),
+    scopeName: z.string().describe("The name of the scope (non-empty)"),
     allowlist: z
       .array(z.string())
       .describe("The allowlist of the scope. This can be empty."),
@@ -31,11 +30,11 @@ export const updateScope: ActionDefinition<UpdateScopeInput> = {
   inputSchema: updateScopeSchema,
   execute: async (
     sdk: FrontendSDK,
-    { id, name, allowlist, denylist }: UpdateScopeInput["parameters"],
+    { id, scopeName, allowlist, denylist }: UpdateScopeInput["parameters"],
   ) => {
     try {
       const updated = await sdk.scopes.updateScope(id, {
-        name,
+        name: scopeName,
         allowlist,
         denylist,
       });

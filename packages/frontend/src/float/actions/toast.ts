@@ -8,14 +8,17 @@ const toastVariants = ["info", "success", "warning", "error"] as const;
 export const toastSchema = z.object({
   name: z.literal("toast"),
   parameters: z.object({
-    content: z.string().min(1, "Toast content cannot be empty."),
-    variant: z.enum(toastVariants).optional(),
+    content: z.string().describe("Toast content (non-empty)"),
+    variant: z
+      .enum(toastVariants)
+      .nullable()
+      .describe("Toast variant, use null for default (info)"),
     duration: z
       .number()
-      .int()
-      .positive()
-      .max(60_000, "Duration must be less than 60 seconds.")
-      .optional(),
+      .nullable()
+      .describe(
+        "Duration in ms (integer, positive, max 60000). Use null for default (3000)",
+      ),
   }),
 });
 
@@ -29,8 +32,8 @@ export const toast: ActionDefinition<ToastInput> = {
     sdk: FrontendSDK,
     { content, variant, duration }: ToastInput["parameters"],
   ) => {
-    const finalVariant = variant ?? "info";
-    const finalDuration = duration ?? 3000;
+    const finalVariant = variant === null ? "info" : variant;
+    const finalDuration = duration === null ? 3000 : duration;
 
     sdk.window.showToast(content, {
       variant: finalVariant,

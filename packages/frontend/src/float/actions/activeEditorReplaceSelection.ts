@@ -9,8 +9,7 @@ export const activeEditorReplaceSelectionSchema = z.object({
   parameters: z.object({
     text: z
       .string()
-      .min(1)
-      .describe("Text to insert in place of current selection"),
+      .describe("Text to insert in place of current selection (non-empty)"),
   }),
 });
 
