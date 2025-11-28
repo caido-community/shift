@@ -21,7 +21,7 @@ const { models, modelId, selectedModel } = useSelector(props.variant);
     option-value="id"
     filter
     filter-placeholder="Search models..."
-    overlay-class="!z-[1202]"
+    overlay-class="!z-[3001]"
     :overlay-style="{
       backgroundColor:
         variant === 'chat' ? 'var(--p-surface-900)' : 'var(--p-surface-800)',
