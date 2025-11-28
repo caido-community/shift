@@ -154,6 +154,10 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
       reasoning: {
         effort: "high",
       },
+      capabilities: {
+        reasoning: true,
+        structured_output: true,
+      },
     });
 
     const stream = createUIMessageStream<CustomUIMessage>({

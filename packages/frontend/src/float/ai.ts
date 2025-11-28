@@ -17,7 +17,12 @@ async function generateActions(sdk: FrontendSDK, input: ActionQuery) {
   const configStore = useConfigStore();
   const provider = sdk.ai.createProvider();
   // @ts-ignore
-  const model = provider(configStore.floatModel);
+  const model = provider(configStore.floatModel, {
+    capabilities: {
+      reasoning: true,
+      structured_output: true,
+    },
+  });
 
   const learnings = configStore.learnings.map((value, index) => ({
     index,
