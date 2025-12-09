@@ -1,32 +1,23 @@
+import { tool } from "ai";
 import { z } from "zod";
 
-import { type ActionContext, type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-const renameReplayTabSchema = z.object({
-  name: z.literal("renameReplayTab"),
-  parameters: z.object({
-    newName: z.string().describe("New name for the replay tab (non-empty)"),
-    sessionId: z
-      .string()
-      .nullable()
-      .describe(
-        'Session ID of the replay tab to rename. Use null for the current tab. If users says, rename "this tab", then most likely he refers to the current tab.',
-      ),
-  }),
+const InputSchema = z.object({
+  newName: z.string().describe("New name for the replay tab (non-empty)"),
+  sessionId: z
+    .string()
+    .nullable()
+    .describe(
+      'Session ID of the replay tab to rename. Use null for the current tab. If users says, rename "this tab", then most likely he refers to the current tab.',
+    ),
 });
 
-type RenameReplayTabInput = z.infer<typeof renameReplayTabSchema>;
-
-export const renameReplayTab: ActionDefinition<RenameReplayTabInput> = {
-  name: "renameReplayTab",
+export const renameReplayTabTool = tool({
   description: "Rename a replay session tab",
-  inputSchema: renameReplayTabSchema,
-  execute: async (
-    sdk: FrontendSDK,
-    { newName, sessionId }: RenameReplayTabInput["parameters"],
-    context: ActionContext,
-  ) => {
+  inputSchema: InputSchema,
+  execute: async ({ newName, sessionId }, { experimental_context }) => {
+    const { sdk, context } = experimental_context as FloatToolContext;
     const contextSessionId = (context.replay?.value as { sessionId?: string })
       ?.sessionId;
 
@@ -45,4 +36,4 @@ export const renameReplayTab: ActionDefinition<RenameReplayTabInput> = {
       frontend_message: "Replay tab renamed successfully",
     };
   },
-};
+});

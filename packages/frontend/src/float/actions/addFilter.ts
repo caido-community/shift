@@ -1,27 +1,20 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-const addFilterSchema = z.object({
-  name: z.literal("addFilter"),
-  parameters: z.object({
-    filterName: z.string().describe("Name of the filter (non-empty)"),
-    query: z.string().describe("HTTPQL query for the filter (non-empty)"),
-    alias: z.string().describe("Alias for the filter (non-empty)"),
-  }),
+const InputSchema = z.object({
+  filterName: z.string().describe("Name of the filter (non-empty)"),
+  query: z.string().describe("HTTPQL query for the filter (non-empty)"),
+  alias: z.string().describe("Alias for the filter (non-empty)"),
 });
 
-type AddFilterInput = z.infer<typeof addFilterSchema>;
-export const addFilter: ActionDefinition<AddFilterInput> = {
-  name: "addFilter",
+export const addFilterTool = tool({
   description: "Create a new filter with specified name, query, and alias",
-  inputSchema: addFilterSchema,
-  execute: async (
-    sdk: FrontendSDK,
-    { filterName, query, alias }: AddFilterInput["parameters"],
-  ) => {
+  inputSchema: InputSchema,
+  execute: async ({ filterName, query, alias }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
     try {
       const newFilter = await sdk.filters.create({
         name: filterName,
@@ -40,4 +33,4 @@ export const addFilter: ActionDefinition<AddFilterInput> = {
       return actionError("Failed to create filter", error);
     }
   },
-};
+});

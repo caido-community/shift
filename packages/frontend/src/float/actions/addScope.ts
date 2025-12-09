@@ -1,32 +1,27 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-const addScopeSchema = z.object({
-  name: z.literal("addScope"),
-  parameters: z.object({
-    scopeName: z.string().describe("The name of the scope (non-empty)."),
-    allowlist: z
-      .array(z.string())
-      .describe("The allowlist of the scope. This can be empty."),
-    denylist: z
-      .array(z.string())
-      .describe("The denylist of the scope. This can be empty."),
-  }),
+const InputSchema = z.object({
+  scopeName: z.string().describe("The name of the scope (non-empty)."),
+  allowlist: z
+    .array(z.string())
+    .describe("The allowlist of the scope. This can be empty."),
+  denylist: z
+    .array(z.string())
+    .describe("The denylist of the scope. This can be empty."),
 });
 
-type AddScopeInput = z.infer<typeof addScopeSchema>;
-
-export const addScope: ActionDefinition<AddScopeInput> = {
-  name: "addScope",
+export const addScopeTool = tool({
   description: "Create a new scope configuration",
-  inputSchema: addScopeSchema,
+  inputSchema: InputSchema,
   execute: async (
-    sdk: FrontendSDK,
-    { scopeName, allowlist, denylist }: AddScopeInput["parameters"],
+    { scopeName, allowlist, denylist },
+    { experimental_context },
   ) => {
+    const { sdk } = experimental_context as FloatToolContext;
     try {
       const scope = await sdk.scopes.createScope({
         name: scopeName,
@@ -46,4 +41,4 @@ export const addScope: ActionDefinition<AddScopeInput> = {
       return actionError("Failed to create scope", error);
     }
   },
-};
+});

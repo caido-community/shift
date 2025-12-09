@@ -1,3 +1,4 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import {
@@ -5,8 +6,7 @@ import {
   actionSuccess,
   normalizeEnvironmentVariable,
 } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
 const environmentVariableSchema = z.object({
   name: z
@@ -20,31 +20,23 @@ const environmentVariableSchema = z.object({
     ),
 });
 
-const createEnvironmentSchema = z.object({
-  name: z.literal("createEnvironment"),
-  parameters: z.object({
-    environmentName: z
-      .string()
-      .describe("The name of the environment to create (non-empty)."),
-    variables: z
-      .array(environmentVariableSchema)
-      .describe(
-        "List of variables that will be created alongside the environment. Use empty array if none.",
-      ),
-  }),
+const InputSchema = z.object({
+  environmentName: z
+    .string()
+    .describe("The name of the environment to create (non-empty)."),
+  variables: z
+    .array(environmentVariableSchema)
+    .describe(
+      "List of variables that will be created alongside the environment. Use empty array if none.",
+    ),
 });
 
-type CreateEnvironmentInput = z.infer<typeof createEnvironmentSchema>;
-
-export const createEnvironment: ActionDefinition<CreateEnvironmentInput> = {
-  name: "createEnvironment",
+export const createEnvironmentTool = tool({
   description:
     "Create a new environment optionally pre-populated with variables",
-  inputSchema: createEnvironmentSchema,
-  execute: async (
-    sdk: FrontendSDK,
-    { environmentName, variables }: CreateEnvironmentInput["parameters"],
-  ) => {
+  inputSchema: InputSchema,
+  execute: async ({ environmentName, variables }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
     try {
       const result = await sdk.graphql.createEnvironment({
         input: {
@@ -69,4 +61,4 @@ export const createEnvironment: ActionDefinition<CreateEnvironmentInput> = {
       return actionError("Failed to create environment", error);
     }
   },
-};
+});

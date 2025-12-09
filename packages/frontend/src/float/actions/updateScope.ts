@@ -1,37 +1,32 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-const updateScopeSchema = z.object({
-  name: z.literal("updateScope"),
-  parameters: z.object({
-    id: z
-      .string()
-      .describe(
-        "The ID of the scope to update (non-empty). This must be a number in a string.",
-      ),
-    scopeName: z.string().describe("The name of the scope (non-empty)"),
-    allowlist: z
-      .array(z.string())
-      .describe("The allowlist of the scope. This can be empty."),
-    denylist: z
-      .array(z.string())
-      .describe("The denylist of the scope. This can be empty."),
-  }),
+const InputSchema = z.object({
+  id: z
+    .string()
+    .describe(
+      "The ID of the scope to update (non-empty). This must be a number in a string.",
+    ),
+  scopeName: z.string().describe("The name of the scope (non-empty)"),
+  allowlist: z
+    .array(z.string())
+    .describe("The allowlist of the scope. This can be empty."),
+  denylist: z
+    .array(z.string())
+    .describe("The denylist of the scope. This can be empty."),
 });
 
-type UpdateScopeInput = z.infer<typeof updateScopeSchema>;
-
-export const updateScope: ActionDefinition<UpdateScopeInput> = {
-  name: "updateScope",
+export const updateScopeTool = tool({
   description: "Update a scope by id",
-  inputSchema: updateScopeSchema,
+  inputSchema: InputSchema,
   execute: async (
-    sdk: FrontendSDK,
-    { id, scopeName, allowlist, denylist }: UpdateScopeInput["parameters"],
+    { id, scopeName, allowlist, denylist },
+    { experimental_context },
   ) => {
+    const { sdk } = experimental_context as FloatToolContext;
     try {
       const updated = await sdk.scopes.updateScope(id, {
         name: scopeName,
@@ -51,4 +46,4 @@ export const updateScope: ActionDefinition<UpdateScopeInput> = {
       return actionError("Failed to update scope", error);
     }
   },
-};
+});

@@ -1,37 +1,30 @@
+import { tool } from "ai";
 import { z } from "zod";
 
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
 const toastVariants = ["info", "success", "warning", "error"] as const;
 
-const toastSchema = z.object({
-  name: z.literal("toast"),
-  parameters: z.object({
-    content: z.string().describe("Toast content (non-empty)"),
-    variant: z
-      .enum(toastVariants)
-      .nullable()
-      .describe("Toast variant, use null for default (info)"),
-    duration: z
-      .number()
-      .nullable()
-      .describe(
-        "Duration in ms (integer, positive, max 60000). Use null for default (3000)",
-      ),
-  }),
+const InputSchema = z.object({
+  content: z.string().describe("Toast content (non-empty)"),
+  variant: z
+    .enum(toastVariants)
+    .nullable()
+    .describe("Toast variant, use null for default (info)"),
+  duration: z
+    .number()
+    .min(1000)
+    .max(60000)
+    .describe(
+      "Duration in milliseconds.",
+    ),
 });
 
-type ToastInput = z.infer<typeof toastSchema>;
-
-export const toast: ActionDefinition<ToastInput> = {
-  name: "toast",
+export const toastTool = tool({
   description: "Show a toast message to the user",
-  inputSchema: toastSchema,
-  execute: (
-    sdk: FrontendSDK,
-    { content, variant, duration }: ToastInput["parameters"],
-  ) => {
+  inputSchema: InputSchema,
+  execute: ({ content, variant, duration }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
     const finalVariant = variant === null ? "info" : variant;
     const finalDuration = duration === null ? 3000 : duration;
 
@@ -45,4 +38,4 @@ export const toast: ActionDefinition<ToastInput> = {
       frontend_message: "",
     };
   },
-};
+});

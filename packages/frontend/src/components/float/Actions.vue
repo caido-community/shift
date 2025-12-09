@@ -6,7 +6,7 @@ import { ModelSelector } from "@/components/agent/ChatInput/ModelSelector";
 import { useFloatStore } from "@/stores/float";
 
 const store = useFloatStore();
-const { streamState, canSendMessage } = storeToRefs(store);
+const { isRunning, canSendMessage } = storeToRefs(store);
 const { runQuery } = store;
 </script>
 
@@ -16,7 +16,7 @@ const { runQuery } = store;
 
     <div class="flex items-center">
       <Button
-        v-if="streamState === 'Idle'"
+        v-if="!isRunning"
         severity="tertiary"
         icon="fas fa-arrow-circle-up"
         class="hover:text-surface-200"
@@ -34,7 +34,7 @@ const { runQuery } = store;
         @click="runQuery"
       />
       <Button
-        v-else-if="streamState === 'Streaming'"
+        v-else
         severity="tertiary"
         icon="fas fa-spinner fa-spin"
         :disabled="true"

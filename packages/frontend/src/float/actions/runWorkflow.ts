@@ -1,26 +1,18 @@
+import { tool } from "ai";
 import { z } from "zod";
 
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-const runWorkflowSchema = z.object({
-  name: z.literal("runWorkflow"),
-  parameters: z.object({
-    id: z.string().describe("Workflow ID to run (non-empty)"),
-    input: z.string().describe("Input data for the workflow."),
-  }),
+const InputSchema = z.object({
+  id: z.string().describe("Workflow ID to run (non-empty)"),
+  input: z.string().describe("Input data for the workflow."),
 });
 
-type runWorkflowInput = z.infer<typeof runWorkflowSchema>;
-
-export const runWorkflow: ActionDefinition<runWorkflowInput> = {
-  name: "runWorkflow",
+export const runWorkflowTool = tool({
   description: "Run a workflow with specified ID and input data",
-  inputSchema: runWorkflowSchema,
-  execute: async (
-    sdk: FrontendSDK,
-    { id, input }: runWorkflowInput["parameters"],
-  ) => {
+  inputSchema: InputSchema,
+  execute: async ({ id, input }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
     try {
       const view = sdk.window.getActiveEditor()?.getEditorView();
 
@@ -63,4 +55,4 @@ export const runWorkflow: ActionDefinition<runWorkflowInput> = {
       };
     }
   },
-};
+});

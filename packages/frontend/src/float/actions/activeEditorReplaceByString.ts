@@ -1,3 +1,4 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import {
@@ -6,43 +7,32 @@ import {
   replaceEditorContent,
   withActiveEditorView,
 } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-const activeEditorReplaceByStringSchema = z.object({
-  name: z.literal("activeEditorReplaceByString"),
-  parameters: z.object({
-    match: z
-      .string()
-      .describe("Substring or pattern to replace (literal, non-empty)"),
-    replace: z.string().describe("Replacement text"),
-  }),
+const InputSchema = z.object({
+  match: z
+    .string()
+    .describe("Substring or pattern to replace (literal, non-empty)"),
+  replace: z.string().describe("Replacement text"),
 });
 
-type ActiveEditorReplaceByStringInput = z.infer<
-  typeof activeEditorReplaceByStringSchema
->;
+export const activeEditorReplaceByStringTool = tool({
+  description:
+    "Replace all literal occurrences in the active editor and focus it",
+  inputSchema: InputSchema,
+  execute: ({ match, replace }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
+    return withActiveEditorView(sdk, (view) => {
+      try {
+        const currentText = view.state.doc.toJSON().join("\r\n");
+        const newText = currentText.replace(match, replace);
 
-export const activeEditorReplaceByString: ActionDefinition<ActiveEditorReplaceByStringInput> =
-  {
-    name: "activeEditorReplaceByString",
-    description:
-      "Replace all literal occurrences in the active editor and focus it",
-    inputSchema: activeEditorReplaceByStringSchema,
-    execute: (
-      sdk: FrontendSDK,
-      { match, replace }: ActiveEditorReplaceByStringInput["parameters"],
-    ) =>
-      withActiveEditorView(sdk, (view) => {
-        try {
-          const currentText = view.state.doc.toJSON().join("\r\n");
-          const newText = currentText.replace(match, replace);
+        replaceEditorContent(view, newText);
 
-          replaceEditorContent(view, newText);
-
-          return actionSuccess("Text replaced in active editor");
-        } catch (error) {
-          return actionError("Failed to replace text", error);
-        }
-      }),
-  };
+        return actionSuccess("Text replaced in active editor");
+      } catch (error) {
+        return actionError("Failed to replace text", error);
+      }
+    });
+  },
+});

@@ -59,6 +59,44 @@ export const useModelsStore = defineStore("stores.models", () => {
       );
   });
 
+  const getModelsForVariant = (variant: "float" | "chat" | "renaming") => {
+    return activeModels.value.filter((model) => {
+      if (variant === "renaming") return true;
+      const config = modelConfigs.value[model.id];
+      if (variant === "float") {
+        return config?.enabledForFloat !== false;
+      }
+      if (variant === "chat") {
+        return config?.enabledForAgent !== false;
+      }
+      return true;
+    });
+  };
+
+  const toggleModelForFloat = async (id: string, enabled: boolean) => {
+    const existingConfig = modelConfigs.value[id] ?? {
+      id,
+      enabled: defaultEnabledModels.has(id),
+    };
+    modelConfigs.value = {
+      ...modelConfigs.value,
+      [id]: { ...existingConfig, enabledForFloat: enabled },
+    };
+    await configStore.saveSettings();
+  };
+
+  const toggleModelForAgent = async (id: string, enabled: boolean) => {
+    const existingConfig = modelConfigs.value[id] ?? {
+      id,
+      enabled: defaultEnabledModels.has(id),
+    };
+    modelConfigs.value = {
+      ...modelConfigs.value,
+      [id]: { ...existingConfig, enabledForAgent: enabled },
+    };
+    await configStore.saveSettings();
+  };
+
   const getModel = (id: string): ModelItem | undefined => {
     return allModels.value.find((m) => m.id === id);
   };
@@ -114,10 +152,13 @@ export const useModelsStore = defineStore("stores.models", () => {
     allModels,
     activeModels,
     getModel,
+    getModelsForVariant,
     addCustomModel,
     removeCustomModel,
     updateCustomModel,
     toggleModel,
+    toggleModelForFloat,
+    toggleModelForAgent,
     setProvider,
   };
 });

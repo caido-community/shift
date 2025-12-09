@@ -1,37 +1,31 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
 import { useConfigStore } from "@/stores/config";
 
-const updateLearningSchema = z.object({
-  name: z.literal("updateLearning"),
-  parameters: z.object({
-    index: z
-      .number()
-      .describe(
-        "Zero-based index of the learning entry to update (integer, >= 0).",
-      ),
-    content: z
-      .string()
-      .describe(
-        "The complete replacement text for the selected learning entry (non-empty).",
-      ),
-  }),
+const InputSchema = z.object({
+  index: z
+    .number()
+    .describe(
+      "Zero-based index of the learning entry to update (integer, >= 0).",
+    ),
+  content: z
+    .string()
+    .describe(
+      "The complete replacement text for the selected learning entry (non-empty).",
+    ),
 });
 
-type UpdateLearningInput = z.infer<typeof updateLearningSchema>;
-
-export const updateLearning: ActionDefinition<UpdateLearningInput> = {
-  name: "updateLearning",
+export const updateLearningTool = tool({
   description: `
     Replace the content of an existing project learning entry by its index.
     When updating a learning, you should provide the complete value, not a summary.
     Make this learning concise, but informative for yourself in the future to understand things about the target.
     When possible, specify which domain/api/etc is the subject of the learning.
     `,
-  inputSchema: updateLearningSchema,
-  execute: async (_sdk, { index, content }) => {
+  inputSchema: InputSchema,
+  execute: async ({ index, content }) => {
     try {
       const configStore = useConfigStore();
       const currentLearnings = configStore.learnings;
@@ -49,4 +43,4 @@ export const updateLearning: ActionDefinition<UpdateLearningInput> = {
       return actionError("Failed to update learning", error);
     }
   },
-};
+});

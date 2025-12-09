@@ -1,3 +1,4 @@
+import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
@@ -7,46 +8,35 @@ import {
   replaceEditorContent,
   withActiveEditorView,
 } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-const activeEditorRemoveHeaderSchema = z.object({
-  name: z.literal("activeEditorRemoveHeader"),
-  parameters: z.object({
-    headerName: z
-      .string()
-      .describe("Name of the header to remove (case-insensitive, non-empty)"),
-  }),
+const InputSchema = z.object({
+  headerName: z
+    .string()
+    .describe("Name of the header to remove (case-insensitive, non-empty)"),
 });
 
-type ActiveEditorRemoveHeaderInput = z.infer<
-  typeof activeEditorRemoveHeaderSchema
->;
+export const activeEditorRemoveHeaderTool = tool({
+  description: "Remove an HTTP header from the active editor by name",
+  inputSchema: InputSchema,
+  execute: ({ headerName }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
+    return withActiveEditorView(sdk, (view) => {
+      try {
+        const currentText = view.state.doc.toString();
 
-export const activeEditorRemoveHeader: ActionDefinition<ActiveEditorRemoveHeaderInput> =
-  {
-    name: "activeEditorRemoveHeader",
-    description: "Remove an HTTP header from the active editor by name",
-    inputSchema: activeEditorRemoveHeaderSchema,
-    execute: (
-      sdk: FrontendSDK,
-      { headerName }: ActiveEditorRemoveHeaderInput["parameters"],
-    ) =>
-      withActiveEditorView(sdk, (view) => {
-        try {
-          const currentText = view.state.doc.toString();
+        const modifiedRequest = HttpForge.create(currentText)
+          .removeHeader(headerName)
+          .build();
 
-          const modifiedRequest = HttpForge.create(currentText)
-            .removeHeader(headerName)
-            .build();
+        replaceEditorContent(view, modifiedRequest);
 
-          replaceEditorContent(view, modifiedRequest);
-
-          return actionSuccess(
-            `Header ${headerName} removed from active editor`,
-          );
-        } catch (error) {
-          return actionError("Failed to remove header", error);
-        }
-      }),
-  };
+        return actionSuccess(
+          `Header ${headerName} removed from active editor`,
+        );
+      } catch (error) {
+        return actionError("Failed to remove header", error);
+      }
+    });
+  },
+});

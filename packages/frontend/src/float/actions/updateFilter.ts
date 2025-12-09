@@ -1,30 +1,25 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-const updateFilterSchema = z.object({
-  name: z.literal("updateFilter"),
-  parameters: z.object({
-    id: z.string().describe("ID of the filter to update (non-empty)"),
-    filterName: z.string().describe("New name for the filter (non-empty)"),
-    alias: z.string().describe("New alias for the filter (non-empty)"),
-    query: z.string().describe("New HTTPQL query for the filter (non-empty)"),
-  }),
+const InputSchema = z.object({
+  id: z.string().describe("ID of the filter to update (non-empty)"),
+  filterName: z.string().describe("New name for the filter (non-empty)"),
+  alias: z.string().describe("New alias for the filter (non-empty)"),
+  query: z.string().describe("New HTTPQL query for the filter (non-empty)"),
 });
 
-type UpdateFilterInput = z.infer<typeof updateFilterSchema>;
-
-export const updateFilter: ActionDefinition<UpdateFilterInput> = {
-  name: "updateFilter",
+export const updateFilterTool = tool({
   description:
     "Update an existing filter by ID with new name, alias, and query",
-  inputSchema: updateFilterSchema,
+  inputSchema: InputSchema,
   execute: async (
-    sdk: FrontendSDK,
-    { id, filterName, alias, query }: UpdateFilterInput["parameters"],
+    { id, filterName, alias, query },
+    { experimental_context },
   ) => {
+    const { sdk } = experimental_context as FloatToolContext;
     try {
       await sdk.filters.update(id, { name: filterName, alias, query });
     } catch (error) {
@@ -33,4 +28,4 @@ export const updateFilter: ActionDefinition<UpdateFilterInput> = {
 
     return actionSuccess(`Filter ${id} updated successfully`);
   },
-};
+});

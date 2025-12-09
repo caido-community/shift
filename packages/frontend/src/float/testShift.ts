@@ -1,6 +1,6 @@
-import { registeredActions } from "@/float/actions";
+import { floatTools } from "@/float/actions";
 import { getContext } from "@/float/context";
-import { type ActionResult } from "@/float/types";
+import { type ActionResult, type FloatToolContext } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 import { getSelectedReplayTabSessionId } from "@/utils";
 type StepDecision = "step" | "continue" | "repeat" | "pause" | "stop";
@@ -374,8 +374,8 @@ type TestHelpers = {
 
 type TestStep = (helpers: TestHelpers) => Promise<void>;
 
-const ACTIONS_BY_NAME = new Map(
-  registeredActions.map((action) => [action.name, action]),
+const TOOLS_BY_NAME = new Map(
+  Object.entries(floatTools).map(([name, tool]) => [name, tool]),
 );
 
 const INSTRUCTION_MESSAGE = [
@@ -441,12 +441,23 @@ const runActionByName = async (
   sdk: FrontendSDK,
   name: string,
   parameters: Record<string, unknown>,
-  suffix: string,
+  _suffix: string,
 ): Promise<TestResult> => {
-  const action = ACTIONS_BY_NAME.get(name);
+  const tool = TOOLS_BY_NAME.get(name);
 
-  if (action === undefined) {
-    const message = `Action ${name} is not registered`;
+  if (tool === undefined) {
+    const message = `Tool ${name} is not registered`;
+    console.warn("[Shift Test] %s", message);
+    return {
+      name,
+      success: false,
+      message,
+    };
+  }
+
+  const executeFunc = tool.execute;
+  if (executeFunc === undefined) {
+    const message = `Tool ${name} has no execute function`;
     console.warn("[Shift Test] %s", message);
     return {
       name,
@@ -460,7 +471,17 @@ const runActionByName = async (
 
   let result: ActionResult;
   try {
-    result = await action.execute(sdk, parameters, getContext(sdk));
+    const toolContext: FloatToolContext = {
+      sdk,
+      context: getContext(sdk),
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    result = (await (executeFunc as any)(parameters, {
+      toolCallId: "test",
+      messages: [],
+      abortSignal: undefined,
+      experimental_context: toolContext,
+    })) as ActionResult;
   } catch (error) {
     console.error("[Shift Test] execution threw", error);
     console.groupEnd();

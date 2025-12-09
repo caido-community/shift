@@ -19,7 +19,7 @@ const NavigateReplayEntrySchema = z.object({
     ),
 });
 
-export const navigateReplayEntryTool = tool({
+const navigateReplayEntryTool = tool({
   description: `Set the active entry in a Caido replay session.
 Use this after listing entries with fetchReplayEntries to focus the replay tab on a specific request/response pair.`,
   inputSchema: NavigateReplayEntrySchema,

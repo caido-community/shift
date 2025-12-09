@@ -1,29 +1,21 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-const filterAppendQuerySchema = z.object({
-  name: z.literal("filterAppendQuery"),
-  parameters: z.object({
-    id: z.string().describe("ID of the filter to update (non-empty)"),
-    appendQuery: z
-      .string()
-      .describe("Text to append to the existing HTTPQL query (non-empty)"),
-  }),
+const InputSchema = z.object({
+  id: z.string().describe("ID of the filter to update (non-empty)"),
+  appendQuery: z
+    .string()
+    .describe("Text to append to the existing HTTPQL query (non-empty)"),
 });
 
-type FilterAppendQueryInput = z.infer<typeof filterAppendQuerySchema>;
-
-export const filterAppendQuery: ActionDefinition<FilterAppendQueryInput> = {
-  name: "filterAppendQuery",
+export const filterAppendQueryTool = tool({
   description: "Append text to the existing query of a filter by ID",
-  inputSchema: filterAppendQuerySchema,
-  execute: async (
-    sdk: FrontendSDK,
-    { id, appendQuery }: FilterAppendQueryInput["parameters"],
-  ) => {
+  inputSchema: InputSchema,
+  execute: async ({ id, appendQuery }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
     try {
       const filters = sdk.filters.getAll();
       const filter = filters.find((f) => f.id === id);
@@ -50,4 +42,4 @@ export const filterAppendQuery: ActionDefinition<FilterAppendQueryInput> = {
 
     return actionSuccess(`Query appended to filter ${id} successfully`);
   },
-};
+});

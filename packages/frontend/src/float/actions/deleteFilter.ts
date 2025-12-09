@@ -1,26 +1,22 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import { runAction } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-const deleteFilterSchema = z.object({
-  name: z.literal("deleteFilter"),
-  parameters: z.object({
-    id: z.string().describe("ID of the filter to delete"),
-  }),
+const InputSchema = z.object({
+  id: z.string().describe("ID of the filter to delete"),
 });
 
-type DeleteFilterInput = z.infer<typeof deleteFilterSchema>;
-
-export const deleteFilter: ActionDefinition<DeleteFilterInput> = {
-  name: "deleteFilter",
+export const deleteFilterTool = tool({
   description: "Delete a filter by ID",
-  inputSchema: deleteFilterSchema,
-  execute: async (sdk: FrontendSDK, { id }: DeleteFilterInput["parameters"]) =>
-    runAction(
+  inputSchema: InputSchema,
+  execute: async ({ id }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
+    return runAction(
       () => sdk.filters.delete(id),
       "Filter deleted successfully",
       "Failed to delete filter",
-    ),
-};
+    );
+  },
+});

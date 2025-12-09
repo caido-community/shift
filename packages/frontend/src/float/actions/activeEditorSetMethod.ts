@@ -1,3 +1,4 @@
+import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
@@ -7,42 +8,33 @@ import {
   replaceEditorContent,
   withActiveEditorView,
 } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-const activeEditorSetMethodSchema = z.object({
-  name: z.literal("activeEditorSetMethod"),
-  parameters: z.object({
-    method: z
-      .string()
-      .describe("The HTTP method to set (e.g., GET, POST, PUT, DELETE)"),
-  }),
+const InputSchema = z.object({
+  method: z
+    .string()
+    .describe("The HTTP method to set (e.g., GET, POST, PUT, DELETE)"),
 });
 
-type ActiveEditorSetMethodInput = z.infer<typeof activeEditorSetMethodSchema>;
+export const activeEditorSetMethodTool = tool({
+  description: "Set the HTTP method in the active editor",
+  inputSchema: InputSchema,
+  execute: ({ method }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
+    return withActiveEditorView(sdk, (view) => {
+      try {
+        const currentText = view.state.doc.toString();
 
-export const activeEditorSetMethod: ActionDefinition<ActiveEditorSetMethodInput> =
-  {
-    name: "activeEditorSetMethod",
-    description: "Set the HTTP method in the active editor",
-    inputSchema: activeEditorSetMethodSchema,
-    execute: (
-      sdk: FrontendSDK,
-      { method }: ActiveEditorSetMethodInput["parameters"],
-    ) =>
-      withActiveEditorView(sdk, (view) => {
-        try {
-          const currentText = view.state.doc.toString();
+        const modifiedRequest = HttpForge.create(currentText)
+          .method(method)
+          .build();
 
-          const modifiedRequest = HttpForge.create(currentText)
-            .method(method)
-            .build();
+        replaceEditorContent(view, modifiedRequest);
 
-          replaceEditorContent(view, modifiedRequest);
-
-          return actionSuccess(`Method set to ${method} in active editor`);
-        } catch (error) {
-          return actionError("Failed to set method", error);
-        }
-      }),
-  };
+        return actionSuccess(`Method set to ${method} in active editor`);
+      } catch (error) {
+        return actionError("Failed to set method", error);
+      }
+    });
+  },
+});

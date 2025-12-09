@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Button from "primevue/button";
-import Dropdown from "primevue/dropdown";
+import Select from "primevue/select";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import InputText from "primevue/inputtext";
@@ -32,7 +32,7 @@ const vTooltip = Tooltip;
     >
       <h2 class="text-lg font-semibold">Models</h2>
       <div class="flex items-center gap-2">
-        <Dropdown
+        <Select
           v-model="selectedProvider"
           :options="providers"
           option-label="label"

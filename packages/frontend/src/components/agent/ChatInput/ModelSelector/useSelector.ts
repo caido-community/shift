@@ -18,7 +18,7 @@ import { useModelsStore } from "@/stores/models";
 type Variant = "float" | "chat" | "renaming";
 type AugmentedModelItem = ModelItem & { icon: Component };
 
-export const getIcon = (model: ModelItem) => {
+const getIcon = (model: ModelItem) => {
   if (model.provider === Provider.OpenRouter) {
     if (model.id.startsWith("openrouter/anthropic/")) return AnthropicIcon;
     if (model.id.startsWith("openrouter/openai/")) return OpenAIIcon;

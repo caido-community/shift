@@ -1,9 +1,8 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 
-import { queryShiftStream } from "@/float";
+import { queryShift } from "@/float";
 import { getContext } from "@/float/context";
-import type { QueryShiftState } from "@/float/types";
 import { useSDK } from "@/plugins/sdk";
 import { useConfigStore } from "@/stores/config";
 
@@ -14,8 +13,7 @@ export const useFloatStore = defineStore("stores.float", () => {
   const textarea = ref<HTMLTextAreaElement | undefined>(undefined);
   const query = ref<string>("");
 
-  const streamState = ref<QueryShiftState>("Idle");
-  const streamError = ref<string | undefined>(undefined);
+  const isRunning = ref(false);
 
   const historyIndex = ref<number>(-1);
 
@@ -86,48 +84,46 @@ export const useFloatStore = defineStore("stores.float", () => {
 
   const runQuery = async () => {
     const content = query.value.trim();
-    if (content.length === 0) {
+    if (content.length === 0 || isRunning.value) {
       return;
     }
 
-    streamState.value = "Streaming";
-    streamError.value = undefined;
+    isRunning.value = true;
     historyIndex.value = -1;
 
-    for await (const event of queryShiftStream(sdk, {
-      content,
-      context: getContext(sdk),
-    })) {
-      switch (event.state) {
-        case "Streaming":
-          streamState.value = "Streaming";
-          break;
-        case "Done":
-          streamState.value = "Idle";
-          query.value = "";
-          configStore.addHistoryEntry(content);
-          closeFloat();
-          break;
-        case "Error":
-          streamState.value = "Idle";
-          streamError.value = event.error;
-          sdk.window.showToast(event.error, {
-            variant: "error",
-          });
-          break;
+    try {
+      const result = await queryShift(sdk, {
+        content,
+        context: getContext(sdk),
+      });
+
+      if (result.success) {
+        query.value = "";
+        configStore.addHistoryEntry(content);
+        closeFloat();
+      } else {
+        sdk.window.showToast(result.error, {
+          variant: "error",
+        });
       }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      sdk.window.showToast(message, {
+        variant: "error",
+      });
+    } finally {
+      isRunning.value = false;
     }
   };
 
   return {
-    streamState: computed(() => streamState.value),
+    isRunning: computed(() => isRunning.value),
     canSendMessage: computed(() => {
       const content = query.value.trim();
-      return streamState.value === "Idle" && content.length > 0;
+      return !isRunning.value && content.length > 0;
     }),
     query,
     textarea,
-    streamError,
     closeFloat,
     runQuery,
     focusTextarea,

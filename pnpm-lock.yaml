@@ -63,6 +63,9 @@ importers:
       ai:
         specifier: ^5.0.108
         version: 5.0.108(zod@4.1.13)
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
       dompurify:
         specifier: 3.3.1
         version: 3.3.1

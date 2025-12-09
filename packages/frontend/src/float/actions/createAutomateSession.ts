@@ -2,13 +2,12 @@ import {
   type AutomatePayloadInput,
   type AutomatePayloadOptionsInput,
 } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-// TODO: entire thing is broken, need to fix it
 const MARKER = "§§§";
 
 const concurrencySchema = z.object({
@@ -38,34 +37,29 @@ const payloadSchema = z.discriminatedUnion("kind", [
   listPayloadSchema,
 ]);
 
-const createAutomateSessionSchema = z.object({
-  name: z.literal("createAutomateSession"),
-  parameters: z.object({
-    rawRequest: z
-      .string()
-      .describe(
-        "Raw HTTP request with placeholder markers '§§§start§§§' and '§§§end§§§' pairs (non-empty)",
-      ),
-    host: z.string().describe("Target host (non-empty)"),
-    port: z.number().describe("Target port (integer, positive)"),
-    isTls: z.boolean().describe("Whether to use TLS/SSL"),
-    strategy: z.enum(["ALL", "MATRIX", "PARALLEL", "SEQUENTIAL"]),
-    concurrency: concurrencySchema
-      .nullable()
-      .describe(
-        "Concurrency settings. This is optional, use null for default.",
-      ),
-    payloads: z
-      .array(payloadSchema)
-      .describe(
-        "Array of payload definitions. This is optional, use empty array for default.",
-      ),
-  }),
+const InputSchema = z.object({
+  rawRequest: z
+    .string()
+    .describe(
+      "Raw HTTP request with placeholder markers '§§§start§§§' and '§§§end§§§' pairs (non-empty)",
+    ),
+  host: z.string().describe("Target host (non-empty)"),
+  port: z.number().describe("Target port (integer, positive)"),
+  isTls: z.boolean().describe("Whether to use TLS/SSL"),
+  strategy: z.enum(["ALL", "MATRIX", "PARALLEL", "SEQUENTIAL"]),
+  concurrency: concurrencySchema
+    .nullable()
+    .describe(
+      "Concurrency settings. This is optional, use null for default.",
+    ),
+  payloads: z
+    .array(payloadSchema)
+    .describe(
+      "Array of payload definitions. This is optional, use empty array for default.",
+    ),
 });
 
 type AutomatePayload = z.infer<typeof payloadSchema>;
-
-type CreateAutomateSessionInput = z.infer<typeof createAutomateSessionSchema>;
 
 const extractPlaceholders = (source: string) => {
   const positions: number[] = [];
@@ -140,73 +134,63 @@ const attachDefaultPreprocessors = (
   }));
 };
 
-export const createAutomateSession: ActionDefinition<CreateAutomateSessionInput> =
-  {
-    name: "createAutomateSession",
-    description: `Create a new Automate session with placeholders and payloads. Use ${MARKER} to wrap the placeholder values.`,
-    inputSchema: createAutomateSessionSchema,
-    execute: async (
-      sdk: FrontendSDK,
-      {
-        rawRequest,
-        host,
-        port,
-        isTls,
-        strategy,
-        concurrency,
-        payloads,
-      }: CreateAutomateSessionInput["parameters"],
-    ) => {
-      try {
-        const { sanitized, placeholders } = extractPlaceholders(rawRequest);
+export const createAutomateSessionTool = tool({
+  description: `Create a new Automate session with placeholders and payloads. Use ${MARKER} to wrap the placeholder values.`,
+  inputSchema: InputSchema,
+  execute: async (
+    { rawRequest, host, port, isTls, strategy, concurrency, payloads },
+    { experimental_context },
+  ) => {
+    const { sdk } = experimental_context as FloatToolContext;
+    try {
+      const { sanitized, placeholders } = extractPlaceholders(rawRequest);
 
-        // ensure CRLF
-        const raw = sanitized.replace(/\r?\n/g, "\r\n");
+      const raw = sanitized.replace(/\r?\n/g, "\r\n");
 
-        const createResult = await sdk.graphql.createAutomateSession({
-          input: {
-            requestSource: {
-              raw: {
-                raw,
-                connectionInfo: {
-                  host,
-                  port,
-                  isTLS: isTls,
-                },
+      const createResult = await sdk.graphql.createAutomateSession({
+        input: {
+          requestSource: {
+            raw: {
+              raw,
+              connectionInfo: {
+                host,
+                port,
+                isTLS: isTls,
               },
             },
           },
-        });
+        },
+      });
 
-        const session = createResult.createAutomateSession.session!;
+      const session = createResult.createAutomateSession.session!;
 
-        const graphPayloads = attachDefaultPreprocessors(
-          (payloads ?? []).map(toGraphQLPayload),
-        );
+      const graphPayloads = attachDefaultPreprocessors(
+        (payloads ?? []).map(toGraphQLPayload),
+      );
 
-        await sdk.graphql.updateAutomateSession({
-          id: session.id,
-          input: {
-            connection: {
-              host: session.connection.host,
-              port: session.connection.port,
-              isTLS: session.connection.isTLS,
-            },
-            raw: session.raw,
-            settings: {
-              ...session.settings,
-              strategy: strategy ?? "ALL",
-              concurrency: concurrency ?? { delay: 0, workers: 10 },
-              payloads: graphPayloads,
-              placeholders,
-            },
+      await sdk.graphql.updateAutomateSession({
+        id: session.id,
+        input: {
+          connection: {
+            host: session.connection.host,
+            port: session.connection.port,
+            isTLS: session.connection.isTLS,
           },
-        });
+          raw: session.raw,
+          settings: {
+            ...session.settings,
+            strategy: strategy ?? "ALL",
+            concurrency: concurrency ?? { delay: 0, workers: 10 },
+            payloads: graphPayloads,
+            placeholders,
+          },
+        },
+      });
 
-        sdk.navigation.goTo("/automate");
-        return actionSuccess("Automate session created");
-      } catch (error) {
-        return actionError("Failed to create automate session", error);
-      }
-    },
-  };
+      sdk.navigation.goTo("/automate");
+      return actionSuccess("Automate session created");
+    } catch (error) {
+      return actionError("Failed to create automate session", error);
+    }
+  },
+});
