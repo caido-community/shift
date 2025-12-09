@@ -5,7 +5,7 @@ import { type FrontendSDK } from "@/types";
 
 const toastVariants = ["info", "success", "warning", "error"] as const;
 
-export const toastSchema = z.object({
+const toastSchema = z.object({
   name: z.literal("toast"),
   parameters: z.object({
     content: z.string().describe("Toast content (non-empty)"),
@@ -22,7 +22,7 @@ export const toastSchema = z.object({
   }),
 });
 
-export type ToastInput = z.infer<typeof toastSchema>;
+type ToastInput = z.infer<typeof toastSchema>;
 
 export const toast: ActionDefinition<ToastInput> = {
   name: "toast",

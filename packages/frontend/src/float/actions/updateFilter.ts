@@ -4,7 +4,7 @@ import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const updateFilterSchema = z.object({
+const updateFilterSchema = z.object({
   name: z.literal("updateFilter"),
   parameters: z.object({
     id: z.string().describe("ID of the filter to update (non-empty)"),
@@ -14,7 +14,7 @@ export const updateFilterSchema = z.object({
   }),
 });
 
-export type UpdateFilterInput = z.infer<typeof updateFilterSchema>;
+type UpdateFilterInput = z.infer<typeof updateFilterSchema>;
 
 export const updateFilter: ActionDefinition<UpdateFilterInput> = {
   name: "updateFilter",

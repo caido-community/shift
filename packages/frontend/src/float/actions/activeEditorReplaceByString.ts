@@ -9,7 +9,7 @@ import {
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const activeEditorReplaceByStringSchema = z.object({
+const activeEditorReplaceByStringSchema = z.object({
   name: z.literal("activeEditorReplaceByString"),
   parameters: z.object({
     match: z
@@ -19,7 +19,7 @@ export const activeEditorReplaceByStringSchema = z.object({
   }),
 });
 
-export type ActiveEditorReplaceByStringInput = z.infer<
+type ActiveEditorReplaceByStringInput = z.infer<
   typeof activeEditorReplaceByStringSchema
 >;
 

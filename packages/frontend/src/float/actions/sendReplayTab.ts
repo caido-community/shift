@@ -3,12 +3,12 @@ import { z } from "zod";
 import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 
-export const sendReplayTabSchema = z.object({
+const sendReplayTabSchema = z.object({
   name: z.literal("sendReplayTab"),
   parameters: z.object({}),
 });
 
-export type SendReplayTabInput = z.infer<typeof sendReplayTabSchema>;
+type SendReplayTabInput = z.infer<typeof sendReplayTabSchema>;
 
 export const sendReplayTab: ActionDefinition<SendReplayTabInput> = {
   name: "sendReplayTab",

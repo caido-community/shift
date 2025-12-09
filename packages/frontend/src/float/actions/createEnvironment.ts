@@ -20,7 +20,7 @@ const environmentVariableSchema = z.object({
     ),
 });
 
-export const createEnvironmentSchema = z.object({
+const createEnvironmentSchema = z.object({
   name: z.literal("createEnvironment"),
   parameters: z.object({
     environmentName: z
@@ -34,7 +34,7 @@ export const createEnvironmentSchema = z.object({
   }),
 });
 
-export type CreateEnvironmentInput = z.infer<typeof createEnvironmentSchema>;
+type CreateEnvironmentInput = z.infer<typeof createEnvironmentSchema>;
 
 export const createEnvironment: ActionDefinition<CreateEnvironmentInput> = {
   name: "createEnvironment",

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { type ActionContext, type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const renameReplayTabSchema = z.object({
+const renameReplayTabSchema = z.object({
   name: z.literal("renameReplayTab"),
   parameters: z.object({
     newName: z.string().describe("New name for the replay tab (non-empty)"),
@@ -16,7 +16,7 @@ export const renameReplayTabSchema = z.object({
   }),
 });
 
-export type RenameReplayTabInput = z.infer<typeof renameReplayTabSchema>;
+type RenameReplayTabInput = z.infer<typeof renameReplayTabSchema>;
 
 export const renameReplayTab: ActionDefinition<RenameReplayTabInput> = {
   name: "renameReplayTab",

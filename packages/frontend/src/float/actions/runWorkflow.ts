@@ -3,7 +3,7 @@ import { z } from "zod";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const runWorkflowSchema = z.object({
+const runWorkflowSchema = z.object({
   name: z.literal("runWorkflow"),
   parameters: z.object({
     id: z.string().describe("Workflow ID to run (non-empty)"),
@@ -11,7 +11,7 @@ export const runWorkflowSchema = z.object({
   }),
 });
 
-export type runWorkflowInput = z.infer<typeof runWorkflowSchema>;
+type runWorkflowInput = z.infer<typeof runWorkflowSchema>;
 
 export const runWorkflow: ActionDefinition<runWorkflowInput> = {
   name: "runWorkflow",

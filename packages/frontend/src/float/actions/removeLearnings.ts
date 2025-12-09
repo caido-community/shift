@@ -4,7 +4,7 @@ import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { useConfigStore } from "@/stores/config";
 
-export const removeLearningsSchema = z.object({
+const removeLearningsSchema = z.object({
   name: z.literal("removeLearnings"),
   parameters: z.object({
     indexes: z
@@ -19,7 +19,7 @@ export const removeLearningsSchema = z.object({
   }),
 });
 
-export type RemoveLearningsInput = z.infer<typeof removeLearningsSchema>;
+type RemoveLearningsInput = z.infer<typeof removeLearningsSchema>;
 
 export const removeLearnings: ActionDefinition<RemoveLearningsInput> = {
   name: "removeLearnings",

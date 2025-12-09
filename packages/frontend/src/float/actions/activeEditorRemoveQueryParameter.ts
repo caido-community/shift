@@ -10,7 +10,7 @@ import {
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const activeEditorRemoveQueryParameterSchema = z.object({
+const activeEditorRemoveQueryParameterSchema = z.object({
   name: z.literal("activeEditorRemoveQueryParameter"),
   parameters: z.object({
     paramName: z
@@ -19,7 +19,7 @@ export const activeEditorRemoveQueryParameterSchema = z.object({
   }),
 });
 
-export type ActiveEditorRemoveQueryParameterInput = z.infer<
+type ActiveEditorRemoveQueryParameterInput = z.infer<
   typeof activeEditorRemoveQueryParameterSchema
 >;
 

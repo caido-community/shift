@@ -4,7 +4,7 @@ import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const deleteScopeSchema = z.object({
+const deleteScopeSchema = z.object({
   name: z.literal("deleteScope"),
   parameters: z.object({
     id: z
@@ -15,7 +15,7 @@ export const deleteScopeSchema = z.object({
   }),
 });
 
-export type DeleteScopeInput = z.infer<typeof deleteScopeSchema>;
+type DeleteScopeInput = z.infer<typeof deleteScopeSchema>;
 
 export const deleteScope: ActionDefinition<DeleteScopeInput> = {
   name: "deleteScope",

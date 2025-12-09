@@ -10,7 +10,7 @@ import {
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const activeEditorSetMethodSchema = z.object({
+const activeEditorSetMethodSchema = z.object({
   name: z.literal("activeEditorSetMethod"),
   parameters: z.object({
     method: z
@@ -19,9 +19,7 @@ export const activeEditorSetMethodSchema = z.object({
   }),
 });
 
-export type ActiveEditorSetMethodInput = z.infer<
-  typeof activeEditorSetMethodSchema
->;
+type ActiveEditorSetMethodInput = z.infer<typeof activeEditorSetMethodSchema>;
 
 export const activeEditorSetMethod: ActionDefinition<ActiveEditorSetMethodInput> =
   {

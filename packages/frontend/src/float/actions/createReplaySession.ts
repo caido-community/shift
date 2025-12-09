@@ -4,7 +4,7 @@ import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const createReplaySessionSchema = z.object({
+const createReplaySessionSchema = z.object({
   name: z.literal("createReplaySession"),
   parameters: z.object({
     rawRequest: z.string().describe("Raw HTTP request source (non-empty)"),
@@ -18,9 +18,7 @@ export const createReplaySessionSchema = z.object({
   }),
 });
 
-export type CreateReplaySessionInput = z.infer<
-  typeof createReplaySessionSchema
->;
+type CreateReplaySessionInput = z.infer<typeof createReplaySessionSchema>;
 
 export const createReplaySession: ActionDefinition<CreateReplaySessionInput> = {
   name: "createReplaySession",

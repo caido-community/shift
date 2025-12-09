@@ -8,7 +8,7 @@ import {
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const deleteEnvironmentVariableSchema = z.object({
+const deleteEnvironmentVariableSchema = z.object({
   name: z.literal("deleteEnvironmentVariable"),
   parameters: z.object({
     environmentId: z
@@ -23,7 +23,7 @@ export const deleteEnvironmentVariableSchema = z.object({
   }),
 });
 
-export type DeleteEnvironmentVariableInput = z.infer<
+type DeleteEnvironmentVariableInput = z.infer<
   typeof deleteEnvironmentVariableSchema
 >;
 

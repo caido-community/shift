@@ -10,7 +10,7 @@ import {
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const activeEditorUpdatePathSchema = z.object({
+const activeEditorUpdatePathSchema = z.object({
   name: z.literal("activeEditorUpdatePath"),
   parameters: z.object({
     path: z
@@ -21,9 +21,7 @@ export const activeEditorUpdatePathSchema = z.object({
   }),
 });
 
-export type ActiveEditorUpdatePathInput = z.infer<
-  typeof activeEditorUpdatePathSchema
->;
+type ActiveEditorUpdatePathInput = z.infer<typeof activeEditorUpdatePathSchema>;
 
 export const activeEditorUpdatePath: ActionDefinition<ActiveEditorUpdatePathInput> =
   {

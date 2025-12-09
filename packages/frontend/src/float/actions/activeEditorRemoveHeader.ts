@@ -10,7 +10,7 @@ import {
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const activeEditorRemoveHeaderSchema = z.object({
+const activeEditorRemoveHeaderSchema = z.object({
   name: z.literal("activeEditorRemoveHeader"),
   parameters: z.object({
     headerName: z
@@ -19,7 +19,7 @@ export const activeEditorRemoveHeaderSchema = z.object({
   }),
 });
 
-export type ActiveEditorRemoveHeaderInput = z.infer<
+type ActiveEditorRemoveHeaderInput = z.infer<
   typeof activeEditorRemoveHeaderSchema
 >;
 

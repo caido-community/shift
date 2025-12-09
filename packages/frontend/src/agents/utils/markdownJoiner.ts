@@ -35,7 +35,7 @@ export const markdownJoinerTransform =
 const DEFAULT_DELAY_IN_MS = 10;
 const NEST_BLOCK_DELAY_IN_MS = 100;
 
-export class MarkdownJoiner {
+class MarkdownJoiner {
   private buffer = "";
   private isBuffering = false;
   private streamingCodeBlock = false;

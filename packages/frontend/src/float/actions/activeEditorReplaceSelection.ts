@@ -4,7 +4,7 @@ import { actionSuccess, withActiveEditor } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const activeEditorReplaceSelectionSchema = z.object({
+const activeEditorReplaceSelectionSchema = z.object({
   name: z.literal("activeEditorReplaceSelection"),
   parameters: z.object({
     text: z
@@ -13,7 +13,7 @@ export const activeEditorReplaceSelectionSchema = z.object({
   }),
 });
 
-export type ActiveEditorReplaceSelectionInput = z.infer<
+type ActiveEditorReplaceSelectionInput = z.infer<
   typeof activeEditorReplaceSelectionSchema
 >;
 

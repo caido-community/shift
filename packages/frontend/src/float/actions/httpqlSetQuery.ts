@@ -4,7 +4,7 @@ import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const httpqlSetQuerySchema = z.object({
+const httpqlSetQuerySchema = z.object({
   name: z.literal("httpqlSetQuery"),
   parameters: z.object({
     query: z
@@ -15,7 +15,7 @@ export const httpqlSetQuerySchema = z.object({
   }),
 });
 
-export type HttpqlSetQueryInput = z.infer<typeof httpqlSetQuerySchema>;
+type HttpqlSetQueryInput = z.infer<typeof httpqlSetQuerySchema>;
 
 export const httpqlSetQuery: ActionDefinition<HttpqlSetQueryInput> = {
   name: "httpqlSetQuery",

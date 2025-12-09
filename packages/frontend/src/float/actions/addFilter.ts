@@ -4,7 +4,7 @@ import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const addFilterSchema = z.object({
+const addFilterSchema = z.object({
   name: z.literal("addFilter"),
   parameters: z.object({
     filterName: z.string().describe("Name of the filter (non-empty)"),
@@ -13,7 +13,7 @@ export const addFilterSchema = z.object({
   }),
 });
 
-export type AddFilterInput = z.infer<typeof addFilterSchema>;
+type AddFilterInput = z.infer<typeof addFilterSchema>;
 export const addFilter: ActionDefinition<AddFilterInput> = {
   name: "addFilter",
   description: "Create a new filter with specified name, query, and alias",

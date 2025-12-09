@@ -4,7 +4,7 @@ import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const filterAppendQuerySchema = z.object({
+const filterAppendQuerySchema = z.object({
   name: z.literal("filterAppendQuery"),
   parameters: z.object({
     id: z.string().describe("ID of the filter to update (non-empty)"),
@@ -14,7 +14,7 @@ export const filterAppendQuerySchema = z.object({
   }),
 });
 
-export type FilterAppendQueryInput = z.infer<typeof filterAppendQuerySchema>;
+type FilterAppendQueryInput = z.infer<typeof filterAppendQuerySchema>;
 
 export const filterAppendQuery: ActionDefinition<FilterAppendQueryInput> = {
   name: "filterAppendQuery",

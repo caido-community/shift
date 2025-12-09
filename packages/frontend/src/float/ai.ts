@@ -16,7 +16,6 @@ import { type FrontendSDK } from "@/types";
 async function generateActions(sdk: FrontendSDK, input: ActionQuery) {
   const configStore = useConfigStore();
   const provider = sdk.ai.createProvider();
-  // @ts-ignore
   const model = provider(configStore.floatModel, {
     capabilities: {
       reasoning: true,

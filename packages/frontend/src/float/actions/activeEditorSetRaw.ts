@@ -3,7 +3,7 @@ import { z } from "zod";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const activeEditorSetRawSchema = z.object({
+const activeEditorSetRawSchema = z.object({
   name: z.literal("activeEditorSetRaw"),
   parameters: z.object({
     content: z
@@ -12,7 +12,7 @@ export const activeEditorSetRawSchema = z.object({
   }),
 });
 
-export type ActiveEditorSetRawInput = z.infer<typeof activeEditorSetRawSchema>;
+type ActiveEditorSetRawInput = z.infer<typeof activeEditorSetRawSchema>;
 
 export const activeEditorSetRaw: ActionDefinition<ActiveEditorSetRawInput> = {
   name: "activeEditorSetRaw",

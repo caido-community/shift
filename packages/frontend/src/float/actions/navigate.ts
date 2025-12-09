@@ -3,7 +3,7 @@ import { z } from "zod";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const navigateSchema = z.object({
+const navigateSchema = z.object({
   name: z.literal("navigate"),
   parameters: z.object({
     path: z
@@ -12,7 +12,7 @@ export const navigateSchema = z.object({
   }),
 });
 
-export type navigateInput = z.infer<typeof navigateSchema>;
+type navigateInput = z.infer<typeof navigateSchema>;
 
 export const navigate: ActionDefinition<navigateInput> = {
   name: "navigate",

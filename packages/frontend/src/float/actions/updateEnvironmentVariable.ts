@@ -24,7 +24,7 @@ const environmentVariableSchema = z.object({
     ),
 });
 
-export const updateEnvironmentVariableSchema = z.object({
+const updateEnvironmentVariableSchema = z.object({
   name: z.literal("updateEnvironmentVariable"),
   parameters: z.object({
     environmentId: z
@@ -37,7 +37,7 @@ export const updateEnvironmentVariableSchema = z.object({
   }),
 });
 
-export type UpdateEnvironmentVariableInput = z.infer<
+type UpdateEnvironmentVariableInput = z.infer<
   typeof updateEnvironmentVariableSchema
 >;
 

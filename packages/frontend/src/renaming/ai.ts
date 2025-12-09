@@ -64,7 +64,6 @@ OUTPUT:
 export async function generateName(sdk: FrontendSDK, entry: ReplayEntryQuery) {
   const configStore = useConfigStore();
   const provider = sdk.ai.createProvider();
-  // @ts-ignore
   const model = provider(configStore.renamingModel, {
     capabilities: {
       reasoning: true,

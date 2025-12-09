@@ -5,7 +5,7 @@ import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 import { getCurrentRequestID } from "@/utils";
 
-export const createFindingSchema = z.object({
+const createFindingSchema = z.object({
   name: z.literal("createFinding"),
   parameters: z.object({
     title: z
@@ -21,7 +21,7 @@ export const createFindingSchema = z.object({
   }),
 });
 
-export type createFindingInput = z.infer<typeof createFindingSchema>;
+type createFindingInput = z.infer<typeof createFindingSchema>;
 
 export const createFinding: ActionDefinition<createFindingInput> = {
   name: "createFinding",

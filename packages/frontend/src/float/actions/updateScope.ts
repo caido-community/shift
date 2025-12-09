@@ -4,7 +4,7 @@ import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const updateScopeSchema = z.object({
+const updateScopeSchema = z.object({
   name: z.literal("updateScope"),
   parameters: z.object({
     id: z
@@ -22,7 +22,7 @@ export const updateScopeSchema = z.object({
   }),
 });
 
-export type UpdateScopeInput = z.infer<typeof updateScopeSchema>;
+type UpdateScopeInput = z.infer<typeof updateScopeSchema>;
 
 export const updateScope: ActionDefinition<UpdateScopeInput> = {
   name: "updateScope",

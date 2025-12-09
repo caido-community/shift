@@ -4,7 +4,7 @@ import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const deleteEnvironmentSchema = z.object({
+const deleteEnvironmentSchema = z.object({
   name: z.literal("deleteEnvironment"),
   parameters: z.object({
     id: z
@@ -13,7 +13,7 @@ export const deleteEnvironmentSchema = z.object({
   }),
 });
 
-export type DeleteEnvironmentInput = z.infer<typeof deleteEnvironmentSchema>;
+type DeleteEnvironmentInput = z.infer<typeof deleteEnvironmentSchema>;
 
 export const deleteEnvironment: ActionDefinition<DeleteEnvironmentInput> = {
   name: "deleteEnvironment",

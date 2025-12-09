@@ -4,7 +4,7 @@ import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { useConfigStore } from "@/stores/config";
 
-export const updateLearningSchema = z.object({
+const updateLearningSchema = z.object({
   name: z.literal("updateLearning"),
   parameters: z.object({
     index: z
@@ -20,7 +20,7 @@ export const updateLearningSchema = z.object({
   }),
 });
 
-export type UpdateLearningInput = z.infer<typeof updateLearningSchema>;
+type UpdateLearningInput = z.infer<typeof updateLearningSchema>;
 
 export const updateLearning: ActionDefinition<UpdateLearningInput> = {
   name: "updateLearning",

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { registeredActions } from "@/float/actions";
 import { type FrontendSDK } from "@/types";
 
-export type ActionInputSchema = z.ZodObject<{
+type ActionInputSchema = z.ZodObject<{
   name: z.ZodLiteral<string>;
   parameters: z.ZodObject<z.ZodRawShape>;
 }>;
@@ -46,7 +46,7 @@ export type ActionQuery = {
   context: ActionContext;
 };
 
-export type ActionContextValue = {
+type ActionContextValue = {
   description: string;
   value: unknown;
 };

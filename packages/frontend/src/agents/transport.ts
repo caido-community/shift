@@ -149,7 +149,6 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
       runtimeConfig.maxIterations ?? configStore.maxIterations;
 
     const provider = this.sdk.ai.createProvider();
-    // @ts-ignore
     const model = provider(modelId, {
       reasoning: {
         effort: "high",

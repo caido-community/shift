@@ -4,7 +4,7 @@ import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const addScopeSchema = z.object({
+const addScopeSchema = z.object({
   name: z.literal("addScope"),
   parameters: z.object({
     scopeName: z.string().describe("The name of the scope (non-empty)."),
@@ -17,7 +17,7 @@ export const addScopeSchema = z.object({
   }),
 });
 
-export type AddScopeInput = z.infer<typeof addScopeSchema>;
+type AddScopeInput = z.infer<typeof addScopeSchema>;
 
 export const addScope: ActionDefinition<AddScopeInput> = {
   name: "addScope",

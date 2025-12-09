@@ -4,14 +4,14 @@ import { runAction } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const removeHostedFileSchema = z.object({
+const removeHostedFileSchema = z.object({
   name: z.literal("removeHostedFile"),
   parameters: z.object({
     id: z.string().describe("ID of the file to remove"),
   }),
 });
 
-export type RemoveHostedFileInput = z.infer<typeof removeHostedFileSchema>;
+type RemoveHostedFileInput = z.infer<typeof removeHostedFileSchema>;
 
 export const removeHostedFile: ActionDefinition<RemoveHostedFileInput> = {
   name: "removeHostedFile",

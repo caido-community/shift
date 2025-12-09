@@ -45,12 +45,12 @@ type HostedFileDialogOptions = {
   errorToast?: string;
 };
 
-export const noActiveEditorViewResult: ActionResult = {
+const noActiveEditorViewResult: ActionResult = {
   success: false,
   error: "No active editor view found",
 };
 
-export const noActiveEditorResult: ActionResult = {
+const noActiveEditorResult: ActionResult = {
   success: false,
   error: "No active editor found",
 };
@@ -91,7 +91,7 @@ export const replaceEditorContent = (
   view.focus();
 };
 
-export const unknownErrorMessage = (error: unknown): string =>
+const unknownErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : UNKNOWN_ERROR_FALLBACK;
 
 export const actionSuccess = (message: string): ActionResult => ({

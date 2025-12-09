@@ -10,7 +10,7 @@ import {
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const activeEditorAddQueryParameterSchema = z.object({
+const activeEditorAddQueryParameterSchema = z.object({
   name: z.literal("activeEditorAddQueryParameter"),
   parameters: z.object({
     paramName: z.string().describe("Query parameter name (non-empty)"),
@@ -18,7 +18,7 @@ export const activeEditorAddQueryParameterSchema = z.object({
   }),
 });
 
-export type ActiveEditorAddQueryParameterInput = z.infer<
+type ActiveEditorAddQueryParameterInput = z.infer<
   typeof activeEditorAddQueryParameterSchema
 >;
 

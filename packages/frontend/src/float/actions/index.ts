@@ -29,6 +29,7 @@ import { removeHostedFile } from "@/float/actions/removeHostedFile";
 import { removeLearnings } from "@/float/actions/removeLearnings";
 import { renameReplayTab } from "@/float/actions/renameReplayTab";
 import { replayRequestReplace } from "@/float/actions/replayRequestReplace";
+import { runConvertWorkflow } from "@/float/actions/runConvertWorkflow";
 import { runWorkflow } from "@/float/actions/runWorkflow";
 import { sendReplayTab } from "@/float/actions/sendReplayTab";
 import { toast } from "@/float/actions/toast";
@@ -71,6 +72,7 @@ export const registeredActions = [
   createReplaySession,
   createAutomateSession,
   runWorkflow,
+  runConvertWorkflow,
   createFinding,
   createHostedFileAdvanced,
   createEnvironment,

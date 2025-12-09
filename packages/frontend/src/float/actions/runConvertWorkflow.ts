@@ -4,7 +4,7 @@ import { actionError, actionSuccess } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const runConvertWorkflowSchema = z.object({
+const runConvertWorkflowSchema = z.object({
   name: z.literal("runConvertWorkflow"),
   parameters: z.object({
     id: z.string().describe("Workflow ID to run (non-empty)"),
@@ -12,7 +12,7 @@ export const runConvertWorkflowSchema = z.object({
   }),
 });
 
-export type RunConvertWorkflowInput = z.infer<typeof runConvertWorkflowSchema>;
+type RunConvertWorkflowInput = z.infer<typeof runConvertWorkflowSchema>;
 
 export const runConvertWorkflow: ActionDefinition<RunConvertWorkflowInput> = {
   name: "runConvertWorkflow",

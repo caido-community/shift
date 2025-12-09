@@ -10,7 +10,7 @@ import {
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const activeEditorReplaceBodySchema = z.object({
+const activeEditorReplaceBodySchema = z.object({
   name: z.literal("activeEditorReplaceBody"),
   parameters: z.object({
     body: z
@@ -19,7 +19,7 @@ export const activeEditorReplaceBodySchema = z.object({
   }),
 });
 
-export type ActiveEditorReplaceBodyInput = z.infer<
+type ActiveEditorReplaceBodyInput = z.infer<
   typeof activeEditorReplaceBodySchema
 >;
 

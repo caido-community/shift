@@ -1,6 +1,5 @@
 import { watch, type WatchStopHandle } from "vue";
 
-import { onLocationChange } from "@/dom";
 import { useAgentsStore } from "@/stores/agents";
 import { useConfigStore } from "@/stores/config";
 import { type FrontendSDK } from "@/types";
@@ -152,7 +151,7 @@ export const useAgentIndicatorManager = (sdk: FrontendSDK) => {
   const agentsStore = useAgentsStore();
   const configStore = useConfigStore();
 
-  let unsubscribeLocation: (() => void) | undefined;
+  let unsubscribeLocation: { stop: () => void } | undefined;
   let unsubscribeAgents: (() => void) | undefined;
   let configWatchStopHandle: WatchStopHandle | undefined;
   let observer: MutationObserver | undefined;
@@ -380,8 +379,8 @@ export const useAgentIndicatorManager = (sdk: FrontendSDK) => {
       }
     });
 
-    unsubscribeLocation = onLocationChange(({ newHash }) => {
-      if (newHash === REPLAY_HASH) {
+    unsubscribeLocation = sdk.navigation.onPageChange((event) => {
+      if (event.path === "/replay") {
         observeReplayTree();
       } else {
         remove();
@@ -391,7 +390,7 @@ export const useAgentIndicatorManager = (sdk: FrontendSDK) => {
 
   const stop = () => {
     if (unsubscribeLocation) {
-      unsubscribeLocation();
+      unsubscribeLocation.stop();
       unsubscribeLocation = undefined;
     }
     if (unsubscribeAgents) {

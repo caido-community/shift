@@ -8,7 +8,7 @@ import {
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const replayRequestReplaceSchema = z.object({
+const replayRequestReplaceSchema = z.object({
   name: z.literal("replayRequestReplace"),
   parameters: z.object({
     text: z
@@ -17,9 +17,7 @@ export const replayRequestReplaceSchema = z.object({
   }),
 });
 
-export type ReplayRequestReplaceInput = z.infer<
-  typeof replayRequestReplaceSchema
->;
+type ReplayRequestReplaceInput = z.infer<typeof replayRequestReplaceSchema>;
 
 export const replayRequestReplace: ActionDefinition<ReplayRequestReplaceInput> =
   {

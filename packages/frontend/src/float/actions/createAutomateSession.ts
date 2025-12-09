@@ -38,7 +38,7 @@ const payloadSchema = z.discriminatedUnion("kind", [
   listPayloadSchema,
 ]);
 
-export const createAutomateSessionSchema = z.object({
+const createAutomateSessionSchema = z.object({
   name: z.literal("createAutomateSession"),
   parameters: z.object({
     rawRequest: z
@@ -63,14 +63,9 @@ export const createAutomateSessionSchema = z.object({
   }),
 });
 
-export type NumbersPayload = z.infer<typeof numbersPayloadSchema>;
-export type HostedFilePayload = z.infer<typeof hostedFilePayloadSchema>;
-export type ListPayload = z.infer<typeof listPayloadSchema>;
-export type AutomatePayload = z.infer<typeof payloadSchema>;
+type AutomatePayload = z.infer<typeof payloadSchema>;
 
-export type CreateAutomateSessionInput = z.infer<
-  typeof createAutomateSessionSchema
->;
+type CreateAutomateSessionInput = z.infer<typeof createAutomateSessionSchema>;
 
 const extractPlaceholders = (source: string) => {
   const positions: number[] = [];

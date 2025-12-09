@@ -4,14 +4,14 @@ import { runAction } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const deleteFilterSchema = z.object({
+const deleteFilterSchema = z.object({
   name: z.literal("deleteFilter"),
   parameters: z.object({
     id: z.string().describe("ID of the filter to delete"),
   }),
 });
 
-export type DeleteFilterInput = z.infer<typeof deleteFilterSchema>;
+type DeleteFilterInput = z.infer<typeof deleteFilterSchema>;
 
 export const deleteFilter: ActionDefinition<DeleteFilterInput> = {
   name: "deleteFilter",

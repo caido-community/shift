@@ -4,7 +4,7 @@ import { actionError, hostedFileConfirmation } from "@/float/actionUtils";
 import { type ActionDefinition } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 
-export const createHostedFileSchema = z.object({
+const createHostedFileSchema = z.object({
   name: z.literal("createHostedFile"),
   parameters: z.object({
     file_name: z.string().describe("Name of the file to create (non-empty)"),
@@ -12,7 +12,7 @@ export const createHostedFileSchema = z.object({
   }),
 });
 
-export type CreateHostedFileInput = z.infer<typeof createHostedFileSchema>;
+type CreateHostedFileInput = z.infer<typeof createHostedFileSchema>;
 
 export const createHostedFile: ActionDefinition<CreateHostedFileInput> = {
   name: "createHostedFile",

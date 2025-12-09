@@ -40,7 +40,7 @@ const matcherTypeEnum = z.enum([
 
 const replacerTypeEnum = z.enum(["ReplacerTerm", "ReplacerWorkflow"]);
 
-export const addMatchAndReplaceSchema = z.object({
+const addMatchAndReplaceSchema = z.object({
   name: z.literal("addMatchAndReplace"),
   parameters: z.object({
     ruleName: z
@@ -74,7 +74,7 @@ export const addMatchAndReplaceSchema = z.object({
   }),
 });
 
-export type AddMatchAndReplaceInput = z.infer<typeof addMatchAndReplaceSchema>;
+type AddMatchAndReplaceInput = z.infer<typeof addMatchAndReplaceSchema>;
 
 type MatchReplaceOperation =
   | MatchReplaceOperationPath
@@ -205,6 +205,7 @@ export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
         section: crSection,
         collectionId: "1",
         query: query || "",
+        sources: [],
       });
 
       if (res !== undefined && !res.isEnabled) {
