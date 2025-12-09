@@ -1,4 +1,4 @@
-import { generateText, InvalidToolInputError, stepCountIs } from "ai";
+import { InvalidToolInputError, stepCountIs, streamText } from "ai";
 import Ajv from "ajv";
 
 import { floatTools } from "@/float/actions";
@@ -50,7 +50,7 @@ ${input.content}
   let executionError: string | undefined;
 
   try {
-    const { toolCalls } = await generateText({
+    const result = streamText({
       model,
       temperature: 0,
       tools: floatTools,
@@ -78,16 +78,16 @@ ${input.content}
       },
       onStepFinish: ({ toolResults }) => {
         for (const { toolName, output } of toolResults) {
-          const result = output as ActionResult;
+          const toolResult = output as ActionResult;
 
-          if (!result.success) {
-            executionError = `${toolName}: ${result.error}`;
+          if (!toolResult.success) {
+            executionError = `${toolName}: ${toolResult.error}`;
             console.error("executionError", executionError);
             return;
           }
 
-          if (result.frontend_message) {
-            sdk.window.showToast(result.frontend_message, {
+          if (toolResult.frontend_message) {
+            sdk.window.showToast(toolResult.frontend_message, {
               variant: "info",
               duration: 3000,
             });
@@ -95,6 +95,9 @@ ${input.content}
         }
       },
     });
+
+    await result.consumeStream();
+    const toolCalls = await result.toolCalls;
 
     if (toolCalls.length === 0) {
       return { success: false, error: "No tool calls were made" };
