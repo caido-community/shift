@@ -9,7 +9,7 @@ import { type EditorElement } from "@/utils";
 const getBaseContext = (sdk: FrontendSDK): ActionContext => {
   const getActiveProject = () => {
     const projectNameElement = document.querySelector(
-      ".c-current-project[data-project-id]",
+      ".c-current-project[data-project-id]"
     ) as HTMLElement | undefined;
 
     if (projectNameElement === undefined) {
@@ -38,10 +38,10 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
 
   const getEditorsInfo = () => {
     const requestEditor = document.querySelector(
-      ".cm-content[data-language='http-request']",
+      ".cm-content[data-language='http-request']"
     ) as EditorElement | undefined;
     const responseEditor = document.querySelector(
-      ".cm-content[data-language='http-response']",
+      ".cm-content[data-language='http-response']"
     ) as EditorElement | undefined;
 
     const requestEditorView = requestEditor?.cmView?.view;
@@ -194,17 +194,17 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
   return context;
 };
 
-const getAutomateContext = (): ActionContext => {
+const getAutomateContext = (sdk: FrontendSDK): ActionContext => {
   const getSelectedAutomateTab = () => {
     const activeTab = document.querySelector(
-      '.c-tree-session[data-is-selected="true"] .c-tree-session__name,.c-tree-session:has([data-is-active="true"]) .c-tree-session__name',
+      '[data-is-selected="true"][data-session-id]'
     );
     return activeTab ? activeTab.textContent : undefined;
   };
 
   const getSelectedAutomateTabSessionId = () => {
     const activeTab = document.querySelector(
-      '.c-tree-session[data-is-selected="true"],.c-tree-session:has([data-is-active="true"])',
+      '[data-is-selected="true"][data-session-id]'
     );
     return activeTab ? activeTab.getAttribute("data-session-id") : undefined;
   };
@@ -220,19 +220,23 @@ const getAutomateContext = (): ActionContext => {
   };
 };
 
-const getReplayContext = (): ActionContext => {
+const getReplayContext = (sdk: FrontendSDK): ActionContext => {
   const getCurrentlySelectedReplayTab = () => {
-    const activeTab = document.querySelector(
-      '[data-is-selected="true"][data-session-id]',
-    );
-    return activeTab ? activeTab.textContent : undefined;
+    const currentSession = sdk.replay.getCurrentSession();
+    if (currentSession !== undefined) {
+      return currentSession.name;
+    }
+
+    return "No session selected";
   };
 
   const getCurrentlySelectedReplayTabSessionId = () => {
-    const activeTab = document.querySelector(
-      '[data-is-selected="true"][data-session-id]',
-    );
-    return activeTab ? activeTab.getAttribute("data-session-id") : undefined;
+    const currentSession = sdk.replay.getCurrentSession();
+    if (currentSession !== undefined) {
+      return currentSession.id;
+    }
+
+    return "No session id";
   };
 
   return {
@@ -251,9 +255,10 @@ const getHttpHistoryContext = (sdk: FrontendSDK): ActionContext => {
     return sdk.httpHistory.getQuery();
   };
 
+  // TODO: broken since table is a virtual list, if user scrolls the table, the row will be gone
   const getCurrentRow = () => {
     const selectedRow = document.querySelector(
-      '.c-table__item-row[data-is-selected="true"]',
+      '.c-table__item-row[data-is-selected="true"]'
     );
 
     if (!selectedRow) {
@@ -266,11 +271,11 @@ const getHttpHistoryContext = (sdk: FrontendSDK): ActionContext => {
     }
 
     const cellValues = Array.from(
-      selectedRow.querySelectorAll(".c-item-cell__inner"),
+      selectedRow.querySelectorAll(".c-item-cell__inner")
     ).map((cell) => cell.textContent ?? "");
 
     const headerValues = Array.from(
-      headerRow.querySelectorAll(".c-header-cell__content"),
+      headerRow.querySelectorAll(".c-header-cell__content")
     ).map((header) => header.textContent ?? "");
 
     const rowData: Record<string, string> = {};
@@ -299,12 +304,12 @@ export const getContext = (sdk: FrontendSDK): ActionContext => {
   Object.assign(context, baseContext);
 
   if (window.location.hash === "#/automate") {
-    const automateContext = getAutomateContext();
+    const automateContext = getAutomateContext(sdk);
     Object.assign(context, automateContext);
   }
 
   if (window.location.hash === "#/replay") {
-    const replayContext = getReplayContext();
+    const replayContext = getReplayContext(sdk);
     Object.assign(context, replayContext);
   }
 

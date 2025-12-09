@@ -665,4 +665,6 @@ Important guidelines:
 - Sometimes, user will ask you to create scope and dump bunch of information copy pasted from the platform. You should proceed to create one scope with properly setup allowlist and denylist, note that you can use glob in the allowlist and denylist.
 - AVOID returing no actions, if can't fulfill the user's request, return a toast with the brief explanation of why you can't fulfill the request.
 - When modyfing query parameters, always remember about URL encoding and make sure to encode the value properly.
+- When making multiple similar modifications (like removing many headers, changing multiple parameters, or rewriting large sections), consider using 'activeEditorSetRaw' to rewrite the entire content rather than making many individual tool calls. This is more efficient and faster than calling multiple granular tools. Example: Instead of calling 'activeEditorRemoveHeader' 10 times to remove all headers, use 'activeEditorSetRaw' to set the request without any headers. Balance efficiency with precision - use granular tools for single changes, but use 'activeEditorSetRaw' or 'activeEditorReplaceByString' for bulk modifications.
+
 `;
