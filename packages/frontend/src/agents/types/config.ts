@@ -15,12 +15,16 @@ export type ModelItem = {
   id: string;
   provider: Provider;
   isReasoningModel?: boolean;
+  isFloatModel?: boolean;
+  isAgentModel?: boolean;
   enabled?: boolean;
 };
 
 export type ModelUserConfig = {
   id: string;
   enabled: boolean;
+  enabledForFloat?: boolean;
+  enabledForAgent?: boolean;
 };
 
 export type CustomPrompt = {
