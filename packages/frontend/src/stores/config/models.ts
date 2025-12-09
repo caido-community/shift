@@ -172,7 +172,6 @@ const openAIModels: ModelItem[] = [
     name: "GPT-4.1",
     id: "openai/gpt-4.1",
     provider: Provider.OpenAI,
-    isReasoningModel: true,
   },
   {
     name: "GPT-5.1",

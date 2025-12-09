@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { useConfigStore } from "@/stores/config";
 import { type FrontendSDK } from "@/types";
+import { createModel } from "@/utils";
 
 const outputSchema = z.object({
   name: z.string(),
@@ -63,13 +64,7 @@ OUTPUT:
 
 export async function generateName(sdk: FrontendSDK, entry: ReplayEntryQuery) {
   const configStore = useConfigStore();
-  const provider = sdk.ai.createProvider();
-  const model = provider(configStore.renamingModel, {
-    capabilities: {
-      reasoning: true,
-      structured_output: true,
-    },
-  });
+  const model = createModel(sdk, configStore.renamingModel);
 
   const prompt = `
   <entry>

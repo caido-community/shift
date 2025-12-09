@@ -12,16 +12,11 @@ import {
 } from "@/float/types";
 import { useConfigStore } from "@/stores/config";
 import { type FrontendSDK } from "@/types";
+import { createModel } from "@/utils";
 
 async function generateActions(sdk: FrontendSDK, input: ActionQuery) {
   const configStore = useConfigStore();
-  const provider = sdk.ai.createProvider();
-  const model = provider(configStore.floatModel, {
-    capabilities: {
-      reasoning: true,
-      structured_output: true,
-    },
-  });
+  const model = createModel(sdk, configStore.floatModel);
 
   const learnings = configStore.learnings.map((value, index) => ({
     index,

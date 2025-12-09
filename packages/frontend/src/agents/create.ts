@@ -72,7 +72,10 @@ function buildToolContext({
         // If user is on replay tab and has this tab open, update the request editor
         if (location.hash === "#/replay") {
           const currentSession = sdk.replay.getCurrentSession();
-          if (currentSession !== undefined && currentSession.id === initialSession.id) {
+          if (
+            currentSession !== undefined &&
+            currentSession.id === initialSession.id
+          ) {
             writeToRequestEditor(newRaw);
           }
         }

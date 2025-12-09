@@ -56,7 +56,7 @@ import { markdownJoinerTransform } from "@/agents/utils/markdownJoiner";
 import { useConfigStore } from "@/stores/config";
 import { useUIStore } from "@/stores/ui";
 import { type FrontendSDK } from "@/types";
-import { getReplaySession, isPresent } from "@/utils";
+import { createModel, getReplaySession, isPresent } from "@/utils";
 
 function sanitizeValue(value: unknown): unknown {
   if (value instanceof Date) {
@@ -148,16 +148,7 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
     const maxIterations =
       runtimeConfig.maxIterations ?? configStore.maxIterations;
 
-    const provider = this.sdk.ai.createProvider();
-    const model = provider(modelId, {
-      reasoning: {
-        effort: "high",
-      },
-      capabilities: {
-        reasoning: true,
-        structured_output: true,
-      },
-    });
+    const model = createModel(this.sdk, modelId);
 
     const stream = createUIMessageStream<CustomUIMessage>({
       execute: ({ writer }) => {

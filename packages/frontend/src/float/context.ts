@@ -9,7 +9,7 @@ import { type EditorElement } from "@/utils";
 const getBaseContext = (sdk: FrontendSDK): ActionContext => {
   const getActiveProject = () => {
     const projectNameElement = document.querySelector(
-      ".c-current-project[data-project-id]"
+      ".c-current-project[data-project-id]",
     ) as HTMLElement | undefined;
 
     if (projectNameElement === undefined) {
@@ -38,10 +38,10 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
 
   const getEditorsInfo = () => {
     const requestEditor = document.querySelector(
-      ".cm-content[data-language='http-request']"
+      ".cm-content[data-language='http-request']",
     ) as EditorElement | undefined;
     const responseEditor = document.querySelector(
-      ".cm-content[data-language='http-response']"
+      ".cm-content[data-language='http-response']",
     ) as EditorElement | undefined;
 
     const requestEditorView = requestEditor?.cmView?.view;
@@ -197,14 +197,14 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
 const getAutomateContext = (sdk: FrontendSDK): ActionContext => {
   const getSelectedAutomateTab = () => {
     const activeTab = document.querySelector(
-      '[data-is-selected="true"][data-session-id]'
+      '[data-is-selected="true"][data-session-id]',
     );
     return activeTab ? activeTab.textContent : undefined;
   };
 
   const getSelectedAutomateTabSessionId = () => {
     const activeTab = document.querySelector(
-      '[data-is-selected="true"][data-session-id]'
+      '[data-is-selected="true"][data-session-id]',
     );
     return activeTab ? activeTab.getAttribute("data-session-id") : undefined;
   };
@@ -258,7 +258,7 @@ const getHttpHistoryContext = (sdk: FrontendSDK): ActionContext => {
   // TODO: broken since table is a virtual list, if user scrolls the table, the row will be gone
   const getCurrentRow = () => {
     const selectedRow = document.querySelector(
-      '.c-table__item-row[data-is-selected="true"]'
+      '.c-table__item-row[data-is-selected="true"]',
     );
 
     if (!selectedRow) {
@@ -271,11 +271,11 @@ const getHttpHistoryContext = (sdk: FrontendSDK): ActionContext => {
     }
 
     const cellValues = Array.from(
-      selectedRow.querySelectorAll(".c-item-cell__inner")
+      selectedRow.querySelectorAll(".c-item-cell__inner"),
     ).map((cell) => cell.textContent ?? "");
 
     const headerValues = Array.from(
-      headerRow.querySelectorAll(".c-header-cell__content")
+      headerRow.querySelectorAll(".c-header-cell__content"),
     ).map((header) => header.textContent ?? "");
 
     const rowData: Record<string, string> = {};
