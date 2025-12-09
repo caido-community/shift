@@ -49,9 +49,7 @@ const InputSchema = z.object({
   strategy: z.enum(["ALL", "MATRIX", "PARALLEL", "SEQUENTIAL"]),
   concurrency: concurrencySchema
     .nullable()
-    .describe(
-      "Concurrency settings. This is optional, use null for default.",
-    ),
+    .describe("Concurrency settings. This is optional, use null for default."),
   payloads: z
     .array(payloadSchema)
     .describe(

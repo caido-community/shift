@@ -15,9 +15,7 @@ const InputSchema = z.object({
     .number()
     .min(1000)
     .max(60000)
-    .describe(
-      "Duration in milliseconds.",
-    ),
+    .describe("Duration in milliseconds."),
 });
 
 export const toastTool = tool({

@@ -31,9 +31,7 @@ export const activeEditorRemoveHeaderTool = tool({
 
         replaceEditorContent(view, modifiedRequest);
 
-        return actionSuccess(
-          `Header ${headerName} removed from active editor`,
-        );
+        return actionSuccess(`Header ${headerName} removed from active editor`);
       } catch (error) {
         return actionError("Failed to remove header", error);
       }

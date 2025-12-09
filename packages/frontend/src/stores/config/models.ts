@@ -29,12 +29,14 @@ const openRouterModels: ModelItem[] = [
     id: "openrouter/openai/gpt-5.1",
     isReasoningModel: true,
     provider: Provider.OpenRouter,
+    isFloatModel: false,
   },
   {
     name: "GPT-5 mini",
     id: "openrouter/openai/gpt-5-mini",
     isReasoningModel: true,
     provider: Provider.OpenRouter,
+    isFloatModel: false,
   },
   {
     name: "GPT-5 nano",
@@ -47,6 +49,7 @@ const openRouterModels: ModelItem[] = [
     id: "openrouter/openai/gpt-5-pro",
     isReasoningModel: true,
     provider: Provider.OpenRouter,
+    isFloatModel: false,
   },
   {
     name: "GPT-5",
@@ -71,6 +74,7 @@ const openRouterModels: ModelItem[] = [
     id: "openrouter/google/gemini-2.5-pro",
     isReasoningModel: true,
     provider: Provider.OpenRouter,
+    isFloatModel: false,
   },
   {
     name: "Gemini 2.5 Flash",
@@ -98,6 +102,7 @@ const openRouterModels: ModelItem[] = [
     name: "DeepSeek R1",
     id: "openrouter/deepseek/deepseek-r1-0528",
     isReasoningModel: true,
+    isFloatModel: false,
     provider: Provider.OpenRouter,
   },
   {
@@ -178,6 +183,7 @@ const openAIModels: ModelItem[] = [
     id: "openai/gpt-5.1",
     provider: Provider.OpenAI,
     isReasoningModel: true,
+    isFloatModel: false,
   },
 ];
 
@@ -193,6 +199,7 @@ const googleModels: ModelItem[] = [
     id: "google/gemini-2.5-pro",
     provider: Provider.Google,
     isReasoningModel: true,
+    isFloatModel: false,
   },
   {
     name: "Gemini 2.5 Flash",

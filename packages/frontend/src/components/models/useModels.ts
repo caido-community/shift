@@ -31,7 +31,11 @@ export const useModels = () => {
       const enabled = config
         ? config.enabled
         : defaultEnabledModels.has(model.id);
-      return { ...model, enabled };
+      const enabledForFloat =
+        config?.enabledForFloat ?? model.isFloatModel ?? true;
+      const enabledForAgent =
+        config?.enabledForAgent ?? model.isAgentModel ?? true;
+      return { ...model, enabled, enabledForFloat, enabledForAgent };
     });
   });
 
@@ -47,6 +51,24 @@ export const useModels = () => {
 
   const toggleModel = async (model: ModelItem & { enabled?: boolean }) => {
     await modelsStore.toggleModel(model.id, model.enabled !== true);
+  };
+
+  const toggleModelForFloat = async (
+    model: ModelItem & { enabledForFloat?: boolean },
+  ) => {
+    await modelsStore.toggleModelForFloat(
+      model.id,
+      model.enabledForFloat !== true,
+    );
+  };
+
+  const toggleModelForAgent = async (
+    model: ModelItem & { enabledForAgent?: boolean },
+  ) => {
+    await modelsStore.toggleModelForAgent(
+      model.id,
+      model.enabledForAgent !== true,
+    );
   };
 
   const addCustomModel = async (model: ModelItem) => {
@@ -68,6 +90,8 @@ export const useModels = () => {
     isAddModalVisible,
     filteredModels,
     toggleModel,
+    toggleModelForFloat,
+    toggleModelForAgent,
     addCustomModel,
     isCustomModel,
     deleteModel,

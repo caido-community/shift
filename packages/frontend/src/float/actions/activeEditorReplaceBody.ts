@@ -26,7 +26,9 @@ export const activeEditorReplaceBodyTool = tool({
       try {
         const currentText = view.state.doc.toString();
 
-        const modifiedRequest = HttpForge.create(currentText).body(body).build();
+        const modifiedRequest = HttpForge.create(currentText)
+          .body(body)
+          .build();
 
         replaceEditorContent(view, modifiedRequest);
 

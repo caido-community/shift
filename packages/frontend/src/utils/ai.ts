@@ -10,7 +10,7 @@ type CreateModelOptions = {
 export function createModel(
   sdk: FrontendSDK,
   modelId: string,
-  options: CreateModelOptions = {}
+  options: CreateModelOptions = {},
 ) {
   const { structuredOutput = true, reasoning = true } = options;
   const configStore = useConfigStore();

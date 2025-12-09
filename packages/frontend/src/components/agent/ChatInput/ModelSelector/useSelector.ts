@@ -87,9 +87,8 @@ export const useSelector = (variant: Variant) => {
     },
   });
 
-  // Return flat list of models with icons, filtered by active provider via modelsStore
   const models = computed<AugmentedModelItem[]>(() =>
-    modelsStore.activeModels.map((item) => ({
+    modelsStore.getModelsForVariant(variant).map((item) => ({
       ...item,
       icon: getIcon(item),
     })),

@@ -26,10 +26,7 @@ export const replayRequestReplaceTool = tool({
           changes: { from: 0, to: view.state.doc.length, insert: text },
         });
       } catch (error) {
-        return actionError(
-          "Failed to replace request in replay editor",
-          error,
-        );
+        return actionError("Failed to replace request in replay editor", error);
       }
 
       return actionSuccess("Request replaced in replay editor");

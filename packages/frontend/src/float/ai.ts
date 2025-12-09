@@ -14,13 +14,11 @@ import { createModel } from "@/utils";
 
 const ajv = new Ajv({ coerceTypes: true });
 
-type QueryShiftResult =
-  | { success: true }
-  | { success: false; error: string };
+type QueryShiftResult = { success: true } | { success: false; error: string };
 
 export async function queryShift(
   sdk: FrontendSDK,
-  input: ActionQuery
+  input: ActionQuery,
 ): Promise<QueryShiftResult> {
   const configStore = useConfigStore();
   const model = createModel(sdk, configStore.floatModel, { reasoning: false });
@@ -63,11 +61,7 @@ ${input.content}
       experimental_context: toolContext,
 
       // try to coerce the tool call input to the schema, helps if model returns invalid type but it can be coerced to the correct type
-      experimental_repairToolCall: async ({
-        toolCall,
-        inputSchema,
-        error,
-      }) => {
+      experimental_repairToolCall: async ({ toolCall, inputSchema, error }) => {
         if (!(error instanceof InvalidToolInputError)) {
           return null;
         }
@@ -107,7 +101,7 @@ ${input.content}
     }
 
     const invalidToolCall = toolCalls.find(
-      (call) => "invalid" in call && call.invalid
+      (call) => "invalid" in call && call.invalid === true,
     );
     if (invalidToolCall && "error" in invalidToolCall) {
       const error = invalidToolCall.error as Error;

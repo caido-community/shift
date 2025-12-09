@@ -64,10 +64,10 @@ export const useModelsStore = defineStore("stores.models", () => {
       if (variant === "renaming") return true;
       const config = modelConfigs.value[model.id];
       if (variant === "float") {
-        return config?.enabledForFloat !== false;
+        return config?.enabledForFloat ?? model.isFloatModel ?? true;
       }
       if (variant === "chat") {
-        return config?.enabledForAgent !== false;
+        return config?.enabledForAgent ?? model.isAgentModel ?? true;
       }
       return true;
     });
@@ -132,9 +132,10 @@ export const useModelsStore = defineStore("stores.models", () => {
   };
 
   const toggleModel = async (id: string, enabled: boolean) => {
+    const existingConfig = modelConfigs.value[id];
     modelConfigs.value = {
       ...modelConfigs.value,
-      [id]: { id, enabled },
+      [id]: { ...existingConfig, id, enabled },
     };
     await configStore.saveSettings();
   };

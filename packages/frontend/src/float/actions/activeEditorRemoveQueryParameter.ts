@@ -11,9 +11,7 @@ import {
 import { type FloatToolContext } from "@/float/types";
 
 const InputSchema = z.object({
-  paramName: z
-    .string()
-    .describe("Query parameter name to remove (non-empty)"),
+  paramName: z.string().describe("Query parameter name to remove (non-empty)"),
 });
 
 export const activeEditorRemoveQueryParameterTool = tool({

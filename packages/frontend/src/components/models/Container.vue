@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import Button from "primevue/button";
-import Select from "primevue/select";
+import Checkbox from "primevue/checkbox";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import InputText from "primevue/inputtext";
+import Select from "primevue/select";
 import ToggleSwitch from "primevue/toggleswitch";
 import Tooltip from "primevue/tooltip";
 
@@ -15,6 +16,8 @@ const {
   isAddModalVisible,
   filteredModels,
   toggleModel,
+  toggleModelForFloat,
+  toggleModelForAgent,
   addCustomModel,
   isCustomModel,
   deleteModel,
@@ -75,7 +78,7 @@ const vTooltip = Tooltip;
               ></i>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-3">
               <Button
                 v-if="isCustomModel(model.id)"
                 v-tooltip.top="'Delete custom model'"
@@ -86,7 +89,38 @@ const vTooltip = Tooltip;
                 @click="deleteModel(model.id)"
               />
               <div v-else class="w-8"></div>
+              <div
+                v-tooltip.top="'Show in Float selector'"
+                class="flex items-center gap-1.5 cursor-pointer select-none"
+                :class="{ 'opacity-40': !model.enabled }"
+                @click="model.enabled && toggleModelForFloat(model)"
+              >
+                <Checkbox
+                  :model-value="model.enabledForFloat"
+                  :disabled="!model.enabled"
+                  binary
+                  @click.stop
+                  @update:model-value="toggleModelForFloat(model)"
+                />
+                <span class="text-xs text-surface-400">Float</span>
+              </div>
+              <div
+                v-tooltip.top="'Show in Agent selector'"
+                class="flex items-center gap-1.5 cursor-pointer select-none"
+                :class="{ 'opacity-40': !model.enabled }"
+                @click="model.enabled && toggleModelForAgent(model)"
+              >
+                <Checkbox
+                  :model-value="model.enabledForAgent"
+                  :disabled="!model.enabled"
+                  binary
+                  @click.stop
+                  @update:model-value="toggleModelForAgent(model)"
+                />
+                <span class="text-xs text-surface-400">Agent</span>
+              </div>
               <ToggleSwitch
+                v-tooltip.top="'Enable model'"
                 :model-value="model.enabled"
                 @update:model-value="toggleModel(model)"
               />

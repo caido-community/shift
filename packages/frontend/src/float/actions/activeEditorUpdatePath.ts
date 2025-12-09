@@ -28,7 +28,9 @@ export const activeEditorUpdatePathTool = tool({
       try {
         const currentText = view.state.doc.toString();
 
-        const modifiedRequest = HttpForge.create(currentText).path(path).build();
+        const modifiedRequest = HttpForge.create(currentText)
+          .path(path)
+          .build();
 
         replaceEditorContent(view, modifiedRequest);
 
