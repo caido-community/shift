@@ -121,7 +121,9 @@ export const useAgentIndicatorManager = (sdk: FrontendSDK) => {
       });
     });
 
-    listenForCollectionChanges();
+    requestAnimationFrame(() => {
+      listenForCollectionChanges();
+    });
   };
 
   const drawTabIndicators = (snapshots: AgentStatusSnapshot[]) => {
