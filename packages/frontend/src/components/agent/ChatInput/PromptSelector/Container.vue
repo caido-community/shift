@@ -13,7 +13,6 @@ const { agentId = undefined, isSettings = false } = defineProps<{
 const {
   selectedPromptIds,
   promptOptions,
-  listRef,
   showLeft,
   showRight,
   scrollLeftBy,

@@ -2,7 +2,7 @@
 import { useKeyModifier } from "@vueuse/core";
 import Textarea from "primevue/textarea";
 
-const { fileName, content, onConfirm } = defineProps<{
+const { content, onConfirm } = defineProps<{
   fileName: string;
   content: string;
   onConfirm: (content: string) => void;

@@ -63,7 +63,7 @@ ${input.content}
       // try to coerce the tool call input to the schema, helps if model returns invalid type but it can be coerced to the correct type
       experimental_repairToolCall: ({ toolCall, inputSchema, error }) => {
         if (!(error instanceof InvalidToolInputError)) {
-          return null;
+          return Promise.resolve(null);
         }
 
         const schema = inputSchema({ toolName: toolCall.toolName });
@@ -71,10 +71,10 @@ ${input.content}
 
         ajv.validate(schema, data);
 
-        return {
+        return Promise.resolve({
           ...toolCall,
           input: JSON.stringify(data),
-        };
+        });
       },
       onStepFinish: ({ toolResults }) => {
         for (const { toolName, output } of toolResults) {
