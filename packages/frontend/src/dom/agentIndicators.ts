@@ -5,6 +5,7 @@ import { type FrontendSDK } from "@/types";
 
 const BASE_INDICATOR_CLASS = "internal-shift-indicator";
 const TOOLTIP = "This {{ type }} is controlled by Shift AI";
+const SHIFT_COLLECTION_TOOLTIP = "Managed by Shift AI";
 
 const createIndicator = (
   container: Element,
@@ -14,6 +15,7 @@ const createIndicator = (
 ) => {
   const id = BASE_INDICATOR_CLASS + "-" + type + "-" + sessionId;
   const tooltip = TOOLTIP.replace("{{ type }}", type);
+
   const existing = container.querySelector<HTMLElement>(`#${id}`);
   if (existing) {
     existing.classList.remove("text-success-500", "text-error-500");
@@ -76,6 +78,36 @@ const createIndicator = (
   return indicator;
 };
 
+const SHIFT_COLLECTION_INDICATOR_ID =
+  BASE_INDICATOR_CLASS + "-shift-collection";
+
+const createShiftCollectionIndicator = (container: Element) => {
+  const existing = container.querySelector<HTMLElement>(
+    `#${SHIFT_COLLECTION_INDICATOR_ID}`,
+  );
+  if (existing) {
+    return existing;
+  }
+
+  const indicator = document.createElement("i");
+  indicator.id = SHIFT_COLLECTION_INDICATOR_ID;
+  indicator.classList.add(
+    "fa-solid",
+    "fa-wand-magic-sparkles",
+    "inline",
+    BASE_INDICATOR_CLASS,
+  );
+
+  indicator.title = SHIFT_COLLECTION_TOOLTIP;
+  indicator.setAttribute("aria-label", SHIFT_COLLECTION_TOOLTIP);
+  indicator.setAttribute("role", "img");
+  indicator.dataset.shiftAiIndicatorTooltip = SHIFT_COLLECTION_TOOLTIP;
+
+  container.appendChild(indicator);
+
+  return indicator;
+};
+
 export const useAgentIndicatorManager = (sdk: FrontendSDK) => {
   const agentsStore = useAgentsStore();
   let unsubscribe: { stop: () => void } | undefined = undefined;
@@ -110,6 +142,7 @@ export const useAgentIndicatorManager = (sdk: FrontendSDK) => {
       requestAnimationFrame(() => {
         drawTabIndicators(snapshot);
         drawCollectionIndicators(snapshot);
+        drawShiftCollectionIndicator();
       });
     });
 
@@ -118,12 +151,35 @@ export const useAgentIndicatorManager = (sdk: FrontendSDK) => {
       requestAnimationFrame(() => {
         drawTabIndicators(snapshot);
         drawCollectionIndicators(snapshot);
+        drawShiftCollectionIndicator();
       });
     });
 
     requestAnimationFrame(() => {
       listenForCollectionChanges();
     });
+  };
+
+  const getShiftCollection = () => {
+    const collections = sdk.replay.getCollections();
+    const collection = collections.find((c) => c.name === "Shift");
+    if (collection === undefined) {
+      return undefined;
+    }
+
+    const collectionId = collection.id;
+    if (collectionId === undefined) {
+      return undefined;
+    }
+
+    const element = document.querySelector(
+      `[data-collection-id="${collectionId}"]`,
+    );
+    if (element === null) {
+      return undefined;
+    }
+
+    return element as HTMLDivElement;
   };
 
   const drawTabIndicators = (snapshots: AgentStatusSnapshot[]) => {
@@ -179,6 +235,15 @@ export const useAgentIndicatorManager = (sdk: FrontendSDK) => {
     });
   };
 
+  const drawShiftCollectionIndicator = () => {
+    const shiftCollection = getShiftCollection();
+    if (!shiftCollection) {
+      return;
+    }
+
+    createShiftCollectionIndicator(shiftCollection);
+  };
+
   const listenForCollectionChanges = () => {
     if (tableObserver) {
       tableObserver.disconnect();
@@ -194,6 +259,7 @@ export const useAgentIndicatorManager = (sdk: FrontendSDK) => {
       const snapshot = agentsStore.getAgentStatusSnapshot();
       requestAnimationFrame(() => {
         drawCollectionIndicators(snapshot);
+        drawShiftCollectionIndicator();
       });
     });
 

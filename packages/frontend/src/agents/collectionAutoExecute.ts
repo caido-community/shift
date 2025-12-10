@@ -129,7 +129,6 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
       {
         component: LaunchInputDialog,
         props: {
-          title: "Instructions",
           placeholder: "Enter your instructions for the agent...",
           sdk,
           onConfirm: () => handleConfirm,

@@ -23,6 +23,7 @@ import {
   fetchReplayEntriesTool,
   grepRequestTool,
   grepResponseTool,
+  navigateReplayEntryTool,
   removeLearningsTool,
   removeRequestHeaderTool,
   removeRequestQueryTool,
@@ -181,7 +182,7 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
             grepRequest: grepRequestTool,
             searchRequests: searchRequestsTool,
             fetchReplayEntries: fetchReplayEntriesTool,
-            // navigateReplayEntry: navigateReplayEntryTool, // Currently not working in the Caido UI, so we're not using it.
+            navigateReplayEntry: navigateReplayEntryTool,
             addTodo: addTodoTool,
             addLearning: addLearningTool,
             updateLearning: updateLearningTool,
