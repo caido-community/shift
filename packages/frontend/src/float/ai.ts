@@ -61,7 +61,7 @@ ${input.content}
       experimental_context: toolContext,
 
       // try to coerce the tool call input to the schema, helps if model returns invalid type but it can be coerced to the correct type
-      experimental_repairToolCall: async ({ toolCall, inputSchema, error }) => {
+      experimental_repairToolCall: ({ toolCall, inputSchema, error }) => {
         if (!(error instanceof InvalidToolInputError)) {
           return null;
         }

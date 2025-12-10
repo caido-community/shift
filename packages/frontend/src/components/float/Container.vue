@@ -5,18 +5,18 @@ import Actions from "@/components/float/Actions.vue";
 import { useDragResize } from "@/components/float/useDragResize";
 import { useFloatStore } from "@/stores/float";
 
-const props = defineProps<{
+const { initialTop, initialLeft } = defineProps<{
   initialTop: number;
   initialLeft: number;
 }>();
 
 const { style, onDragMouseDown } = useDragResize({
-  initialTop: props.initialTop,
-  initialLeft: props.initialLeft,
+  initialTop,
+  initialLeft,
 });
 
 const store = useFloatStore();
-const { isRunning, textarea, query } = storeToRefs(store);
+const { isRunning, query } = storeToRefs(store);
 </script>
 
 <template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRefs } from "vue";
+import { ref, toRef } from "vue";
 
 import { Markdown } from "../Markdown";
 
@@ -8,13 +8,15 @@ import { useReasoning } from "./useReasoning";
 import type { MessageState } from "@/agents/types";
 import { useAutoScroll } from "@/components/agent/useAutoScroll";
 
-const props = defineProps<{
+const { content, state, messageState } = defineProps<{
   content: string;
   state: "streaming" | "done" | undefined;
   messageState: MessageState | undefined;
 }>();
 
-const { content, state, messageState } = toRefs(props);
+const contentRef = toRef(() => content);
+const stateRef = toRef(() => state);
+const messageStateRef = toRef(() => messageState);
 const contentContainer = ref<HTMLElement>();
 
 const {
@@ -23,11 +25,16 @@ const {
   isReasoning,
   reasoningText,
   hasContent,
-} = useReasoning({ content, state, messageState, contentContainer });
+} = useReasoning({
+  content: contentRef,
+  state: stateRef,
+  messageState: messageStateRef,
+  contentContainer,
+});
 
 useAutoScroll(
   contentContainer,
-  [() => (isReasoning.value ? content.value : undefined)],
+  [() => (isReasoning.value ? content : undefined)],
   { smooth: true, always: true },
 );
 </script>

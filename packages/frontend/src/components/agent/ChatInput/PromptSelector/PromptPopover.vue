@@ -9,11 +9,11 @@ import { useSelector } from "./useSelector";
 import { type CustomPrompt } from "@/agents/types";
 import { useUIStore } from "@/stores/ui";
 
-const props = defineProps<{
+const { agentId = undefined } = defineProps<{
   agentId?: string;
 }>();
 
-const { promptOptions, isSelected, togglePrompt } = useSelector(props.agentId);
+const { promptOptions, isSelected, togglePrompt } = useSelector(agentId);
 const uiStore = useUIStore();
 
 const popoverRef = ref<InstanceType<typeof Popover>>();

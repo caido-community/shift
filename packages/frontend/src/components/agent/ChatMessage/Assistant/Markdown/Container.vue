@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import DOMPurify from "dompurify";
 import MarkdownIt from "markdown-it";
-import { computed, toRefs } from "vue";
+import { computed } from "vue";
 
-const props = defineProps<{ content: string }>();
-const { content } = toRefs(props);
+const { content } = defineProps<{ content: string }>();
 
 const md = new MarkdownIt({
   breaks: true,
@@ -12,7 +11,7 @@ const md = new MarkdownIt({
 });
 
 const rendered = computed(() => {
-  const rendered = md.render(content.value);
+  const rendered = md.render(content);
   return DOMPurify.sanitize(rendered);
 });
 </script>

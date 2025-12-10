@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { toRefs } from "vue";
+import { toRef } from "vue";
 
 import { useToolMessage } from "./useMessage";
 
 import type { MessageState } from "@/agents/types";
 
-const props = defineProps<{
+const { toolName, state, output, messageState } = defineProps<{
   toolName: string;
   state:
     | "input-streaming"
@@ -16,7 +16,10 @@ const props = defineProps<{
   messageState: MessageState | undefined;
 }>();
 
-const { toolName, state, output, messageState } = toRefs(props);
+const toolNameRef = toRef(() => toolName);
+const stateRef = toRef(() => state);
+const outputRef = toRef(() => output);
+const messageStateRef = toRef(() => messageState);
 
 const {
   isProcessing,
@@ -25,7 +28,12 @@ const {
   showDetails,
   toggleDetails,
   toolIcon,
-} = useToolMessage({ toolName, state, output, messageState });
+} = useToolMessage({
+  toolName: toolNameRef,
+  state: stateRef,
+  output: outputRef,
+  messageState: messageStateRef,
+});
 </script>
 
 <template>

@@ -9,7 +9,7 @@ import { useForm } from "./useForm";
 
 import { type ModelItem } from "@/agents/types/config";
 
-const props = defineProps<{
+const { visible } = defineProps<{
   visible: boolean;
 }>();
 
@@ -38,7 +38,7 @@ const handleVisibilityUpdate = (val: boolean) => {
 
 <template>
   <Dialog
-    :visible="props.visible"
+    :visible="visible"
     modal
     header="Add Custom Model"
     :style="{ width: '30rem' }"

@@ -3,19 +3,18 @@ import Select from "primevue/select";
 
 import { useSelector } from "./useSelector";
 
-const props = defineProps<{
+const { variant, disabled = false } = defineProps<{
   variant: "float" | "chat" | "renaming";
   disabled?: boolean;
 }>();
 
-// Using 'models' instead of 'groups'
-const { models, modelId, selectedModel } = useSelector(props.variant);
+const { models, modelId, selectedModel } = useSelector(variant);
 </script>
 
 <template>
   <Select
     v-model="modelId"
-    :disabled="props.disabled === true"
+    :disabled="disabled === true"
     :options="models"
     option-label="name"
     option-value="id"
@@ -25,7 +24,7 @@ const { models, modelId, selectedModel } = useSelector(props.variant);
     :overlay-style="{
       backgroundColor:
         variant === 'chat' ? 'var(--p-surface-900)' : 'var(--p-surface-800)',
-      opacity: props.disabled === true ? 0.5 : 1,
+      opacity: disabled === true ? 0.5 : 1,
     }"
     :pt="{
       root: {
@@ -49,7 +48,7 @@ const { models, modelId, selectedModel } = useSelector(props.variant);
       <div
         :class="[
           'flex items-center gap-2 w-full text-surface-400 text-sm transition-colors duration-200',
-          props.disabled !== true ? 'hover:text-surface-200' : '',
+          disabled !== true ? 'hover:text-surface-200' : '',
         ]"
       >
         <component
