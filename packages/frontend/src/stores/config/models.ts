@@ -99,6 +99,11 @@ const openRouterModels: ModelItem[] = [
     provider: Provider.OpenRouter,
   },
   {
+    name: "Grok 4.1 Fast",
+    id: "openrouter/x-ai/grok-4.1-fast",
+    provider: Provider.OpenRouter,
+  },
+  {
     name: "DeepSeek R1",
     id: "openrouter/deepseek/deepseek-r1-0528",
     isReasoningModel: true,
@@ -120,6 +125,7 @@ const openRouterModels: ModelItem[] = [
     id: "openrouter/moonshotai/kimi-k2-thinking",
     isReasoningModel: true,
     provider: Provider.OpenRouter,
+    isFloatModel: false,
   },
 ];
 
@@ -221,6 +227,7 @@ export const defaultEnabledModels = new Set([
   "openrouter/x-ai/grok-4-fast",
   "openrouter/deepseek/deepseek-r1-0528",
   "openrouter/moonshotai/kimi-k2-thinking",
+  "openrouter/x-ai/grok-code-fast-1",
 
   "anthropic/claude-sonnet-4-5-20250929",
   "anthropic/claude-sonnet-4-20250514",
