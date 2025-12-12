@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Verify main branch
         run: |
-          if [[ "${{ github.ref_name }}" != "main" && "${{ github.ref_name }}" != "v2" ]]; then
+          if [[ "${{ github.ref_name }}" != "main" ]]; then
             echo "Release can only be done on the main branch."
             exit 1
           fi
