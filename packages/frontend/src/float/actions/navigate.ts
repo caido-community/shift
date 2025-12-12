@@ -1,22 +1,19 @@
+import { tool } from "ai";
 import { z } from "zod";
 
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-export const navigateSchema = z.object({
-  name: z.literal("navigate"),
-  parameters: z.object({
-    path: z.string().min(1).describe("Path of the sidebar tab to navigate to."),
-  }),
+const InputSchema = z.object({
+  path: z
+    .string()
+    .describe("Path of the sidebar tab to navigate to (non-empty)."),
 });
 
-export type navigateInput = z.infer<typeof navigateSchema>;
-
-export const navigate: ActionDefinition<navigateInput> = {
-  name: "navigate",
+export const navigateTool = tool({
   description: "Navigate to a specific sidebar tab by path",
-  inputSchema: navigateSchema,
-  execute: (sdk: FrontendSDK, { path }: navigateInput["parameters"]) => {
+  inputSchema: InputSchema,
+  execute: ({ path }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
     let finalPath = path;
     if (path.startsWith("#")) {
       finalPath = path.slice(1);
@@ -28,4 +25,4 @@ export const navigate: ActionDefinition<navigateInput> = {
       frontend_message: `Navigated to sidebar page ${finalPath}`,
     };
   },
-};
+});

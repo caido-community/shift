@@ -1,19 +1,13 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
 
-export const sendReplayTabSchema = z.object({
-  name: z.literal("sendReplayTab"),
-  parameters: z.object({}),
-});
+const InputSchema = z.object({});
 
-export type SendReplayTabInput = z.infer<typeof sendReplayTabSchema>;
-
-export const sendReplayTab: ActionDefinition<SendReplayTabInput> = {
-  name: "sendReplayTab",
+export const sendReplayTabTool = tool({
   description: "Send the current replay tab request",
-  inputSchema: sendReplayTabSchema,
+  inputSchema: InputSchema,
   execute: () => {
     try {
       const sendButton = document.querySelector(
@@ -34,4 +28,4 @@ export const sendReplayTab: ActionDefinition<SendReplayTabInput> = {
       return actionError("Failed to send replay tab request", error);
     }
   },
-};
+});

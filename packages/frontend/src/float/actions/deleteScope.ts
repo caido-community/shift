@@ -1,28 +1,22 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-export const deleteScopeSchema = z.object({
-  name: z.literal("deleteScope"),
-  parameters: z.object({
-    id: z
-      .string()
-      .min(1)
-      .describe(
-        "The ID of the scope to delete. This must be a number in a string.",
-      ),
-  }),
+const InputSchema = z.object({
+  id: z
+    .string()
+    .describe(
+      "The ID of the scope to delete (non-empty). This must be a number in a string.",
+    ),
 });
 
-export type DeleteScopeInput = z.infer<typeof deleteScopeSchema>;
-
-export const deleteScope: ActionDefinition<DeleteScopeInput> = {
-  name: "deleteScope",
+export const deleteScopeTool = tool({
   description: "Delete a scope by id",
-  inputSchema: deleteScopeSchema,
-  execute: async (sdk: FrontendSDK, { id }: DeleteScopeInput["parameters"]) => {
+  inputSchema: InputSchema,
+  execute: async ({ id }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
     try {
       const deleted = await sdk.scopes.deleteScope(id);
       if (!deleted) {
@@ -37,4 +31,4 @@ export const deleteScope: ActionDefinition<DeleteScopeInput> = {
       return actionError("Failed to delete scope", error);
     }
   },
-};
+});

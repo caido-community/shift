@@ -1,43 +1,29 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-export const createReplaySessionSchema = z.object({
-  name: z.literal("createReplaySession"),
-  parameters: z.object({
-    rawRequest: z.string().min(1).describe("Raw HTTP request source"),
-    host: z.string().min(1).describe("Target host"),
-    port: z.number().positive().describe("Target port"),
-    isTls: z.boolean().default(true).describe("Whether to use TLS/SSL"),
-    name: z
-      .string()
-      .describe(
-        "Optional name for the replay session. This is optional, leave empty for default.",
-      ),
-  }),
+const InputSchema = z.object({
+  rawRequest: z.string().describe("Raw HTTP request source (non-empty)"),
+  host: z.string().describe("Target host (non-empty)"),
+  port: z.number().describe("Target port (integer, positive)"),
+  isTls: z.boolean().describe("Whether to use TLS/SSL"),
+  sessionName: z
+    .string()
+    .nullable()
+    .describe("Optional name for the replay session. Use null for default."),
 });
 
-export type CreateReplaySessionInput = z.infer<
-  typeof createReplaySessionSchema
->;
-
-export const createReplaySession: ActionDefinition<CreateReplaySessionInput> = {
-  name: "createReplaySession",
+export const createReplaySessionTool = tool({
   description:
     "Create a new replay session with specified request and connection details",
-  inputSchema: createReplaySessionSchema,
+  inputSchema: InputSchema,
   execute: async (
-    sdk: FrontendSDK,
-    {
-      rawRequest,
-      host,
-      port,
-      isTls,
-      name,
-    }: CreateReplaySessionInput["parameters"],
+    { rawRequest, host, port, isTls, sessionName },
+    { experimental_context },
   ) => {
+    const { sdk } = experimental_context as FloatToolContext;
     try {
       const result = await sdk.graphql.createReplaySession({
         input: {
@@ -65,10 +51,10 @@ export const createReplaySession: ActionDefinition<CreateReplaySessionInput> = {
 
       sdk.replay.openTab(sessionId);
 
-      if (name !== undefined) {
+      if (sessionName !== null) {
         await sdk.graphql.renameReplaySession({
           id: sessionId,
-          name,
+          name: sessionName,
         });
       }
 
@@ -77,4 +63,4 @@ export const createReplaySession: ActionDefinition<CreateReplaySessionInput> = {
       return actionError("Failed to create replay session", error);
     }
   },
-};
+});

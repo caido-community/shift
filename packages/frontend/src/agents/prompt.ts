@@ -111,6 +111,8 @@ EXAMPLE: if you're using updateCookie tool, {"name":"authCookie", value:"§§§G
    - Tasks depend on each other's outputs or results
    - Multiple tools would modify the same parts of the raw request simultaneously
    - One action needs to complete before the next can proceed logically
+   - After using sendRequest - never run any other tools in parallel with or immediately after sendRequest, as this can break and revert changes
+- NEVER do this pattern in parallel: change request → send request → change request (this sometimes breaks and reverts changes after sendRequest)
 - When in doubt, prioritize accuracy over speed - it's better to execute tasks sequentially if there's any uncertainty about conflicts.
 </parallel_tool_calling>
 

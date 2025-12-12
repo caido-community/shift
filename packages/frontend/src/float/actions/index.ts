@@ -1,80 +1,81 @@
-import { activeEditorAddHeader } from "@/float/actions/activeEditorAddHeader";
-import { activeEditorAddQueryParameter } from "@/float/actions/activeEditorAddQueryParameter";
-import { activeEditorRemoveHeader } from "@/float/actions/activeEditorRemoveHeader";
-import { activeEditorRemoveQueryParameter } from "@/float/actions/activeEditorRemoveQueryParameter";
-import { activeEditorReplaceBody } from "@/float/actions/activeEditorReplaceBody";
-import { activeEditorReplaceByString } from "@/float/actions/activeEditorReplaceByString";
-import { activeEditorReplaceSelection } from "@/float/actions/activeEditorReplaceSelection";
-import { activeEditorSetMethod } from "@/float/actions/activeEditorSetMethod";
-import { activeEditorSetRaw } from "@/float/actions/activeEditorSetRaw";
-import { activeEditorUpdatePath } from "@/float/actions/activeEditorUpdatePath";
-import { addFilter } from "@/float/actions/addFilter";
-import { addLearning } from "@/float/actions/addLearning";
-import { addMatchAndReplace } from "@/float/actions/addMatchAndReplace";
-import { addScope } from "@/float/actions/addScope";
-import { createAutomateSession } from "@/float/actions/createAutomateSession";
-import { createEnvironment } from "@/float/actions/createEnvironment";
-import { createFinding } from "@/float/actions/createFinding";
-import { createHostedFile } from "@/float/actions/createHostedFile";
-import { createHostedFileAdvanced } from "@/float/actions/createHostedFileAdvanced";
-import { createReplaySession } from "@/float/actions/createReplaySession";
-import { deleteEnvironment } from "@/float/actions/deleteEnvironment";
-import { deleteEnvironmentVariable } from "@/float/actions/deleteEnvironmentVariable";
-import { deleteFilter } from "@/float/actions/deleteFilter";
-import { deleteScope } from "@/float/actions/deleteScope";
-import { filterAppendQuery } from "@/float/actions/filterAppendQuery";
-import { httpqlSetQuery } from "@/float/actions/httpqlSetQuery";
-import { navigate } from "@/float/actions/navigate";
-import { removeHostedFile } from "@/float/actions/removeHostedFile";
-import { removeLearnings } from "@/float/actions/removeLearnings";
-import { renameReplayTab } from "@/float/actions/renameReplayTab";
-import { replayRequestReplace } from "@/float/actions/replayRequestReplace";
-import { runWorkflow } from "@/float/actions/runWorkflow";
-import { sendReplayTab } from "@/float/actions/sendReplayTab";
-import { toast } from "@/float/actions/toast";
-import { updateEnvironmentVariable } from "@/float/actions/updateEnvironmentVariable";
-import { updateFilter } from "@/float/actions/updateFilter";
-import { updateLearning } from "@/float/actions/updateLearning";
-import { updateScope } from "@/float/actions/updateScope";
-import { type ActionDefinition } from "@/float/types";
+import { activeEditorAddHeaderTool } from "@/float/actions/activeEditorAddHeader";
+import { activeEditorAddQueryParameterTool } from "@/float/actions/activeEditorAddQueryParameter";
+import { activeEditorRemoveHeaderTool } from "@/float/actions/activeEditorRemoveHeader";
+import { activeEditorRemoveQueryParameterTool } from "@/float/actions/activeEditorRemoveQueryParameter";
+import { activeEditorReplaceBodyTool } from "@/float/actions/activeEditorReplaceBody";
+import { activeEditorReplaceByStringTool } from "@/float/actions/activeEditorReplaceByString";
+import { activeEditorReplaceSelectionTool } from "@/float/actions/activeEditorReplaceSelection";
+import { activeEditorSetMethodTool } from "@/float/actions/activeEditorSetMethod";
+import { activeEditorSetRawTool } from "@/float/actions/activeEditorSetRaw";
+import { activeEditorUpdatePathTool } from "@/float/actions/activeEditorUpdatePath";
+import { addFilterTool } from "@/float/actions/addFilter";
+import { addLearningTool } from "@/float/actions/addLearning";
+import { addMatchAndReplaceTool } from "@/float/actions/addMatchAndReplace";
+import { addScopeTool } from "@/float/actions/addScope";
+import { createAutomateSessionTool } from "@/float/actions/createAutomateSession";
+import { createEnvironmentTool } from "@/float/actions/createEnvironment";
+import { createFindingTool } from "@/float/actions/createFinding";
+import { createHostedFileTool } from "@/float/actions/createHostedFile";
+import { createHostedFileAdvancedTool } from "@/float/actions/createHostedFileAdvanced";
+import { createReplaySessionTool } from "@/float/actions/createReplaySession";
+import { deleteEnvironmentTool } from "@/float/actions/deleteEnvironment";
+import { deleteEnvironmentVariableTool } from "@/float/actions/deleteEnvironmentVariable";
+import { deleteFilterTool } from "@/float/actions/deleteFilter";
+import { deleteScopeTool } from "@/float/actions/deleteScope";
+import { filterAppendQueryTool } from "@/float/actions/filterAppendQuery";
+import { httpqlSetQueryTool } from "@/float/actions/httpqlSetQuery";
+import { navigateTool } from "@/float/actions/navigate";
+import { removeHostedFileTool } from "@/float/actions/removeHostedFile";
+import { removeLearningsTool } from "@/float/actions/removeLearnings";
+import { renameReplayTabTool } from "@/float/actions/renameReplayTab";
+import { replayRequestReplaceTool } from "@/float/actions/replayRequestReplace";
+import { runConvertWorkflowTool } from "@/float/actions/runConvertWorkflow";
+import { runWorkflowTool } from "@/float/actions/runWorkflow";
+import { sendReplayTabTool } from "@/float/actions/sendReplayTab";
+import { toastTool } from "@/float/actions/toast";
+import { updateEnvironmentVariableTool } from "@/float/actions/updateEnvironmentVariable";
+import { updateFilterTool } from "@/float/actions/updateFilter";
+import { updateLearningTool } from "@/float/actions/updateLearning";
+import { updateScopeTool } from "@/float/actions/updateScope";
 
-export const registeredActions = [
-  httpqlSetQuery,
-  toast,
-  addLearning,
-  updateLearning,
-  removeLearnings,
-  addScope,
-  deleteScope,
-  updateScope,
-  activeEditorReplaceSelection,
-  activeEditorReplaceByString,
-  activeEditorReplaceBody,
-  activeEditorAddHeader,
-  activeEditorAddQueryParameter,
-  activeEditorRemoveQueryParameter,
-  activeEditorUpdatePath,
-  activeEditorRemoveHeader,
-  activeEditorSetMethod,
-  activeEditorSetRaw,
-  replayRequestReplace,
-  navigate,
-  renameReplayTab,
-  sendReplayTab,
-  addMatchAndReplace,
-  addFilter,
-  updateFilter,
-  deleteFilter,
-  filterAppendQuery,
-  createHostedFile,
-  removeHostedFile,
-  createReplaySession,
-  createAutomateSession,
-  runWorkflow,
-  createFinding,
-  createHostedFileAdvanced,
-  createEnvironment,
-  deleteEnvironment,
-  updateEnvironmentVariable,
-  deleteEnvironmentVariable,
-] as ActionDefinition[];
+export const floatTools = {
+  httpqlSetQuery: httpqlSetQueryTool,
+  toast: toastTool,
+  addLearning: addLearningTool,
+  updateLearning: updateLearningTool,
+  removeLearnings: removeLearningsTool,
+  addScope: addScopeTool,
+  deleteScope: deleteScopeTool,
+  updateScope: updateScopeTool,
+  activeEditorReplaceSelection: activeEditorReplaceSelectionTool,
+  activeEditorReplaceByString: activeEditorReplaceByStringTool,
+  activeEditorReplaceBody: activeEditorReplaceBodyTool,
+  activeEditorAddHeader: activeEditorAddHeaderTool,
+  activeEditorAddQueryParameter: activeEditorAddQueryParameterTool,
+  activeEditorRemoveQueryParameter: activeEditorRemoveQueryParameterTool,
+  activeEditorUpdatePath: activeEditorUpdatePathTool,
+  activeEditorRemoveHeader: activeEditorRemoveHeaderTool,
+  activeEditorSetMethod: activeEditorSetMethodTool,
+  activeEditorSetRaw: activeEditorSetRawTool,
+  replayRequestReplace: replayRequestReplaceTool,
+  navigate: navigateTool,
+  renameReplayTab: renameReplayTabTool,
+  sendReplayTab: sendReplayTabTool,
+  addMatchAndReplace: addMatchAndReplaceTool,
+  addFilter: addFilterTool,
+  updateFilter: updateFilterTool,
+  deleteFilter: deleteFilterTool,
+  filterAppendQuery: filterAppendQueryTool,
+  createHostedFile: createHostedFileTool,
+  removeHostedFile: removeHostedFileTool,
+  createReplaySession: createReplaySessionTool,
+  createAutomateSession: createAutomateSessionTool,
+  runWorkflow: runWorkflowTool,
+  runConvertWorkflow: runConvertWorkflowTool,
+  createFinding: createFindingTool,
+  createHostedFileAdvanced: createHostedFileAdvancedTool,
+  createEnvironment: createEnvironmentTool,
+  deleteEnvironment: deleteEnvironmentTool,
+  updateEnvironmentVariable: updateEnvironmentVariableTool,
+  deleteEnvironmentVariable: deleteEnvironmentVariableTool,
+};

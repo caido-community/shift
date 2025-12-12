@@ -2,7 +2,7 @@
 import { useKeyModifier } from "@vueuse/core";
 import Textarea from "primevue/textarea";
 
-const props = defineProps<{
+const { content, onConfirm } = defineProps<{
   fileName: string;
   content: string;
   onConfirm: (content: string) => void;
@@ -19,7 +19,7 @@ const handleKeydown = (event: KeyboardEvent) => {
 };
 
 const handleConfirm = () => {
-  props.onConfirm(props.content);
+  onConfirm(content);
 };
 </script>
 
@@ -28,7 +28,7 @@ const handleConfirm = () => {
     class="flex flex-col gap-2 h-[250px] w-[400px] items-end"
     @keydown="handleKeydown"
   >
-    <Textarea :value="props.content" readonly class="flex-1 w-full" />
+    <Textarea :value="content" readonly class="flex-1 w-full" />
     <button
       class="bg-primary-700 border border-primary-700 rounded-md cursor-pointer text-white px-4 py-2"
       @click="handleConfirm"

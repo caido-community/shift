@@ -1,33 +1,26 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
 import { useConfigStore } from "@/stores/config";
 
-export const removeLearningsSchema = z.object({
-  name: z.literal("removeLearnings"),
-  parameters: z.object({
-    indexes: z
-      .array(
-        z
-          .number()
-          .int()
-          .nonnegative()
-          .describe("Zero-based index of a learning entry to remove."),
-      )
-      .min(1)
-      .describe("One or more learning indexes to delete."),
-  }),
+const InputSchema = z.object({
+  indexes: z
+    .array(
+      z
+        .number()
+        .describe(
+          "Zero-based index of a learning entry to remove (integer, >= 0).",
+        ),
+    )
+    .describe("One or more learning indexes to delete (non-empty array)."),
 });
 
-export type RemoveLearningsInput = z.infer<typeof removeLearningsSchema>;
-
-export const removeLearnings: ActionDefinition<RemoveLearningsInput> = {
-  name: "removeLearnings",
+export const removeLearningsTool = tool({
   description:
     "Delete one or more project learning entries by their zero-based index.",
-  inputSchema: removeLearningsSchema,
-  execute: async (_sdk, { indexes }) => {
+  inputSchema: InputSchema,
+  execute: async ({ indexes }) => {
     try {
       const configStore = useConfigStore();
       const uniqueIndexes = [...new Set(indexes)].filter((index) => index >= 0);
@@ -49,4 +42,4 @@ export const removeLearnings: ActionDefinition<RemoveLearningsInput> = {
       return actionError("Failed to remove learnings", error);
     }
   },
-};
+});

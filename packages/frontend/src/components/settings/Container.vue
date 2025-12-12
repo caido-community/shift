@@ -1,59 +1,32 @@
 <script setup lang="ts">
-import Button from "primevue/button";
 import Checkbox from "primevue/checkbox";
-import IconField from "primevue/iconfield";
-import InputIcon from "primevue/inputicon";
+import Dropdown from "primevue/dropdown";
 import InputNumber from "primevue/inputnumber";
-import InputText from "primevue/inputtext";
 
-import { useForm } from "./useForm";
-
+import { Provider } from "@/agents/types/config";
 import { useConfigStore } from "@/stores/config";
+import { useModelsStore } from "@/stores/models";
 
-const {
-  isApiKeyVisible,
-  isValidating,
-  toggleApiKeyVisibility,
-  validateApiKey,
-} = useForm();
+const configStore = useConfigStore();
+const modelsStore = useModelsStore();
 
-const config = useConfigStore();
+const providers = Object.values(Provider).map((p) => ({ label: p, value: p }));
 </script>
 
 <template>
   <div class="flex flex-col gap-6 p-4">
     <div class="flex flex-col gap-2">
       <div class="flex flex-col">
-        <label class="text-base font-medium">OpenRouter API Key</label>
-        <p class="text-sm text-surface-400">
-          Enter your OpenRouter API key to enable AI model access.
-        </p>
+        <label class="text-base font-medium">Provider</label>
+        <p class="text-sm text-surface-400">Select the AI provider to use.</p>
       </div>
-
-      <div class="flex gap-3">
-        <IconField class="flex-1">
-          <InputIcon class="fas fa-key" />
-          <InputText
-            v-model="config.openRouterApiKey"
-            :type="isApiKeyVisible ? 'text' : 'password'"
-            placeholder="Enter API key"
-            class="w-full"
-          />
-        </IconField>
-        <Button
-          :icon="isApiKeyVisible ? 'fas fa-eye-slash' : 'fas fa-eye'"
-          severity="secondary"
-          outlined
-          @click="toggleApiKeyVisibility"
-        />
-        <Button
-          icon="fas fa-check-circle"
-          label="Validate"
-          :disabled="!config.openRouterApiKey?.trim()"
-          :loading="isValidating"
-          @click="validateApiKey"
-        />
-      </div>
+      <Dropdown
+        v-model="modelsStore.selectedProvider"
+        :options="providers"
+        option-label="label"
+        option-value="value"
+        class="w-full"
+      />
     </div>
 
     <div class="flex flex-col gap-2">
@@ -65,8 +38,9 @@ const config = useConfigStore();
       </div>
 
       <InputNumber
-        v-model="config.maxIterations"
+        v-model="configStore.maxIterations"
         placeholder="Enter max iterations"
+        class="w-full"
       />
     </div>
 
@@ -83,7 +57,7 @@ const config = useConfigStore();
 
       <div class="flex items-center gap-2">
         <Checkbox
-          v-model="config.autoCreateShiftCollection"
+          v-model="configStore.autoCreateShiftCollection"
           input-id="shift-auto-create"
           binary
         />

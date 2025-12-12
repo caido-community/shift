@@ -23,7 +23,7 @@ export const setupRenaming = (sdk: FrontendSDK) => {
 
     try {
       const replayEntry = await sdk.graphql.replayEntry({ id: entryId });
-      const name = await generateName(replayEntry);
+      const name = await generateName(sdk, replayEntry);
 
       const sessionId = result.startedTask.task.replayEntry?.session.id;
       await renameTab(sdk, sessionId, name);
@@ -51,7 +51,7 @@ export const setupRenaming = (sdk: FrontendSDK) => {
 
     try {
       const replayEntry = await sdk.graphql.replayEntry({ id: entryId });
-      const name = await generateName(replayEntry);
+      const name = await generateName(sdk, replayEntry);
 
       await renameTab(sdk, data.sessionEdge.node.id, name);
     } catch (error) {

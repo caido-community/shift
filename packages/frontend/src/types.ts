@@ -3,13 +3,15 @@ import { type Caido } from "@caido/sdk-frontend";
 import {
   type AISessionRenamingConfig,
   type CustomPrompt,
+  type ModelItem,
+  type ModelUserConfig,
+  type Provider,
   type ReasoningConfig,
 } from "@/agents/types/config";
 
 export type FrontendSDK = Caido<Record<string, never>, Record<string, never>>;
 
 export type PluginStorage = {
-  openRouterApiKey: string;
   agentsModel: string;
   floatModel: string;
   renamingModel: string;
@@ -24,4 +26,7 @@ export type PluginStorage = {
   projectAutoExecuteCollectionsById: Record<string, Record<string, string>>;
   projectJitInstructionsById: Record<string, Record<string, boolean>>;
   projectShiftCollectionAutoCreateById?: Record<string, boolean>;
+  customModels: ModelItem[];
+  modelConfigs: Record<string, ModelUserConfig>;
+  selectedProvider: Provider;
 };

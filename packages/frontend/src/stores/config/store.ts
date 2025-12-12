@@ -1,14 +1,17 @@
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
 
-import { models } from "./models";
+import { defaultModels } from "./models";
 import { defaultCustomPrompts } from "./prompts";
 
 import type {
   AISessionRenamingConfig,
   CustomPrompt,
+  ModelItem,
+  ModelUserConfig,
   ReasoningConfig,
 } from "@/agents/types";
+import { Provider } from "@/agents/types/config";
 import { useSDK } from "@/plugins/sdk";
 import { type PluginStorage } from "@/types";
 
@@ -21,7 +24,6 @@ export const useConfigStore = defineStore("stores.config", () => {
   const sdk = useSDK();
 
   const customPrompts = ref<CustomPrompt[]>(defaultCustomPrompts);
-  const _openRouterApiKey = ref<string>("");
   const _agentsModel = ref<string>(DEFAULT_AGENTS_MODEL);
   const _floatModel = ref<string>(DEFAULT_FLOAT_MODEL);
   const _renamingModel = ref<string>(DEFAULT_RENAMING_MODEL);
@@ -49,22 +51,80 @@ export const useConfigStore = defineStore("stores.config", () => {
       "Include the HTTP Verb, and a concise version of the path in the tab name. Focus on the end of the path. Include only the first 4 characters of IDs.\nExample: GET /api/v1/users/{id}/profile\nUNLESS, the current request is a graphql request, then use the operationName if present.",
   });
 
-  const isValidModel = (
-    modelId: string,
-    context: "agents" | "float" | "renaming",
-  ): boolean => {
-    const allModels = models.flatMap((group) => group.items);
+  const customModels = ref<ModelItem[]>([]);
+  const modelConfigs = ref<Record<string, ModelUserConfig>>({});
+  const selectedProvider = ref<Provider>(Provider.OpenRouter);
+
+  const isValidModel = (modelId: string): boolean => {
+    const allModels = [...defaultModels, ...customModels.value];
     const model = allModels.find((item) => item.id === modelId);
+    return !!model;
+  };
 
-    if (!model) {
-      return false;
+  const isValidModelForProvider = (
+    modelId: string,
+    provider: Provider,
+  ): boolean => {
+    const allModels = [...defaultModels, ...customModels.value];
+    const model = allModels.find((item) => item.id === modelId);
+    return !!model && model.provider === provider;
+  };
+
+  const getDefaultModelForProvider = (provider: Provider): string => {
+    const providerDefaults: Record<Provider, string> = {
+      [Provider.OpenRouter]: "openrouter/anthropic/claude-sonnet-4.5",
+      [Provider.Anthropic]: "anthropic/claude-sonnet-4-5-20250929",
+      [Provider.OpenAI]: "openai/gpt-4o",
+      [Provider.Google]: "google/gemini-2.5-flash",
+    };
+    return providerDefaults[provider] || DEFAULT_AGENTS_MODEL;
+  };
+
+  const validateAndResetModelsForProvider = async (provider: Provider) => {
+    let needsSave = false;
+
+    if (!isValidModelForProvider(_agentsModel.value, provider)) {
+      _agentsModel.value = getDefaultModelForProvider(provider);
+      needsSave = true;
     }
 
-    if (model.onlyFor && model.onlyFor !== context) {
-      return false;
+    if (!isValidModelForProvider(_floatModel.value, provider)) {
+      _floatModel.value = getDefaultModelForProvider(provider);
+      needsSave = true;
     }
 
-    return true;
+    if (!isValidModelForProvider(_renamingModel.value, provider)) {
+      _renamingModel.value = getDefaultModelForProvider(provider);
+      needsSave = true;
+    }
+
+    if (needsSave) {
+      await saveSettings();
+    }
+  };
+
+  const validateAndResetModelsAfterRemoval = async (removedModelId: string) => {
+    let needsSave = false;
+    const currentProvider = selectedProvider.value;
+
+    if (_agentsModel.value === removedModelId) {
+      _agentsModel.value = getDefaultModelForProvider(currentProvider);
+      needsSave = true;
+    }
+
+    if (_floatModel.value === removedModelId) {
+      _floatModel.value = getDefaultModelForProvider(currentProvider);
+      needsSave = true;
+    }
+
+    if (_renamingModel.value === removedModelId) {
+      _renamingModel.value = getDefaultModelForProvider(currentProvider);
+      needsSave = true;
+    }
+
+    if (needsSave) {
+      await saveSettings();
+    }
   };
 
   const _projectId = ref<string>("");
@@ -78,16 +138,6 @@ export const useConfigStore = defineStore("stores.config", () => {
     if (event.projectId !== undefined) {
       _projectId.value = event.projectId;
     }
-  });
-
-  const openRouterApiKey = computed({
-    get() {
-      return _openRouterApiKey.value;
-    },
-    set(value: string) {
-      _openRouterApiKey.value = value;
-      saveSettings();
-    },
   });
 
   const agentsModel = computed({
@@ -275,7 +325,6 @@ export const useConfigStore = defineStore("stores.config", () => {
     projectLearningsById.value = normalizedLearnings;
 
     const settings: PluginStorage = {
-      openRouterApiKey: _openRouterApiKey.value,
       agentsModel: _agentsModel.value,
       floatModel: _floatModel.value,
       renamingModel: _renamingModel.value,
@@ -291,6 +340,9 @@ export const useConfigStore = defineStore("stores.config", () => {
       projectJitInstructionsById: projectJitInstructionsById.value,
       projectShiftCollectionAutoCreateById:
         projectShiftCollectionAutoCreateById.value,
+      customModels: customModels.value,
+      modelConfigs: modelConfigs.value,
+      selectedProvider: selectedProvider.value,
     };
     await sdk.storage.set(settings);
   };
@@ -298,21 +350,28 @@ export const useConfigStore = defineStore("stores.config", () => {
   const loadSettings = () => {
     const settings = sdk.storage.get() as PluginStorage | undefined;
     if (settings) {
-      if (settings.openRouterApiKey !== undefined) {
-        _openRouterApiKey.value = settings.openRouterApiKey;
+      if (settings.customModels !== undefined) {
+        customModels.value = settings.customModels;
       }
+      if (settings.modelConfigs !== undefined) {
+        modelConfigs.value = settings.modelConfigs;
+      }
+      if (settings.selectedProvider !== undefined) {
+        selectedProvider.value = settings.selectedProvider;
+      }
+
       if (settings.agentsModel !== undefined) {
-        _agentsModel.value = isValidModel(settings.agentsModel, "agents")
+        _agentsModel.value = isValidModel(settings.agentsModel)
           ? settings.agentsModel
           : DEFAULT_AGENTS_MODEL;
       }
       if (settings.floatModel !== undefined) {
-        _floatModel.value = isValidModel(settings.floatModel, "float")
+        _floatModel.value = isValidModel(settings.floatModel)
           ? settings.floatModel
           : DEFAULT_FLOAT_MODEL;
       }
       if (settings.renamingModel !== undefined) {
-        _renamingModel.value = isValidModel(settings.renamingModel, "renaming")
+        _renamingModel.value = isValidModel(settings.renamingModel)
           ? settings.renamingModel
           : DEFAULT_RENAMING_MODEL;
       }
@@ -390,21 +449,27 @@ export const useConfigStore = defineStore("stores.config", () => {
   sdk.storage.onChange((newSettings) => {
     const settings = newSettings as PluginStorage | undefined;
     if (settings) {
-      if (settings.openRouterApiKey !== undefined) {
-        _openRouterApiKey.value = settings.openRouterApiKey;
+      if (settings.customModels !== undefined) {
+        customModels.value = settings.customModels;
+      }
+      if (settings.modelConfigs !== undefined) {
+        modelConfigs.value = settings.modelConfigs;
+      }
+      if (settings.selectedProvider !== undefined) {
+        selectedProvider.value = settings.selectedProvider;
       }
       if (settings.agentsModel !== undefined) {
-        _agentsModel.value = isValidModel(settings.agentsModel, "agents")
+        _agentsModel.value = isValidModel(settings.agentsModel)
           ? settings.agentsModel
           : DEFAULT_AGENTS_MODEL;
       }
       if (settings.floatModel !== undefined) {
-        _floatModel.value = isValidModel(settings.floatModel, "float")
+        _floatModel.value = isValidModel(settings.floatModel)
           ? settings.floatModel
           : DEFAULT_FLOAT_MODEL;
       }
       if (settings.renamingModel !== undefined) {
-        _renamingModel.value = isValidModel(settings.renamingModel, "renaming")
+        _renamingModel.value = isValidModel(settings.renamingModel)
           ? settings.renamingModel
           : DEFAULT_RENAMING_MODEL;
       }
@@ -463,12 +528,6 @@ export const useConfigStore = defineStore("stores.config", () => {
     projectHistoryById.value = { ...projectHistoryById.value, [id]: next };
     await saveSettings();
   };
-
-  const selectedModel = computed(() => {
-    return models
-      .flatMap((group) => group.items)
-      .find((item) => item.id === _agentsModel.value);
-  });
 
   const setAISessionRenaming = async (config: AISessionRenamingConfig) => {
     _aiSessionRenaming.value = config;
@@ -543,7 +602,6 @@ export const useConfigStore = defineStore("stores.config", () => {
   };
 
   return {
-    openRouterApiKey,
     maxIterations,
     agentsModel,
     floatModel,
@@ -554,10 +612,8 @@ export const useConfigStore = defineStore("stores.config", () => {
     updateLearning,
     removeLearnings,
     clearLearnings,
-    models,
     reasoningConfig,
     aiSessionRenaming,
-    selectedModel,
     setReasoningConfig,
     updateReasoningConfig,
     getHistory,
@@ -575,5 +631,11 @@ export const useConfigStore = defineStore("stores.config", () => {
     getProjectJitInstructions,
     setProjectJitInstructions,
     autoCreateShiftCollection,
+    customModels,
+    modelConfigs,
+    selectedProvider,
+    saveSettings,
+    validateAndResetModelsForProvider,
+    validateAndResetModelsAfterRemoval,
   };
 });

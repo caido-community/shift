@@ -33,7 +33,7 @@ export async function createAgent({
     config,
   });
 
-  const transport = new ClientSideChatTransport(toolContext);
+  const transport = new ClientSideChatTransport(toolContext, sdk);
 
   const chat = new Chat<CustomUIMessage>({
     id: replaySessionId,
@@ -71,14 +71,12 @@ function buildToolContext({
 
         // If user is on replay tab and has this tab open, update the request editor
         if (location.hash === "#/replay") {
-          const selectedTab = document.querySelector(
-            "[data-is-selected=true]",
-          ) as HTMLElement | undefined;
-          if (selectedTab !== undefined) {
-            const selectedID = selectedTab.getAttribute("data-session-id");
-            if (selectedID !== undefined && selectedID === initialSession.id) {
-              writeToRequestEditor(newRaw);
-            }
+          const currentSession = sdk.replay.getCurrentSession();
+          if (
+            currentSession !== undefined &&
+            currentSession.id === initialSession.id
+          ) {
+            writeToRequestEditor(newRaw);
           }
         }
 

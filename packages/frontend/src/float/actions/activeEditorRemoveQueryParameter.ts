@@ -1,3 +1,4 @@
+import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
@@ -7,45 +8,34 @@ import {
   replaceEditorContent,
   withActiveEditorView,
 } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-export const activeEditorRemoveQueryParameterSchema = z.object({
-  name: z.literal("activeEditorRemoveQueryParameter"),
-  parameters: z.object({
-    name: z.string().min(1).describe("Query parameter name to remove"),
-  }),
+const InputSchema = z.object({
+  paramName: z.string().describe("Query parameter name to remove (non-empty)"),
 });
 
-export type ActiveEditorRemoveQueryParameterInput = z.infer<
-  typeof activeEditorRemoveQueryParameterSchema
->;
+export const activeEditorRemoveQueryParameterTool = tool({
+  description:
+    "Remove a query parameter from the HTTP request URL in the active editor",
+  inputSchema: InputSchema,
+  execute: ({ paramName }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
+    return withActiveEditorView(sdk, (view) => {
+      try {
+        const currentText = view.state.doc.toString();
 
-export const activeEditorRemoveQueryParameter: ActionDefinition<ActiveEditorRemoveQueryParameterInput> =
-  {
-    name: "activeEditorRemoveQueryParameter",
-    description:
-      "Remove a query parameter from the HTTP request URL in the active editor",
-    inputSchema: activeEditorRemoveQueryParameterSchema,
-    execute: (
-      sdk: FrontendSDK,
-      { name }: ActiveEditorRemoveQueryParameterInput["parameters"],
-    ) =>
-      withActiveEditorView(sdk, (view) => {
-        try {
-          const currentText = view.state.doc.toString();
+        const modifiedRequest = HttpForge.create(currentText)
+          .removeQueryParam(paramName)
+          .build();
 
-          const modifiedRequest = HttpForge.create(currentText)
-            .removeQueryParam(name)
-            .build();
+        replaceEditorContent(view, modifiedRequest);
 
-          replaceEditorContent(view, modifiedRequest);
-
-          return actionSuccess(
-            `Query parameter ${name} removed from active editor`,
-          );
-        } catch (error) {
-          return actionError("Failed to remove query parameter", error);
-        }
-      }),
-  };
+        return actionSuccess(
+          `Query parameter ${paramName} removed from active editor`,
+        );
+      } catch (error) {
+        return actionError("Failed to remove query parameter", error);
+      }
+    });
+  },
+});

@@ -7,6 +7,8 @@ import {
   type WatchSource,
 } from "vue";
 
+import { isPresent } from "@/utils/optional";
+
 export const useAutoScroll = (
   containerRef: Ref<HTMLElement | undefined>,
   sources: Array<WatchSource<unknown>>,
@@ -33,7 +35,7 @@ export const useAutoScroll = (
 
   const getEl = () => {
     const el = containerRef.value;
-    if (el === undefined) return undefined;
+    if (!isPresent(el)) return undefined;
     return el;
   };
 
@@ -45,7 +47,7 @@ export const useAutoScroll = (
 
   const scrollToBottom = (force: boolean) => {
     const el = getEl();
-    if (el === undefined) return;
+    if (!isPresent(el)) return;
     if (cfg.always === false && wasPinned === false && force === false) return;
     const top = el.scrollHeight;
     el.scroll({ top, behavior: cfg.smooth ? "smooth" : "auto" });
@@ -53,13 +55,13 @@ export const useAutoScroll = (
 
   const handleScroll = () => {
     const el = getEl();
-    if (el === undefined) return;
+    if (!isPresent(el)) return;
     wasPinned = isPinnedNow(el);
   };
 
   const attachObservers = () => {
     const el = getEl();
-    if (el === undefined) return;
+    if (!isPresent(el)) return;
     mutationObserver?.disconnect();
     resizeObserver?.disconnect();
     detachScrollListener?.();
@@ -70,7 +72,7 @@ export const useAutoScroll = (
       });
     });
 
-    if (el !== undefined && el.nodeType === Node.ELEMENT_NODE) {
+    if (isPresent(el) && el.nodeType === Node.ELEMENT_NODE) {
       mutationObserver.observe(el, {
         childList: true,
         characterData: true,
@@ -83,7 +85,7 @@ export const useAutoScroll = (
         scrollToBottom(false);
       });
     });
-    if (el !== undefined && el.nodeType === Node.ELEMENT_NODE) {
+    if (isPresent(el) && el.nodeType === Node.ELEMENT_NODE) {
       resizeObserver.observe(el);
     }
 
@@ -97,7 +99,7 @@ export const useAutoScroll = (
 
   onMounted(() => {
     const el = getEl();
-    if (el !== undefined) {
+    if (isPresent(el)) {
       attachObservers();
       scrollToBottom(true);
     }
@@ -112,7 +114,7 @@ export const useAutoScroll = (
   watch(
     () => containerRef.value,
     (el, _prev, onCleanup) => {
-      if (el === undefined) return;
+      if (!isPresent(el)) return;
       attachObservers();
       onCleanup(() => {
         mutationObserver?.disconnect();

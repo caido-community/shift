@@ -1,28 +1,22 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-export const httpqlSetQuerySchema = z.object({
-  name: z.literal("httpqlSetQuery"),
-  parameters: z.object({
-    query: z
-      .string()
-      .min(1)
-      .describe(
-        "The query to set for the HTTPQL filter. Follow strictly HTTPQL syntax.",
-      ),
-  }),
+const InputSchema = z.object({
+  query: z
+    .string()
+    .describe(
+      "The query to set for the HTTPQL filter (non-empty). Follow strictly HTTPQL syntax.",
+    ),
 });
 
-export type HttpqlSetQueryInput = z.infer<typeof httpqlSetQuerySchema>;
-
-export const httpqlSetQuery: ActionDefinition<HttpqlSetQueryInput> = {
-  name: "httpqlSetQuery",
+export const httpqlSetQueryTool = tool({
   description: "Set the query for the HTTPQL filter",
-  inputSchema: httpqlSetQuerySchema,
-  execute: (sdk: FrontendSDK, { query }: HttpqlSetQueryInput["parameters"]) => {
+  inputSchema: InputSchema,
+  execute: ({ query }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
     try {
       sdk.httpHistory.setQuery(query);
 
@@ -31,4 +25,4 @@ export const httpqlSetQuery: ActionDefinition<HttpqlSetQueryInput> = {
       return actionError("Failed to set query", error);
     }
   },
-};
+});

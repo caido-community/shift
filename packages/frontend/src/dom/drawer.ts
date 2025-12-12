@@ -4,21 +4,20 @@ import Tooltip from "primevue/tooltip";
 import { type App, createApp } from "vue";
 
 import { Drawer } from "@/components/agent";
-import { onLocationChange } from "@/dom";
 import { SDKPlugin } from "@/plugins/sdk";
 import { type FrontendSDK } from "@/types";
 
 export const useDrawerManager = (sdk: FrontendSDK) => {
   let app: App | undefined = undefined;
-  let unsubscribe: (() => void) | undefined = undefined;
+  let unsubscribe: { stop: () => void } | undefined = undefined;
 
   const start = () => {
     if (location.hash === "#/replay") {
       inject();
     }
 
-    unsubscribe = onLocationChange(({ newHash }) => {
-      if (newHash === "#/replay") {
+    unsubscribe = sdk.navigation.onPageChange((event) => {
+      if (event.path === "/replay") {
         inject();
       } else {
         remove();
@@ -32,7 +31,7 @@ export const useDrawerManager = (sdk: FrontendSDK) => {
 
   const stop = () => {
     if (unsubscribe) {
-      unsubscribe();
+      unsubscribe.stop();
       unsubscribe = undefined;
     }
     remove();

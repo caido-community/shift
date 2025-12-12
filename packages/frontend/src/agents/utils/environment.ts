@@ -34,7 +34,7 @@ type EnvironmentContextPayload = {
   [key: string]: unknown;
 };
 
-export type AgentEnvironmentVariable = {
+type AgentEnvironmentVariable = {
   name: string;
   value: string;
   kind?: string;
@@ -47,7 +47,7 @@ export type AgentEnvironment = {
   variables: AgentEnvironmentVariable[];
 };
 
-export type AgentEnvironmentSummary = {
+type AgentEnvironmentSummary = {
   id: string;
   name: string;
   variableKeys: string[];

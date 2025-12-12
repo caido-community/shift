@@ -2,39 +2,33 @@ import {
   type AutomatePayloadInput,
   type AutomatePayloadOptionsInput,
 } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-// TODO: entire thing is broken, need to fix it
 const MARKER = "§§§";
 
 const concurrencySchema = z.object({
-  delay: z.number().int().min(0).describe("Delay in ms between requests"),
-  workers: z
-    .number()
-    .int()
-    .min(1)
-    .max(100)
-    .describe("Parallel workers (1-100)"),
+  delay: z.number().describe("Delay in ms between requests (integer, >= 0)"),
+  workers: z.number().describe("Parallel workers (integer, 1-100)"),
 });
 
 const numbersPayloadSchema = z.object({
   kind: z.literal("Numbers"),
-  start: z.number().int().describe("Start of inclusive range"),
-  end: z.number().int().describe("End of inclusive range"),
+  start: z.number().describe("Start of inclusive range (integer)"),
+  end: z.number().describe("End of inclusive range (integer)"),
 });
 
 const hostedFilePayloadSchema = z.object({
   kind: z.literal("HostedFile"),
-  id: z.string().min(1).describe("Hosted file ID"),
+  id: z.string().describe("Hosted file ID (non-empty)"),
 });
 
 const listPayloadSchema = z.object({
   kind: z.literal("List"),
-  list: z.array(z.string()).min(1).describe("List of strings"),
+  list: z.array(z.string()).describe("List of strings (non-empty array)"),
 });
 
 const payloadSchema = z.discriminatedUnion("kind", [
@@ -43,38 +37,27 @@ const payloadSchema = z.discriminatedUnion("kind", [
   listPayloadSchema,
 ]);
 
-export const createAutomateSessionSchema = z.object({
-  name: z.literal("createAutomateSession"),
-  parameters: z.object({
-    rawRequest: z
-      .string()
-      .min(1)
-      .describe(
-        "Raw HTTP request with placeholder markers '§§§start§§§' and '§§§end§§§' pairs",
-      ),
-    host: z.string().min(1).describe("Target host"),
-    port: z.number().int().positive().describe("Target port"),
-    isTls: z.boolean().default(true).describe("Whether to use TLS/SSL"),
-    strategy: z.enum(["ALL", "MATRIX", "PARALLEL", "SEQUENTIAL"]),
-    concurrency: concurrencySchema.describe(
-      "Concurrency settings. This is optional, leave empty for default.",
+const InputSchema = z.object({
+  rawRequest: z
+    .string()
+    .describe(
+      "Raw HTTP request with placeholder markers '§§§start§§§' and '§§§end§§§' pairs (non-empty)",
     ),
-    payloads: z
-      .array(payloadSchema)
-      .describe(
-        "Array of payload definitions. This is optional, leave empty for default.",
-      ),
-  }),
+  host: z.string().describe("Target host (non-empty)"),
+  port: z.number().describe("Target port (integer, positive)"),
+  isTls: z.boolean().describe("Whether to use TLS/SSL"),
+  strategy: z.enum(["ALL", "MATRIX", "PARALLEL", "SEQUENTIAL"]),
+  concurrency: concurrencySchema
+    .nullable()
+    .describe("Concurrency settings. This is optional, use null for default."),
+  payloads: z
+    .array(payloadSchema)
+    .describe(
+      "Array of payload definitions. This is optional, use empty array for default.",
+    ),
 });
 
-export type NumbersPayload = z.infer<typeof numbersPayloadSchema>;
-export type HostedFilePayload = z.infer<typeof hostedFilePayloadSchema>;
-export type ListPayload = z.infer<typeof listPayloadSchema>;
-export type AutomatePayload = z.infer<typeof payloadSchema>;
-
-export type CreateAutomateSessionInput = z.infer<
-  typeof createAutomateSessionSchema
->;
+type AutomatePayload = z.infer<typeof payloadSchema>;
 
 const extractPlaceholders = (source: string) => {
   const positions: number[] = [];
@@ -149,73 +132,63 @@ const attachDefaultPreprocessors = (
   }));
 };
 
-export const createAutomateSession: ActionDefinition<CreateAutomateSessionInput> =
-  {
-    name: "createAutomateSession",
-    description: `Create a new Automate session with placeholders and payloads. Use ${MARKER} to wrap the placeholder values.`,
-    inputSchema: createAutomateSessionSchema,
-    execute: async (
-      sdk: FrontendSDK,
-      {
-        rawRequest,
-        host,
-        port,
-        isTls,
-        strategy,
-        concurrency,
-        payloads,
-      }: CreateAutomateSessionInput["parameters"],
-    ) => {
-      try {
-        const { sanitized, placeholders } = extractPlaceholders(rawRequest);
+export const createAutomateSessionTool = tool({
+  description: `Create a new Automate session with placeholders and payloads. Use ${MARKER} to wrap the placeholder values.`,
+  inputSchema: InputSchema,
+  execute: async (
+    { rawRequest, host, port, isTls, strategy, concurrency, payloads },
+    { experimental_context },
+  ) => {
+    const { sdk } = experimental_context as FloatToolContext;
+    try {
+      const { sanitized, placeholders } = extractPlaceholders(rawRequest);
 
-        // ensure CRLF
-        const raw = sanitized.replace(/\r?\n/g, "\r\n");
+      const raw = sanitized.replace(/\r?\n/g, "\r\n");
 
-        const createResult = await sdk.graphql.createAutomateSession({
-          input: {
-            requestSource: {
-              raw: {
-                raw,
-                connectionInfo: {
-                  host,
-                  port,
-                  isTLS: isTls,
-                },
+      const createResult = await sdk.graphql.createAutomateSession({
+        input: {
+          requestSource: {
+            raw: {
+              raw,
+              connectionInfo: {
+                host,
+                port,
+                isTLS: isTls,
               },
             },
           },
-        });
+        },
+      });
 
-        const session = createResult.createAutomateSession.session!;
+      const session = createResult.createAutomateSession.session!;
 
-        const graphPayloads = attachDefaultPreprocessors(
-          (payloads ?? []).map(toGraphQLPayload),
-        );
+      const graphPayloads = attachDefaultPreprocessors(
+        (payloads ?? []).map(toGraphQLPayload),
+      );
 
-        await sdk.graphql.updateAutomateSession({
-          id: session.id,
-          input: {
-            connection: {
-              host: session.connection.host,
-              port: session.connection.port,
-              isTLS: session.connection.isTLS,
-            },
-            raw: session.raw,
-            settings: {
-              ...session.settings,
-              strategy: strategy ?? "ALL",
-              concurrency: concurrency ?? { delay: 0, workers: 10 },
-              payloads: graphPayloads,
-              placeholders,
-            },
+      await sdk.graphql.updateAutomateSession({
+        id: session.id,
+        input: {
+          connection: {
+            host: session.connection.host,
+            port: session.connection.port,
+            isTLS: session.connection.isTLS,
           },
-        });
+          raw: session.raw,
+          settings: {
+            ...session.settings,
+            strategy: strategy ?? "ALL",
+            concurrency: concurrency ?? { delay: 0, workers: 10 },
+            payloads: graphPayloads,
+            placeholders,
+          },
+        },
+      });
 
-        sdk.navigation.goTo("/automate");
-        return actionSuccess("Automate session created");
-      } catch (error) {
-        return actionError("Failed to create automate session", error);
-      }
-    },
-  };
+      sdk.navigation.goTo("/automate");
+      return actionSuccess("Automate session created");
+    } catch (error) {
+      return actionError("Failed to create automate session", error);
+    }
+  },
+});

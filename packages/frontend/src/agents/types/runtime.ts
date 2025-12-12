@@ -1,6 +1,6 @@
 import type { CustomPrompt } from "./config";
 
-export type AgentSelection = {
+type AgentSelection = {
   selection: string;
   comment?: string;
 };

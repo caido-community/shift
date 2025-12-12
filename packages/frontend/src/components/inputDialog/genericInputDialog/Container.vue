@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 
-const props = defineProps<{
-  title: string;
+const {
+  placeholder = "",
+  onConfirm,
+  onCancel,
+  initialValue = "",
+} = defineProps<{
   placeholder?: string;
   onConfirm: (value: string) => void;
   onCancel: () => void;
   initialValue?: string;
 }>();
 
-const inputValue = ref(props.initialValue ?? "");
+const inputValue = ref(initialValue);
 
 onMounted(() => {
   // Focus the textarea when the component mounts
@@ -22,12 +26,11 @@ onMounted(() => {
 });
 
 const handleConfirm = () => {
-  props.onConfirm(inputValue.value);
+  onConfirm(inputValue.value);
 };
 
 const handleCancel = () => {
-  // Close the dialog by calling onConfirm with empty string
-  props.onCancel();
+  onCancel();
 };
 
 const handleKeydown = (event: KeyboardEvent) => {
@@ -60,7 +63,9 @@ const handleInput = (event: Event) => {
 <template>
   <div class="flex flex-col gap-4 w-[500px] p-2" @keydown="handleKeydown">
     <textarea
-      :placeholder="placeholder || 'Enter your instructions...'"
+      :placeholder="
+        placeholder !== '' ? placeholder : 'Enter your instructions...'
+      "
       class="w-full h-24 p-3 border border-surface-600 rounded-md bg-surface-800 text-surface-100 placeholder-surface-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       rows="4"
       autofocus

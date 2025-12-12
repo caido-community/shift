@@ -17,8 +17,12 @@ type SelectionEntry = {
   comment: string;
 };
 
-const props = defineProps<{
-  title: string;
+const {
+  placeholder = "",
+  sdk: sdkProp = undefined,
+  onConfirm,
+  onCancel,
+} = defineProps<{
   placeholder?: string;
   sdk?: FrontendSDK;
   onConfirm: (value: LaunchInputDialogResult) => void;
@@ -26,7 +30,7 @@ const props = defineProps<{
 }>();
 
 const injectedSdk = useSDK() as FrontendSDK | undefined;
-const sdk = computed<FrontendSDK | undefined>(() => props.sdk ?? injectedSdk);
+const sdk = computed<FrontendSDK | undefined>(() => sdkProp ?? injectedSdk);
 const configStore = useConfigStore();
 const uiStore = useUIStore();
 
@@ -93,7 +97,7 @@ const handleConfirm = () => {
   const model = configStore.agentsModel;
   const selectedPromptIds = uiStore.getSelectedPrompts(dialogAgentId);
 
-  props.onConfirm({
+  onConfirm({
     selections,
     instructions: instructions.value.trim(),
     maxInteractions: maxInteractions.value,
@@ -103,7 +107,7 @@ const handleConfirm = () => {
 };
 
 const handleCancel = () => {
-  props.onCancel();
+  onCancel();
 };
 
 const handleMaxInteractionsInput = (event: Event) => {
@@ -207,7 +211,9 @@ watch(
         v-model="instructions"
         autofocus
         :placeholder="
-          props.placeholder || 'Add overall instructions for the agent...'
+          placeholder !== ''
+            ? placeholder
+            : 'Add overall instructions for the agent...'
         "
         class="w-full min-h-[96px] rounded-md border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 focus:outline-none focus:ring-1 focus:ring-secondary-500"
       />

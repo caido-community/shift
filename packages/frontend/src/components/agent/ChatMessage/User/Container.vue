@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { toRefs } from "vue";
-
 import { useUserMessage } from "./useMessage";
 
 import { type CustomUIMessage } from "@/agents/types";
 
-const props = defineProps<{
+const { message } = defineProps<{
   message: CustomUIMessage & { role: "user" };
 }>();
-const { message } = toRefs(props);
 
 const { isGenerating, handleMessageClick } = useUserMessage();
 </script>

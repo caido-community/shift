@@ -1,10 +1,6 @@
 import { ConfirmationDialog } from "@/components/confirmation";
 import { type FrontendSDK } from "@/types";
 
-export const generateId = () => {
-  return Math.random().toString(36).substring(2, 15);
-};
-
 export const showConfirmationDialog = (
   sdk: FrontendSDK,
   {

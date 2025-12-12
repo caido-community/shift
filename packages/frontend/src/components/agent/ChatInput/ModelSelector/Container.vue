@@ -3,30 +3,28 @@ import Select from "primevue/select";
 
 import { useSelector } from "./useSelector";
 
-const props = defineProps<{
+const { variant, disabled = false } = defineProps<{
   variant: "float" | "chat" | "renaming";
   disabled?: boolean;
 }>();
 
-const { groups, modelId, selectedModel } = useSelector(props.variant);
+const { models, modelId, selectedModel } = useSelector(variant);
 </script>
 
 <template>
   <Select
     v-model="modelId"
-    :disabled="props.disabled === true"
-    :options="groups"
+    :disabled="disabled === true"
+    :options="models"
     option-label="name"
     option-value="id"
-    option-group-label="label"
-    option-group-children="items"
     filter
     filter-placeholder="Search models..."
-    overlay-class="!z-[1202]"
+    overlay-class="!z-[3001]"
     :overlay-style="{
       backgroundColor:
         variant === 'chat' ? 'var(--p-surface-900)' : 'var(--p-surface-800)',
-      opacity: props.disabled === true ? 0.5 : 1,
+      opacity: disabled === true ? 0.5 : 1,
     }"
     :pt="{
       root: {
@@ -50,7 +48,7 @@ const { groups, modelId, selectedModel } = useSelector(props.variant);
       <div
         :class="[
           'flex items-center gap-2 w-full text-surface-400 text-sm transition-colors duration-200',
-          props.disabled !== true ? 'hover:text-surface-200' : '',
+          disabled !== true ? 'hover:text-surface-200' : '',
         ]"
       >
         <component
@@ -65,11 +63,7 @@ const { groups, modelId, selectedModel } = useSelector(props.variant);
       </div>
     </template>
 
-    <template #optiongroup="slotProps">
-      <div class="py-1 text-xs font-medium text-surface-400">
-        {{ slotProps.option.label }}
-      </div>
-    </template>
+    <!-- Removed optiongroup slot -->
 
     <template #option="slotProps">
       <div class="flex items-center gap-2 text-surface-300 text-sm">

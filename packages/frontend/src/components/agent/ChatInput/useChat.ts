@@ -2,13 +2,11 @@ import { computed } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
 import { useAgentsStore } from "@/stores/agents";
-import { useConfigStore } from "@/stores/config";
 import { useUIStore } from "@/stores/ui";
 
 export const useChat = () => {
   const agentStore = useAgentsStore();
   const uiStore = useUIStore();
-  const configStore = useConfigStore();
   const sdk = useSDK();
 
   const inputMessage = computed({
@@ -40,16 +38,6 @@ export const useChat = () => {
 
   const sendMessage = (message: string) => {
     if (!agentStore.selectedAgent) {
-      return;
-    }
-
-    if (!configStore.openRouterApiKey || configStore.openRouterApiKey === "") {
-      sdk.window.showToast(
-        "OpenRouter API key is required. Please go to the Shift Agents page to configure your API key.",
-        {
-          variant: "error",
-        },
-      );
       return;
     }
 

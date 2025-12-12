@@ -1,25 +1,27 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { streamObject } from "ai";
+import { InvalidToolInputError, stepCountIs, streamText } from "ai";
+import Ajv from "ajv";
 
-import { registeredActions } from "@/float/actions";
+import { floatTools } from "@/float/actions";
 import { SYSTEM_PROMPT } from "@/float/prompt";
 import {
-  type Action,
-  type ActionContext,
   type ActionQuery,
-  ActionSchema,
-  type ActionsExecutionResult,
-  type QueryShiftEvent,
+  type ActionResult,
+  type FloatToolContext,
 } from "@/float/types";
 import { useConfigStore } from "@/stores/config";
 import { type FrontendSDK } from "@/types";
+import { createModel } from "@/utils";
 
-function streamActions(input: ActionQuery) {
+const ajv = new Ajv({ coerceTypes: true });
+
+type QueryShiftResult = { success: true } | { success: false; error: string };
+
+export async function queryShift(
+  sdk: FrontendSDK,
+  input: ActionQuery,
+): Promise<QueryShiftResult> {
   const configStore = useConfigStore();
-  const openrouter = createOpenRouter({
-    apiKey: configStore.openRouterApiKey,
-  });
-  const model = openrouter(configStore.floatModel);
+  const model = createModel(sdk, configStore.floatModel, { reasoning: false });
 
   const learnings = configStore.learnings.map((value, index) => ({
     index,
@@ -27,105 +29,99 @@ function streamActions(input: ActionQuery) {
   }));
 
   const prompt = `
-  <context>
-  ${JSON.stringify(input.context)}
-  </context>
+<context>
+${JSON.stringify(input.context)}
+</context>
 
-  <learnings>
-  ${JSON.stringify(learnings, null, 2)}
-  </learnings>
+<learnings>
+${JSON.stringify(learnings, null, 2)}
+</learnings>
 
-  <user>
-  ${input.content}
-  </user>
-  `.trim();
+<user>
+${input.content}
+</user>
+`.trim();
 
-  const { elementStream } = streamObject({
-    model,
-    temperature: 0,
-    output: "array",
-    schema: ActionSchema,
-    system: SYSTEM_PROMPT,
-    prompt,
-    onError: ({ error }) => {
-      throw error;
-    },
-  });
+  const toolContext: FloatToolContext = {
+    sdk,
+    context: input.context,
+  };
 
-  return elementStream;
-}
+  let executionError: string | undefined;
 
-const execute = async (
-  sdk: FrontendSDK,
-  actions: Action[],
-  context: ActionContext,
-): Promise<ActionsExecutionResult> => {
   try {
-    for (const action of actions) {
-      const actionFn = registeredActions.find((a) => a.name === action.name);
-      if (actionFn) {
-        const { inputSchema, execute } = actionFn;
+    const result = streamText({
+      model,
+      temperature: 0,
+      tools: floatTools,
+      toolChoice: "required",
+      stopWhen: stepCountIs(1),
+      system: SYSTEM_PROMPT,
+      prompt,
+      experimental_context: toolContext,
 
-        const validatedInput = inputSchema.parse(action);
-        const result = await execute(sdk, validatedInput.parameters, context);
-        if (!result.success) {
-          return {
-            success: false,
-            error: action.name + ": " + result.error,
-          };
+      // try to coerce the tool call input to the schema, helps if model returns invalid type but it can be coerced to the correct type
+      experimental_repairToolCall: ({ toolCall, inputSchema, error }) => {
+        if (!(error instanceof InvalidToolInputError)) {
+          return Promise.resolve(null);
         }
 
-        if (result.frontend_message && result.frontend_message !== "") {
-          sdk.window.showToast(result.frontend_message, {
-            variant: "info",
-            duration: 3000,
-          });
+        const schema = inputSchema({ toolName: toolCall.toolName });
+        const data = JSON.parse(toolCall.input);
+
+        ajv.validate(schema, data);
+
+        return Promise.resolve({
+          ...toolCall,
+          input: JSON.stringify(data),
+        });
+      },
+      onStepFinish: ({ toolResults }) => {
+        for (const { toolName, output } of toolResults) {
+          const toolResult = output as ActionResult;
+
+          if (!toolResult.success) {
+            executionError = `${toolName}: ${toolResult.error}`;
+            console.error("executionError", executionError);
+            return;
+          }
+
+          if (toolResult.frontend_message) {
+            sdk.window.showToast(toolResult.frontend_message, {
+              variant: "info",
+              duration: 3000,
+            });
+          }
         }
-      }
+      },
+    });
+
+    await result.consumeStream();
+    const toolCalls = await result.toolCalls;
+
+    if (toolCalls.length === 0) {
+      return { success: false, error: "No tool calls were made" };
     }
 
-    return {
-      success: true,
-      actions,
-    };
+    const invalidToolCall = toolCalls.find(
+      (call) => "invalid" in call && call.invalid === true,
+    );
+    if (invalidToolCall && "error" in invalidToolCall) {
+      const error = invalidToolCall.error as Error;
+      console.error("invalidToolCall error", error);
+      return {
+        success: false,
+        error: `Error occurred while calling tool ${invalidToolCall.toolName}. See the console for detailed logs.`,
+      };
+    }
+
+    if (executionError !== undefined) {
+      return { success: false, error: executionError };
+    }
+
+    return { success: true };
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-};
-
-export async function* queryShiftStream(
-  sdk: FrontendSDK,
-  input: ActionQuery,
-): AsyncGenerator<QueryShiftEvent, ActionsExecutionResult, void> {
-  yield { state: "Streaming" };
-  try {
-    const stream = streamActions(input);
-    const executed: Action[] = [];
-    for await (const action of stream) {
-      yield { state: "Streaming", actions: [action] };
-      const result = await execute(sdk, [action], input.context);
-      if (!result.success) {
-        yield { state: "Error", error: result.error };
-        return result;
-      }
-      executed.push(action);
-    }
-
-    if (executed.length === 0) {
-      sdk.window.showToast("No actions were generated for your request", {
-        variant: "info",
-        duration: 3000,
-      });
-    }
-
-    yield { state: "Done" };
-    return { success: true, actions: executed };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    yield { state: "Error", error: msg };
-    return { success: false, error: msg };
+    const message = error instanceof Error ? error.message : String(error);
+    return { success: false, error: message };
   }
 }

@@ -12,11 +12,11 @@ import {
   type MatchReplaceReplacerWorkflow,
   type MatchReplaceSection,
 } from "@caido/sdk-frontend";
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
 const sectionEnum = z.enum([
   "SectionRequestBody",
@@ -40,39 +40,36 @@ const matcherTypeEnum = z.enum([
 
 const replacerTypeEnum = z.enum(["ReplacerTerm", "ReplacerWorkflow"]);
 
-export const addMatchAndReplaceSchema = z.object({
-  name: z.literal("addMatchAndReplace"),
-  parameters: z.object({
-    name: z.string().min(1).describe("Name of the match and replace rule"),
-    section: sectionEnum.describe("Section to apply rule to"),
-    operation: z.string().min(1).describe("Operation type for the rule"),
-    matcherType: matcherTypeEnum
-      .nullable()
-      .describe(
-        "Type of matcher to use. Can be null if operation doesn't use a matcher",
-      ),
-    matcher: z
-      .string()
-      .nullable()
-      .describe("Matcher pattern or value. Can be null if matcherType is null"),
-    replacerType: replacerTypeEnum
-      .nullable()
-      .describe(
-        "Type of replacer to use. Can be null if operation doesn't involve replacement",
-      ),
-    replacer: z
-      .string()
-      .nullable()
-      .describe(
-        "Replacement pattern or value. Can be null if replacerType is null",
-      ),
-    query: z
-      .string()
-      .describe("HTTPQL query filter. Use empty string if not provided."),
-  }),
+const InputSchema = z.object({
+  ruleName: z
+    .string()
+    .describe("Name of the match and replace rule (non-empty)"),
+  section: sectionEnum.describe("Section to apply rule to"),
+  operation: z.string().describe("Operation type for the rule (non-empty)"),
+  matcherType: matcherTypeEnum
+    .nullable()
+    .describe(
+      "Type of matcher to use. Can be null if operation doesn't use a matcher",
+    ),
+  matcher: z
+    .string()
+    .nullable()
+    .describe("Matcher pattern or value. Can be null if matcherType is null"),
+  replacerType: replacerTypeEnum
+    .nullable()
+    .describe(
+      "Type of replacer to use. Can be null if operation doesn't involve replacement",
+    ),
+  replacer: z
+    .string()
+    .nullable()
+    .describe(
+      "Replacement pattern or value. Can be null if replacerType is null",
+    ),
+  query: z
+    .string()
+    .describe("HTTPQL query filter. Use empty string if not provided."),
 });
-
-export type AddMatchAndReplaceInput = z.infer<typeof addMatchAndReplaceSchema>;
 
 type MatchReplaceOperation =
   | MatchReplaceOperationPath
@@ -82,16 +79,13 @@ type MatchReplaceOperation =
   | MatchReplaceOperationQuery
   | MatchReplaceOperationFirstLine;
 
-// TODO: refactor this
-export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
-  name: "addMatchAndReplace",
+export const addMatchAndReplaceTool = tool({
   description:
     "Create a new match and replace rule with specified configuration",
-  inputSchema: addMatchAndReplaceSchema,
+  inputSchema: InputSchema,
   execute: async (
-    sdk: FrontendSDK,
     {
-      name,
+      ruleName,
       section,
       operation,
       matcherType,
@@ -99,8 +93,10 @@ export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
       replacerType,
       replacer,
       query,
-    }: AddMatchAndReplaceInput["parameters"],
+    },
+    { experimental_context },
   ) => {
+    const { sdk } = experimental_context as FloatToolContext;
     try {
       let crMatcher: MatchReplaceMatcherRaw | MatchReplaceMatcherName;
       let crReplacer: MatchReplaceReplacerTerm | MatchReplaceReplacerWorkflow;
@@ -156,9 +152,6 @@ export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
         default:
           throw new Error(`Invalid replacer type: ${replacerType}`);
       }
-      /// MatchReplaceSectionRequestBody | MatchReplaceSectionRequestFirstLine | MatchReplaceSectionRequestHeader | MatchReplaceSectionRequestMethod |
-      // MatchReplaceSectionRequestPath | MatchReplaceSectionRequestQuery | MatchReplaceSectionResponseBody | MatchReplaceSectionResponseFirstLine |
-      // MatchReplaceSectionResponseHeader | MatchReplaceSectionResponseStatusCode
       const tempOperation: Record<string, unknown> = { kind: operation };
       const operationMap: Record<string, string[]> = {
         OperationStatusCodeUpdate: ["replacer"],
@@ -177,7 +170,6 @@ export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
       };
       const operationFields = operationMap[operation] || [];
       if (operationFields.includes("matcher")) {
-        // If the operation requires a matcher
         if (matcherType !== undefined && matcherType !== null) {
           tempOperation.matcher = crMatcher!;
         } else {
@@ -185,7 +177,6 @@ export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
         }
       }
       if (operationFields.includes("replacer")) {
-        // If the operation requires a replacer
         if (replacerType) {
           tempOperation.replacer = crReplacer!;
         } else {
@@ -199,10 +190,11 @@ export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
       } as MatchReplaceSection;
 
       const res = await sdk.matchReplace.createRule({
-        name: name,
+        name: ruleName,
         section: crSection,
         collectionId: "1",
         query: query || "",
+        sources: [],
       });
 
       if (res !== undefined && !res.isEnabled) {
@@ -210,10 +202,10 @@ export const addMatchAndReplace: ActionDefinition<AddMatchAndReplaceInput> = {
       }
 
       return actionSuccess(
-        `Match and replace rule ${name} created successfully`,
+        `Match and replace rule ${ruleName} created successfully`,
       );
     } catch (error) {
       return actionError("Failed to create match and replace rule", error);
     }
   },
-};
+});

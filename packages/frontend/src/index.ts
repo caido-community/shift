@@ -98,7 +98,6 @@ export const init = (sdk: FrontendSDK) => {
         {
           component: GenericInputDialog,
           props: {
-            title: "Add Learning",
             placeholder: "Enter learning content...",
             initialValue: text,
             onConfirm: () => handleConfirm,
@@ -106,7 +105,6 @@ export const init = (sdk: FrontendSDK) => {
           },
         },
         {
-          title: "Add Learning",
           closeOnEscape: true,
           closable: true,
           draggable: true,

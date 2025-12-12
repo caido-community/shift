@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { getToolName, isToolUIPart } from "ai";
-import { computed, toRefs } from "vue";
+import { computed, toRef } from "vue";
 
 import { ChatMessageTool } from "../Tool";
 
@@ -10,23 +10,23 @@ import { Reasoning } from "./Reasoning";
 import { type CustomUIMessage } from "@/agents/types";
 import { useAgentsStore } from "@/stores/agents";
 
-const props = defineProps<{
+const { message } = defineProps<{
   message: CustomUIMessage & { role: "assistant" };
 }>();
 
-const { message } = toRefs(props);
+const messageRef = toRef(() => message);
 const agentsStore = useAgentsStore();
 
 const noContentYet = computed(() => {
-  if (message.value.metadata?.state !== "streaming") {
+  if (messageRef.value.metadata?.state !== "streaming") {
     return false;
   }
 
-  if (message.value.parts.length === 0) {
+  if (messageRef.value.parts.length === 0) {
     return true;
   }
 
-  const hasNonStepStartContent = message.value.parts.some(
+  const hasNonStepStartContent = messageRef.value.parts.some(
     (part) => part.type !== "step-start",
   );
 
@@ -39,20 +39,20 @@ const noContentYet = computed(() => {
 
 const isGenerating = computed(() => {
   return (
-    message.value.metadata?.state === "streaming" &&
+    messageRef.value.metadata?.state === "streaming" &&
     agentsStore.selectedAgent?.status === "streaming"
   );
 });
 
 const isAborted = computed(() => {
-  return message.value.metadata?.state === "abort";
+  return messageRef.value.metadata?.state === "abort";
 });
 
 const hasPendingStep = computed(() => {
-  if (message.value.metadata?.state !== "streaming") {
+  if (messageRef.value.metadata?.state !== "streaming") {
     return false;
   }
-  const parts = message.value.parts;
+  const parts = messageRef.value.parts;
   return parts.length > 0 && parts[parts.length - 1]?.type === "step-start";
 });
 </script>

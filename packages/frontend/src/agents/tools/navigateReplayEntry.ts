@@ -23,17 +23,13 @@ export const navigateReplayEntryTool = tool({
   description: `Set the active entry in a Caido replay session.
 Use this after listing entries with fetchReplayEntries to focus the replay tab on a specific request/response pair.`,
   inputSchema: NavigateReplayEntrySchema,
-  execute: async (input, { experimental_context }) => {
+  execute: (input, { experimental_context }) => {
     const context = experimental_context as ToolContext;
     const sessionId = input.sessionId ?? context.replaySession.id;
     const entryId = String(input.entryIndex);
 
     try {
-      await context.sdk.graphql.setActiveReplaySessionEntry({
-        id: sessionId,
-        entryId,
-      });
-
+      context.sdk.replay.openTab(sessionId);
       context.replaySession.activeEntryId = entryId;
 
       return {

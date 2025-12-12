@@ -1,9 +1,10 @@
 import { type ReplayEntryQuery } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject } from "ai";
 import { z } from "zod";
 
 import { useConfigStore } from "@/stores/config";
+import { type FrontendSDK } from "@/types";
+import { createModel } from "@/utils";
 
 const outputSchema = z.object({
   name: z.string(),
@@ -61,12 +62,9 @@ OUTPUT:
 
 `.trim();
 
-export async function generateName(entry: ReplayEntryQuery) {
+export async function generateName(sdk: FrontendSDK, entry: ReplayEntryQuery) {
   const configStore = useConfigStore();
-  const openrouter = createOpenRouter({
-    apiKey: configStore.openRouterApiKey,
-  });
-  const model = openrouter(configStore.renamingModel);
+  const model = createModel(sdk, configStore.renamingModel);
 
   const prompt = `
   <entry>

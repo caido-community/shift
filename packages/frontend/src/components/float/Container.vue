@@ -5,18 +5,18 @@ import Actions from "@/components/float/Actions.vue";
 import { useDragResize } from "@/components/float/useDragResize";
 import { useFloatStore } from "@/stores/float";
 
-const props = defineProps<{
+const { initialTop, initialLeft } = defineProps<{
   initialTop: number;
   initialLeft: number;
 }>();
 
 const { style, onDragMouseDown } = useDragResize({
-  initialTop: props.initialTop,
-  initialLeft: props.initialLeft,
+  initialTop,
+  initialLeft,
 });
 
 const store = useFloatStore();
-const { streamState, textarea, query } = storeToRefs(store);
+const { isRunning, query } = storeToRefs(store);
 </script>
 
 <template>
@@ -32,7 +32,7 @@ const { streamState, textarea, query } = storeToRefs(store);
           v-model="query"
           class="w-full h-full text-surface-50 flex-1 resize-none border-none outline-none text-sm rounded-sm bg-surface-800 font-mono scrollbar-hide"
           placeholder="Enter your query here..."
-          :disabled="streamState === 'Streaming'"
+          :disabled="isRunning"
           autocomplete="off"
           autocorrect="off"
           autocapitalize="off"

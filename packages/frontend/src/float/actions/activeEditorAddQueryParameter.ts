@@ -1,3 +1,4 @@
+import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
@@ -7,46 +8,35 @@ import {
   replaceEditorContent,
   withActiveEditorView,
 } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-export const activeEditorAddQueryParameterSchema = z.object({
-  name: z.literal("activeEditorAddQueryParameter"),
-  parameters: z.object({
-    name: z.string().min(1).describe("Query parameter name"),
-    value: z.string().describe("Query parameter value"),
-  }),
+const InputSchema = z.object({
+  paramName: z.string().describe("Query parameter name (non-empty)"),
+  value: z.string().describe("Query parameter value"),
 });
 
-export type ActiveEditorAddQueryParameterInput = z.infer<
-  typeof activeEditorAddQueryParameterSchema
->;
+export const activeEditorAddQueryParameterTool = tool({
+  description:
+    "Add or update a query parameter in the HTTP request URL in the active editor",
+  inputSchema: InputSchema,
+  execute: ({ paramName, value }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
+    return withActiveEditorView(sdk, (view) => {
+      try {
+        const currentText = view.state.doc.toString();
 
-export const activeEditorAddQueryParameter: ActionDefinition<ActiveEditorAddQueryParameterInput> =
-  {
-    name: "activeEditorAddQueryParameter",
-    description:
-      "Add or update a query parameter in the HTTP request URL in the active editor",
-    inputSchema: activeEditorAddQueryParameterSchema,
-    execute: (
-      sdk: FrontendSDK,
-      { name, value }: ActiveEditorAddQueryParameterInput["parameters"],
-    ) =>
-      withActiveEditorView(sdk, (view) => {
-        try {
-          const currentText = view.state.doc.toString();
+        const modifiedRequest = HttpForge.create(currentText)
+          .addQueryParam(paramName, value)
+          .build();
 
-          const modifiedRequest = HttpForge.create(currentText)
-            .addQueryParam(name, value)
-            .build();
+        replaceEditorContent(view, modifiedRequest);
 
-          replaceEditorContent(view, modifiedRequest);
-
-          return actionSuccess(
-            `Query parameter ${name} added in active editor`,
-          );
-        } catch (error) {
-          return actionError("Failed to modify query parameter", error);
-        }
-      }),
-  };
+        return actionSuccess(
+          `Query parameter ${paramName} added in active editor`,
+        );
+      } catch (error) {
+        return actionError("Failed to modify query parameter", error);
+      }
+    });
+  },
+});

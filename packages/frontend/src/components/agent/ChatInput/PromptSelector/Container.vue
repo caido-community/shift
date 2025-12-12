@@ -5,7 +5,7 @@ import { computed, onBeforeUnmount, onMounted } from "vue";
 import PromptPopover from "./PromptPopover.vue";
 import { useSelector } from "./useSelector";
 
-const props = defineProps<{
+const { agentId = undefined, isSettings = false } = defineProps<{
   agentId?: string;
   isSettings?: boolean;
 }>();
@@ -13,14 +13,13 @@ const props = defineProps<{
 const {
   selectedPromptIds,
   promptOptions,
-  listRef,
   showLeft,
   showRight,
   scrollLeftBy,
   scrollRightBy,
   bindScrollHandlers,
   unbindScrollHandlers,
-} = useSelector(props.agentId);
+} = useSelector(agentId);
 
 onMounted(() => bindScrollHandlers());
 onBeforeUnmount(() => unbindScrollHandlers());
@@ -78,6 +77,6 @@ const selectedPrompts = computed(() =>
         @click="scrollRightBy"
       />
     </div>
-    <PromptPopover :agent-id="props.agentId" :is-settings="props.isSettings" />
+    <PromptPopover :agent-id="agentId" :is-settings="isSettings" />
   </div>
 </template>

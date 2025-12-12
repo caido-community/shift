@@ -1,413 +1,303 @@
-import { watch, type WatchStopHandle } from "vue";
+import { type ListenerHandle } from "@caido/sdk-frontend";
 
-import { onLocationChange } from "@/dom";
-import { useAgentsStore } from "@/stores/agents";
-import { useConfigStore } from "@/stores/config";
+import { type AgentStatusSnapshot, useAgentsStore } from "@/stores/agents";
 import { type FrontendSDK } from "@/types";
 
-const REPLAY_HASH = "#/replay";
-const BASE_INDICATOR_CLASS = "shift-ai-indicator";
-const COLLECTION_INDICATOR_CLASS = "shift-ai-indicator--collection";
-const SESSION_INDICATOR_CLASS = "shift-ai-indicator--session";
-const COLLECTION_TOOLTIP = "This collection is controlled by Shift AI";
-const SESSION_TOOLTIP = "This session is controlled by Shift AI";
-const REINJECT_DELAY_MS = 100;
-
-// The goal of this whole file is to create indicators in the replay tree that show the status of the agents.
-
-type AgentStatusSnapshot = {
-  sessionId: string;
-  numMessages: number;
-  status: string;
-  error?: Error;
-};
+const BASE_INDICATOR_CLASS = "internal-shift-indicator";
+const TOOLTIP = "This {{ type }} is controlled by Shift AI";
+const SHIFT_COLLECTION_TOOLTIP = "Managed by Shift AI";
 
 const createIndicator = (
   container: Element,
-  variantClass: string,
-  tooltip: string,
-  sessionState?: AgentStatusSnapshot,
+  type: "collection" | "tab",
+  sessionId: string,
+  state: AgentStatusSnapshot,
 ) => {
-  const existing = container.querySelector<HTMLElement>(`.${variantClass}`);
+  const id = BASE_INDICATOR_CLASS + "-" + type + "-" + sessionId;
+  const tooltip = TOOLTIP.replace("{{ type }}", type);
+
+  const existing = container.querySelector<HTMLElement>(`#${id}`);
   if (existing) {
     existing.classList.remove("text-success-500", "text-error-500");
-    if (sessionState && sessionState.status === "streaming") {
+
+    if (state.status === "streaming") {
       existing.classList.add("text-success-500");
-    } else if (sessionState && sessionState.status === "error") {
+    } else if (state.status === "error") {
       existing.classList.add("text-error-500");
     }
+
     existing.title = tooltip;
     existing.setAttribute("aria-label", tooltip);
     existing.dataset.shiftAiIndicatorTooltip = tooltip;
     return existing;
   }
 
+  const oldIndicators = container.querySelectorAll(`.${BASE_INDICATOR_CLASS}`);
+  oldIndicators.forEach((indicator) => {
+    indicator.remove();
+  });
+
   const indicator = document.createElement("i");
+  indicator.id = id;
   indicator.classList.add(
-    BASE_INDICATOR_CLASS,
-    variantClass,
-    sessionState?.status === "streaming"
-      ? "text-success-500"
-      : sessionState?.status === "error"
-        ? "text-error-500"
-        : "just-ready",
     "fa-solid",
     "fa-wand-magic-sparkles",
     "inline",
+    BASE_INDICATOR_CLASS,
   );
+
+  switch (state.status) {
+    case "streaming":
+      indicator.classList.add("text-success-500");
+      break;
+    case "error":
+      indicator.classList.add("text-error-500");
+      break;
+    default:
+      break;
+  }
+
   indicator.title = tooltip;
   indicator.setAttribute("aria-label", tooltip);
   indicator.setAttribute("role", "img");
 
   indicator.dataset.shiftAiIndicatorTooltip = tooltip;
 
-  if (variantClass === COLLECTION_INDICATOR_CLASS) {
-    const insertBeforeTarget = container.children.item(1);
-    container.insertBefore(indicator, insertBeforeTarget);
-  } else if (variantClass === SESSION_INDICATOR_CLASS) {
-    container.insertBefore(indicator, container.children.item(0));
+  switch (type) {
+    case "collection": {
+      const insertBeforeTarget = container.children.item(1);
+      container.insertBefore(indicator, insertBeforeTarget);
+      break;
+    }
+    case "tab": {
+      container.insertBefore(indicator, container.children.item(0));
+      break;
+    }
   }
 
   return indicator;
 };
 
-const removeIndicator = (container: Element, variantClass: string) => {
-  const indicator = container.querySelector(`.${variantClass}`);
-  if (indicator) {
-    indicator.remove();
-  }
-};
+const SHIFT_COLLECTION_INDICATOR_ID =
+  BASE_INDICATOR_CLASS + "-shift-collection";
 
-const cleanupIndicators = () => {
-  document
-    .querySelectorAll<HTMLElement>(`.${BASE_INDICATOR_CLASS}`)
-    .forEach((node) => node.remove());
-
-  document
-    .querySelectorAll<HTMLElement>("[data-shift-ai-collection]")
-    .forEach((node) => {
-      node.removeAttribute("data-shift-ai-collection");
-    });
-
-  document
-    .querySelectorAll<HTMLElement>("[data-shift-ai-agent]")
-    .forEach((node) => {
-      node.removeAttribute("data-shift-ai-agent");
-      node.removeAttribute("data-shift-ai-agent-status");
-    });
-};
-
-const computeAutoLaunchCollectionIds = (
-  sdk: FrontendSDK,
-  configStore: ReturnType<typeof useConfigStore>,
-) => {
-  const targetNames = new Set<string>();
-  targetNames.add("Shift");
-
-  for (const prompt of configStore.customPrompts) {
-    const collectionName = configStore.getProjectAutoExecuteCollection(
-      prompt.id,
-    );
-    if (collectionName) {
-      targetNames.add(collectionName);
-    }
+const createShiftCollectionIndicator = (container: Element) => {
+  const existing = container.querySelector<HTMLElement>(
+    `#${SHIFT_COLLECTION_INDICATOR_ID}`,
+  );
+  if (existing) {
+    return existing;
   }
 
-  const ids = new Set<string>();
-  try {
-    const collections = sdk.replay.getCollections();
-    for (const collection of collections ?? []) {
-      const collectionId =
-        typeof collection?.id === "string" && collection.id.length > 0
-          ? collection.id
-          : undefined;
-      const collectionName =
-        typeof collection?.name === "string" && collection.name.length > 0
-          ? collection.name
-          : undefined;
-      if (collectionId === undefined || collectionName === undefined) {
-        continue;
-      }
-      if (targetNames.has(collectionName)) {
-        ids.add(collectionId);
-      }
-    }
-  } catch (error) {
-    console.warn(
-      "[Shift Agents] Failed to resolve collections for AI indicators",
-      error,
-    );
-  }
-  return ids;
-};
+  const indicator = document.createElement("i");
+  indicator.id = SHIFT_COLLECTION_INDICATOR_ID;
+  indicator.classList.add(
+    "fa-solid",
+    "fa-wand-magic-sparkles",
+    "inline",
+    BASE_INDICATOR_CLASS,
+  );
 
-const isOnReplayHash = () => window.location.hash === REPLAY_HASH;
+  indicator.title = SHIFT_COLLECTION_TOOLTIP;
+  indicator.setAttribute("aria-label", SHIFT_COLLECTION_TOOLTIP);
+  indicator.setAttribute("role", "img");
+  indicator.dataset.shiftAiIndicatorTooltip = SHIFT_COLLECTION_TOOLTIP;
 
-const findReplayTreeRoot = (): Element | undefined => {
-  const collectionNode = document.querySelector(".c-tree-collection");
-  return collectionNode?.parentElement ?? undefined;
+  container.appendChild(indicator);
+
+  return indicator;
 };
 
 export const useAgentIndicatorManager = (sdk: FrontendSDK) => {
   const agentsStore = useAgentsStore();
-  const configStore = useConfigStore();
-
-  let unsubscribeLocation: (() => void) | undefined;
-  let unsubscribeAgents: (() => void) | undefined;
-  let configWatchStopHandle: WatchStopHandle | undefined;
-  let observer: MutationObserver | undefined;
-  let pendingUpdateHandle: number | undefined;
-  let reinjectTimeout: number | undefined;
-  let latestAgentStates: AgentStatusSnapshot[] = [];
-
-  const agentStateMap = () => {
-    return new Map(
-      latestAgentStates.map((snapshot) => [snapshot.sessionId, snapshot]),
-    );
-  };
-
-  const cancelPendingUpdate = () => {
-    if (pendingUpdateHandle !== undefined) {
-      cancelAnimationFrame(pendingUpdateHandle);
-      pendingUpdateHandle = undefined;
-    }
-  };
-
-  const cancelReinject = () => {
-    if (reinjectTimeout !== undefined) {
-      window.clearTimeout(reinjectTimeout);
-      reinjectTimeout = undefined;
-    }
-  };
-
-  const refreshCollectionIndicators = () => {
-    if (!isOnReplayHash()) {
-      return;
-    }
-
-    const autoLaunchIds = computeAutoLaunchCollectionIds(sdk, configStore);
-    const collectionNameNodes = document.querySelectorAll(
-      ".c-tree-collection__name",
-    );
-
-    collectionNameNodes.forEach((nameNode) => {
-      const parentCollection =
-        nameNode.closest<HTMLElement>(".c-tree-collection");
-      if (!parentCollection) {
-        return;
-      }
-
-      const collectionId = parentCollection.getAttribute("data-collection-id");
-      if (collectionId === null || collectionId.length === 0) {
-        return;
-      }
-      if (autoLaunchIds.has(collectionId)) {
-        createIndicator(
-          nameNode,
-          COLLECTION_INDICATOR_CLASS,
-          COLLECTION_TOOLTIP,
-        );
-        parentCollection.dataset.shiftAiCollection = "true";
-      } else {
-        removeIndicator(nameNode, COLLECTION_INDICATOR_CLASS);
-        if (parentCollection.dataset.shiftAiCollection !== undefined) {
-          delete parentCollection.dataset.shiftAiCollection;
-        }
-      }
-    });
-  };
-
-  const findSessionIndicatorTargets = (parentSession: HTMLElement) => {
-    const targets = new Set<HTMLElement>();
-
-    const nameNode = parentSession.querySelector<HTMLElement>(
-      ".c-tree-session__name",
-    );
-    if (nameNode) {
-      targets.add(nameNode);
-    }
-
-    const buttonSpan = parentSession.querySelector<HTMLElement>(
-      "button > div:has(span)",
-    );
-    if (buttonSpan) {
-      targets.add(buttonSpan);
-    }
-
-    return [...targets];
-  };
-
-  const refreshSessionIndicators = () => {
-    if (!isOnReplayHash()) {
-      return;
-    }
-
-    const stateBySessionId = agentStateMap();
-    const sessionNodes =
-      document.querySelectorAll<HTMLElement>("[data-session-id]");
-
-    sessionNodes.forEach((parentSession) => {
-      const sessionId = parentSession.getAttribute("data-session-id");
-      if (sessionId === null || sessionId.length === 0) {
-        return;
-      }
-
-      const sessionState = stateBySessionId.get(sessionId);
-      const targetNodes = findSessionIndicatorTargets(parentSession);
-
-      if (sessionState && sessionState.numMessages > 0) {
-        targetNodes.forEach((targetNode) => {
-          const indicator = createIndicator(
-            targetNode,
-            SESSION_INDICATOR_CLASS,
-            SESSION_TOOLTIP,
-            sessionState,
-          );
-          indicator.dataset.shiftAiAgentStatus = sessionState.status;
-        });
-        parentSession.dataset.shiftAiAgent = "true";
-        parentSession.dataset.shiftAiAgentStatus = sessionState.status;
-      } else {
-        targetNodes.forEach((targetNode) => {
-          removeIndicator(targetNode, SESSION_INDICATOR_CLASS);
-        });
-        if (parentSession.dataset.shiftAiAgent !== undefined) {
-          delete parentSession.dataset.shiftAiAgent;
-        }
-        if (parentSession.dataset.shiftAiAgentStatus !== undefined) {
-          delete parentSession.dataset.shiftAiAgentStatus;
-        }
-        parentSession
-          .querySelectorAll<HTMLElement>(`.${SESSION_INDICATOR_CLASS}`)
-          .forEach((indicator) => indicator.remove());
-      }
-    });
-  };
-
-  const updateIndicators = () => {
-    refreshCollectionIndicators();
-    refreshSessionIndicators();
-  };
-
-  const scheduleUpdate = (immediate = false) => {
-    cancelPendingUpdate();
-    if (immediate) {
-      updateIndicators();
-      return;
-    }
-    pendingUpdateHandle = requestAnimationFrame(() => {
-      pendingUpdateHandle = undefined;
-      updateIndicators();
-    });
-  };
-
-  const observeReplayTree = () => {
-    const root = findReplayTreeRoot();
-    if (!root) {
-      cancelPendingUpdate();
-      cancelReinject();
-      reinjectTimeout = window.setTimeout(() => {
-        reinjectTimeout = undefined;
-        observeReplayTree();
-      }, REINJECT_DELAY_MS);
-      return;
-    }
-
-    observer?.disconnect();
-    observer = new MutationObserver(() => {
-      scheduleUpdate();
-    });
-
-    observer.observe(root, {
-      childList: true,
-      subtree: true,
-    });
-
-    scheduleUpdate(true);
-  };
-
-  const ensureAgentSubscription = () => {
-    if (unsubscribeAgents) {
-      return;
-    }
-
-    unsubscribeAgents = agentsStore.subscribeToAgentStates((snapshot) => {
-      latestAgentStates = snapshot.map((state) => ({ ...state }));
-      refreshSessionIndicators();
-    });
-  };
-
-  const ensureConfigWatcher = () => {
-    if (configWatchStopHandle) {
-      return;
-    }
-
-    configWatchStopHandle = watch(
-      () =>
-        configStore.customPrompts.map((prompt) => ({
-          id: prompt.id,
-          autoCollection: configStore.getProjectAutoExecuteCollection(
-            prompt.id,
-          ),
-        })),
-      () => {
-        refreshCollectionIndicators();
-      },
-      { deep: true },
-    );
-  };
-
-  const remove = () => {
-    cancelPendingUpdate();
-    cancelReinject();
-    observer?.disconnect();
-    observer = undefined;
-    cleanupIndicators();
-  };
+  let unsubscribe: { stop: () => void } | undefined = undefined;
+  let agentStatesUnsubscribe: (() => void) | undefined = undefined;
+  let sessionChangeUnsubscribe: ListenerHandle | undefined = undefined;
+  let tableObserver: MutationObserver | undefined = undefined;
 
   const start = () => {
-    ensureAgentSubscription();
-    ensureConfigWatcher();
-
-    if (isOnReplayHash()) {
-      observeReplayTree();
+    if (location.hash === "#/replay") {
+      inject();
     }
-    sdk.projects.onCurrentProjectChange((event) => {
-      if (event.projectId !== undefined) {
-        setTimeout(() => {
-          updateIndicators();
-        }, 1000);
-      }
-    });
 
-    unsubscribeLocation = onLocationChange(({ newHash }) => {
-      if (newHash === REPLAY_HASH) {
-        observeReplayTree();
+    unsubscribe = sdk.navigation.onPageChange((event) => {
+      if (event.path === "/replay") {
+        inject();
       } else {
         remove();
       }
     });
   };
 
+  const inject = () => {
+    if (agentStatesUnsubscribe) {
+      agentStatesUnsubscribe();
+    }
+
+    if (sessionChangeUnsubscribe) {
+      sessionChangeUnsubscribe.stop();
+    }
+
+    agentStatesUnsubscribe = agentsStore.subscribeToAgentStates((snapshot) => {
+      requestAnimationFrame(() => {
+        drawTabIndicators(snapshot);
+        drawCollectionIndicators(snapshot);
+        drawShiftCollectionIndicator();
+      });
+    });
+
+    sessionChangeUnsubscribe = sdk.replay.onCurrentSessionChange(() => {
+      const snapshot = agentsStore.getAgentStatusSnapshot();
+      requestAnimationFrame(() => {
+        drawTabIndicators(snapshot);
+        drawCollectionIndicators(snapshot);
+        drawShiftCollectionIndicator();
+      });
+    });
+
+    requestAnimationFrame(() => {
+      listenForCollectionChanges();
+    });
+  };
+
+  const getShiftCollection = () => {
+    const collections = sdk.replay.getCollections();
+    const collection = collections.find((c) => c.name === "Shift");
+    if (collection === undefined) {
+      return undefined;
+    }
+
+    const collectionId = collection.id;
+    if (collectionId === undefined) {
+      return undefined;
+    }
+
+    const element = document.querySelector(
+      `[data-collection-id="${collectionId}"]`,
+    );
+    if (element === null) {
+      return undefined;
+    }
+
+    return element as HTMLDivElement;
+  };
+
+  const drawTabIndicators = (snapshots: AgentStatusSnapshot[]) => {
+    const tabs = document.querySelectorAll(
+      "[data-draggable] [data-session-id]",
+    );
+    tabs.forEach((tab) => {
+      const sessionId = tab.getAttribute("data-session-id");
+      if (sessionId === null || sessionId.length === 0) {
+        return;
+      }
+
+      const button = tab.querySelector("button");
+      if (button === null) {
+        return;
+      }
+
+      const snapshot = snapshots.find((s) => s.sessionId === sessionId);
+      if (snapshot === undefined || snapshot.numMessages === 0) {
+        return;
+      }
+
+      createIndicator(button, "tab", sessionId, snapshot);
+    });
+  };
+
+  const drawCollectionIndicators = (snapshots: AgentStatusSnapshot[]) => {
+    const entries = document.querySelectorAll("[data-is-draggable][data-id]");
+    entries.forEach((entry) => {
+      const id = entry.getAttribute("data-id");
+      if (id === null || id.length === 0 || !id.startsWith("session-")) {
+        return;
+      }
+
+      const sessionId = id.slice(8);
+      const group = entry.querySelector(".group");
+      if (group === null) {
+        return;
+      }
+
+      const expectedIndicatorId = `${BASE_INDICATOR_CLASS}-collection-${sessionId}`;
+      const existingIndicator = group.querySelector(`.${BASE_INDICATOR_CLASS}`);
+      if (existingIndicator && existingIndicator.id !== expectedIndicatorId) {
+        existingIndicator.remove();
+      }
+
+      const snapshot = snapshots.find((s) => s.sessionId === sessionId);
+      if (snapshot === undefined || snapshot.numMessages === 0) {
+        return;
+      }
+
+      createIndicator(group, "collection", sessionId, snapshot);
+    });
+  };
+
+  const drawShiftCollectionIndicator = () => {
+    const shiftCollection = getShiftCollection();
+    if (!shiftCollection) {
+      return;
+    }
+
+    createShiftCollectionIndicator(shiftCollection);
+  };
+
+  const listenForCollectionChanges = () => {
+    if (tableObserver) {
+      tableObserver.disconnect();
+    }
+
+    const table = document.querySelector("table");
+    if (table === null) {
+      return;
+    }
+
+    tableObserver = new MutationObserver(() => {
+      console.log("Collection changed");
+      const snapshot = agentsStore.getAgentStatusSnapshot();
+      requestAnimationFrame(() => {
+        drawCollectionIndicators(snapshot);
+        drawShiftCollectionIndicator();
+      });
+    });
+
+    tableObserver.observe(table, {
+      childList: true,
+      subtree: true,
+    });
+  };
+
   const stop = () => {
-    if (unsubscribeLocation) {
-      unsubscribeLocation();
-      unsubscribeLocation = undefined;
+    if (unsubscribe) {
+      unsubscribe.stop();
+      unsubscribe = undefined;
     }
-    if (unsubscribeAgents) {
-      unsubscribeAgents();
-      unsubscribeAgents = undefined;
+    if (agentStatesUnsubscribe) {
+      agentStatesUnsubscribe();
+      agentStatesUnsubscribe = undefined;
     }
-    if (configWatchStopHandle) {
-      configWatchStopHandle();
-      configWatchStopHandle = undefined;
+    if (sessionChangeUnsubscribe) {
+      sessionChangeUnsubscribe.stop();
+      sessionChangeUnsubscribe = undefined;
+    }
+    if (tableObserver) {
+      tableObserver.disconnect();
+      tableObserver = undefined;
     }
     remove();
+  };
+
+  const remove = () => {
+    const indicators = document.querySelectorAll(`.${BASE_INDICATOR_CLASS}`);
+    indicators.forEach((indicator) => {
+      indicator.remove();
+    });
   };
 
   return {
     start,
     stop,
-    refresh: updateIndicators,
   };
 };

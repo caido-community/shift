@@ -10,7 +10,7 @@ export const getSelectedReplayTabSessionId = () => {
   return activeTab ? activeTab.getAttribute("data-session-id") : "";
 };
 
-export const getRequestEditorRequestID = () => {
+const getRequestEditorRequestID = () => {
   const requestEditor = document.querySelector("[data-language=http-request]");
 
   if (requestEditor === null) {
@@ -48,7 +48,7 @@ export const getCurrentRequestID = async (sdk: FrontendSDK) => {
   return activeEntry.request?.id ?? undefined;
 };
 
-export type ReplayRequest =
+type ReplayRequest =
   | {
       kind: "Ok";
       session: ReplaySession;

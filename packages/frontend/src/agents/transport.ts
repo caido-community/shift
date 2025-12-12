@@ -1,4 +1,3 @@
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import {
   type ChatRequestOptions,
   type ChatTransport,
@@ -24,6 +23,7 @@ import {
   fetchReplayEntriesTool,
   grepRequestTool,
   grepResponseTool,
+  navigateReplayEntryTool,
   removeLearningsTool,
   removeRequestHeaderTool,
   removeRequestQueryTool,
@@ -56,7 +56,8 @@ import {
 import { markdownJoinerTransform } from "@/agents/utils/markdownJoiner";
 import { useConfigStore } from "@/stores/config";
 import { useUIStore } from "@/stores/ui";
-import { getReplaySession, isPresent } from "@/utils";
+import { type FrontendSDK } from "@/types";
+import { createModel, getReplaySession, isPresent } from "@/utils";
 
 function sanitizeValue(value: unknown): unknown {
   if (value instanceof Date) {
@@ -107,7 +108,10 @@ function sanitizeUiMessages(messages: UIMessage[]): UIMessage[] {
 }
 
 export class ClientSideChatTransport implements ChatTransport<UIMessage> {
-  constructor(private toolContext: ToolContext) {}
+  constructor(
+    private toolContext: ToolContext,
+    private sdk: FrontendSDK,
+  ) {}
 
   async sendMessages(
     options: {
@@ -141,21 +145,12 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
     const configStore = useConfigStore();
     const runtimeConfig = this.toolContext.config;
 
-    const openrouter = createOpenRouter({
-      apiKey: configStore.openRouterApiKey,
-      extraBody: {
-        parallel_tool_calls: true,
-        reasoning: {
-          max_tokens: configStore.reasoningConfig.max_tokens,
-          enabled: configStore.reasoningConfig.enabled,
-        },
-      },
-    });
-
     const modelId = runtimeConfig.model ?? configStore.agentsModel;
-    const model = openrouter(modelId);
     const maxIterations =
       runtimeConfig.maxIterations ?? configStore.maxIterations;
+
+    const model = createModel(this.sdk, modelId);
+
     const stream = createUIMessageStream<CustomUIMessage>({
       execute: ({ writer }) => {
         const result = streamText({
@@ -187,7 +182,7 @@ export class ClientSideChatTransport implements ChatTransport<UIMessage> {
             grepRequest: grepRequestTool,
             searchRequests: searchRequestsTool,
             fetchReplayEntries: fetchReplayEntriesTool,
-            // navigateReplayEntry: navigateReplayEntryTool, // Currently not working in the Caido UI, so we're not using it.
+            navigateReplayEntry: navigateReplayEntryTool,
             addTodo: addTodoTool,
             addLearning: addLearningTool,
             updateLearning: updateLearningTool,

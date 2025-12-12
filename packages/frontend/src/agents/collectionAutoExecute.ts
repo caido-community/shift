@@ -15,7 +15,7 @@ import { useUIStore } from "@/stores/ui";
 import { type FrontendSDK } from "@/types";
 const SHIFT_COLLECTION_NAME = "Shift";
 
-export const ensureShiftCollection = async (sdk: FrontendSDK) => {
+const ensureShiftCollection = async (sdk: FrontendSDK) => {
   try {
     const configStore = useConfigStore();
     const collections = sdk.replay.getCollections();
@@ -129,7 +129,6 @@ export const setupReplayCollectionCorrelation = (sdk: FrontendSDK) => {
       {
         component: LaunchInputDialog,
         props: {
-          title: "Instructions",
           placeholder: "Enter your instructions for the agent...",
           sdk,
           onConfirm: () => handleConfirm,

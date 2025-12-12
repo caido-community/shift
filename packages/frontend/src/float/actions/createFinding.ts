@@ -1,36 +1,28 @@
+import { tool } from "ai";
 import { z } from "zod";
 
 import { actionError, actionSuccess } from "@/float/actionUtils";
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 import { getCurrentRequestID } from "@/utils";
 
-export const createFindingSchema = z.object({
-  name: z.literal("createFinding"),
-  parameters: z.object({
-    title: z
-      .string()
-      .describe(
-        "The title of the finding. This should be a short and concise title that captures the finding.",
-      ),
-    description: z
-      .string()
-      .describe(
-        "The description of the finding. This supports markdown. When writing finding descriptions, keep it short and concise while still providing enough context to understand the finding.",
-      ),
-  }),
+const InputSchema = z.object({
+  title: z
+    .string()
+    .describe(
+      "The title of the finding. This should be a short and concise title that captures the finding.",
+    ),
+  description: z
+    .string()
+    .describe(
+      "The description of the finding. This supports markdown. When writing finding descriptions, keep it short and concise while still providing enough context to understand the finding.",
+    ),
 });
 
-export type createFindingInput = z.infer<typeof createFindingSchema>;
-
-export const createFinding: ActionDefinition<createFindingInput> = {
-  name: "createFinding",
+export const createFindingTool = tool({
   description: "Create a new finding",
-  inputSchema: createFindingSchema,
-  execute: async (
-    sdk: FrontendSDK,
-    { title, description }: createFindingInput["parameters"],
-  ) => {
+  inputSchema: InputSchema,
+  execute: async ({ title, description }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
     try {
       const requestID = await getCurrentRequestID(sdk);
       if (requestID === undefined) {
@@ -58,4 +50,4 @@ export const createFinding: ActionDefinition<createFindingInput> = {
       return actionError("Failed to create finding", error);
     }
   },
-};
+});

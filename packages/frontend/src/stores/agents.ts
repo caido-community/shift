@@ -1,4 +1,5 @@
 import type { Chat } from "@ai-sdk/vue";
+import { type ChatStatus } from "ai";
 import { defineStore } from "pinia";
 import { computed, markRaw, reactive, ref, shallowRef, watch } from "vue";
 import type { WatchStopHandle } from "vue";
@@ -20,12 +21,18 @@ type AgentEntry = {
   config: AgentRuntimeConfig;
 };
 
-type AgentStatusSnapshot = {
-  sessionId: string;
-  numMessages: number;
-  status: Chat<CustomUIMessage>["status"];
-  error?: Error;
-};
+export type AgentStatusSnapshot =
+  | {
+      sessionId: string;
+      numMessages: number;
+      error: Error | undefined;
+      status: "error";
+    }
+  | {
+      sessionId: string;
+      numMessages: number;
+      status: ChatStatus;
+    };
 
 type AgentStateListener = (snapshot: AgentStatusSnapshot[]) => void;
 
@@ -231,5 +238,6 @@ export const useAgentsStore = defineStore("stores.agents", () => {
     abortSelectedAgent,
     subscribeToAgentStates,
     updateAgentConfig,
+    getAgentStatusSnapshot,
   };
 });

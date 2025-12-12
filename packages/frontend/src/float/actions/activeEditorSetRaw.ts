@@ -1,28 +1,19 @@
+import { tool } from "ai";
 import { z } from "zod";
 
-import { type ActionDefinition } from "@/float/types";
-import { type FrontendSDK } from "@/types";
+import { type FloatToolContext } from "@/float/types";
 
-export const activeEditorSetRawSchema = z.object({
-  name: z.literal("activeEditorSetRaw"),
-  parameters: z.object({
-    content: z
-      .string()
-      .min(1)
-      .describe("Raw content to set in the active editor"),
-  }),
+const InputSchema = z.object({
+  content: z
+    .string()
+    .describe("Raw content to set in the active editor (non-empty)"),
 });
 
-export type ActiveEditorSetRawInput = z.infer<typeof activeEditorSetRawSchema>;
-
-export const activeEditorSetRaw: ActionDefinition<ActiveEditorSetRawInput> = {
-  name: "activeEditorSetRaw",
+export const activeEditorSetRawTool = tool({
   description: "Set the entire content of the active editor with raw text",
-  inputSchema: activeEditorSetRawSchema,
-  execute: (
-    sdk: FrontendSDK,
-    { content }: ActiveEditorSetRawInput["parameters"],
-  ) => {
+  inputSchema: InputSchema,
+  execute: ({ content }, { experimental_context }) => {
+    const { sdk } = experimental_context as FloatToolContext;
     const view = sdk.window.getActiveEditor()?.getEditorView();
 
     if (view === undefined) {
@@ -57,4 +48,4 @@ export const activeEditorSetRaw: ActionDefinition<ActiveEditorSetRawInput> = {
       };
     }
   },
-};
+});
