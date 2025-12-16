@@ -9,6 +9,7 @@ import type {
   CustomPrompt,
   ModelItem,
   ModelUserConfig,
+  ProviderSettings,
   ReasoningConfig,
 } from "@/agents/types";
 import { Provider } from "@/agents/types/config";
@@ -19,6 +20,12 @@ const DEFAULT_AGENTS_MODEL = "anthropic/claude-sonnet-4.5";
 const DEFAULT_FLOAT_MODEL = "google/gemini-2.5-flash";
 const DEFAULT_RENAMING_MODEL = "google/gemini-2.5-flash-lite";
 
+const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
+  [Provider.OpenRouter]: {
+    prioritizeLatency: true,
+  },
+};
+
 // TODO: cleanup the store, maybe split it up a bit
 export const useConfigStore = defineStore("stores.config", () => {
   const sdk = useSDK();
@@ -28,6 +35,7 @@ export const useConfigStore = defineStore("stores.config", () => {
   const _floatModel = ref<string>(DEFAULT_FLOAT_MODEL);
   const _renamingModel = ref<string>(DEFAULT_RENAMING_MODEL);
   const _maxIterations = ref<number>(35);
+  const providerSettings = ref<ProviderSettings>(DEFAULT_PROVIDER_SETTINGS);
   const projectLearningsById = ref<Record<string, string[]>>({});
   const projectHistoryById = ref<Record<string, string[]>>({});
   const projectSpecificPromptsById = ref<
@@ -275,6 +283,24 @@ export const useConfigStore = defineStore("stores.config", () => {
     },
   });
 
+  const openRouterPrioritizeLatency = computed({
+    get() {
+      return (
+        providerSettings.value[Provider.OpenRouter]?.prioritizeLatency ?? true
+      );
+    },
+    set(value: boolean) {
+      providerSettings.value = {
+        ...providerSettings.value,
+        [Provider.OpenRouter]: {
+          ...providerSettings.value[Provider.OpenRouter],
+          prioritizeLatency: value,
+        },
+      };
+      saveSettings();
+    },
+  });
+
   const normalizeLearningsRecord = (
     record: Record<string, unknown> | undefined,
   ): Record<string, string[]> => {
@@ -332,6 +358,7 @@ export const useConfigStore = defineStore("stores.config", () => {
       customPrompts: customPrompts.value,
       maxIterations: _maxIterations.value,
       aiSessionRenaming: _aiSessionRenaming.value,
+      providerSettings: providerSettings.value,
       projectLearningsById: normalizedLearnings,
       projectHistoryById: projectHistoryById.value,
       projectSpecificPromptsById: projectSpecificPromptsById.value,
@@ -358,6 +385,16 @@ export const useConfigStore = defineStore("stores.config", () => {
       }
       if (settings.selectedProvider !== undefined) {
         selectedProvider.value = settings.selectedProvider;
+      }
+      if (settings.providerSettings !== undefined) {
+        providerSettings.value = {
+          ...DEFAULT_PROVIDER_SETTINGS,
+          ...settings.providerSettings,
+          [Provider.OpenRouter]: {
+            ...DEFAULT_PROVIDER_SETTINGS[Provider.OpenRouter],
+            ...settings.providerSettings[Provider.OpenRouter],
+          },
+        };
       }
 
       if (settings.agentsModel !== undefined) {
@@ -457,6 +494,16 @@ export const useConfigStore = defineStore("stores.config", () => {
       }
       if (settings.selectedProvider !== undefined) {
         selectedProvider.value = settings.selectedProvider;
+      }
+      if (settings.providerSettings !== undefined) {
+        providerSettings.value = {
+          ...DEFAULT_PROVIDER_SETTINGS,
+          ...settings.providerSettings,
+          [Provider.OpenRouter]: {
+            ...DEFAULT_PROVIDER_SETTINGS[Provider.OpenRouter],
+            ...settings.providerSettings[Provider.OpenRouter],
+          },
+        };
       }
       if (settings.agentsModel !== undefined) {
         _agentsModel.value = isValidModel(settings.agentsModel)
@@ -634,6 +681,8 @@ export const useConfigStore = defineStore("stores.config", () => {
     customModels,
     modelConfigs,
     selectedProvider,
+    providerSettings,
+    openRouterPrioritizeLatency,
     saveSettings,
     validateAndResetModelsForProvider,
     validateAndResetModelsAfterRemoval,

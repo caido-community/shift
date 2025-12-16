@@ -10,6 +10,17 @@ export enum Provider {
   Google = "Google",
 }
 
+export type OpenRouterProviderSettings = {
+  prioritizeLatency: boolean;
+};
+
+export type ProviderSettings = {
+  [Provider.OpenRouter]: OpenRouterProviderSettings;
+  [Provider.OpenAI]?: Record<string, never>;
+  [Provider.Anthropic]?: Record<string, never>;
+  [Provider.Google]?: Record<string, never>;
+};
+
 export type ModelItem = {
   name: string;
   id: string;

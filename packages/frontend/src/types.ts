@@ -6,6 +6,7 @@ import {
   type ModelItem,
   type ModelUserConfig,
   type Provider,
+  type ProviderSettings,
   type ReasoningConfig,
 } from "@/agents/types/config";
 
@@ -19,6 +20,7 @@ export type PluginStorage = {
   maxIterations: number;
   customPrompts: CustomPrompt[];
   aiSessionRenaming: AISessionRenamingConfig;
+  providerSettings?: ProviderSettings;
   projectLearningsById?: Record<string, string[]>;
   projectMemoryById?: Record<string, string>;
   projectHistoryById: Record<string, string[]>;

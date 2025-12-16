@@ -29,6 +29,34 @@ const providers = Object.values(Provider).map((p) => ({ label: p, value: p }));
       />
     </div>
 
+    <div
+      v-if="modelsStore.selectedProvider === Provider.OpenRouter"
+      class="flex flex-col gap-2"
+    >
+      <div class="flex flex-col">
+        <label
+          class="text-base font-medium"
+          for="openrouter-prioritize-latency"
+        >
+          Prioritize latency
+        </label>
+        <p class="text-sm text-surface-400">
+          Adds <span class="font-mono">:nitro</span> to OpenRouter model IDs.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <Checkbox
+          v-model="configStore.openRouterPrioritizeLatency"
+          input-id="openrouter-prioritize-latency"
+          binary
+        />
+        <label class="text-sm" for="openrouter-prioritize-latency">
+          Enable
+        </label>
+      </div>
+    </div>
+
     <div class="flex flex-col gap-2">
       <div class="flex flex-col">
         <label class="text-base font-medium">Max Iterations</label>
