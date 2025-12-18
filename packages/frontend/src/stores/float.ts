@@ -32,13 +32,17 @@ export const useFloatStore = defineStore("stores.float", () => {
   };
 
   const handleKeydown = (event: KeyboardEvent) => {
-    const isTextareaFocused = document.activeElement === textarea.value;
-
     if (event.key === "Escape") {
       closeFloat();
     }
 
-    if (event.key === "ArrowUp" && isTextareaFocused) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      runQuery();
+      event.preventDefault();
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
       const textareaElement = textarea.value;
       if (textareaElement !== undefined) {
         const caretIndex = textareaElement.selectionStart ?? 0;
@@ -66,17 +70,11 @@ export const useFloatStore = defineStore("stores.float", () => {
           }
         }
       }
-
       event.stopPropagation();
       return;
     }
 
-    if (event.key === "Enter" && !event.shiftKey && isTextareaFocused) {
-      runQuery();
-      event.preventDefault();
-    }
-
-    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+    if (event.key === "ArrowDown") {
       event.stopPropagation();
       return;
     }
