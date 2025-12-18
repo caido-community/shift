@@ -25,6 +25,9 @@ export const setupFloat = (sdk: FrontendSDK) => {
   });
 };
 
+const FLOAT_WIDTH = 500;
+const FLOAT_HEIGHT = 125;
+
 const spawnFloat = (sdk: FrontendSDK) => {
   if (document.querySelector("[data-plugin='shift-float']")) {
     return;
@@ -37,8 +40,12 @@ const spawnFloat = (sdk: FrontendSDK) => {
   container.style.zIndex = "3000";
   document.body.appendChild(container);
 
-  const initialLeft = lastCursorX !== undefined ? lastCursorX - 250 : 0;
-  const initialTop = lastCursorY !== undefined ? lastCursorY - 50 : 0;
+  const maxLeft = window.innerWidth - FLOAT_WIDTH;
+  const maxTop = window.innerHeight - FLOAT_HEIGHT;
+  const rawLeft = lastCursorX !== undefined ? lastCursorX - 250 : 0;
+  const rawTop = lastCursorY !== undefined ? lastCursorY - 50 : 0;
+  const initialLeft = Math.max(0, Math.min(rawLeft, maxLeft));
+  const initialTop = Math.max(0, Math.min(rawTop, maxTop));
 
   const app = createApp(ShiftFloat, {
     initialTop,

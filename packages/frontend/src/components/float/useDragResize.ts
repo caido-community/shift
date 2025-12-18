@@ -1,22 +1,18 @@
 import { useEventListener } from "@vueuse/core";
 import { computed, ref } from "vue";
 
+const WIDTH = 500;
+const HEIGHT = 125;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(value, max));
+
 export const useDragResize = (options: {
   initialTop: number;
   initialLeft: number;
 }) => {
-  const width = ref(500);
-  const height = ref(125);
   const top = ref(options.initialTop);
   const left = ref(options.initialLeft);
-
-  let stopMove: (() => void) | undefined = undefined;
-  let stopUp: (() => void) | undefined = undefined;
-  const isResizing = ref(false);
-  const startX = ref(0);
-  const startY = ref(0);
-  const startWidth = ref(0);
-  const startHeight = ref(0);
 
   let stopMoveDrag: (() => void) | undefined = undefined;
   let stopUpDrag: (() => void) | undefined = undefined;
@@ -26,52 +22,18 @@ export const useDragResize = (options: {
   const startTop = ref(0);
   const startLeft = ref(0);
 
-  const onMouseMove = (event: MouseEvent) => {
-    if (!isResizing.value) {
-      return;
-    }
-    const deltaX = event.clientX - startX.value;
-    const deltaY = event.clientY - startY.value;
-    const nextWidth = startWidth.value + deltaX;
-    const nextHeight = startHeight.value + deltaY;
-    width.value = nextWidth > 300 ? nextWidth : 300;
-    height.value = nextHeight > 120 ? nextHeight : 120;
-  };
-
-  const onMouseUp = () => {
-    if (!isResizing.value) {
-      return;
-    }
-    isResizing.value = false;
-    if (stopMove !== undefined) {
-      stopMove();
-      stopMove = undefined;
-    }
-    if (stopUp !== undefined) {
-      stopUp();
-      stopUp = undefined;
-    }
-  };
-
-  const onResizeMouseDown = (event: MouseEvent) => {
-    isResizing.value = true;
-    startX.value = event.clientX;
-    startY.value = event.clientY;
-    startWidth.value = width.value;
-    startHeight.value = height.value;
-    stopMove = useEventListener(document, "mousemove", onMouseMove);
-    stopUp = useEventListener(document, "mouseup", onMouseUp);
-    event.preventDefault();
-  };
-
   const onDragMouseMove = (event: MouseEvent) => {
     if (!isDragging.value) {
       return;
     }
     const deltaX = event.clientX - dragStartX.value;
     const deltaY = event.clientY - dragStartY.value;
-    left.value = startLeft.value + deltaX;
-    top.value = startTop.value + deltaY;
+
+    const maxLeft = window.innerWidth - WIDTH;
+    const maxTop = window.innerHeight - HEIGHT;
+
+    left.value = clamp(startLeft.value + deltaX, 0, maxLeft);
+    top.value = clamp(startTop.value + deltaY, 0, maxTop);
   };
 
   const onDragMouseUp = () => {
@@ -90,9 +52,6 @@ export const useDragResize = (options: {
   };
 
   const onDragMouseDown = (event: MouseEvent) => {
-    if (isResizing.value) {
-      return;
-    }
     isDragging.value = true;
     dragStartX.value = event.clientX;
     dragStartY.value = event.clientY;
@@ -103,18 +62,15 @@ export const useDragResize = (options: {
     event.preventDefault();
   };
 
-  const style = computed(() => {
-    return {
-      top: `${top.value}px`,
-      left: `${left.value}px`,
-      width: `${width.value}px`,
-      height: `${height.value}px`,
-    };
-  });
+  const style = computed(() => ({
+    top: `${top.value}px`,
+    left: `${left.value}px`,
+    width: `${WIDTH}px`,
+    height: `${HEIGHT}px`,
+  }));
 
   return {
     style,
-    onResizeMouseDown,
     onDragMouseDown,
   };
 };

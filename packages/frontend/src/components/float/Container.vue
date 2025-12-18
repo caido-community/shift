@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { onKeyStroke } from "@vueuse/core";
 import { storeToRefs } from "pinia";
+import { onMounted, ref } from "vue";
 
 import Actions from "@/components/float/Actions.vue";
 import { useDragResize } from "@/components/float/useDragResize";
@@ -17,6 +19,17 @@ const { style, onDragMouseDown } = useDragResize({
 
 const store = useFloatStore();
 const { isRunning, query } = storeToRefs(store);
+
+const textarea = ref<HTMLTextAreaElement>();
+
+onMounted(() => {
+  store.textarea = textarea.value;
+  textarea.value?.focus();
+});
+
+onKeyStroke("Escape", () => {
+  store.closeFloat();
+});
 </script>
 
 <template>
