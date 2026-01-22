@@ -3,7 +3,7 @@ import PrimeVue from "primevue/config";
 import Tooltip from "primevue/tooltip";
 import { type App, createApp } from "vue";
 
-import { Drawer } from "@/components/agent";
+import { AgentSidebar } from "@/components/agent";
 import { SDKPlugin } from "@/plugins/sdk";
 import { type FrontendSDK } from "@/types";
 
@@ -52,7 +52,7 @@ export const useDrawerManager = (sdk: FrontendSDK) => {
     root.appendChild(container);
 
     if (!app) {
-      app = createApp(Drawer, {});
+      app = createApp(AgentSidebar, {});
       app.use(SDKPlugin, sdk);
       app.use(PrimeVue, {
         unstyled: true,

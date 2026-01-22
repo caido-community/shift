@@ -1,65 +1,59 @@
 <script setup lang="ts">
 import Button from "primevue/button";
-import Card from "primevue/card";
 import MenuBar from "primevue/menubar";
 import { computed, ref } from "vue";
 
 import { LearningsContainer } from "@/components/learnings";
 import { ModelsContainer } from "@/components/models";
-import { PromptsContainer } from "@/components/prompts";
 import { RenamingContainer } from "@/components/renaming";
 import { SettingsContainer } from "@/components/settings";
+import { SkillsContainer } from "@/components/skills";
 import { TutorialContainer } from "@/components/tutorial";
 
-const page = ref<
-  | "Custom Prompts"
-  | "Models"
-  | "Learnings"
-  | "AI Session Renaming"
-  | "Settings"
-  | "Tutorial"
->("Custom Prompts");
+const page = ref<"Skills" | "Models" | "Learnings" | "Session Renaming" | "Settings" | "Tutorial">(
+  "Skills"
+);
 
 const items = [
   {
-    label: "Custom Prompts",
-    isActive: () => page.value === "Custom Prompts",
-    onClick: () => {
-      page.value = "Custom Prompts";
+    label: "Models",
+    isActive: () => page.value === "Models",
+    command: () => {
+      page.value = "Models";
     },
   },
   {
-    label: "Models",
-    isActive: () => page.value === "Models",
-    onClick: () => {
-      page.value = "Models";
+    label: "Skills",
+    isActive: () => page.value === "Skills",
+    command: () => {
+      page.value = "Skills";
     },
   },
   {
     label: "Learnings",
     isActive: () => page.value === "Learnings",
-    onClick: () => {
+    command: () => {
       page.value = "Learnings";
     },
   },
   {
-    label: "AI Session Renaming",
-    isActive: () => page.value === "AI Session Renaming",
-    onClick: () => {
-      page.value = "AI Session Renaming";
+    label: "Session Renaming",
+    isActive: () => page.value === "Session Renaming",
+    command: () => {
+      page.value = "Session Renaming";
     },
   },
   {
     label: "Tutorial",
     isActive: () => page.value === "Tutorial",
-    onClick: () => {
+    command: () => {
       page.value = "Tutorial";
     },
   },
   {
     label: "Settings",
     isActive: () => page.value === "Settings",
-    onClick: () => {
+    command: () => {
       page.value = "Settings";
     },
   },
@@ -67,11 +61,11 @@ const items = [
 
 const component = computed(() => {
   switch (page.value) {
-    case "Custom Prompts":
-      return PromptsContainer;
+    case "Skills":
+      return SkillsContainer;
     case "Models":
       return ModelsContainer;
-    case "AI Session Renaming":
+    case "Session Renaming":
       return RenamingContainer;
     case "Learnings":
       return LearningsContainer;
@@ -80,14 +74,12 @@ const component = computed(() => {
     case "Tutorial":
       return TutorialContainer;
     default:
-      return PromptsContainer;
+      return SkillsContainer;
   }
 });
 
 // PrimeVue update broke types and we can't just do :label="item.label"
-const handleLabel = (
-  label: string | ((...args: unknown[]) => string) | undefined,
-) => {
+const handleLabel = (label: string | ((...args: unknown[]) => string) | undefined) => {
   if (typeof label === "function") {
     return label();
   }
@@ -98,51 +90,26 @@ const handleLabel = (
 
 <template>
   <div class="flex flex-col h-full gap-1 overflow-hidden">
-    <Card
-      class="h-fit"
-      :pt="{
-        body: { class: 'h-fit p-0' },
-        content: { class: 'h-fit flex flex-col' },
-      }"
-    >
-      <template #content>
-        <div class="flex justify-between items-center p-4">
-          <div>
-            <h3 class="text-lg font-semibold">
-              <i class="fas fa-wand-magic-sparkles"></i> Shift Agents
-            </h3>
-            <p class="text-sm text-surface-300">
-              Shift Agents allows you to delegate a replay session to an AI
-              agent.
-            </p>
-          </div>
-        </div>
+    <MenuBar
+      :model="items"
+      class="h-12 gap-2">
+      <template #start>
+        <div class="px-2 font-bold">Shift Agents</div>
       </template>
-    </Card>
 
-    <MenuBar :model="items" class="h-12 gap-2">
       <template #item="{ item }">
         <Button
-          :severity="item.isActive() ? 'secondary' : 'contrast'"
-          :outlined="item.isActive()"
+          :severity="item.isActive?.() ? 'secondary' : 'contrast'"
+          :outlined="item.isActive?.()"
           size="small"
-          :text="!item.isActive()"
+          :text="!item.isActive?.()"
           :label="handleLabel(item.label)"
-          @mousedown="item.onClick()"
-        />
+          @mousedown="item.command?.()" />
       </template>
     </MenuBar>
 
-    <Card
-      class="h-full min-h-0"
-      :pt="{
-        body: { class: 'h-full p-0' },
-        content: { class: 'h-fit flex flex-col h-full gap-1 overflow-hidden' },
-      }"
-    >
-      <template #content>
-        <component :is="component" />
-      </template>
-    </Card>
+    <component
+      :is="component"
+      class="h-full min-h-0" />
   </div>
 </template>

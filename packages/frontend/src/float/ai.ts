@@ -1,46 +1,96 @@
-import { InvalidToolInputError, stepCountIs, streamText } from "ai";
+import { type LanguageModelV3ToolCall } from "@ai-sdk/provider";
+import { generateText, InvalidToolInputError, stepCountIs } from "ai";
 import Ajv from "ajv";
+import { Result } from "shared";
 
 import { floatTools } from "@/float/actions";
 import { SYSTEM_PROMPT } from "@/float/prompt";
-import {
-  type ActionQuery,
-  type ActionResult,
-  type FloatToolContext,
-} from "@/float/types";
-import { useConfigStore } from "@/stores/config";
+import { type ActionQueryInput, type ActionResult, type FloatToolContext } from "@/float/types";
+import { useLearningsStore } from "@/stores/learnings";
+import { useModelsStore } from "@/stores/models";
+import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
-import { createModel } from "@/utils";
+import { createModel, resolveModel } from "@/utils";
 
 const ajv = new Ajv({ coerceTypes: true });
 
-type QueryShiftResult = { success: true } | { success: false; error: string };
-
-export async function queryShift(
-  sdk: FrontendSDK,
-  input: ActionQuery,
-): Promise<QueryShiftResult> {
-  const configStore = useConfigStore();
-  const model = createModel(sdk, configStore.floatModel, { reasoning: false });
-
-  const learnings = configStore.learnings.map((value, index) => ({
-    index,
-    value,
-  }));
-
-  const prompt = `
+function buildPrompt(input: ActionQueryInput, learnings: string[]): string {
+  return `
 <context>
 ${JSON.stringify(input.context)}
 </context>
 
 <learnings>
-${JSON.stringify(learnings, null, 2)}
+${learnings.map((learning, index) => `- ${index}: ${learning}`).join("\n")}
 </learnings>
 
 <user>
 ${input.content}
 </user>
 `.trim();
+}
+
+function processToolResult(
+  sdk: FrontendSDK,
+  toolName: string,
+  output: ActionResult
+): string | undefined {
+  switch (output.kind) {
+    case "Error":
+      if (output.error.detail !== undefined) {
+        console.error(`${toolName} detail:`, output.error.detail);
+      }
+      return `${toolName}: ${output.error.message}`;
+    case "Ok": {
+      const message = output.value.message.trim();
+      if (message !== "") {
+        sdk.window.showToast(message, {
+          variant: "info",
+          duration: 3000,
+        });
+      }
+      return undefined;
+    }
+  }
+}
+
+function repairToolCall(
+  toolCall: LanguageModelV3ToolCall,
+  inputSchema: (options: { toolName: string }) => object,
+  error: unknown
+): LanguageModelV3ToolCall | undefined {
+  if (!(error instanceof InvalidToolInputError)) {
+    return undefined;
+  }
+
+  const schema = inputSchema({ toolName: toolCall.toolName });
+  const data = JSON.parse(toolCall.input);
+  ajv.validate(schema, data);
+
+  return {
+    ...toolCall,
+    input: JSON.stringify(data),
+  };
+}
+
+export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Promise<Result> {
+  const settingsStore = useSettingsStore();
+  const learningsStore = useLearningsStore();
+  const modelsStore = useModelsStore();
+
+  const modelData = resolveModel({
+    sdk,
+    savedModelKey: settingsStore.floatModel,
+    enabledModels: modelsStore.getEnabledModels({ usageType: "float" }),
+    usageType: "float",
+  });
+  if (modelData === undefined) {
+    return Result.err("No models available");
+  }
+
+  const model = createModel(sdk, modelData, { reasoning: false });
+  const learnings = learningsStore.entries;
+  const prompt = buildPrompt(input, learnings);
 
   const toolContext: FloatToolContext = {
     sdk,
@@ -50,7 +100,7 @@ ${input.content}
   let executionError: string | undefined;
 
   try {
-    const result = streamText({
+    const result = await generateText({
       model,
       temperature: 0,
       tools: floatTools,
@@ -58,70 +108,52 @@ ${input.content}
       stopWhen: stepCountIs(1),
       system: SYSTEM_PROMPT,
       prompt,
+      abortSignal: input.abortSignal,
       experimental_context: toolContext,
-
-      // try to coerce the tool call input to the schema, helps if model returns invalid type but it can be coerced to the correct type
-      experimental_repairToolCall: ({ toolCall, inputSchema, error }) => {
-        if (!(error instanceof InvalidToolInputError)) {
-          return Promise.resolve(null);
-        }
-
-        const schema = inputSchema({ toolName: toolCall.toolName });
-        const data = JSON.parse(toolCall.input);
-
-        ajv.validate(schema, data);
-
-        return Promise.resolve({
-          ...toolCall,
-          input: JSON.stringify(data),
-        });
-      },
+      experimental_repairToolCall: ({ toolCall, inputSchema, error }) =>
+        Promise.resolve(repairToolCall(toolCall, inputSchema, error) ?? null),
       onStepFinish: ({ toolResults }) => {
         for (const { toolName, output } of toolResults) {
-          const toolResult = output as ActionResult;
-
-          if (!toolResult.success) {
-            executionError = `${toolName}: ${toolResult.error}`;
-            console.error("executionError", executionError);
+          const error = processToolResult(sdk, toolName, output as ActionResult);
+          if (error !== undefined) {
+            executionError = error;
             return;
-          }
-
-          if (toolResult.frontend_message) {
-            sdk.window.showToast(toolResult.frontend_message, {
-              variant: "info",
-              duration: 3000,
-            });
           }
         }
       },
     });
 
-    await result.consumeStream();
-    const toolCalls = await result.toolCalls;
-
-    if (toolCalls.length === 0) {
-      return { success: false, error: "No tool calls were made" };
+    if (result.finishReason === "error") {
+      return Result.err(
+        "Generation failed. This could be a bug, if this happens again, please report this to the Caido team."
+      );
     }
 
-    const invalidToolCall = toolCalls.find(
-      (call) => "invalid" in call && call.invalid === true,
+    if (result.toolCalls.length === 0) {
+      return Result.err("No tool calls were made. Try to rephrase your request.");
+    }
+
+    const invalidToolCall = result.toolCalls.find(
+      (call) => "invalid" in call && call.invalid === true
     );
-    if (invalidToolCall && "error" in invalidToolCall) {
-      const error = invalidToolCall.error as Error;
-      console.error("invalidToolCall error", error);
-      return {
-        success: false,
-        error: `Error occurred while calling tool ${invalidToolCall.toolName}. See the console for detailed logs.`,
-      };
+    if (invalidToolCall !== undefined && "error" in invalidToolCall) {
+      return Result.err(
+        `Model returned invalid input for tool ${invalidToolCall.toolName}. Consider using different model or rephrase your request.`
+      );
     }
 
     if (executionError !== undefined) {
-      return { success: false, error: executionError };
+      return Result.err(executionError);
     }
 
-    return { success: true };
+    return Result.ok(undefined);
   } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      return Result.err("USER_ABORTED");
+    }
+
     const message = error instanceof Error ? error.message : String(error);
-    return { success: false, error: message };
+    const truncatedMessage = message.length > 250 ? message.slice(0, 250) + "..." : message;
+    return Result.err(truncatedMessage);
   }
 }

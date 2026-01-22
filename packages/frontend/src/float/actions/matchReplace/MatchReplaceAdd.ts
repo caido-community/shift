@@ -1,0 +1,185 @@
+/* eslint-disable prefer-const */
+import {
+  type MatchReplaceMatcherName,
+  type MatchReplaceMatcherRaw,
+  type MatchReplaceOperationBody,
+  type MatchReplaceOperationFirstLine,
+  type MatchReplaceOperationHeader,
+  type MatchReplaceOperationMethod,
+  type MatchReplaceOperationPath,
+  type MatchReplaceOperationQuery,
+  type MatchReplaceReplacerTerm,
+  type MatchReplaceReplacerWorkflow,
+  type MatchReplaceSection,
+} from "@caido/sdk-frontend";
+import { tool } from "ai";
+import { z } from "zod";
+
+import { ActionResult, type FloatToolContext } from "@/float/types";
+
+const sectionEnum = z.enum([
+  "SectionRequestBody",
+  "SectionResponseBody",
+  "SectionRequestFirstLine",
+  "SectionResponseFirstLine",
+  "SectionResponseStatusCode",
+  "SectionRequestHeader",
+  "SectionResponseHeader",
+  "SectionRequestQuery",
+  "SectionRequestMethod",
+  "SectionRequestPath",
+]);
+
+const matcherTypeEnum = z.enum([
+  "MatcherRawRegex",
+  "MatcherRawValue",
+  "MatcherRawFull",
+  "MatcherName",
+]);
+
+const replacerTypeEnum = z.enum(["ReplacerTerm", "ReplacerWorkflow"]);
+
+const inputSchema = z.object({
+  ruleName: z.string().describe("Name of the match and replace rule (non-empty)"),
+  section: sectionEnum.describe("Section to apply rule to"),
+  operation: z.string().describe("Operation type for the rule (non-empty)"),
+  matcherType: matcherTypeEnum
+    .nullable()
+    .describe("Type of matcher to use. Can be null if operation doesn't use a matcher"),
+  matcher: z
+    .string()
+    .nullable()
+    .describe("Matcher pattern or value. Can be null if matcherType is null"),
+  replacerType: replacerTypeEnum
+    .nullable()
+    .describe("Type of replacer to use. Can be null if operation doesn't involve replacement"),
+  replacer: z
+    .string()
+    .nullable()
+    .describe("Replacement pattern or value. Can be null if replacerType is null"),
+  query: z.string().describe("HTTPQL query filter. Use empty string if not provided."),
+});
+
+type MatchReplaceOperation =
+  | MatchReplaceOperationPath
+  | MatchReplaceOperationHeader
+  | MatchReplaceOperationMethod
+  | MatchReplaceOperationBody
+  | MatchReplaceOperationQuery
+  | MatchReplaceOperationFirstLine;
+
+export const matchReplaceAddTool = tool({
+  description: "Create a new match and replace rule with specified configuration",
+  inputSchema,
+  outputSchema: ActionResult.schema,
+  execute: async (
+    { ruleName, section, operation, matcherType, matcher, replacerType, replacer, query },
+    { experimental_context }
+  ) => {
+    const { sdk } = experimental_context as FloatToolContext;
+    let crMatcher: MatchReplaceMatcherRaw | MatchReplaceMatcherName;
+    let crReplacer: MatchReplaceReplacerTerm | MatchReplaceReplacerWorkflow;
+    let crOperation: MatchReplaceOperation;
+    let crSection: MatchReplaceSection;
+
+    switch (matcherType) {
+      case "MatcherRawRegex":
+        crMatcher = {
+          kind: "MatcherRawRegex",
+          regex: matcher!,
+        };
+        break;
+      case "MatcherRawValue":
+        crMatcher = {
+          kind: "MatcherRawValue",
+          value: matcher!,
+        };
+        break;
+      case "MatcherName":
+        crMatcher = {
+          kind: "MatcherName",
+          name: matcher!,
+        };
+        break;
+      case "MatcherRawFull":
+        crMatcher = {
+          kind: "MatcherRawFull" as const,
+        };
+        break;
+      case undefined:
+      case null:
+        break;
+      default:
+        return ActionResult.err(`Invalid matcher type: ${matcherType}`);
+    }
+    switch (replacerType) {
+      case "ReplacerTerm":
+        crReplacer = {
+          kind: "ReplacerTerm" as const,
+          term: replacer!,
+        };
+        break;
+      case "ReplacerWorkflow":
+        crReplacer = {
+          kind: "ReplacerWorkflow",
+          workflowId: replacer!,
+        };
+        break;
+      case undefined:
+      case null:
+        break;
+      default:
+        return ActionResult.err(`Invalid replacer type: ${replacerType}`);
+    }
+    const tempOperation: Record<string, unknown> = { kind: operation };
+    const operationMap: Record<string, string[]> = {
+      OperationStatusCodeUpdate: ["replacer"],
+      OperationQueryRaw: ["matcher", "replacer"],
+      OperationQueryAdd: ["matcher", "replacer"],
+      OperationQueryRemove: ["matcher"],
+      OperationQueryUpdate: ["matcher", "replacer"],
+      OperationPathRaw: ["matcher", "replacer"],
+      OperationBodyRaw: ["matcher", "replacer"],
+      OperationFirstLineRaw: ["matcher", "replacer"],
+      OperationHeaderRaw: ["matcher", "replacer"],
+      OperationHeaderUpdate: ["matcher", "replacer"],
+      OperationHeaderAdd: ["matcher", "replacer"],
+      OperationHeaderRemove: ["matcher"],
+      OperationMethodUpdate: ["replacer"],
+    };
+    const operationFields = operationMap[operation] || [];
+    if (operationFields.includes("matcher")) {
+      if (matcherType !== undefined && matcherType !== null) {
+        tempOperation.matcher = crMatcher!;
+      } else {
+        return ActionResult.err(`Matcher is required for operation: ${operation}`);
+      }
+    }
+    if (operationFields.includes("replacer")) {
+      if (replacerType) {
+        tempOperation.replacer = crReplacer!;
+      } else {
+        return ActionResult.err(`Replacer is required for operation: ${operation}`);
+      }
+    }
+    crOperation = tempOperation as MatchReplaceOperation;
+    crSection = {
+      kind: section,
+      operation: crOperation,
+    } as MatchReplaceSection;
+
+    const res = await sdk.matchReplace.createRule({
+      name: ruleName,
+      section: crSection,
+      collectionId: "1",
+      query: query || "",
+      sources: [],
+    });
+
+    if (res !== undefined && !res.isEnabled) {
+      await sdk.matchReplace.toggleRule(res.id, true);
+    }
+
+    return ActionResult.ok(`Match and replace rule ${ruleName} created successfully`);
+  },
+});

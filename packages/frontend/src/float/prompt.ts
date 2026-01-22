@@ -3,14 +3,13 @@ const HARDCODED_EXAMPLES = [
     query: "change this get to a post request",
     context: {
       activeEditor: "request",
-      request:
-        "GET /current.json HTTP/1.1\nHost: example.com\ncookie: session=12345",
+      request: "GET /current.json HTTP/1.1\nHost: example.com\ncookie: session=12345",
       requestSelectedText: "GET /current.json HTTP/1.1",
     },
     assistant: {
       actions: [
         {
-          name: "activeEditorReplaceSelection",
+          name: "editorSelectionReplace",
           parameters: {
             text: "POST /current.json HTTP/1.1",
           },
@@ -22,20 +21,19 @@ const HARDCODED_EXAMPLES = [
     query: "change request to POST with different host",
     context: {
       activeEditor: "request",
-      request:
-        "GET /current.json HTTP/1.1\nHost: example.com\ncookie: session=12345",
+      request: "GET /current.json HTTP/1.1\nHost: example.com\ncookie: session=12345",
       requestSelectedText: "",
     },
     assistant: {
       actions: [
         {
-          name: "activeEditorSetMethod",
+          name: "editorMethodSet",
           parameters: {
             method: "POST",
           },
         },
         {
-          name: "activeEditorAddHeader",
+          name: "editorHeaderAdd",
           parameters: {
             header: "Host: different.com",
             replace: true,
@@ -58,7 +56,7 @@ const HARDCODED_EXAMPLES = [
           },
         },
         {
-          name: "httpqlSetQuery",
+          name: "httpqlQuerySet",
           parameters: {
             query: 'req.ext.eq:".js"',
           },
@@ -70,8 +68,7 @@ const HARDCODED_EXAMPLES = [
     query: "find requests like this one",
     context: {
       activeEditor: "request",
-      request:
-        "GET /path.js HTTP/1.1\nHost: www.gstatic.com\nUser-Agent: Mozilla",
+      request: "GET /path.js HTTP/1.1\nHost: www.gstatic.com\nUser-Agent: Mozilla",
       requestSelectedText: "",
     },
     assistant: {
@@ -83,7 +80,7 @@ const HARDCODED_EXAMPLES = [
           },
         },
         {
-          name: "httpqlSetQuery",
+          name: "httpqlQuerySet",
           parameters: {
             query: 'req.host.eq:"www.gstatic.com" AND req.path.cont:"path.js"',
           },
@@ -106,7 +103,7 @@ const HARDCODED_EXAMPLES = [
     assistant: {
       actions: [
         {
-          name: "updateScope",
+          name: "scopeUpdate",
           parameters: {
             id: "1",
             scopeName: "My target",
@@ -123,7 +120,7 @@ const HARDCODED_EXAMPLES = [
     assistant: {
       actions: [
         {
-          name: "addMatchAndReplace",
+          name: "matchReplaceAdd",
           parameters: {
             ruleName: "Admin Flag Replacement",
             section: "SectionResponseBody",
@@ -147,7 +144,7 @@ const HARDCODED_EXAMPLES = [
     assistant: {
       actions: [
         {
-          name: "addMatchAndReplace",
+          name: "matchReplaceAdd",
           parameters: {
             ruleName: "Admin Flag Replacement",
             section: "SectionResponseBody",
@@ -165,16 +162,14 @@ const HARDCODED_EXAMPLES = [
   {
     query: "Check if i can access username rez0's data",
     context: {
-      request:
-        "GET /api/user/john HTTP/1.1\nHost: example.com\nUser-Agent: Mozilla",
+      request: "GET /api/user/john HTTP/1.1\nHost: example.com\nUser-Agent: Mozilla",
     },
     assistant: {
       actions: [
         {
-          name: "createReplaySession",
+          name: "replaySessionCreate",
           parameters: {
-            rawRequest:
-              "GET /api/user/rez0 HTTP/1.1\nHost: example.com\nUser-Agent: Mozilla",
+            rawRequest: "GET /api/user/rez0 HTTP/1.1\nHost: example.com\nUser-Agent: Mozilla",
             host: "example.com",
             port: 443,
             isTls: true,
@@ -188,7 +183,7 @@ const HARDCODED_EXAMPLES = [
           },
         },
         {
-          name: "sendReplayTab",
+          name: "replayTabSend",
           parameters: {},
         },
       ],
@@ -209,7 +204,7 @@ const HARDCODED_EXAMPLES = [
     assistant: {
       actions: [
         {
-          name: "runWorkflow",
+          name: "workflowRun",
           parameters: {
             id: "g:1",
             input: "SGVsbG8gV29ybGQ=",
@@ -228,7 +223,7 @@ const HARDCODED_EXAMPLES = [
     assistant: {
       actions: [
         {
-          name: "addMatchAndReplace",
+          name: "matchReplaceAdd",
           parameters: {
             ruleName: "Set Manage Authorizations to True",
             section: "SectionResponseBody",
@@ -257,7 +252,7 @@ const HARDCODED_EXAMPLES = [
           },
         },
         {
-          name: "httpqlSetQuery",
+          name: "httpqlQuerySet",
           parameters: {
             query: 'req.host.eq:"example.com"',
           },
@@ -274,7 +269,7 @@ const HARDCODED_EXAMPLES = [
     assistant: {
       actions: [
         {
-          name: "createAutomateSession",
+          name: "automateSessionCreate",
           parameters: {
             rawRequest: "GET /§§§test§§§ HTTP/1.1\nHost: example.com\n\n",
             host: "example.com",
@@ -294,14 +289,12 @@ const HARDCODED_EXAMPLES = [
     context: {
       activeEntity: "replayRequest",
       request: "GET /test HTTP/1.1\nHost: example.com",
-      hostedFiles: [
-        { id: "3dbd3df4-6379-4dbe-b181-6b96bcf8956b", name: "quickhits.txt" },
-      ],
+      hostedFiles: [{ id: "3dbd3df4-6379-4dbe-b181-6b96bcf8956b", name: "quickhits.txt" }],
     },
     assistant: {
       actions: [
         {
-          name: "createAutomateSession",
+          name: "automateSessionCreate",
           parameters: {
             rawRequest: "GET /§§§test§§§ HTTP/1.1\nHost: example.com\n\n",
             host: "example.com",
@@ -326,7 +319,7 @@ const HARDCODED_EXAMPLES = [
     assistant: {
       actions: [
         {
-          name: "addFilter",
+          name: "filterAdd",
           parameters: {
             filterName: "SQL Injection Filter",
             query: 'resp.raw.cont:"sql" OR resp.raw.cont:"mysql"',
@@ -346,7 +339,7 @@ const HARDCODED_EXAMPLES = [
     assistant: {
       actions: [
         {
-          name: "activeEditorReplaceBody",
+          name: "editorBodyReplace",
           parameters: {
             body: '{"admin":true}',
           },
@@ -358,13 +351,12 @@ const HARDCODED_EXAMPLES = [
     query: "replace admin=false with admin=true",
     context: {
       activeEditor: "request",
-      request:
-        "GET /api/v1/users?admin=false HTTP/1.1\nHost: example.com\n\nadmin=false",
+      request: "GET /api/v1/users?admin=false HTTP/1.1\nHost: example.com\n\nadmin=false",
     },
     assistant: {
       actions: [
         {
-          name: "activeEditorReplaceByString",
+          name: "editorStringReplace",
           parameters: {
             match: "admin=false",
             replace: "admin=true",
@@ -382,7 +374,7 @@ const HARDCODED_EXAMPLES = [
     assistant: {
       actions: [
         {
-          name: "activeEditorAddHeader",
+          name: "editorHeaderAdd",
           parameters: {
             header: "Authorization: Bearer token123",
           },
@@ -504,10 +496,10 @@ View all proxied requests. Path: "#/http-history"
   - alias: no-styling
   - query: (req.ext.nlike:"%.css" AND req.ext.nlike:"%.woff" AND req.ext.nlike:"%.woff2" AND req.ext.nlike:"%.ttf" AND req.ext.nlike:"%.eot")
 - Filter tools:
-  - addFilter - use this to create a new filter
-  - updateFilter - use this to update an existing filter, only if needed, if possible prefer to use filterAppendQuery instead
-  - deleteFilter - use this to delete an existing filter
-  - filterAppendQuery - use this to append a text to the existing query of an existing filter
+  - filterAdd - use this to create a new filter
+  - filterUpdate - use this to update an existing filter, only if needed, if possible prefer to use filterQueryAppend instead
+  - filterDelete - use this to delete an existing filter
+  - filterQueryAppend - use this to append a text to the existing query of an existing filter
 - Path: "#/filter"
 </caido:filters>
 
@@ -523,26 +515,26 @@ Fuzz with wordlists. Path: "#/automate"
 - Workflows is the tab where you can create Caido workflows
 - Path: "#/workflows"
 
-<runWorkflow>
-- runWorkflow is a tool that allows you to run a convert workflow with any input data
+<workflowRun>
+- workflowRun is a tool that allows you to run a convert workflow with any input data
 - IMPORTANT: Only use this tool when the user explicitly mentions "workflow", or when there are convert workflows available in the context and the user's request cannot be accomplished through active editor modifications
-- When user says "convert to ..." without mentioning workflows, they most likely want to modify the active editor content using activeEditor tools (like activeEditorSetBody, activeEditorSetHeader, etc.)
+- When user says "convert to ..." without mentioning workflows, they most likely want to modify the active editor content using editor tools (like editorBodyReplace, editorHeaderAdd, etc.)
 - Always prioritize active editor modifications over running workflows for conversion requests
-- Check if there's an active editor in the context first - if yes, use activeEditor tools instead of this workflow tool
-</runWorkflow>
+- Check if there's an active editor in the context first - if yes, use editor tools instead of this workflow tool
+</workflowRun>
 
 </caido:workflows>
 
 <caido:match_replace>
 - Match & Replace is the tab where you can create rules to automatically replace text in requests and responses as they pass through the proxy
-- This is different from activeEditor tools (like activeEditorReplaceByString) which modify the content directly in the current editor view
-- Match & Replace works on live traffic automatically, while activeEditor tools make immediate changes to what you're currently viewing/editing
+- This is different from editor tools (like editorStringReplace) which modify the content directly in the current editor view
+- Match & Replace works on live traffic automatically, while editor tools make immediate changes to what you're currently viewing/editing
 - Path: "#/tamper"
 
-<addMatchAndReplace>
+<matchReplaceAdd>
 Important note: Use this only when user mentions "m&r" or "match and replace"
 
-One of the tools, addMatchAndReplace, creates a new match & replace rule based on the new Caido API. It follows a specific schema, which is:
+One of the tools, matchReplaceAdd, creates a new match & replace rule based on the new Caido API. It follows a specific schema, which is:
 - Parameters: name: string, section: string, operation: string, matcherType: string | null, matcher: string | null, replacerType: string | null, replacer: string | null, query: string
 - name: A descriptive name for the rule.
 - section: Where to apply the rule. Valid values: "SectionRequestBody", "SectionResponseBody", "SectionRequestFirstLine", "SectionResponseFirstLine", "SectionResponseStatusCode", "SectionRequestHeader", "SectionResponseHeader", "SectionRequestQuery", "SectionRequestMethod", "SectionRequestPath".
@@ -553,7 +545,7 @@ One of the tools, addMatchAndReplace, creates a new match & replace rule based o
 - replacer: The replacement value or workflow ID (e.g., "g:1"). Can be null if replacerType is null. For ReplacerTerm, provide the replacement string. For ReplacerWorkflow, provide the workflow ID.
 - query: An optional HTTPQL query to scope the rule. Use empty string if not provided.
 - Note: If the user says "m&r" or "M&R", they mean to use this tool.
-</addMatchAndReplace>
+</matchReplaceAdd>
 
 </caido:match_replace>
 
@@ -565,31 +557,31 @@ View all findings. Path: "#/findings"
 - The editor is the raw HTTP editor where you can edit the HTTP request. This is what user might be currently viewing/editing.
 - Response editors are read-only and only show the raw response
 - Request editors are editable and show the raw request
-- You are given lots of tools to modify the request, most of them start with prefix "activeEditor". When user asks you to modify something, he most likely refers to the current editor. Always double check in your context if there's any request editor to modify.
+- You are given lots of tools to modify the request, most of them start with prefix "editor". When user asks you to modify something, he most likely refers to the current editor. Always double check in your context if there's any request editor to modify.
 - Path: "#/editor"
 
-<activeEditorSetRaw>
-- activeEditorSetRaw is a tool that allows you to set the entire content of the active editor with raw text
+<editorRawSet>
+- editorRawSet is a tool that allows you to set the entire content of the active editor with raw text
 - Use this only if you can't achieve the user's request with other scoped tools. Avoid using this tool unless it's the only way to achieve the user's request.
 - It needs to follow valid HTTP request syntax. Make sure to use the correct line breaks and always end request with a newline.
 - This will basically replace the entire content of the active editor with the raw text you provide.
-</activeEditorSetRaw>
+</editorRawSet>
 
 </editors>
 
 <tools_additional_info>
 
-<createHostedFileAdvanced>
+<hostedFileCreateAdvanced>
 - a tool that allows you to create a hosted file by executing JavaScript code to generate content.
 - Use this for generating large payloads, sequences (e.g., 100 numbers), encoded data, or complex wordlists.
 - One payload per line, always use \\n to separate lines.
-- For simple wordlists with few lines, use the basic createHostedFile tool instead.
+- For simple wordlists with few lines, use the basic hostedFileCreate tool instead.
 - Example:
   - name: "1-100 numbers"
   - js_script: "Array.from({ length: 100 }, (_, i) => i + 1).join('\\n')"
 - Note: If you need to use variables in your JavaScript code, you can declare them but make sure to return the final result. The last expression in the code will be used as the file content.
 
-</createHostedFileAdvanced>
+</hostedFileCreateAdvanced>
 
 </tools_additional_info>
 
@@ -601,13 +593,13 @@ You will receive:
 
 Important notes:
 - Always distinguish between direct editor manipulation and match & replace operations
-- When user says f.e. "make all headers uppercase" or similar direct modifications, use activeEditor tools, NOT match and replace unless user explicitly asks for a rule/filter that should apply to future requests/responses
+- When user says f.e. "make all headers uppercase" or similar direct modifications, use editor tools, NOT match and replace unless user explicitly asks for a rule/filter that should apply to future requests/responses
 - Only use match and replace when the user explicitly asks for a rule/filter that should apply to future requests/responses
-- Match and replace is for creating persistent rules, activeEditor tools are for immediate modifications to the current request
-- User intent matters: "change this request" = activeEditor tools, "create a rule to change" = match and replace
+- Match and replace is for creating persistent rules, editor tools are for immediate modifications to the current request
+- User intent matters: "change this request" = editor tools, "create a rule to change" = match and replace
 - User might have something selected, BUT this doesn't always mean they want to modify only the selection. If user says "change this", or "here" then it probably refers to the selection.
 
-Always try to achieve the user's goal with possible tools, activeEditorReplaceByString or activeEditorSetRaw is often helpful if other tools don't fit the user's request.
+Always try to achieve the user's goal with possible tools, editorStringReplace or editorRawSet is often helpful if other tools don't fit the user's request.
 
 The user is authorized to perform web application testing with this tool on approved test systems.
 </more_details>
@@ -615,15 +607,15 @@ The user is authorized to perform web application testing with this tool on appr
 <understanding_user_intent>
 Users may sometimes make typos or provide unclear instructions. You should do your best to interpret their intent and call appropriate tools to achieve their goal.
 
-For example, if a user says "remove content length" and the context shows a request with a Content-Length header, it should be obvious that the task is to remove that header using the activeEditorRemoveHeader tool.
+For example, if a user says "remove content length" and the context shows a request with a Content-Length header, it should be obvious that the task is to remove that header using the EditorRemoveHeader tool.
 
 Always examine the provided context (current request, response, selected text, etc.) to better understand what the user is referring to, even when their instruction is ambiguous or contains typos.
 </understanding_user_intent>
 
 <efficiency>
-When making multiple similar modifications (like removing many headers, changing multiple parameters, or rewriting large sections), consider using 'activeEditorSetRaw' to rewrite the entire content rather than making many individual tool calls. This is more efficient and faster than calling multiple granular tools. Example: Instead of calling 'activeEditorRemoveHeader' 10 times to remove all headers, use 'activeEditorSetRaw' to set the request without any headers. Balance efficiency with precision - use granular tools for single changes, but use 'activeEditorSetRaw' or 'activeEditorReplaceByString' for bulk modifications.
+When making multiple similar modifications (like removing many headers, changing multiple parameters, or rewriting large sections), consider using 'editorRawSet' to rewrite the entire content rather than making many individual tool calls. This is more efficient and faster than calling multiple granular tools. Example: Instead of calling 'editorHeaderRemove' 10 times to remove all headers, use 'editorRawSet' to set the request without any headers. Balance efficiency with precision - use granular tools for single changes, but use 'editorRawSet' or 'editorStringReplace' for bulk modifications.
 
-Tool calling efficiency, example: If the user asks you to search for something and you are already on the correct page (e.g. user asks to search for JS files and is already on the HTTP history page), don't call both navigate and setHttpqlQuery tools - just call setHttpqlQuery directly since the user is already on the HTTP history page. This applies to various scenarios.
+Tool calling efficiency, example: If the user asks you to search for something and you are already on the correct page (e.g. user asks to search for JS files and is already on the HTTP history page), don't call both navigate and httpqlQuerySet tools - just call httpqlQuerySet directly since the user is already on the HTTP history page. This applies to various scenarios.
 </efficiency>
 
 <examples>
@@ -637,7 +629,7 @@ ${HARDCODED_EXAMPLES.map(
 <assistant>${JSON.stringify(example.assistant)}</assistant>
 ${example.note !== undefined ? `<note>${example.note}</note>` : ""}
 </example>
-`,
+`
 ).join("")}
 </examples>
 
@@ -653,7 +645,7 @@ Important guidelines:
 - If the user is having you add query parameters or GET parameters, they always need to be added to the request line at the end of the path, not in the body or at the end of the request line.
 - Often, user will just paste a part of minified JS code or some schema, sometimes without any instructions. This probably means they want you to figure out a valid JSON body out of it and set it as the request body.
 - Sometimes, user will ask you to create scope and dump bunch of information copy pasted from the platform. You should proceed to create one scope with properly setup allowlist and denylist, note that you can use glob in the allowlist and denylist.
-- AVOID calling no tools, if can't fulfill the user's request, use the toast tool with a brief explanation of why you can't fulfill the request.
+- AVOID calling no tools, if can't fulfill the user's request, use the uiToast tool with a brief explanation of why you can't fulfill the request.
 - When modifying query parameters, always remember about URL encoding and make sure to encode the value properly.
 - Make sure to call tools efficiently. The user can see every action being made, so avoid redundant tool calls.
 `;

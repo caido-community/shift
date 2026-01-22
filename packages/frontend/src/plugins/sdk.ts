@@ -1,13 +1,22 @@
-import { inject, type InjectionKey, type Plugin } from "vue";
+import type { Plugin } from "vue";
 
 import { type FrontendSDK } from "@/types";
 
-const KEY: InjectionKey<FrontendSDK> = Symbol("FrontendSDK");
+let sdkInstance: FrontendSDK | undefined;
 
-export const SDKPlugin: Plugin = (app, sdk: FrontendSDK) => {
-  app.provide(KEY, sdk);
+const setSDK = (sdk: FrontendSDK) => {
+  sdkInstance = sdk;
 };
 
-export const useSDK = () => {
-  return inject(KEY) as FrontendSDK;
+const getSDK = (): FrontendSDK => {
+  if (!sdkInstance) {
+    throw new Error("SDK not initialized");
+  }
+  return sdkInstance;
 };
+
+export const SDKPlugin: Plugin = (_app, sdk: FrontendSDK) => {
+  setSDK(sdk);
+};
+
+export const useSDK = () => getSDK();

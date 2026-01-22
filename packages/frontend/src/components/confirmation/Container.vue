@@ -26,13 +26,14 @@ const handleConfirm = () => {
 <template>
   <div
     class="flex flex-col gap-2 h-[250px] w-[400px] items-end"
-    @keydown="handleKeydown"
-  >
-    <Textarea :value="content" readonly class="flex-1 w-full" />
+    @keydown="handleKeydown">
+    <Textarea
+      :value="content"
+      readonly
+      class="flex-1 w-full" />
     <button
       class="bg-primary-700 border border-primary-700 rounded-md cursor-pointer text-white px-4 py-2"
-      @click="handleConfirm"
-    >
+      @click="handleConfirm">
       Confirm (Ctrl+Enter)
     </button>
   </div>

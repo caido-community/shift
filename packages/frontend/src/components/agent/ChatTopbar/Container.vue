@@ -1,40 +1,36 @@
 <script setup lang="ts">
-import { useAgentsStore } from "@/stores/agents";
-import { useUIStore } from "@/stores/ui";
+import { useTopbar } from "./useTopbar";
 
-const uiStore = useUIStore();
-const agentStore = useAgentsStore();
-
-const closeDrawer = () => {
-  uiStore.toggleDrawer();
-};
-
-const clearConversation = () => {
-  if (agentStore.selectedAgent) {
-    agentStore.selectedAgent.messages = [];
-    agentStore.selectedToolContext?.todoManager.clearTodos();
-  }
-};
+const {
+  clearConversation,
+  debugMode,
+  debugToolsEnabled,
+  toggleDebugMode,
+  closeDrawer,
+  copyAgentState,
+} = useTopbar();
 </script>
 
 <template>
-  <div class="h-10 p-2">
-    <div class="flex items-center justify-end h-full">
-      <div class="flex items-center gap-2">
-        <i
-          v-tooltip.bottom="'Clear conversation'"
-          class="fas fa-trash text-surface-400 hover:text-surface-200 cursor-pointer p-1 text-sm"
-          :class="{
-            'opacity-50 cursor-not-allowed': !agentStore.selectedAgent,
-          }"
-          @click="clearConversation"
-        />
-        <i
-          v-tooltip.bottom="'Close'"
-          class="fas fa-times text-surface-400 hover:text-surface-200 cursor-pointer p-1 text-sm"
-          @click="closeDrawer"
-        />
-      </div>
-    </div>
+  <div class="flex items-center justify-end gap-2 h-8">
+    <i
+      v-if="debugToolsEnabled"
+      :class="[
+        'fas fa-bug cursor-pointer p-1 text-xs transition-colors',
+        debugMode
+          ? 'text-yellow-400 hover:text-yellow-300'
+          : 'text-surface-400 hover:text-surface-200',
+      ]"
+      @click="toggleDebugMode" />
+    <i
+      v-if="debugToolsEnabled"
+      class="fas fa-copy text-surface-400 hover:text-surface-200 cursor-pointer p-1 text-xs"
+      @click="copyAgentState" />
+    <i
+      class="fas fa-trash text-surface-400 hover:text-surface-200 cursor-pointer p-1 text-xs"
+      @click="clearConversation" />
+    <i
+      class="fas fa-times text-surface-400 hover:text-surface-200 cursor-pointer p-1 text-xs"
+      @click="closeDrawer" />
   </div>
 </template>

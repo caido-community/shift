@@ -1,0 +1,127 @@
+---
+globs: **/**.vue, **/**.ts
+alwaysApply: false
+description: Vue Best Practices
+---
+
+## Update Optimizations
+
+### Props Stability
+
+- Keep props passed to child components as stable as possible.
+- Instead of passing reactive IDs and comparing inside child:
+
+```vue
+<!-- Bad: Every ListItem updates when activeId changes -->
+<ListItem
+  v-for="item in list"
+  :id="item.id"
+  :active-id="activeId" />
+```
+
+- Compute the derived value in the parent and pass it directly:
+
+```vue
+<!-- Good: Only items whose active status changed will update -->
+<ListItem
+  v-for="item in list"
+  :id="item.id"
+  :active="item.id === activeId" />
+```
+
+## Computed Stability
+
+- Computed properties only trigger effects when their value changes.
+- Avoid returning new objects from computed properties when the underlying data hasn't changed:
+
+```typescript
+// Bad: Creates new object every time, always triggers updates
+const computedObj = computed(() => {
+  return {
+    isEven: count.value % 2 === 0
+  }
+})
+
+// Good: Returns old value if nothing changed
+const computedObj = computed((oldValue) => {
+  const newValue = {
+    isEven: count.value % 2 === 0
+  }
+  if (oldValue && oldValue.isEven === newValue.isEven) {
+    return oldValue
+  }
+  return newValue
+})
+```
+
+- Always perform the full computation before comparing and returning the old value to ensure dependencies are collected.
+
+## Reduce Reactivity Overhead for Large Immutable Structures
+
+- For large arrays of deeply nested objects, use `shallowRef()` and `shallowReactive()` to opt-out of deep reactivity.
+- Shallow APIs create state reactive only at the root level, keeping nested property access fast.
+- When using shallow reactivity, treat nested objects as immutable and trigger updates by replacing the root state:
+
+```typescript
+const shallowArray = shallowRef([/* big list of deep objects */])
+
+// Bad: Won't trigger updates
+shallowArray.value.push(newObject)
+shallowArray.value[0].foo = 1
+
+// Good: Replace the root state
+shallowArray.value = [...shallowArray.value, newObject]
+shallowArray.value = [
+  { ...shallowArray.value[0], foo: 1 },
+  ...shallowArray.value.slice(1)
+]
+```
+
+## MaybeRefOrGetter with toValue
+
+- Use `MaybeRefOrGetter<T>` type for flexible function parameters that can accept refs, getters, or plain values.
+- Use `toValue()` to extract the actual value from `MaybeRefOrGetter` parameters:
+
+7. Handle Async Operations with Error and Loading States
+
+Always handle every possible state for data fetching or async logic, using separate components for each state: loading, success, error, and empty.
+
+Example:
+
+```vue
+<script setup lang="ts">
+import { ref } from "vue";
+import type { User } from "@/types";
+
+const user = ref<User | undefined>(undefined);
+const loading = ref(true);
+const error = ref<Error | undefined>(undefined);
+
+async function fetchUserData(userId: string) {
+  loading.value = true;
+  error.value = undefined;
+
+  try {
+    const response = await fetch(`/api/users/${userId}`);
+    if (!response.ok) throw new Error("Failed to fetch user data");
+    user.value = await response.json();
+  } catch (e) {
+    error.value = e instanceof Error ? e : new Error("Unknown error");
+    user.value = undefined;
+  } finally {
+    loading.value = false;
+  }
+}
+</script>
+
+<template>
+  <div>
+    <LoadingSpinner v-if="loading" />
+    <ErrorMessage v-else-if="error !== undefined" :message="error.message" @retry="() => fetchUserData('replace-id')" />
+    <UserProfile v-else-if="user !== undefined" :user="user" />
+    <EmptyState v-else message="No user data available" />
+  </div>
+</template>
+```
+
+This ensures each state (loading, error, data, empty) is handled explicitly and the UI never displays an inconsistent result.

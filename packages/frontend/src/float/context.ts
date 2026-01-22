@@ -2,17 +2,17 @@ import { type EditorView } from "@codemirror/view";
 
 import { type ActionContext } from "@/float/types";
 import { type FrontendSDK } from "@/types";
-import { type EditorElement } from "@/utils";
+import { type EditorElement, isPresent } from "@/utils";
 
 // TODO: we rely a lot on the DOM of Caido, we could create a test suite that would test different pages to make sure the elements we use exist
 
 const getBaseContext = (sdk: FrontendSDK): ActionContext => {
   const getActiveProject = () => {
-    const projectNameElement = document.querySelector(
-      ".c-current-project[data-project-id]",
-    ) as HTMLElement | undefined;
+    const projectNameElement = document.querySelector(".c-current-project[data-project-id]") as
+      | HTMLElement
+      | undefined;
 
-    if (projectNameElement === undefined) {
+    if (!isPresent(projectNameElement)) {
       return {
         name: "No project selected",
         id: "",
@@ -37,18 +37,18 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
   };
 
   const getEditorsInfo = () => {
-    const requestEditor = document.querySelector(
-      ".cm-content[data-language='http-request']",
-    ) as EditorElement | undefined;
-    const responseEditor = document.querySelector(
-      ".cm-content[data-language='http-response']",
-    ) as EditorElement | undefined;
+    const requestEditor = document.querySelector(".cm-content[data-language='http-request']") as
+      | EditorElement
+      | undefined;
+    const responseEditor = document.querySelector(".cm-content[data-language='http-response']") as
+      | EditorElement
+      | undefined;
 
     const requestEditorView = requestEditor?.cmView?.view;
     const responseEditorView = responseEditor?.cmView?.view;
 
     const getSelectedText = (editor: EditorView | undefined) => {
-      if (editor) {
+      if (isPresent(editor)) {
         const { from, to } = editor.state.selection.main;
         return editor.state.sliceDoc(from, to);
       }
@@ -58,40 +58,30 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
 
     return {
       requestEditor: {
-        raw:
-          requestEditor?.cmView?.view.state.doc.toString() ??
-          "No request editor found",
-        selection:
-          getSelectedText(requestEditorView) ??
-          "No selection in request editor",
+        raw: requestEditor?.cmView?.view.state.doc.toString() ?? "No request editor found",
+        selection: getSelectedText(requestEditorView) ?? "No selection in request editor",
       },
       responseEditor: {
-        raw:
-          responseEditor?.cmView?.view.state.doc.toString() ??
-          "No response editor found",
-        selection:
-          getSelectedText(responseEditorView) ??
-          "No selection in response editor",
+        raw: responseEditor?.cmView?.view.state.doc.toString() ?? "No response editor found",
+        selection: getSelectedText(responseEditorView) ?? "No selection in response editor",
       },
     };
   };
 
   const activeEditor = () => {
     const activeEditor = sdk.window.getActiveEditor();
-    if (activeEditor === undefined) {
+    if (!isPresent(activeEditor)) {
       return "No editor is selected";
     }
 
-    const dataLanguageElement = activeEditor
-      .getEditorView()
-      .dom.querySelector("[data-language]");
+    const dataLanguageElement = activeEditor.getEditorView().dom.querySelector("[data-language]");
 
-    if (dataLanguageElement === null) {
+    if (!isPresent(dataLanguageElement)) {
       return "No editor is selected";
     }
 
     const language = dataLanguageElement.getAttribute("data-language");
-    if (language === null) {
+    if (!isPresent(language)) {
       return "No editor is selected";
     }
 
@@ -107,7 +97,7 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
 
   const getSelection = () => {
     const selection = window.getSelection();
-    if (selection !== null && selection.rangeCount > 0) {
+    if (isPresent(selection) && selection.rangeCount > 0) {
       const str = selection.toString();
       if (str.length > 0) {
         return str;
@@ -115,12 +105,12 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
     }
 
     const activeEditor = sdk.window.getActiveEditor();
-    if (activeEditor === undefined) {
+    if (!isPresent(activeEditor)) {
       return "No text is selected";
     }
 
     const selectedText = activeEditor.getSelectedText();
-    if (selectedText === undefined || selectedText.length === 0) {
+    if (!isPresent(selectedText) || selectedText.length === 0) {
       return "No text is selected";
     }
 
@@ -156,8 +146,7 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
       value: getSelection(),
     },
     editors: {
-      description:
-        "Information about the active HTTP request and response editors.",
+      description: "Information about the active HTTP request and response editors.",
       value: getEditorsInfo(),
     },
     activeEditor: {
@@ -185,8 +174,7 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
       value: getWorkflows(),
     },
     environments: {
-      description:
-        "Global and selected environments including their current variables",
+      description: "Global and selected environments including their current variables",
       value: getEnvironments(),
     },
   };
@@ -196,17 +184,13 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
 
 const getAutomateContext = (sdk: FrontendSDK): ActionContext => {
   const getSelectedAutomateTab = () => {
-    const activeTab = document.querySelector(
-      '[data-is-selected="true"][data-session-id]',
-    );
-    return activeTab ? activeTab.textContent : undefined;
+    const activeTab = document.querySelector('[data-is-selected="true"][data-session-id]');
+    return isPresent(activeTab) ? activeTab.textContent : undefined;
   };
 
   const getSelectedAutomateTabSessionId = () => {
-    const activeTab = document.querySelector(
-      '[data-is-selected="true"][data-session-id]',
-    );
-    return activeTab ? activeTab.getAttribute("data-session-id") : undefined;
+    const activeTab = document.querySelector('[data-is-selected="true"][data-session-id]');
+    return isPresent(activeTab) ? activeTab.getAttribute("data-session-id") : undefined;
   };
 
   return {
@@ -223,7 +207,7 @@ const getAutomateContext = (sdk: FrontendSDK): ActionContext => {
 const getReplayContext = (sdk: FrontendSDK): ActionContext => {
   const getCurrentlySelectedReplayTab = () => {
     const currentSession = sdk.replay.getCurrentSession();
-    if (currentSession !== undefined) {
+    if (isPresent(currentSession)) {
       return currentSession.name;
     }
 
@@ -232,7 +216,7 @@ const getReplayContext = (sdk: FrontendSDK): ActionContext => {
 
   const getCurrentlySelectedReplayTabSessionId = () => {
     const currentSession = sdk.replay.getCurrentSession();
-    if (currentSession !== undefined) {
+    if (isPresent(currentSession)) {
       return currentSession.id;
     }
 
@@ -257,26 +241,24 @@ const getHttpHistoryContext = (sdk: FrontendSDK): ActionContext => {
 
   // TODO: broken since table is a virtual list, if user scrolls the table, the row will be gone
   const getCurrentRow = () => {
-    const selectedRow = document.querySelector(
-      '.c-table__item-row[data-is-selected="true"]',
-    );
+    const selectedRow = document.querySelector('.c-table__item-row[data-is-selected="true"]');
 
-    if (!selectedRow) {
+    if (!isPresent(selectedRow)) {
       return {};
     }
 
     const headerRow = document.querySelector(".c-table__header-row");
-    if (!headerRow) {
+    if (!isPresent(headerRow)) {
       return {};
     }
 
-    const cellValues = Array.from(
-      selectedRow.querySelectorAll(".c-item-cell__inner"),
-    ).map((cell) => cell.textContent ?? "");
+    const cellValues = Array.from(selectedRow.querySelectorAll(".c-item-cell__inner")).map(
+      (cell) => cell.textContent ?? ""
+    );
 
-    const headerValues = Array.from(
-      headerRow.querySelectorAll(".c-header-cell__content"),
-    ).map((header) => header.textContent ?? "");
+    const headerValues = Array.from(headerRow.querySelectorAll(".c-header-cell__content")).map(
+      (header) => header.textContent ?? ""
+    );
 
     const rowData: Record<string, string> = {};
     headerValues.forEach((header, index) => {

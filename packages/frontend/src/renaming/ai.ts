@@ -1,10 +1,12 @@
 import { type ReplayEntryQuery } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
-import { generateObject } from "ai";
+import { generateText, Output } from "ai";
+import { Result } from "shared";
 import { z } from "zod";
 
-import { useConfigStore } from "@/stores/config";
+import { useModelsStore } from "@/stores/models";
+import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
-import { createModel } from "@/utils";
+import { createModel, resolveModel } from "@/utils";
 
 const outputSchema = z.object({
   name: z.string(),
@@ -62,30 +64,59 @@ OUTPUT:
 
 `.trim();
 
-export async function generateName(sdk: FrontendSDK, entry: ReplayEntryQuery) {
-  const configStore = useConfigStore();
-  const model = createModel(sdk, configStore.renamingModel);
+export async function generateName(
+  sdk: FrontendSDK,
+  entry: ReplayEntryQuery
+): Promise<Result<string>> {
+  try {
+    const settingsStore = useSettingsStore();
+    const modelsStore = useModelsStore();
 
-  const prompt = `
-  <entry>
-  ${JSON.stringify(entry)}
-  </entry>
+    const modelData = resolveModel({
+      sdk,
+      savedModelKey: settingsStore.renamingModel,
+      enabledModels: modelsStore.getEnabledModels({ usageType: "float" }),
+      usageType: "float",
+    });
+    if (modelData === undefined) {
+      return Result.err("No models available");
+    }
 
-  <instructions>
-  ${configStore.aiSessionRenaming.instructions}
-  </instructions>
+    const model = createModel(sdk, modelData);
 
-  <user>
-  Generate a name for the replay entry.
-  </user>
-  `;
+    const prompt = `
+      <entry>
+      ${JSON.stringify(entry)}
+      </entry>
 
-  const { object } = await generateObject({
-    model,
-    prompt,
-    system: RENAME_SYSTEM_PROMPT,
-    schema: outputSchema,
-  });
+      <instructions>
+      ${settingsStore.renaming?.instructions ?? ""}
+      </instructions>
 
-  return object.name;
+      <user>
+      Generate a name for the replay entry.
+      </user>
+    `;
+
+    const result = await generateText({
+      model,
+      prompt,
+      system: RENAME_SYSTEM_PROMPT,
+      output: Output.object({
+        schema: outputSchema,
+      }),
+    });
+
+    const output = outputSchema.safeParse(result.output);
+    switch (output.success) {
+      case true:
+        return Result.ok(output.data.name);
+      case false:
+        return Result.err(output.error.message);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(error);
+    return Result.err(message);
+  }
 }

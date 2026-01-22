@@ -42,8 +42,10 @@ const spawnFloat = (sdk: FrontendSDK) => {
 
   const maxLeft = window.innerWidth - FLOAT_WIDTH;
   const maxTop = window.innerHeight - FLOAT_HEIGHT;
-  const rawLeft = lastCursorX !== undefined ? lastCursorX - 250 : 0;
-  const rawTop = lastCursorY !== undefined ? lastCursorY - 50 : 0;
+  const centerLeft = (window.innerWidth - FLOAT_WIDTH) / 2;
+  const centerTop = (window.innerHeight - FLOAT_HEIGHT) / 2;
+  const rawLeft = lastCursorX !== undefined ? lastCursorX - 250 : centerLeft;
+  const rawTop = lastCursorY !== undefined ? lastCursorY - 50 : centerTop;
   const initialLeft = Math.max(0, Math.min(rawLeft, maxLeft));
   const initialTop = Math.max(0, Math.min(rawTop, maxTop));
 
