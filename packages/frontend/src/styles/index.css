@@ -2,48 +2,48 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-.shimmer {
-  display: inline-block;
-  color: white;
-  background: #acacac linear-gradient(to left, #acacac, #ffffff 50%, #acacac);
-  background-position: -4rem top;
-  background-repeat: no-repeat;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  -webkit-animation: shimmer 1s infinite;
-  animation: shimmer 1s infinite;
-  background-size: 4rem 100%;
+.animate-fade-in {
+  animation: fadeIn 0.1s ease-in;
 }
 
-.scrollbar-hidden {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
-.scrollbar-hidden::-webkit-scrollbar {
+
+.custom-scrollbar {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #3d3d3d;
+  border-radius: 0 !important;
+  -webkit-border-radius: 0 !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
 
-@-webkit-keyframes shimmer {
-  0% {
-    background-position: -4rem top;
-  }
-  70% {
-    background-position: 12rem top;
-  }
-  100% {
-    background-position: 12rem top;
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -4rem top;
-  }
-  70% {
-    background-position: 12rem top;
-  }
-  100% {
-    background-position: 12rem top;
-  }
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

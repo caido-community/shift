@@ -1,1 +1,1 @@
-export { default as Drawer } from "./Container.vue";
+export { default as AgentSidebar } from "./Container.vue";

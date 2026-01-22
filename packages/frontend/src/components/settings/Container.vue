@@ -1,70 +1,100 @@
 <script setup lang="ts">
-import Checkbox from "primevue/checkbox";
-import Dropdown from "primevue/dropdown";
+import Card from "primevue/card";
 import InputNumber from "primevue/inputnumber";
+import ToggleSwitch from "primevue/toggleswitch";
+import { computed } from "vue";
 
-import { Provider } from "@/agents/types/config";
-import { useConfigStore } from "@/stores/config";
-import { useModelsStore } from "@/stores/models";
+import { useSettingsStore } from "@/stores/settings";
+import { updateSettings } from "@/stores/settings/store.effects";
 
-const configStore = useConfigStore();
-const modelsStore = useModelsStore();
+const settingsStore = useSettingsStore();
+const { sdk, dispatch } = settingsStore;
 
-const providers = Object.values(Provider).map((p) => ({ label: p, value: p }));
+const maxIterations = computed({
+  get() {
+    return settingsStore.maxIterations ?? 35;
+  },
+  set(value: number) {
+    updateSettings(sdk, dispatch, { maxIterations: value });
+  },
+});
+
+const debugToolsEnabled = computed({
+  get() {
+    return settingsStore.debugToolsEnabled ?? false;
+  },
+  set(value: boolean) {
+    updateSettings(sdk, dispatch, { debugToolsEnabled: value });
+  },
+});
+
+const autoCreateShiftCollection = computed({
+  get() {
+    return settingsStore.autoCreateShiftCollection ?? true;
+  },
+  set(value: boolean) {
+    updateSettings(sdk, dispatch, { autoCreateShiftCollection: value });
+  },
+});
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-4">
-    <div class="flex flex-col gap-2">
-      <div class="flex flex-col">
-        <label class="text-base font-medium">Provider</label>
-        <p class="text-sm text-surface-400">Select the AI provider to use.</p>
-      </div>
-      <Dropdown
-        v-model="modelsStore.selectedProvider"
-        :options="providers"
-        option-label="label"
-        option-value="value"
-        class="w-full"
-      />
-    </div>
+  <div class="flex flex-col h-full gap-1">
+    <Card
+      class="h-fit"
+      :pt:body="{ class: 'p-4' }">
+      <template #content>
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold">Settings</h2>
+            <p class="text-sm text-surface-400">Configure global preferences for Shift.</p>
+          </div>
+        </div>
+      </template>
+    </Card>
 
-    <div class="flex flex-col gap-2">
-      <div class="flex flex-col">
-        <label class="text-base font-medium">Max Iterations</label>
-        <p class="text-sm text-surface-400">
-          Enter the maximum number of iterations for AI model.
-        </p>
-      </div>
+    <Card
+      class="h-full min-h-0"
+      :pt:body="{ class: 'h-full p-0' }"
+      :pt:content="{ class: 'h-full overflow-hidden' }">
+      <template #content>
+        <div class="p-4 flex flex-col gap-6 overflow-y-auto h-full">
+          <div class="flex flex-col gap-2">
+            <div class="flex flex-col">
+              <label class="text-base font-medium">Max Iterations</label>
+              <p class="text-sm text-surface-400">
+                Enter the maximum number of iterations for AI model.
+              </p>
+            </div>
 
-      <InputNumber
-        v-model="configStore.maxIterations"
-        placeholder="Enter max iterations"
-        class="w-full"
-      />
-    </div>
+            <InputNumber
+              v-model="maxIterations"
+              placeholder="Enter max iterations"
+              class="w-full" />
+          </div>
 
-    <div class="flex flex-col gap-2">
-      <div class="flex flex-col">
-        <label class="text-base font-medium" for="shift-auto-create">
-          Auto-create Shift Collection
-        </label>
-        <p class="text-sm text-surface-400">
-          Automatically create the Shift collection for this project when
-          needed.
-        </p>
-      </div>
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex flex-col">
+              <label class="text-base font-medium">Enable Debug Tools</label>
+              <p class="text-sm text-surface-400">Show debug controls.</p>
+            </div>
 
-      <div class="flex items-center gap-2">
-        <Checkbox
-          v-model="configStore.autoCreateShiftCollection"
-          input-id="shift-auto-create"
-          binary
-        />
-        <label class="text-sm" for="shift-auto-create"
-          >Enable auto-create</label
-        >
-      </div>
-    </div>
+            <ToggleSwitch v-model="debugToolsEnabled" />
+          </div>
+
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex flex-col">
+              <label class="text-base font-medium">Auto-create Shift Collection</label>
+              <p class="text-sm text-surface-400">
+                Automatically create a 'Shift' replay collection and show agent dialog for new
+                sessions.
+              </p>
+            </div>
+
+            <ToggleSwitch v-model="autoCreateShiftCollection" />
+          </div>
+        </div>
+      </template>
+    </Card>
   </div>
 </template>

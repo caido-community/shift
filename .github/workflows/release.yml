@@ -2,12 +2,6 @@ name: 🚀 Release
 
 on:
   workflow_dispatch:
-    inputs:
-      prerelease:
-        description: 'Is this a pre-release?'
-        required: false
-        default: false
-        type: boolean
 
 env:
   NODE_VERSION: 20
@@ -66,7 +60,6 @@ jobs:
       - name: Create release
         uses: caido/action-release@v1
         with:
-          prerelease: ${{ inputs.prerelease }}
           tag: ${{ steps.meta.outputs.version }}
           commit: ${{ github.sha }}
           body: 'Release ${{ steps.meta.outputs.version }}'

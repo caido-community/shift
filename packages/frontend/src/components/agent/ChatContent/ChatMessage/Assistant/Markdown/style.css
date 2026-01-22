@@ -1,0 +1,169 @@
+[data-component="markdown"] {
+  font-size: 1rem;
+  line-height: 1.5;
+  white-space: normal;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas,
+    "Liberation Mono", Menlo, monospace;
+
+  p,
+  ul,
+  ol,
+  li,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  blockquote,
+  pre,
+  table,
+  hr {
+    margin: 0;
+    padding: 0;
+  }
+
+  p + p {
+    margin-top: 0.5em;
+  }
+
+  p + ul,
+  p + ol {
+    margin-top: 0.25em;
+  }
+
+  ul,
+  ol {
+    margin-left: 0;
+    list-style-position: inside;
+  }
+
+  ol {
+    padding-left: 0 em;
+  }
+
+  ul {
+    padding-left: 0.1em;
+  }
+
+  ul {
+    list-style-type: disc;
+  }
+
+  ol {
+    list-style-type: decimal;
+  }
+
+  li {
+    display: list-item;
+  }
+
+  ul + p,
+  ol + p {
+    margin-top: 0.5em;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  h1 + *,
+  h2 + *,
+  h3 + *,
+  h4 + *,
+  h5 + *,
+  h6 + * {
+    margin-top: 0.25em;
+  }
+
+  * + h1,
+  * + h2,
+  * + h3,
+  * + h4,
+  * + h5,
+  * + h6 {
+    margin-top: 0.75em;
+  }
+
+  strong,
+  b {
+    font-weight: 600;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  blockquote {
+    border-left: 2px solid var(--p-surface-500);
+    padding-left: 0.75em;
+    opacity: 0.8;
+  }
+
+  * + blockquote,
+  blockquote + * {
+    margin-top: 0.5em;
+  }
+
+  pre {
+    padding: 0.5em 0.75em;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--p-surface-900);
+    border: 1px solid var(--p-surface-600);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  * + pre,
+  pre + * {
+    margin-top: 0.5em;
+  }
+
+  :not(pre) > code {
+    font-family: ui-monospace, monospace;
+    font-size: 0.8rem;
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+    background: var(--p-surface-700);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  * + table,
+  table + * {
+    margin-top: 0.5em;
+  }
+
+  th,
+  td {
+    border-bottom: 1px solid var(--p-surface-600);
+    padding: 0.5em;
+    text-align: left;
+  }
+
+  th {
+    font-weight: 600;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    display: block;
+  }
+
+  * + img,
+  img + * {
+    margin-top: 0.5em;
+  }
+}

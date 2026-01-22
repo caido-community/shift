@@ -1,0 +1,34 @@
+[tools]
+node = "24"
+pnpm = "10.28.0"
+[tasks.validate]
+description = "Validate the project (format, lint, typecheck, knip, test)"
+run = "pnpm format && pnpm lint && pnpm typecheck && pnpm knip && pnpm test"
+
+[tasks.build]
+description = "Build the project"
+run = "pnpm build"
+
+[tasks.watch]
+description = "Watch for changes and build"
+run = "pnpm watch"
+
+[tasks.test]
+description = "Run tests"
+run = "pnpm test"
+
+[tasks.typecheck]
+description = "Run typecheck"
+run = "pnpm typecheck"
+
+[tasks.lint]
+description = "Run linter"
+run = "pnpm lint"
+
+[tasks.format]
+description = "Format code"
+run = "pnpm format"
+
+[tasks.knip]
+description = "Run knip"
+run = "pnpm knip"

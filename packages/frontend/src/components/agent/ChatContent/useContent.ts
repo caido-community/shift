@@ -1,29 +1,19 @@
 import { computed } from "vue";
 
-import { useAgentsStore } from "@/stores/agents";
+import { useSession } from "../useSession";
 
-export const useContent = () => {
-  const agentStore = useAgentsStore();
+import { useSDK } from "@/plugins/sdk";
+import { isAnyProviderConfigured } from "@/utils/ai";
 
-  const messages = computed(() => {
-    if (!agentStore.selectedAgent) {
-      return [];
-    }
+export function useContent() {
+  const sdk = useSDK();
+  const session = useSession();
 
-    const messages = agentStore.selectedAgent.messages;
-    return messages;
-  });
-
-  const hasMessages = computed(() => messages.value.length > 0);
-  const hasSelectedAgent = computed(() => !!agentStore.selectedAgent);
-  const agentStatus = computed(() => agentStore.selectedAgent?.status);
-  const error = computed(() => agentStore.selectedAgent?.error);
+  const hasProviderConfigured = computed(() => isAnyProviderConfigured(sdk));
+  const hasMessages = computed(() => session.chat.messages.length > 0);
 
   return {
-    messages,
+    hasProviderConfigured,
     hasMessages,
-    hasSelectedAgent,
-    agentStatus,
-    error,
   };
-};
+}

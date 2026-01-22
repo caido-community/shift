@@ -1,0 +1,54 @@
+---
+globs:
+alwaysApply: true
+description: Agent Tools and Float Actions Best Practices
+---
+
+## Agent Tools (`packages/frontend/src/agent/tools`)
+
+### Tools
+- Use `ToolResult` type from `@/agent/types`.
+- Return `ToolResult.ok({ message, ...data })` or `ToolResult.err(message, detail?)`.
+- `ToolResult.ok()` requires a `message` field plus additional value data (e.g., `before`, `after`).
+- Use `ToolResult.schema(valueSchema)` to define output schemas.
+- The `output` passed to `display` functions is the unwrapped `value` from `ToolResult.ok`.
+
+### Display Objects
+- Every agent tool MUST export a `display` object alongside the tool.
+- The `display` object must satisfy `ToolDisplay<TInput, TOutput>` from `@/agent/types`.
+- Signature:
+  - `streaming: ({ input, output }) => MessageResult`
+  - `success: ({ input, output }) => MessageResult`
+  - `error: ({ input, output }) => string`
+- `MessageResult` is an array of parts: `[{ text: "Received ", muted: false }, { text: "200 OK", muted: true }]`.
+- Register the `display` export in `packages/frontend/src/components/agent/ChatContent/ChatMessage/Assistant/Tool/messages.ts`.
+
+## Float Actions (`packages/frontend/src/float/actions`)
+
+- Use `ActionResult` type from `@/float/types`.
+- Return `ActionResult.ok(message)` or `ActionResult.err(message, detail?)`.
+- Use `ActionResult.schema` as the output schema (no arguments needed).
+- Get SDK via `const { sdk } = experimental_context as FloatToolContext`.
+
+## User-Facing Messages
+
+- Keep all user-facing messages brief and concise.
+- Error messages should be clear but short (e.g., "No HTTP request loaded" not "The HTTP request object was not found in the current context").
+- Success messages should be brief and actionable (e.g., `Method set to "POST"` not `Successfully updated the HTTP method of the current request to POST`).
+
+## Null and Undefined Checks
+
+- Use `isPresent` utility from `@/utils` when checking for null or undefined values.
+- Prefer `isPresent(value)` over `value !== undefined && value !== null` or similar checks.
+
+## ts-http-forge
+
+- Use this library if you are working with requests
+- HttpForge can modify request and read data from it like path, query, headers etc.
+
+## Code Structure
+
+- Keep tool implementations focused and single-purpose.
+- Extract complex logic into helper functions when needed, but prefer inline expressions for simple operations.
+- Use descriptive parameter names in input schemas with `.describe()` for better AI understanding.
+- If there's a util for it, use it.

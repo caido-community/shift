@@ -9,15 +9,33 @@ import "./styles/index.css";
 import type { FrontendSDK } from "./types";
 import App from "./views/App.vue";
 
-import { setupAgents } from "@/agents";
-import { setupReplayCollectionCorrelation } from "@/agents/collectionAutoExecute";
-import { GenericInputDialog } from "@/components/inputDialog";
+import { setupAgents } from "@/agent";
 import { createDOMManager } from "@/dom";
 import { setupFloat } from "@/float";
-import { setupTestShift } from "@/float/testShift";
 import { setupRenaming } from "@/renaming";
-import { useAgentsStore } from "@/stores/agents";
-import { useConfigStore } from "@/stores/config";
+import { useLearningsStore } from "@/stores/learnings";
+import { useModelsStore } from "@/stores/models";
+import { useSettingsStore } from "@/stores/settings";
+import { useSkillsStore } from "@/stores/skills";
+
+async function initializeStores(sdk: FrontendSDK) {
+  const modelsStore = useModelsStore();
+  const settingsStore = useSettingsStore();
+  const learningsStore = useLearningsStore();
+  const skillsStore = useSkillsStore();
+
+  await Promise.all([
+    modelsStore.initialize(),
+    settingsStore.initialize(),
+    learningsStore.initialize(),
+    skillsStore.initialize(),
+  ]);
+
+  sdk.projects.onCurrentProjectChange(() => {
+    skillsStore.initialize();
+    learningsStore.initialize();
+  });
+}
 
 export const init = (sdk: FrontendSDK) => {
   const app = createApp(App);
@@ -31,7 +49,6 @@ export const init = (sdk: FrontendSDK) => {
 
   const pinia = createPinia();
   app.use(pinia);
-
   app.use(SDKPlugin, sdk);
 
   const root = document.createElement("div");
@@ -52,102 +69,13 @@ export const init = (sdk: FrontendSDK) => {
     icon: "fas fa-wand-magic-sparkles",
   });
 
-  setupAgents(sdk);
-  setupFloat(sdk);
-  setupRenaming(sdk);
-  setupReplayCollectionCorrelation(sdk);
-  setupTestShift(sdk);
-
-  sdk.commands.register("shift:add-to-memory", {
-    name: "Add Learning",
-    run: () => {
-      let dialog: { close: () => void } = { close: () => {} };
-      const configStore = useConfigStore();
-
-      const selection = window.getSelection();
-      if (selection === null) return;
-
-      const text = selection.toString();
-      if (text.length === 0) return;
-
-      const handleConfirm = async (value: string) => {
-        dialog.close();
-        if (value.trim() === "") {
-          return;
-        }
-
-        try {
-          await configStore.addLearning(value);
-          sdk.window.showToast(`Learning stored for this project`, {
-            variant: "info",
-          });
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "Unknown error";
-          sdk.window.showToast(`[Shift] Failed to store learning: ${message}`, {
-            variant: "error",
-          });
-        }
-      };
-
-      const handleCancel = () => {
-        dialog.close();
-      };
-
-      dialog = sdk.window.showDialog(
-        {
-          component: GenericInputDialog,
-          props: {
-            placeholder: "Enter learning content...",
-            initialValue: text,
-            onConfirm: () => handleConfirm,
-            onCancel: () => handleCancel,
-          },
-        },
-        {
-          closeOnEscape: true,
-          closable: true,
-          draggable: true,
-          modal: true,
-          position: "center",
-        },
-      );
-    },
+  initializeStores(sdk).then(() => {
+    setupAgents(sdk);
+    setupFloat(sdk);
+    setupRenaming(sdk);
   });
 
-  sdk.shortcuts.register("shift:add-to-memory", ["shift", "control", "m"]);
-
-  const domManager = createDOMManager(sdk);
-  domManager.drawer.start();
-  domManager.indicators.start();
-
-  sdk.replay.onCurrentSessionChange((event) => {
-    const agentStore = useAgentsStore();
-    if (event.sessionId !== undefined) {
-      agentStore.selectAgent(event.sessionId);
-    }
-  });
-
-  // Messy because we dont have a proper way to get the current session id from the sdk yet.
-  const setCurrentSession = () => {
-    const agentStore = useAgentsStore();
-    const currentSessionId =
-      document
-        .querySelector('div[data-is-selected="true"]')
-        ?.getAttribute("data-session-id") ?? "";
-    if (currentSessionId.length > 0) {
-      agentStore.selectAgent(currentSessionId);
-    }
-  };
-  if (location.hash.startsWith("#/replay")) {
-    setCurrentSession();
-  }
-  sdk.navigation.onPageChange((event) => {
-    const agentStore = useAgentsStore();
-    if (agentStore.selectedAgent === undefined) {
-      setTimeout(() => {
-        setCurrentSession();
-      }, 500);
-    }
-  });
+  const { drawer, indicators } = createDOMManager(sdk);
+  drawer.start();
+  indicators.start();
 };

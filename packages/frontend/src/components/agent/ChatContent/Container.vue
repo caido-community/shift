@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import Error from "./Error.vue";
+import Content from "./Content.vue";
 import NoMessages from "./NoMessages.vue";
-import NoSelection from "./NoSelection.vue";
-import Success from "./Success.vue";
+import NoProviderConfigured from "./NoProviderConfigured.vue";
 import { useContent } from "./useContent";
 
-const { hasMessages, hasSelectedAgent, error } = useContent();
+const { hasProviderConfigured, hasMessages } = useContent();
 </script>
 
 <template>
-  <NoSelection v-if="!hasSelectedAgent" />
+  <NoProviderConfigured v-if="!hasProviderConfigured" />
   <NoMessages v-else-if="!hasMessages" />
-  <Error v-else-if="error" />
-  <Success v-else />
+  <Content v-else />
 </template>

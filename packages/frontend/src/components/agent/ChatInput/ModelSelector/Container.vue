@@ -1,80 +1,162 @@
 <script setup lang="ts">
-import Select from "primevue/select";
+import { onClickOutside } from "@vueuse/core";
+import type { Model } from "shared";
+import { ref } from "vue";
 
-import { useSelector } from "./useSelector";
+import { getProviderDisplayName, type ProviderInfo, useSelector } from "./useSelector";
 
-const { variant, disabled = false } = defineProps<{
-  variant: "float" | "chat" | "renaming";
+const {
+  models,
+  size = "default",
+  disabled = false,
+} = defineProps<{
+  models: Model[];
+  size?: "default" | "small";
   disabled?: boolean;
 }>();
 
-const { models, modelId, selectedModel } = useSelector(variant);
+const selectedModel = defineModel<Model | undefined>();
+
+const { providers, activeProvider, providerModels, selectProvider } = useSelector({
+  models: () => models,
+  selectedModel,
+});
+
+const isOpen = ref(false);
+const containerRef = ref<HTMLElement>();
+
+onClickOutside(containerRef, () => {
+  isOpen.value = false;
+});
+
+const toggle = () => {
+  if (disabled) return;
+  isOpen.value = !isOpen.value;
+};
+
+type ModelWithConfig = Model & { isConfigured: boolean };
+
+const handleSelect = (model: ModelWithConfig) => {
+  if (!model.isConfigured) return;
+  selectedModel.value = model;
+  isOpen.value = false;
+};
+
+const handleProviderClick = (provider: ProviderInfo) => {
+  selectProvider(provider);
+};
 </script>
 
 <template>
-  <Select
-    v-model="modelId"
-    :disabled="disabled === true"
-    :options="models"
-    option-label="name"
-    option-value="id"
-    filter
-    filter-placeholder="Search models..."
-    overlay-class="!z-[3001]"
-    :overlay-style="{
-      backgroundColor:
-        variant === 'chat' ? 'var(--p-surface-900)' : 'var(--p-surface-800)',
-      opacity: disabled === true ? 0.5 : 1,
-    }"
-    :pt="{
-      root: {
-        class:
-          'inline-flex relative rounded-md bg-transparent invalid:focus:ring-red-200 invalid:hover:border-red-500 transition-all duration-200 hover:border-secondary-400 cursor-pointer select-none',
-      },
-      label: {
-        class:
-          'leading-[normal] block flex-auto bg-transparent border-0 text-white/80 placeholder:text-surface-500 w-[1%] ounded-none transition duration-200 focus:outline-none focus:shadow-none relative cursor-pointer overflow-hidden overflow-ellipsis whitespace-nowrap appearance-none font-mono',
-      },
-      optionGroup: { class: 'px-2' },
-      dropdownicon: { class: 'h-2 mb-0.5' },
-      header: {
-        style: {
-          background: 'none',
-        },
-      },
-    }"
-  >
-    <template #value>
-      <div
+  <div
+    ref="containerRef"
+    class="relative">
+    <button
+      type="button"
+      :disabled="disabled"
+      :class="[
+        'flex items-center gap-2 rounded transition-colors border',
+        size === 'default'
+          ? 'px-3 py-1.5 text-sm bg-surface-800 border-surface-700 hover:bg-surface-700 hover:text-surface-100'
+          : 'px-2 py-1 text-xs bg-surface-900 border-surface-700 hover:bg-surface-950 hover:text-surface-200',
+        'text-surface-400',
+        disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
+      ]"
+      @click="toggle">
+      <span class="truncate max-w-[160px]">
+        {{ selectedModel?.name ?? "Select model" }}
+      </span>
+      <i
         :class="[
-          'flex items-center gap-2 w-full text-surface-400 text-sm transition-colors duration-200',
-          disabled !== true ? 'hover:text-surface-200' : '',
-        ]"
-      >
-        <component
-          :is="selectedModel?.icon ?? undefined"
-          v-if="selectedModel?.icon !== undefined"
-          class="h-4 w-4"
-        />
-        <div v-else class="h-3 w-3 rounded-sm bg-surface-500" />
-        <span class="truncate">{{
-          selectedModel?.name ?? "Select model"
-        }}</span>
-      </div>
-    </template>
+          'fas fa-chevron-down transition-transform',
+          size === 'default' ? 'text-xs' : 'text-[10px]',
+          isOpen ? 'rotate-180' : '',
+        ]" />
+    </button>
 
-    <!-- Removed optiongroup slot -->
+    <Transition
+      enter-active-class="transition duration-100 ease-out"
+      enter-from-class="opacity-0 scale-95"
+      enter-to-class="opacity-100 scale-100"
+      leave-active-class="transition duration-75 ease-in"
+      leave-from-class="opacity-100 scale-100"
+      leave-to-class="opacity-0 scale-95">
+      <div
+        v-if="isOpen"
+        class="absolute left-0 bottom-full mb-1 z-[10001] flex h-52 w-72 flex-row overflow-hidden rounded-lg border border-surface-700 bg-surface-900 shadow-xl">
+        <div
+          class="flex w-28 flex-col overflow-y-auto border-r border-surface-700 bg-surface-800/30">
+          <button
+            v-for="provider in providers"
+            :key="provider.id"
+            v-tooltip.left="
+              provider.isConfigured
+                ? undefined
+                : `${getProviderDisplayName(provider.id)} is not configured`
+            "
+            type="button"
+            :disabled="!provider.isConfigured"
+            :class="[
+              'group relative flex items-center justify-between px-2.5 py-2 text-left text-sm transition-colors',
+              !provider.isConfigured
+                ? 'cursor-not-allowed text-surface-500'
+                : activeProvider === provider.id
+                  ? 'bg-surface-700/50 text-surface-100 font-medium'
+                  : 'text-surface-400 hover:bg-surface-800 hover:text-surface-200',
+            ]"
+            @click="handleProviderClick(provider)">
+            <span class="truncate">{{ getProviderDisplayName(provider.id) }}</span>
+            <i
+              v-if="!provider.isConfigured"
+              class="fas fa-exclamation-circle text-[10px] text-surface-600" />
+            <div
+              v-if="activeProvider === provider.id"
+              class="absolute left-0 top-0 bottom-0 w-0.5 bg-primary-500" />
+          </button>
+        </div>
 
-    <template #option="slotProps">
-      <div class="flex items-center gap-2 text-surface-300 text-sm">
-        <component
-          :is="slotProps.option.icon ?? undefined"
-          v-if="slotProps.option.icon !== undefined"
-          class="h-4 w-4"
-        />
-        <div v-else class="h-3 w-3 rounded-sm bg-surface-500" />
-        <span class="truncate">{{ slotProps.option.name }}</span>
+        <div class="flex flex-1 flex-col overflow-y-auto bg-surface-900">
+          <div
+            v-if="providerModels.length > 0"
+            class="flex flex-col py-1">
+            <button
+              v-for="model in providerModels"
+              :key="model.id"
+              v-tooltip.right="
+                model.isConfigured
+                  ? undefined
+                  : `${getProviderDisplayName(model.provider)} is not configured`
+              "
+              type="button"
+              :disabled="!model.isConfigured"
+              :class="[
+                'w-full truncate px-3 py-1.5 text-left text-sm transition-colors',
+                !model.isConfigured
+                  ? 'cursor-not-allowed text-surface-600'
+                  : model.id === selectedModel?.id
+                    ? 'bg-surface-700 text-surface-100'
+                    : 'text-surface-300 hover:bg-surface-800 hover:text-surface-100',
+              ]"
+              @click="handleSelect(model)">
+              <div class="flex items-center justify-between gap-2">
+                <span class="truncate">{{ model.name }}</span>
+                <i
+                  v-if="!model.isConfigured"
+                  class="fas fa-exclamation-circle text-[10px] text-surface-500" />
+                <i
+                  v-else-if="model.id === selectedModel?.id"
+                  class="fas fa-check text-xs text-surface-100" />
+              </div>
+            </button>
+          </div>
+
+          <div
+            v-else-if="activeProvider !== undefined"
+            class="flex flex-1 items-center justify-center px-4 text-center text-sm text-surface-500">
+            No models available for {{ getProviderDisplayName(activeProvider) }}
+          </div>
+        </div>
       </div>
-    </template>
-  </Select>
+    </Transition>
+  </div>
 </template>

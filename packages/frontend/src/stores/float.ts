@@ -1,32 +1,69 @@
 import { defineStore } from "pinia";
-import { computed, ref } from "vue";
+import { computed, ref, shallowRef } from "vue";
 
 import { queryShift } from "@/float";
 import { getContext } from "@/float/context";
 import { useSDK } from "@/plugins/sdk";
-import { useConfigStore } from "@/stores/config";
+import { isPresent } from "@/utils/optional";
 
-export const useFloatStore = defineStore("stores.float", () => {
+export const useFloatStore = defineStore("float", () => {
   const sdk = useSDK();
-  const configStore = useConfigStore();
-
   const textarea = ref<HTMLTextAreaElement | undefined>(undefined);
-  const query = ref<string>("");
+  const query = shallowRef<string>("");
+  const isRunning = shallowRef(false);
+  const historyIndex = shallowRef<number>(-1);
+  const history = shallowRef<string[]>([]);
+  const abortController = shallowRef<AbortController | undefined>(undefined);
 
-  const isRunning = ref(false);
+  const addHistoryEntry = (content: string) => {
+    const trimmed = content.trim();
+    if (trimmed.length === 0) return;
 
-  const historyIndex = ref<number>(-1);
+    const currentHistory = history.value;
+    if (currentHistory[currentHistory.length - 1] === trimmed) return;
+
+    history.value = [...currentHistory, trimmed];
+  };
+
+  const getHistoryAtIndex = (index: number): string | undefined => {
+    return history.value[history.value.length - 1 - index];
+  };
+
+  const isCaretOnEdge = (element: HTMLTextAreaElement, edge: "first" | "last"): boolean => {
+    const caret = element.selectionStart ?? 0;
+    const value = element.value;
+    if (edge === "first") {
+      return caret === 0 || !value.slice(0, caret).includes("\n");
+    }
+    return caret >= value.lastIndexOf("\n") + 1;
+  };
+
+  const navigateHistory = (direction: "prev" | "next") => {
+    const nextIndex = direction === "prev" ? historyIndex.value + 1 : historyIndex.value - 1;
+    const clampedIndex = Math.min(nextIndex, history.value.length - 1);
+
+    historyIndex.value = clampedIndex;
+    query.value = clampedIndex < 0 ? "" : (getHistoryAtIndex(clampedIndex) ?? "");
+
+    setTimeout(() => {
+      const el = textarea.value;
+      if (isPresent(el)) {
+        const pos = direction === "prev" ? 0 : el.value.length;
+        el.setSelectionRange(pos, pos);
+      }
+    }, 0);
+  };
 
   const focusTextarea = () => {
     const textareaElement = textarea.value;
-    if (textareaElement) {
+    if (isPresent(textareaElement)) {
       textareaElement.focus();
     }
   };
 
   const closeFloat = () => {
     const floatElement = document.querySelector("[data-plugin='shift-float']");
-    if (floatElement) {
+    if (isPresent(floatElement)) {
       floatElement.remove();
     }
   };
@@ -42,41 +79,37 @@ export const useFloatStore = defineStore("stores.float", () => {
       return;
     }
 
-    if (event.key === "ArrowUp") {
-      const textareaElement = textarea.value;
-      if (textareaElement !== undefined) {
-        const caretIndex = textareaElement.selectionStart ?? 0;
-        const value = textareaElement.value;
-        const isTopLine =
-          caretIndex === 0 || value.lastIndexOf("\n", caretIndex - 1) === -1;
-        if (isTopLine) {
-          const history = configStore.getHistory();
-          if (history.length > 0) {
-            const nextIndex = Math.min(
-              historyIndex.value + 1,
-              history.length - 1,
-            );
-            historyIndex.value = nextIndex;
-            const nextContent = history[history.length - 1 - nextIndex];
-            if (nextContent !== undefined) {
-              query.value = nextContent;
-            }
-            setTimeout(() => {
-              const el = textarea.value;
-              if (el !== undefined) {
-                el.setSelectionRange(0, 0);
-              }
-            }, 0);
-          }
-        }
-      }
+    const textareaElement = textarea.value;
+    if (!isPresent(textareaElement)) return;
+
+    if (
+      event.key === "ArrowUp" &&
+      history.value.length > 0 &&
+      isCaretOnEdge(textareaElement, "first")
+    ) {
+      navigateHistory("prev");
+      event.preventDefault();
       event.stopPropagation();
       return;
     }
 
-    if (event.key === "ArrowDown") {
+    if (
+      event.key === "ArrowDown" &&
+      historyIndex.value >= 0 &&
+      isCaretOnEdge(textareaElement, "last")
+    ) {
+      navigateHistory("next");
+      event.preventDefault();
       event.stopPropagation();
       return;
+    }
+  };
+
+  const stopQuery = () => {
+    const controller = abortController.value;
+    if (isPresent(controller)) {
+      controller.abort("USER_ABORTED");
+      abortController.value = undefined;
     }
   };
 
@@ -86,6 +119,8 @@ export const useFloatStore = defineStore("stores.float", () => {
       return;
     }
 
+    const controller = new AbortController();
+    abortController.value = controller;
     isRunning.value = true;
     historyIndex.value = -1;
 
@@ -93,24 +128,38 @@ export const useFloatStore = defineStore("stores.float", () => {
       const result = await queryShift(sdk, {
         content,
         context: getContext(sdk),
+        abortSignal: controller.signal,
       });
 
-      if (result.success) {
-        query.value = "";
-        configStore.addHistoryEntry(content);
-        closeFloat();
-      } else {
-        sdk.window.showToast(result.error, {
-          variant: "error",
-        });
+      switch (result.kind) {
+        case "Ok":
+          addHistoryEntry(content);
+          query.value = "";
+          closeFloat();
+          break;
+        case "Error":
+          if (result.error === "USER_ABORTED") {
+            return;
+          }
+
+          console.error(result.error);
+          sdk.window.showToast(result.error, {
+            variant: "error",
+          });
+          break;
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
+      if (message === "USER_ABORTED") {
+        return;
+      }
+
       sdk.window.showToast(message, {
         variant: "error",
       });
     } finally {
       isRunning.value = false;
+      abortController.value = undefined;
     }
   };
 
@@ -124,6 +173,7 @@ export const useFloatStore = defineStore("stores.float", () => {
     textarea,
     closeFloat,
     runQuery,
+    stopQuery,
     focusTextarea,
     handleKeydown,
   };
