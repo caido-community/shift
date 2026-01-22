@@ -106,8 +106,21 @@ export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Pro
       tools: floatTools,
       toolChoice: "required",
       stopWhen: stepCountIs(1),
-      system: SYSTEM_PROMPT,
-      prompt,
+      messages: [
+        {
+          role: "system",
+          content: SYSTEM_PROMPT,
+          providerOptions: {
+            anthropic: { cacheControl: { type: "ephemeral" } },
+            google: { cacheControl: { type: "ephemeral" } },
+            openrouter: { cacheControl: { type: "ephemeral" } },
+          },
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
       abortSignal: input.abortSignal,
       experimental_context: toolContext,
       experimental_repairToolCall: ({ toolCall, inputSchema, error }) =>

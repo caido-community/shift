@@ -1,4 +1,4 @@
-import { stepCountIs, ToolLoopAgent } from "ai";
+import { stepCountIs, ToolLoopAgent, type SystemModelMessage } from "ai";
 import { type Model } from "shared";
 
 import type { AgentContext } from "@/agent/context";
@@ -7,20 +7,36 @@ import { shiftAgentTools } from "@/agent/tools";
 import { type FrontendSDK } from "@/types";
 import { createModel } from "@/utils/ai";
 
-function buildInstructions(context: AgentContext): string {
-  const parts: string[] = [BASE_SYSTEM_PROMPT];
+function buildInstructions(context: AgentContext): SystemModelMessage[] {
+  const messages: SystemModelMessage[] = [
+    {
+      role: "system",
+      content: BASE_SYSTEM_PROMPT,
+      providerOptions: {
+        anthropic: { cacheControl: { type: "ephemeral" } },
+        google: { cacheControl: { type: "ephemeral" } },
+        openrouter: { cacheControl: { type: "ephemeral" } },
+      },
+    },
+  ];
 
   const skillsPrompt = context.toSkillsPrompt();
   if (skillsPrompt !== "") {
-    parts.push(skillsPrompt);
+    messages.push({
+      role: "system",
+      content: skillsPrompt,
+    });
   }
 
   const contextPrompt = context.toContextPrompt();
   if (contextPrompt !== "") {
-    parts.push(contextPrompt);
+    messages.push({
+      role: "system",
+      content: contextPrompt,
+    });
   }
 
-  return parts.join("\n\n");
+  return messages;
 }
 
 type AgentOptions = {
