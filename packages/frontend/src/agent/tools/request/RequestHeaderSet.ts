@@ -28,15 +28,20 @@ export const display = {
     input
       ? [{ text: "Setting " }, { text: truncate(input.name), muted: true }]
       : [{ text: "Setting " }, { text: "header", muted: true }],
-  success: ({ input }) =>
-    input
-      ? [
-          { text: "Set header " },
-          { text: truncate(input.name), muted: true },
-          { text: " to " },
-          { text: truncate(input.value), muted: true },
-        ]
-      : [{ text: "Set header" }, { text: "header", muted: true }],
+  success: ({ input }) => {
+    if (!input) {
+      return [{ text: "Set " }, { text: "header", muted: true }];
+    }
+    if (input.value === "") {
+      return [{ text: "Cleared header " }, { text: truncate(input.name), muted: true }];
+    }
+    return [
+      { text: "Set header " },
+      { text: truncate(input.name), muted: true },
+      { text: " to " },
+      { text: truncate(input.value), muted: true },
+    ];
+  },
   error: ({ input }) => `Failed to set header${withSuffix(input?.name)}`,
 } satisfies ToolDisplay<RequestHeaderSetInput, RequestHeaderSetValue>;
 

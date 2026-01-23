@@ -27,10 +27,15 @@ export const display = {
     input
       ? [{ text: "Setting path to " }, { text: truncate(input.path, 32), muted: true }]
       : [{ text: "Setting " }, { text: "request path", muted: true }],
-  success: ({ input }) => [
-    { text: "Set path to " },
-    { text: truncate(input?.path ?? "unknown", 32), muted: true },
-  ],
+  success: ({ input }) => {
+    if (!input) {
+      return [{ text: "Set " }, { text: "request path", muted: true }];
+    }
+    if (input.path === "") {
+      return [{ text: "Cleared " }, { text: "request path", muted: true }];
+    }
+    return [{ text: "Set path to " }, { text: truncate(input.path, 32), muted: true }];
+  },
   error: () => "Failed to set request path",
 } satisfies ToolDisplay<RequestPathSetInput, RequestPathSetValue>;
 

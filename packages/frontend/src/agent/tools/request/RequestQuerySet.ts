@@ -30,15 +30,20 @@ export const display = {
     input
       ? [{ text: "Setting " }, { text: truncate(input.key), muted: true }]
       : [{ text: "Setting " }, { text: "query param", muted: true }],
-  success: ({ input }) =>
-    input
-      ? [
-          { text: "Set query param " },
-          { text: truncate(input.key, 40), muted: true },
-          { text: " to " },
-          { text: truncate(input.value, 40), muted: true },
-        ]
-      : [{ text: "Set query param" }, { text: "query param", muted: true }],
+  success: ({ input }) => {
+    if (!input) {
+      return [{ text: "Set " }, { text: "query param", muted: true }];
+    }
+    if (input.value === "") {
+      return [{ text: "Cleared query param " }, { text: truncate(input.key, 40), muted: true }];
+    }
+    return [
+      { text: "Set query param " },
+      { text: truncate(input.key, 40), muted: true },
+      { text: " to " },
+      { text: truncate(input.value, 40), muted: true },
+    ];
+  },
   error: ({ input }) => `Failed to set query param${withSuffix(input?.key)}`,
 } satisfies ToolDisplay<RequestQuerySetInput, RequestQuerySetValue>;
 

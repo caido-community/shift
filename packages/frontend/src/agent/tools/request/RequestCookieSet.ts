@@ -28,15 +28,20 @@ export const display = {
     input
       ? [{ text: "Setting " }, { text: truncate(input.name), muted: true }]
       : [{ text: "Setting " }, { text: "cookie", muted: true }],
-  success: ({ input }) =>
-    input
-      ? [
-          { text: "Set cookie " },
-          { text: truncate(input.name), muted: true },
-          { text: " to " },
-          { text: truncate(input.value), muted: true },
-        ]
-      : [{ text: "Set cookie" }, { text: "cookie", muted: true }],
+  success: ({ input }) => {
+    if (!input) {
+      return [{ text: "Set " }, { text: "cookie", muted: true }];
+    }
+    if (input.value === "") {
+      return [{ text: "Cleared cookie " }, { text: truncate(input.name), muted: true }];
+    }
+    return [
+      { text: "Set cookie " },
+      { text: truncate(input.name), muted: true },
+      { text: " to " },
+      { text: truncate(input.value), muted: true },
+    ];
+  },
   error: ({ input }) => `Failed to set cookie${withSuffix(input?.name)}`,
 } satisfies ToolDisplay<RequestCookieSetInput, RequestCookieSetValue>;
 
