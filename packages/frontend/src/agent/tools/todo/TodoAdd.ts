@@ -33,15 +33,23 @@ const formatTodoPreview = (content: string[] | undefined): string => {
   return `${content.length} ${pluralize(content.length, "todo")}`;
 };
 
+const formatTodoOutput = (todos: Todo[] | undefined): string => {
+  if (!isPresent(todos) || todos.length === 0) return "todos";
+  if (todos.length === 1 && isPresent(todos[0])) {
+    return truncate(todos[0].content, 32);
+  }
+  return `${todos.length} ${pluralize(todos.length, "todo")}`;
+};
+
 export const display = {
   streaming: ({ input }) => [
     { text: "Creating " },
     { text: formatTodoPreview(input?.content), muted: true },
   ],
-  success: ({ input, output }) => [
+  success: ({ output }) => [
     { text: "Created " },
     {
-      text: output ? formatTodoPreview(input?.content) : "todos",
+      text: formatTodoOutput(output?.todos),
       muted: true,
     },
   ],

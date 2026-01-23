@@ -29,7 +29,7 @@ type TodoCompleteOutput = ToolResultType<TodoCompleteValue>;
 const formatCompletedPreview = (todos: Todo[] | undefined, ids: string[] | undefined): string => {
   const first = todos?.[0];
   if (isPresent(first) && todos?.length === 1) {
-    return truncate(first.content, 32);
+    return truncate(first.content, 56);
   }
   if (isPresent(ids)) {
     return `${ids.length} ${pluralize(ids.length, "todo")}`;
