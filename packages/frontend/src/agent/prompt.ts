@@ -107,7 +107,7 @@ Environments are used to store project-scoped reusable persistent IDs, important
 - The tool input description will indicate whether a specific parameter supports environment variable substitution.
 - If an environment or variable is not found, the substitution pattern will be left as-is in the output.
 
-EXAMPLE: if you're using Request tool, {"name":"authCookie", value:"§§§Global§api_token§§§"} will be replaced with {"name":"authCookie", value:"1234567890"}
+EXAMPLE: if you're using RequestCookieSet, {"name":"authCookie", value:"§§§Global§api_token§§§"} will be replaced with {"name":"authCookie", value:"1234567890"}
 </environment_variable_substitution>
 </environments>
 
@@ -171,13 +171,11 @@ Always ensure the learnings remain accurate and high-signal; prune stale items w
 Only update learnings when you have information that will be useful in the future and apply the target in a more general way.
 </learnings_management>
 
-<grep_tool>
-- Grep tool is used to search through the response content for specific patterns or values. It's used to read the full response content if it's truncated.
-- It takes \`responseID\` as an argument and returns the matching parts of the response. You obtain responseID by sending the request with \`sendRequest\` and using the \`responseID\` from the tool call response.
-- You can call it multiple times in a row to keep reading the response, only if needed.
-- you can use the grepRequest tool to read the request content as well. You can get the requestID from searchRequests tool or sendRequest tool.
-- you can also use the grepRequest and grepResponse tools to read the requests and responses from various replay sessions using fetchReplayEntries tool.
-</grep_tool>
+<response_tools>
+- ResponseSearch: Search for patterns in a response. Returns character positions and surrounding context for each match. Use when looking for specific strings, tokens, or values in responses.
+- ResponseRangeRead: Read a specific byte range from a response. Use the positions from ResponseSearch to read around matches, or to read large responses in chunks.
+- Both tools take \`responseId\` which you obtain from RequestSend.
+</response_tools>
 
 <send_request>
 - When you use request modification tools, you're editing a draft of the HTTP raw request.
