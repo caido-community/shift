@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import { isPresent, pluralize } from "@/utils";
+import { safeGraphQL } from "@/utils/caido";
 
 const ORDER_DIRECTION = ["ASC", "DESC"] as const;
 
@@ -98,15 +99,25 @@ export const HistorySearch = tool({
   ): Promise<HistorySearchOutput> => {
     const context = experimental_context as AgentContext;
 
-    const result = await context.sdk.graphql.requestsByOffset({
-      filter,
-      limit,
-      offset,
-      order: {
-        by: "ID",
-        ordering,
-      },
-    });
+    const graphqlResult = await safeGraphQL(
+      () =>
+        context.sdk.graphql.requestsByOffset({
+          filter,
+          limit,
+          offset,
+          order: {
+            by: "ID",
+            ordering,
+          },
+        }),
+      "Failed to query HTTP history"
+    );
+
+    if (graphqlResult.kind === "Error") {
+      return ToolResult.err("Failed to query HTTP history", graphqlResult.error);
+    }
+
+    const result = graphqlResult.value;
 
     const connection = result.requestsByOffset;
 

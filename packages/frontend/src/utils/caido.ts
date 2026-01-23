@@ -5,6 +5,25 @@ import { isPresent } from "./optional";
 
 import { type FrontendSDK } from "@/types";
 
+export async function safeGraphQL<T>(
+  fn: () => Promise<T>,
+  errorMessage: string
+): Promise<Result<T>> {
+  let result: T;
+  try {
+    result = await fn();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "Unknown error occurred";
+    return Result.err(`${errorMessage}: ${detail}`);
+  }
+
+  if (!isPresent(result)) {
+    return Result.err(`${errorMessage}: Query returned no data`);
+  }
+
+  return Result.ok(result);
+}
+
 export type ReplaySession = {
   id: string;
   activeEntryId: string;
