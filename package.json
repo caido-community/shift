@@ -7,7 +7,7 @@
     "lint": "eslint ./packages/**/src --fix",
     "format": "prettier --write \"packages/**/src/**/*.{vue,ts,js,json}\"",
     "knip": "knip",
-    "test": "vitest",
+    "test": "vitest run",
     "build": "caido-dev build",
     "watch": "caido-dev watch"
   },
