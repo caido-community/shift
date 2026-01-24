@@ -68,5 +68,5 @@ export const setupAgents = (sdk: FrontendSDK) => {
   });
 
   syncSession();
-  void startDeletedReplaySessionSubscription();
+  startDeletedReplaySessionSubscription();
 };

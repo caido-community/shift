@@ -136,7 +136,7 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
     const agentStore = useAgentStore();
 
     storeWatchUnsubscribe = watch(
-      () => agentStore.state.sessions,
+      () => [agentStore.state.sessions, agentStore.state.persistedSessionIds],
       () => {
         requestAnimationFrame(() => {
           drawIndicators();
@@ -198,7 +198,10 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
         return;
       }
 
-      if (!agentStore.state.sessions.has(sessionId)) {
+      const hasPersistedData = agentStore.state.persistedSessionIds.has(sessionId);
+      const hasActiveSession = agentStore.state.sessions.has(sessionId);
+
+      if (!hasPersistedData && !hasActiveSession) {
         return;
       }
 
@@ -239,7 +242,10 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
         existingIndicator.remove();
       }
 
-      if (!agentStore.state.sessions.has(sessionId)) {
+      const hasPersistedData = agentStore.state.persistedSessionIds.has(sessionId);
+      const hasActiveSession = agentStore.state.sessions.has(sessionId);
+
+      if (!hasPersistedData && !hasActiveSession) {
         return;
       }
 
