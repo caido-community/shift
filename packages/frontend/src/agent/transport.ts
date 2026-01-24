@@ -174,7 +174,6 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
 
     const loggingTransform = new TransformStream({
       transform(chunk, controller) {
-        console.log(chunk);
         controller.enqueue(chunk);
       },
     });
