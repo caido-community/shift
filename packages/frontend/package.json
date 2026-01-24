@@ -6,18 +6,18 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/provider": "^3.0.5",
+    "@ai-sdk/provider": "3.0.5",
     "@ai-sdk/vue": "3.0.49",
     "@caido/primevue": "0.3.3",
-    "@codemirror/state": "^6.5.4",
+    "@codemirror/state": "6.5.4",
     "@types/markdown-it": "14.1.2",
     "@vueuse/core": "14.1.0",
-    "ai": "^6.0.49",
-    "ajv": "^8.17.1",
+    "ai": "6.0.49",
+    "ajv": "8.17.1",
     "backend": "workspace:*",
     "dompurify": "3.3.1",
     "markdown-it": "14.1.0",
-    "mutative": "^1.3.0",
+    "mutative": "1.3.0",
     "pinia": "3.0.4",
     "primevue": "4.1.0",
     "shared": "workspace:*",
@@ -26,7 +26,7 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "@caido/sdk-backend": "^0.55.0",
+    "@caido/sdk-backend": "0.55.0",
     "@caido/sdk-frontend": "0.55.0",
     "@codemirror/view": "6.39.11",
     "vue-tsc": "3.2.3"
