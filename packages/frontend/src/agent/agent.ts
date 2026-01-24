@@ -8,7 +8,14 @@ import { trimOldToolCalls } from "@/agent/utils/messages";
 import { type FrontendSDK } from "@/types";
 import { createModel } from "@/utils/ai";
 
-function buildInstructions(context: AgentContext): string {
+type BuildInstructionsOptions = {
+  context: AgentContext;
+  steps: number;
+  maxSteps: number;
+};
+
+function buildInstructions(options: BuildInstructionsOptions): string {
+  const { context, steps, maxSteps } = options;
   const parts: string[] = [BASE_SYSTEM_PROMPT];
 
   const skillsPrompt = context.toSkillsPrompt();
@@ -19,6 +26,16 @@ function buildInstructions(context: AgentContext): string {
   const contextPrompt = context.toContextPrompt();
   if (contextPrompt !== "") {
     parts.push(contextPrompt);
+  }
+
+  if (steps > 0) {
+    parts.push(
+      `You have already completed ${steps} iterations out of a maximum of ${maxSteps}. ` +
+        (steps >= maxSteps * 0.8
+          ? `You are approaching the iteration limit, so start wrapping up your work. `
+          : "") +
+        `The agent will automatically pause when it reaches ${maxSteps} iterations, but you can stop at any time once your task is complete.`
+    );
   }
 
   return parts.join("\n\n");
@@ -37,7 +54,11 @@ export const createShiftAgent = (options: AgentOptions) => {
   const caidoModel = createModel(sdk, model);
   const agent = new ToolLoopAgent({
     model: caidoModel,
-    instructions: buildInstructions(context),
+    instructions: buildInstructions({
+      context,
+      steps: 0,
+      maxSteps: maxIterations,
+    }),
     tools: shiftAgentTools,
     toolChoice: "auto",
     stopWhen: stepCountIs(maxIterations),
@@ -47,7 +68,11 @@ export const createShiftAgent = (options: AgentOptions) => {
     prepareStep: ({ messages, ...settings }) => ({
       ...settings,
       messages: trimOldToolCalls(messages, 15),
-      system: buildInstructions(context),
+      system: buildInstructions({
+        context,
+        steps: settings.steps.length,
+        maxSteps: maxIterations,
+      }),
     }),
   });
 
