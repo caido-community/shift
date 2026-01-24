@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 
 import Content from "./Content.vue";
 
@@ -14,6 +14,18 @@ const isResizing = ref(false);
 const drawerStyle = computed(() => ({
   width: `${uiStore.drawerWidth}px`,
 }));
+
+const onWindowResize = () => {
+  uiStore.clampDrawerWidth();
+};
+
+onMounted(() => {
+  window.addEventListener("resize", onWindowResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", onWindowResize);
+});
 
 const startResize = (e: MouseEvent) => {
   e.preventDefault();
