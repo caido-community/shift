@@ -31,6 +31,21 @@ export const setupAgents = (sdk: FrontendSDK) => {
     }
   });
 
+  const startDeletedReplaySessionSubscription = async () => {
+    for await (const event of sdk.graphql.deletedReplaySession()) {
+      const deletedSessionId = event.deletedReplaySession.deletedSessionId;
+      if (!isPresent(deletedSessionId)) {
+        continue;
+      }
+
+      if (agentStore.selectedSessionId === deletedSessionId) {
+        agentStore.dispatch({ type: "CLEAR_SESSION_SELECTION" });
+      }
+
+      await agentStore.removeSession(deletedSessionId);
+    }
+  };
+
   const syncSession = () => {
     const currentReplaySession = sdk.replay.getCurrentSession();
     if (currentReplaySession === undefined) {
@@ -53,4 +68,5 @@ export const setupAgents = (sdk: FrontendSDK) => {
   });
 
   syncSession();
+  void startDeletedReplaySessionSubscription();
 };
