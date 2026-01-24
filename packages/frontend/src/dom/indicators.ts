@@ -204,6 +204,10 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
 
       const session = agentStore.getSession(sessionId);
       if (session === undefined || session.chat.messages.length === 0) {
+        const existingIndicator = button.querySelector(`.${BASE_INDICATOR_CLASS}`);
+        if (existingIndicator) {
+          existingIndicator.remove();
+        }
         return;
       }
 
@@ -241,6 +245,10 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
 
       const session = agentStore.getSession(sessionId);
       if (session === undefined || session.chat.messages.length === 0) {
+        const existingIndicator = group.querySelector(`.${BASE_INDICATOR_CLASS}`);
+        if (existingIndicator) {
+          existingIndicator.remove();
+        }
         return;
       }
 
