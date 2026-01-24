@@ -31,7 +31,7 @@ export const defaultSettingsConfig: SettingsConfig = {
   renamingModel: "",
   maxIterations: 35,
   renaming: defaultRenamingConfig,
-  debugToolsEnabled: true,
+  debugToolsEnabled: false,
   autoCreateShiftCollection: true,
 };
 
