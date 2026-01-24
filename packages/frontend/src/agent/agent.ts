@@ -44,10 +44,11 @@ export const createShiftAgent = (options: AgentOptions) => {
     maxRetries: 3,
     experimental_context: context,
     // Trim old tool calls/results to reduce context size while preserving text content
-    prepareStep: ({ messages }) => {
-      const trimmed = trimOldToolCalls(messages, 15);
-      return { messages: trimmed };
-    },
+    prepareStep: ({ messages, ...settings }) => ({
+      ...settings,
+      messages: trimOldToolCalls(messages, 15),
+      system: buildInstructions(context),
+    }),
   });
 
   return agent;
