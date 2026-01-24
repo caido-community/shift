@@ -4,6 +4,15 @@ import { type ActionContext } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 import { type EditorElement, isPresent } from "@/utils";
 
+const MAX_CONTEXT_LENGTH = 10_000;
+
+const truncate = (value: string, maxLength = MAX_CONTEXT_LENGTH): string => {
+  if (value.length <= maxLength) {
+    return value;
+  }
+  return `${value.slice(0, maxLength)}... [truncated, ${value.length - maxLength} more characters]`;
+};
+
 // TODO: we rely a lot on the DOM of Caido, we could create a test suite that would test different pages to make sure the elements we use exist
 
 const getBaseContext = (sdk: FrontendSDK): ActionContext => {
@@ -56,14 +65,23 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
       return undefined;
     };
 
+    const requestRaw = requestEditor?.cmView?.view.state.doc.toString();
+    const responseRaw = responseEditor?.cmView?.view.state.doc.toString();
+    const requestSelection = getSelectedText(requestEditorView);
+    const responseSelection = getSelectedText(responseEditorView);
+
     return {
       requestEditor: {
-        raw: requestEditor?.cmView?.view.state.doc.toString() ?? "No request editor found",
-        selection: getSelectedText(requestEditorView) ?? "No selection in request editor",
+        raw: isPresent(requestRaw) ? truncate(requestRaw) : "No request editor found",
+        selection: isPresent(requestSelection)
+          ? truncate(requestSelection)
+          : "No selection in request editor",
       },
       responseEditor: {
-        raw: responseEditor?.cmView?.view.state.doc.toString() ?? "No response editor found",
-        selection: getSelectedText(responseEditorView) ?? "No selection in response editor",
+        raw: isPresent(responseRaw) ? truncate(responseRaw) : "No response editor found",
+        selection: isPresent(responseSelection)
+          ? truncate(responseSelection)
+          : "No selection in response editor",
       },
     };
   };
@@ -100,7 +118,7 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
     if (isPresent(selection) && selection.rangeCount > 0) {
       const str = selection.toString();
       if (str.length > 0) {
-        return str;
+        return truncate(str);
       }
     }
 
@@ -114,7 +132,7 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
       return "No text is selected";
     }
 
-    return selectedText;
+    return truncate(selectedText);
   };
 
   const getHostedFiles = () => {
