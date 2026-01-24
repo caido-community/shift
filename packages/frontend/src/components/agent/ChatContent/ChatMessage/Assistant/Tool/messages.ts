@@ -21,7 +21,8 @@ import { display as requestQuerySetDisplay } from "@/agent/tools/request/Request
 import { display as requestRawEditDisplay } from "@/agent/tools/request/RequestRawEdit";
 import { display as requestRawSetDisplay } from "@/agent/tools/request/RequestRawSet";
 import { display as requestSendDisplay } from "@/agent/tools/request/RequestSend";
-import { display as responseReadDisplay } from "@/agent/tools/response/ResponseRead";
+import { display as responseRangeReadDisplay } from "@/agent/tools/response/ResponseRangeRead";
+import { display as responseSearchDisplay } from "@/agent/tools/response/ResponseSearch";
 import { display as todoAddDisplay } from "@/agent/tools/todo/TodoAdd";
 import { display as todoCompleteDisplay } from "@/agent/tools/todo/TodoComplete";
 import { display as todoRemoveDisplay } from "@/agent/tools/todo/TodoRemove";
@@ -48,7 +49,8 @@ const configs = {
   RequestRawEdit: requestRawEditDisplay,
   RequestRawSet: requestRawSetDisplay,
   RequestSend: requestSendDisplay,
-  ResponseRead: responseReadDisplay,
+  ResponseRangeRead: responseRangeReadDisplay,
+  ResponseSearch: responseSearchDisplay,
   EnvironmentCreate: environmentCreateDisplay,
   EnvironmentUpdate: environmentUpdateDisplay,
   EnvironmentRemove: environmentRemoveDisplay,

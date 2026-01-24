@@ -12,16 +12,10 @@ const inputSchema = z.object({
   value: z.string().describe("The cookie value. Supports environment variable substitution"),
 });
 
-const valueSchema = z.object({
-  before: z.string(),
-  after: z.string(),
-});
-
-const outputSchema = ToolResult.schema(valueSchema);
+const outputSchema = ToolResult.schema();
 
 type RequestCookieAddInput = z.infer<typeof inputSchema>;
-type RequestCookieAddValue = z.infer<typeof valueSchema>;
-type RequestCookieAddOutput = ToolResultType<RequestCookieAddValue>;
+type RequestCookieAddOutput = ToolResultType;
 
 export const display = {
   streaming: ({ input }) =>
@@ -38,21 +32,21 @@ export const display = {
         ]
       : [{ text: "Added cookie" }, { text: "cookie", muted: true }],
   error: ({ input }) => `Failed to add cookie${withSuffix(input?.name)}`,
-} satisfies ToolDisplay<RequestCookieAddInput, RequestCookieAddValue>;
+} satisfies ToolDisplay<RequestCookieAddInput>;
 
 export const RequestCookieAdd = tool({
-  description: "Add a new cookie to the current HTTP request.",
+  description:
+    "Add a new cookie to the Cookie header of the current HTTP request. Use this to add session tokens, authentication cookies, tracking cookies, or test values. If a cookie with the same name already exists, this adds a duplicate (which may cause undefined behavior on the server). For replacing an existing cookie's value, use RequestCookieSet instead. The value supports environment variable substitution using {{VAR_NAME}} syntax. Cookies are added to the existing Cookie header or a new one is created if none exists. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
   execute: async ({ name, value }, { experimental_context }): Promise<RequestCookieAddOutput> => {
     const context = experimental_context as AgentContext;
-    const before = context.httpRequest;
-    if (before === "") {
+    if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
     const resolvedValue = await resolveEnvironmentVariables(context.sdk, value);
-    const after = HttpForge.create(before).addCookie(name, resolvedValue).build();
+    const after = HttpForge.create(context.httpRequest).addCookie(name, resolvedValue).build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Cookie "${name}" added`, before, after });
+    return ToolResult.ok({ message: `Cookie "${name}" added` });
   },
 });

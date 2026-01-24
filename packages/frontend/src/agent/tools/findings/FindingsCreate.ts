@@ -42,7 +42,7 @@ export const display = {
 
 export const FindingsCreate = tool({
   description:
-    "Create a finding with a title and markdown description. Finding represents a discovered vulnerability or interesting behavior that you want to report to the user.",
+    "Create a security finding to document a discovered vulnerability, interesting behavior, or notable observation. Findings are linked to the current request in the replay session and appear in Caido's Findings panel for the user to review. Use this when you discover something the user should know about - SQL injection, XSS, authentication bypass, information disclosure, or any security-relevant behavior. The title should be concise (e.g., 'Reflected XSS in search parameter'). The markdown description should include details about the vulnerability, how to reproduce it, and potential impact. Both title and markdown support environment variable substitution using {{VAR_NAME}} syntax. Returns the created finding's ID.",
   inputSchema,
   outputSchema,
   execute: async ({ title, markdown }, { experimental_context }): Promise<FindingsCreateOutput> => {

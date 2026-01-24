@@ -1,3 +1,7 @@
+import { Result } from "shared";
+
+import type { AgentContext } from "@/agent/context";
+
 const MAX_CONTEXT_LENGTH = 50;
 const MAX_OCCURRENCES = 20;
 const MAX_READ_LENGTH = 5000;
@@ -20,6 +24,11 @@ type ReadResult = {
   startIndex: number;
   endIndex: number;
   truncated: boolean;
+};
+
+type ResponseData = {
+  content: string;
+  length: number;
 };
 
 const extractContext = (content: string, matchStart: number, matchEnd: number): string => {
@@ -92,4 +101,22 @@ export const readContentRange = (
     endIndex: actualEndIndex,
     truncated,
   };
+};
+
+export const fetchResponse = async (
+  context: AgentContext,
+  responseId: string
+): Promise<Result<ResponseData>> => {
+  const result = await context.sdk.graphql.response({
+    id: responseId,
+  });
+
+  if (result.response === undefined || result.response === null) {
+    return Result.err(`No response with ID: ${responseId}`);
+  }
+
+  return Result.ok({
+    content: result.response.raw,
+    length: result.response.raw.length,
+  });
 };

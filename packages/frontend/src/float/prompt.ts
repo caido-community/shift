@@ -384,7 +384,7 @@ const HARDCODED_EXAMPLES = [
   },
 ];
 
-const HTTPQL_SPEC_FILE = `
+export const HTTPQL_SPEC_FILE = `
 # HTTPQL Query Language
 
 HTTPQL is used to filter requests and responses in Caido.

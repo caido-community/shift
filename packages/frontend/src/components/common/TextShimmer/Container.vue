@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useSlots } from "vue";
+import { computed, useSlots, type VNode } from "vue";
 
 const { duration = 0.7, spread = 2 } = defineProps<{
   duration?: number;
@@ -8,14 +8,22 @@ const { duration = 0.7, spread = 2 } = defineProps<{
 
 const slots = useSlots();
 
+const extractText = (nodes: VNode[]): string => {
+  let text = "";
+  for (const node of nodes) {
+    if (typeof node.children === "string") {
+      text += node.children;
+    } else if (Array.isArray(node.children)) {
+      text += extractText(node.children as VNode[]);
+    }
+  }
+  return text;
+};
+
 const slotText = computed(() => {
   const defaultSlot = slots.default?.();
   if (!defaultSlot || defaultSlot.length === 0) return "";
-  const firstChild = defaultSlot[0];
-  if (firstChild !== undefined && typeof firstChild.children === "string") {
-    return firstChild.children;
-  }
-  return "";
+  return extractText(defaultSlot);
 });
 
 const dynamicSpread = computed(() => {

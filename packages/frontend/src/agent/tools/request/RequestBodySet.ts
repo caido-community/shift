@@ -13,42 +13,46 @@ const inputSchema = z.object({
     .describe("The new body content for the request. Supports environment variable substitution"),
 });
 
-const valueSchema = z.object({
-  before: z.string(),
-  after: z.string(),
-});
-
-const outputSchema = ToolResult.schema(valueSchema);
+const outputSchema = ToolResult.schema();
 
 type RequestBodySetInput = z.infer<typeof inputSchema>;
-type RequestBodySetValue = z.infer<typeof valueSchema>;
-type RequestBodySetOutput = ToolResultType<RequestBodySetValue>;
+type RequestBodySetOutput = ToolResultType;
 
 export const display = {
-  streaming: ({ input }) =>
-    input
-      ? [{ text: "Setting body to " }, { text: truncate(input.body, 50), muted: true }]
-      : [{ text: "Setting " }, { text: "request body", muted: true }],
-  success: ({ input }) =>
-    input
-      ? [{ text: "Set body to " }, { text: truncate(input.body, 50), muted: true }]
-      : [{ text: "Updated " }, { text: "request body", muted: true }],
+  streaming: ({ input }) => {
+    if (!input) {
+      return [{ text: "Setting " }, { text: "request body", muted: true }];
+    }
+    if (input.body === "") {
+      return [{ text: "Removing " }, { text: "request body", muted: true }];
+    }
+    return [{ text: "Setting body to " }, { text: truncate(input.body, 100), muted: true }];
+  },
+  success: ({ input }) => {
+    if (!input) {
+      return [{ text: "Updated " }, { text: "request body", muted: true }];
+    }
+    if (input.body === "") {
+      return [{ text: "Removed " }, { text: "request body", muted: true }];
+    }
+    return [{ text: "Set body to " }, { text: truncate(input.body, 100), muted: true }];
+  },
   error: () => "Failed to set request body",
-} satisfies ToolDisplay<RequestBodySetInput, RequestBodySetValue>;
+} satisfies ToolDisplay<RequestBodySetInput>;
 
 export const RequestBodySet = tool({
-  description: "Set the body of the current HTTP request",
+  description:
+    "Set or replace the body content of the current HTTP request. Use this when you need to modify POST/PUT/PATCH request payloads, add JSON data, form data, or any other request body content. The body parameter accepts any string content and supports environment variable substitution using {{VAR_NAME}} syntax. Pass an empty string to remove the body entirely. This tool will fail if no HTTP request is currently loaded in the replay session. Returns the complete request before and after the modification.",
   inputSchema,
   outputSchema,
   execute: async ({ body }, { experimental_context }): Promise<RequestBodySetOutput> => {
     const context = experimental_context as AgentContext;
-    const before = context.httpRequest;
-    if (before === "") {
+    if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
     const resolvedBody = await resolveEnvironmentVariables(context.sdk, body);
-    const after = HttpForge.create(before).body(resolvedBody).build();
+    const after = HttpForge.create(context.httpRequest).body(resolvedBody).build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: "Request body updated", before, after });
+    return ToolResult.ok({ message: "Request body updated" });
   },
 });

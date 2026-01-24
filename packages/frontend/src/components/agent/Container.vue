@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref } from "vue";
+
 import Content from "./Content.vue";
 
 import { useAgentStore } from "@/stores/agent/store";
@@ -6,6 +8,50 @@ import { useUIStore } from "@/stores/ui";
 
 const store = useAgentStore();
 const uiStore = useUIStore();
+
+const isResizing = ref(false);
+
+const drawerStyle = computed(() => ({
+  width: `${uiStore.drawerWidth}px`,
+}));
+
+const onWindowResize = () => {
+  uiStore.clampDrawerWidth();
+};
+
+onMounted(() => {
+  window.addEventListener("resize", onWindowResize);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", onWindowResize);
+});
+
+const startResize = (e: MouseEvent) => {
+  e.preventDefault();
+  isResizing.value = true;
+
+  const startX = e.clientX;
+  const startWidth = uiStore.drawerWidth;
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    const delta = startX - moveEvent.clientX;
+    uiStore.setDrawerWidth(startWidth + delta);
+  };
+
+  const onMouseUp = () => {
+    isResizing.value = false;
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+  };
+
+  document.addEventListener("mousemove", onMouseMove);
+  document.addEventListener("mouseup", onMouseUp);
+  document.body.style.cursor = "ew-resize";
+  document.body.style.userSelect = "none";
+};
 </script>
 
 <template>
@@ -14,7 +60,12 @@ const uiStore = useUIStore();
     class="fixed inset-0 z-50 pointer-events-none"
     style="margin-top: 3.5rem; height: calc(100vh - 3.5rem)">
     <div
-      class="absolute top-0 right-0 bg-surface-800 shadow-lg pointer-events-auto h-full w-[35rem] border-l border-t border-surface-700">
+      class="absolute top-0 right-0 bg-surface-800 shadow-lg pointer-events-auto h-full border-l border-t border-surface-700"
+      :style="drawerStyle">
+      <div
+        class="absolute left-0 top-0 h-full w-1 cursor-ew-resize hover:bg-secondary-500/50 transition-colors z-10"
+        :class="{ 'bg-secondary-500/50': isResizing }"
+        @mousedown="startResize" />
       <Content
         v-if="store.activeSession"
         :key="store.activeSession?.id"

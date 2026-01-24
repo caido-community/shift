@@ -42,7 +42,8 @@ export const display = {
 } satisfies ToolDisplay<LearningUpdateInput, LearningUpdateValue>;
 
 export const LearningUpdate = tool({
-  description: `Modify an existing learning entry by index. Use this to correct or refine previously stored information.`,
+  description:
+    "Replace the content of an existing learning entry at the specified zero-based index. Use this to correct mistakes, update outdated information (new token values, changed endpoints), or refine a learning with additional details. The entire content is replaced - provide the complete new text, not just the changes. The index must be valid (within the current learnings array bounds). Returns the updated learning entry with its index and new value.",
   inputSchema,
   outputSchema,
   execute: async ({ index, content }): Promise<LearningUpdateOutput> => {

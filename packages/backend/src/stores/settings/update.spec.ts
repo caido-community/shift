@@ -13,7 +13,7 @@ const createTestModel = (): SettingsModel => ({
     renameAfterSend: false,
     instructions: "Test instructions",
   },
-  debugToolsEnabled: true,
+  debugToolsEnabled: false,
   autoCreateShiftCollection: true,
 });
 

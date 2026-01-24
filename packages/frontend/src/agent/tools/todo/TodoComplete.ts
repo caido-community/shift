@@ -29,7 +29,7 @@ type TodoCompleteOutput = ToolResultType<TodoCompleteValue>;
 const formatCompletedPreview = (todos: Todo[] | undefined, ids: string[] | undefined): string => {
   const first = todos?.[0];
   if (isPresent(first) && todos?.length === 1) {
-    return truncate(first.content, 32);
+    return truncate(first.content, 90);
   }
   if (isPresent(ids)) {
     return `${ids.length} ${pluralize(ids.length, "todo")}`;
@@ -55,7 +55,8 @@ export const display = {
 } satisfies ToolDisplay<TodoCompleteInput, TodoCompleteValue>;
 
 export const TodoComplete = tool({
-  description: "Mark todo items as completed",
+  description:
+    "Mark one or more todo items as completed by their IDs. Use this to track progress through a testing workflow and indicate which steps have been finished. Completed todos remain visible but are marked as done. The ids array accepts multiple todo IDs to complete several items at once. If any ID is invalid or already completed, an error is returned for that specific item. Returns the list of todos that were successfully completed.",
   inputSchema,
   outputSchema,
   execute: ({ ids }, { experimental_context }): TodoCompleteOutput => {

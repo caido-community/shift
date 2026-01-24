@@ -118,7 +118,10 @@ const toggle = () => {
       v-else
       class="flex items-center h-5 text-surface-300 text-sm">
       <span>Created </span>
-      <span class="text-surface-500">todos</span>
+      <span class="text-surface-500"
+        >{{ todoAddOutput?.todos.length ?? "" }}
+        {{ pluralize(todoAddOutput?.todos.length ?? 0, "todo") }}</span
+      >
     </div>
   </div>
 </template>

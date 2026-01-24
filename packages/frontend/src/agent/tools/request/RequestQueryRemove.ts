@@ -10,16 +10,10 @@ const inputSchema = z.object({
   key: z.string().describe("The query parameter key to remove"),
 });
 
-const valueSchema = z.object({
-  before: z.string(),
-  after: z.string(),
-});
-
-const outputSchema = ToolResult.schema(valueSchema);
+const outputSchema = ToolResult.schema();
 
 type RequestQueryRemoveInput = z.infer<typeof inputSchema>;
-type RequestQueryRemoveValue = z.infer<typeof valueSchema>;
-type RequestQueryRemoveOutput = ToolResultType<RequestQueryRemoveValue>;
+type RequestQueryRemoveOutput = ToolResultType;
 
 export const display = {
   streaming: ({ input }) =>
@@ -31,20 +25,20 @@ export const display = {
     { text: truncate(input?.key ?? "unknown"), muted: true },
   ],
   error: ({ input }) => `Failed to remove query param${withSuffix(input?.key)}`,
-} satisfies ToolDisplay<RequestQueryRemoveInput, RequestQueryRemoveValue>;
+} satisfies ToolDisplay<RequestQueryRemoveInput>;
 
 export const RequestQueryRemove = tool({
-  description: "Remove a query parameter from the current HTTP request",
+  description:
+    "Remove a URL query parameter from the current HTTP request by its key name. Use this to test how the application behaves when expected parameters are missing, or to clean up the query string before adding different test values. If the parameter doesn't exist, the operation succeeds silently (no error). Removes all occurrences if the parameter appears multiple times. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
   execute: ({ key }, { experimental_context }): RequestQueryRemoveOutput => {
     const context = experimental_context as AgentContext;
-    const before = context.httpRequest;
-    if (before === "") {
+    if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
-    const after = HttpForge.create(before).removeQueryParam(key).build();
+    const after = HttpForge.create(context.httpRequest).removeQueryParam(key).build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Query param "${key}" removed`, before, after });
+    return ToolResult.ok({ message: `Query param "${key}" removed` });
   },
 });

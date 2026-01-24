@@ -61,7 +61,7 @@ export const display = {
 
 export const EnvironmentUpdate = tool({
   description:
-    "Update an existing environment. Replaces all variables with the provided list. Use sdk.graphql.environments() to list available environments first.",
+    "Update an existing Caido environment by ID. This completely replaces all variables with the provided list - any variables not included will be deleted. Use this to update stored tokens, credentials, or configuration values. To add a single variable while preserving others, first fetch the current environment variables, add the new one, then call this tool with the complete list. The environment ID can be found using sdk.graphql.environments(). Each variable requires name, value, and kind (PLAIN or SECRET). Returns the updated environment's ID, name, and version number.",
   inputSchema,
   outputSchema,
   execute: async (

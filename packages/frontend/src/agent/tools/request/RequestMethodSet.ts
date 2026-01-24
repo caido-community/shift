@@ -9,16 +9,10 @@ const inputSchema = z.object({
   method: z.string().describe("The HTTP method (GET, POST, PUT, DELETE, etc.)"),
 });
 
-const valueSchema = z.object({
-  before: z.string(),
-  after: z.string(),
-});
-
-const outputSchema = ToolResult.schema(valueSchema);
+const outputSchema = ToolResult.schema();
 
 type RequestMethodSetInput = z.infer<typeof inputSchema>;
-type RequestMethodSetValue = z.infer<typeof valueSchema>;
-type RequestMethodSetOutput = ToolResultType<RequestMethodSetValue>;
+type RequestMethodSetOutput = ToolResultType;
 
 export const display = {
   streaming: () => [{ text: "Setting " }, { text: "request method", muted: true }],
@@ -27,20 +21,20 @@ export const display = {
     { text: input?.method ?? "unknown", muted: true },
   ],
   error: () => "Failed to set request method",
-} satisfies ToolDisplay<RequestMethodSetInput, RequestMethodSetValue>;
+} satisfies ToolDisplay<RequestMethodSetInput>;
 
 export const RequestMethodSet = tool({
-  description: "Set the HTTP method of the current request",
+  description:
+    "Change the HTTP method of the current request. Use this to test how endpoints respond to different methods - for example, changing GET to POST to test for method-based access control issues, or trying DELETE/PUT/PATCH on REST endpoints. The method parameter accepts any valid HTTP method string (GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD, etc.). This only changes the method in the request line; you may also need to add appropriate headers (Content-Type) or body content for methods that typically include a request body. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
   execute: ({ method }, { experimental_context }): RequestMethodSetOutput => {
     const context = experimental_context as AgentContext;
-    const before = context.httpRequest;
-    if (before === "") {
+    if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
-    const after = HttpForge.create(before).method(method).build();
+    const after = HttpForge.create(context.httpRequest).method(method).build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Method set to "${method}"`, before, after });
+    return ToolResult.ok({ message: `Method set to "${method}"` });
   },
 });

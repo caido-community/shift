@@ -12,47 +12,46 @@ const inputSchema = z.object({
   value: z.string().describe("The header value. Supports environment variable substitution"),
 });
 
-const valueSchema = z.object({
-  before: z.string(),
-  after: z.string(),
-});
-
-const outputSchema = ToolResult.schema(valueSchema);
+const outputSchema = ToolResult.schema();
 
 type RequestHeaderSetInput = z.infer<typeof inputSchema>;
-type RequestHeaderSetValue = z.infer<typeof valueSchema>;
-type RequestHeaderSetOutput = ToolResultType<RequestHeaderSetValue>;
+type RequestHeaderSetOutput = ToolResultType;
 
 export const display = {
   streaming: ({ input }) =>
     input
       ? [{ text: "Setting " }, { text: truncate(input.name), muted: true }]
       : [{ text: "Setting " }, { text: "header", muted: true }],
-  success: ({ input }) =>
-    input
-      ? [
-          { text: "Set header " },
-          { text: truncate(input.name), muted: true },
-          { text: " to " },
-          { text: truncate(input.value), muted: true },
-        ]
-      : [{ text: "Set header" }, { text: "header", muted: true }],
+  success: ({ input }) => {
+    if (!input) {
+      return [{ text: "Set " }, { text: "header", muted: true }];
+    }
+    if (input.value === "") {
+      return [{ text: "Cleared header " }, { text: truncate(input.name), muted: true }];
+    }
+    return [
+      { text: "Set header " },
+      { text: truncate(input.name), muted: true },
+      { text: " to " },
+      { text: truncate(input.value), muted: true },
+    ];
+  },
   error: ({ input }) => `Failed to set header${withSuffix(input?.name)}`,
-} satisfies ToolDisplay<RequestHeaderSetInput, RequestHeaderSetValue>;
+} satisfies ToolDisplay<RequestHeaderSetInput>;
 
 export const RequestHeaderSet = tool({
-  description: "Set or replace a header in the current HTTP request",
+  description:
+    "Set or replace an HTTP header in the current request. If the header already exists, its value will be replaced; if it doesn't exist, it will be added. Use this for modifying authentication tokens, content types, custom headers, or any header that should have exactly one value. For headers that can have multiple values (like Accept), use RequestHeaderAdd instead. The value parameter supports environment variable substitution using {{VAR_NAME}} syntax. Pass an empty string as the value to clear the header's value while keeping the header present. This tool will fail if no HTTP request is currently loaded. Returns the complete request before and after the modification.",
   inputSchema,
   outputSchema,
   execute: async ({ name, value }, { experimental_context }): Promise<RequestHeaderSetOutput> => {
     const context = experimental_context as AgentContext;
-    const before = context.httpRequest;
-    if (before === "") {
+    if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
     const resolvedValue = await resolveEnvironmentVariables(context.sdk, value);
-    const after = HttpForge.create(before).setHeader(name, resolvedValue).build();
+    const after = HttpForge.create(context.httpRequest).setHeader(name, resolvedValue).build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Header "${name}" set`, before, after });
+    return ToolResult.ok({ message: `Header "${name}" set` });
   },
 });

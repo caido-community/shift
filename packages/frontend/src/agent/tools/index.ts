@@ -19,7 +19,7 @@ import {
   RequestRawSet,
   RequestSend,
 } from "./request";
-import { ResponseRead } from "./response";
+import { ResponseRangeRead, ResponseSearch } from "./response";
 import { TodoAdd, TodoComplete, TodoRemove } from "./todo";
 
 export const shiftAgentTools = {
@@ -43,7 +43,8 @@ export const shiftAgentTools = {
   RequestRawEdit,
   RequestRawSet,
   RequestSend,
-  ResponseRead,
+  ResponseRangeRead,
+  ResponseSearch,
   EnvironmentCreate,
   EnvironmentUpdate,
   EnvironmentRemove,

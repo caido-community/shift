@@ -59,7 +59,8 @@ export const display = {
 } satisfies ToolDisplay<EnvironmentCreateInput, EnvironmentCreateValue>;
 
 export const EnvironmentCreate = tool({
-  description: "Create a new environment with variables",
+  description:
+    "Create a new Caido environment with named variables that can be referenced in requests using {{VAR_NAME}} syntax. Use this to store reusable values like API keys, session tokens, base URLs, or test credentials that need to be used across multiple requests. Each variable has a name, value, and kind (PLAIN for visible values, SECRET for sensitive values that should be masked in the UI). The environment persists in Caido and can be selected as the active environment. Returns the created environment's ID, name, and version number.",
   inputSchema,
   outputSchema,
   execute: async (

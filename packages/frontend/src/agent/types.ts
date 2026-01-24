@@ -25,23 +25,31 @@ const frontendErrorSchema = z.object({
   detail: z.string().optional(),
 });
 
-type WithMessage<T> = T & { message: string };
+type MessageOnly = { message: string };
+type WithMessage<T> = T & MessageOnly;
 
-export type ToolResult<TValue> = Result<WithMessage<TValue>, FrontendError>;
+export type ToolResult<TValue = undefined> = Result<
+  TValue extends undefined ? MessageOnly : WithMessage<TValue>,
+  FrontendError
+>;
 
 export const ToolResult = {
-  schema: <T extends z.ZodTypeAny>(valueSchema: T) =>
+  schema: <T extends z.ZodTypeAny>(valueSchema?: T) =>
     z.discriminatedUnion("kind", [
       z.object({
         kind: z.literal("Ok"),
-        value: valueSchema.and(z.object({ message: z.string() })),
+        value: valueSchema
+          ? valueSchema.and(z.object({ message: z.string() }))
+          : z.object({ message: z.string() }),
       }),
       z.object({
         kind: z.literal("Error"),
         error: frontendErrorSchema,
       }),
     ]),
-  ok: <TValue>(value: WithMessage<TValue>): ToolResult<TValue> => ({
+  ok: <TValue = undefined>(
+    value: TValue extends undefined ? MessageOnly : WithMessage<TValue>
+  ): ToolResult<TValue> => ({
     kind: "Ok",
     value,
   }),
@@ -59,7 +67,7 @@ export type ToolDisplayContext<TInput, TOutput> = {
   output: TOutput | undefined;
 };
 
-export type ToolDisplay<TInput, TOutput> = {
+export type ToolDisplay<TInput, TOutput = undefined> = {
   streaming: (context: ToolDisplayContext<TInput, TOutput>) => MessageResult;
   success: (context: ToolDisplayContext<TInput, TOutput>) => MessageResult;
   error: (context: ToolDisplayContext<TInput, TOutput>) => string;
