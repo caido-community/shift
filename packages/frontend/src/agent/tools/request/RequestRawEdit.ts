@@ -27,7 +27,7 @@ export const display = {
           { text: "Replacing " },
           { text: truncate(input.oldText, 18), muted: true },
           { text: " → " },
-          { text: truncate(input.newText, 18), muted: true },
+          { text: truncate(input.newText, 56), muted: true },
         ]
       : [{ text: "Editing " }, { text: "request", muted: true }],
   success: ({ input }) =>
@@ -36,7 +36,7 @@ export const display = {
           { text: "Replaced " },
           { text: truncate(input.oldText, 18), muted: true },
           { text: " → " },
-          { text: truncate(input.newText, 18), muted: true },
+          { text: truncate(input.newText, 56), muted: true },
         ]
       : [{ text: "Edited " }, { text: "request", muted: true }],
   error: () => "Failed to edit request",

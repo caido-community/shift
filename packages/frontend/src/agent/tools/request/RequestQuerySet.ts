@@ -35,7 +35,7 @@ export const display = {
       { text: "Set query param " },
       { text: truncate(input.key, 40), muted: true },
       { text: " to " },
-      { text: truncate(input.value, 40), muted: true },
+      { text: truncate(input.value, 90), muted: true },
     ];
   },
   error: ({ input }) => `Failed to set query param${withSuffix(input?.key)}`,

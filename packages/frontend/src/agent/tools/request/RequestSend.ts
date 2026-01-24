@@ -28,7 +28,6 @@ const extractStatusLine = (rawResponse: string): string => {
 };
 
 const UNINTERESTING_HEADERS = new Set([
-  "date",
   "server",
   "pragma",
   "vary",
@@ -36,7 +35,6 @@ const UNINTERESTING_HEADERS = new Set([
   "keep-alive",
   "transfer-encoding",
   "accept-ranges",
-  "age",
   "etag",
   "last-modified",
   "expires",

@@ -26,7 +26,7 @@ export const display = {
     if (input.body === "") {
       return [{ text: "Removing " }, { text: "request body", muted: true }];
     }
-    return [{ text: "Setting body to " }, { text: truncate(input.body, 50), muted: true }];
+    return [{ text: "Setting body to " }, { text: truncate(input.body, 100), muted: true }];
   },
   success: ({ input }) => {
     if (!input) {
@@ -35,7 +35,7 @@ export const display = {
     if (input.body === "") {
       return [{ text: "Removed " }, { text: "request body", muted: true }];
     }
-    return [{ text: "Set body to " }, { text: truncate(input.body, 50), muted: true }];
+    return [{ text: "Set body to " }, { text: truncate(input.body, 100), muted: true }];
   },
   error: () => "Failed to set request body",
 } satisfies ToolDisplay<RequestBodySetInput>;

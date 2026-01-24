@@ -106,7 +106,7 @@ You will receive a context message about your environment on every step. This co
 
 You can reference this context information to understand what you're working with and track your progress through the todo system.
 
-IMPORTANT: To manage context limits, older messages in the conversation may be trimmed. You must use todos to track your progress since it persists in the context message and won't be lost.
+IMPORTANT: To manage context limits, older tool calls and results in the conversation may be trimmed while preserving text content. You should use todos to track your progress since it persists in the context message and won't be lost.
 </context_message>
 
 <environments>
