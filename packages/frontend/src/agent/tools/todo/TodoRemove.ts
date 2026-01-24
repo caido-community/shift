@@ -55,7 +55,8 @@ export const display = {
 } satisfies ToolDisplay<TodoRemoveInput, TodoRemoveValue>;
 
 export const TodoRemove = tool({
-  description: "Remove todo items from the list",
+  description:
+    "Permanently remove one or more todo items from the list by their IDs. Use this to delete todos that are no longer relevant, were created by mistake, or are duplicates. Unlike TodoComplete, removed todos are deleted entirely and won't appear in the list. The ids array accepts multiple todo IDs to remove several items at once. If any ID is invalid, an error is returned for that specific item. Returns the list of todos that were successfully removed.",
   inputSchema,
   outputSchema,
   execute: ({ ids }, { experimental_context }): TodoRemoveOutput => {

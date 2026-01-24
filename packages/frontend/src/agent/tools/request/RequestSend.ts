@@ -27,6 +27,55 @@ const extractStatusLine = (rawResponse: string): string => {
   return match?.[1] ?? firstLine;
 };
 
+const UNINTERESTING_HEADERS = new Set([
+  "date",
+  "server",
+  "pragma",
+  "vary",
+  "connection",
+  "keep-alive",
+  "transfer-encoding",
+  "accept-ranges",
+  "age",
+  "etag",
+  "last-modified",
+  "expires",
+  "via",
+  "x-powered-by",
+  "x-aspnet-version",
+  "x-aspnetmvc-version",
+  "x-request-id",
+  "x-correlation-id",
+  "x-trace-id",
+  "cf-ray",
+  "nel",
+  "report-to",
+  "alt-svc",
+]);
+
+const filterResponseHeaders = (rawResponse: string): string => {
+  const headerEndIndex = rawResponse.indexOf("\r\n\r\n");
+  if (headerEndIndex === -1) {
+    return rawResponse;
+  }
+
+  const headerSection = rawResponse.substring(0, headerEndIndex);
+  const body = rawResponse.substring(headerEndIndex);
+
+  const lines = headerSection.split("\r\n");
+  const statusLine = lines[0] ?? "";
+  const headers = lines.slice(1);
+
+  const filteredHeaders = headers.filter((header) => {
+    const colonIndex = header.indexOf(":");
+    if (colonIndex === -1) return true;
+    const headerName = header.substring(0, colonIndex).trim().toLowerCase();
+    return !UNINTERESTING_HEADERS.has(headerName);
+  });
+
+  return [statusLine, ...filteredHeaders].join("\r\n") + body;
+};
+
 export const display = {
   streaming: () => [{ text: "Sending " }, { text: "request", muted: true }],
   success: ({ output }) =>
@@ -43,7 +92,7 @@ export const display = {
 
 export const RequestSend = tool({
   description:
-    "Send the current HTTP request. Returns the response with rawResponse, roundtripTime, and responseId.",
+    "Send the current HTTP request to the target server and wait for a response. Use this after modifying the request with other tools to test changes, verify behavior, or continue an attack workflow. The request is sent using the connection settings from the replay session (host, port, TLS). Returns the response (truncated to 2000 chars if larger) with non-security-relevant headers filtered out, roundtrip time in milliseconds, response ID for use with ResponseSearch/ResponseRangeRead, and the status line. Times out after 30 seconds.",
   inputSchema,
   outputSchema,
   execute: async (_input, { experimental_context }): Promise<RequestSendOutput> => {
@@ -103,18 +152,19 @@ export const RequestSend = tool({
     }
 
     const statusLine = extractStatusLine(result.response.raw);
+    const filteredResponse = filterResponseHeaders(result.response.raw);
 
-    const maxResponseLength = 5000;
-    const totalLength = result.response.raw.length;
+    const maxResponseLength = 2000;
+    const totalLength = filteredResponse.length;
     const remainingLength = totalLength - maxResponseLength;
     const suffix =
       totalLength > maxResponseLength
-        ? `[...] (truncated after ${maxResponseLength} bytes. ${remainingLength} bytes remaining. The full response is ${totalLength} bytes. Response ID: ${responseId})`
+        ? `\n[...truncated. ${remainingLength} bytes remaining. Response ID: ${responseId}]`
         : "";
 
     return ToolResult.ok({
       message: `Received ${statusLine} in ${result.response.roundtripTime}ms`,
-      rawResponse: formatStringWithSuffix(result.response.raw, maxResponseLength, suffix),
+      rawResponse: formatStringWithSuffix(filteredResponse, maxResponseLength, suffix),
       roundtripTime: result.response.roundtripTime,
       responseId,
       statusLine,

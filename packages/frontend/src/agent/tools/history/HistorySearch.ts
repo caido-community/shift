@@ -86,11 +86,16 @@ export const display = {
 } satisfies ToolDisplay<HistorySearchInput, HistorySearchValue>;
 
 export const HistorySearch = tool({
-  description: `Search Caido's HTTP history using HTTPQL filters. Useful for:
-- Finding requests by host, path, method, or response code
-- Fetching IDs, cookies, session tokens needed to recreate requests
-- Investigating how the application/API works
-- Finding successful or failed requests to learn from`,
+  description: `Search Caido's HTTP history database using HTTPQL filter syntax. Use this to find previous requests and responses captured by the proxy, which is essential for understanding application behavior, extracting authentication tokens, finding API endpoints, or locating specific traffic patterns.
+
+Common HTTPQL filter examples:
+- req.host.cont:"example.com" - requests containing "example.com" in the host
+- req.method.eq:"POST" - only POST requests
+- resp.code.eq:200 - requests with 200 response code
+- req.path.cont:"/api/" - requests with "/api/" in the path
+- req.body.cont:"password" - requests containing "password" in body
+
+Returns request metadata (id, host, port, path, query, method, isTls, createdAt, length, source) and response metadata (id, statusCode, length, roundtripTime, createdAt) when available. Use the returned request/response IDs with other tools. Results are sorted by ID (newest first by default). Does not return full request/response bodies - use the IDs with other tools to fetch full content.`,
   inputSchema,
   outputSchema,
   execute: async (

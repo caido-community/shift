@@ -67,12 +67,8 @@ export const display = {
 } satisfies ToolDisplay<ResponseSearchInput, ResponseSearchValue>;
 
 export const ResponseSearch = tool({
-  description: `Search for a pattern in an HTTP response by its ID.
-
-Returns all occurrences with their positions (character indices) and surrounding context.
-Use the returned startIndex/endIndex with ResponseRangeRead to read around matches.
-
-Note: Positions are character-based (not line-based) since web responses often contain minified code with very long lines.`,
+  description:
+    "Search for a text pattern within an HTTP response body using the response ID from RequestSend. Use this to find specific content in responses - error messages, tokens, user data, injection reflections, or any text pattern. Returns all occurrences with their character positions (startIndex/endIndex) and surrounding context. The positions are character-based (not line-based) because web responses often contain minified JavaScript or single-line content. Use the returned startIndex/endIndex values with ResponseRangeRead to read larger sections around matches. The pattern parameter is case-sensitive by default; set caseSensitive to false for case-insensitive search. Returns up to 50 occurrences to avoid overwhelming results. Does not support regex - use exact text patterns.",
   inputSchema,
   outputSchema,
   execute: async (input, { experimental_context }): Promise<ResponseSearchOutput> => {

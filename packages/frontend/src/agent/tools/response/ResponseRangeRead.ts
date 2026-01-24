@@ -56,11 +56,8 @@ export const display = {
 } satisfies ToolDisplay<ResponseRangeReadInput, ResponseRangeReadValue>;
 
 export const ResponseRangeRead = tool({
-  description: `Read a specific byte range from an HTTP response by its ID.
-
-Use startIndex/endIndex from ResponseSearch results to read around matches.
-
-Note: Positions are character-based (not line-based) since web responses often contain minified code with very long lines.`,
+  description:
+    "Read a specific character range from an HTTP response using the response ID from RequestSend. Use this to examine portions of large responses without loading the entire content - particularly useful after ResponseSearch identifies interesting locations. The startIndex is inclusive and endIndex is exclusive (like JavaScript's slice). Positions are character-based, not line-based, because web responses often contain minified code. The output is truncated to 5000 bytes if the requested range is larger, with a note about remaining bytes. Returns the content, actual start/end indexes, total response length, and whether truncation occurred. Will fail if startIndex is beyond the response length.",
   inputSchema,
   outputSchema,
   execute: async (input, { experimental_context }): Promise<ResponseRangeReadOutput> => {

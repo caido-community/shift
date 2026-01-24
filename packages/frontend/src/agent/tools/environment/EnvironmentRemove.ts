@@ -34,7 +34,7 @@ export const display = {
 
 export const EnvironmentRemove = tool({
   description:
-    "Delete an environment by ID. Use sdk.graphql.environments() to list available environments first.",
+    "Permanently delete a Caido environment by its ID. Use this to clean up temporary environments created during testing or remove outdated configurations. This action cannot be undone. The environment ID can be found using sdk.graphql.environments(). If the deleted environment was the active environment, you may need to select a different one. Returns the deleted environment's ID and name for confirmation.",
   inputSchema,
   outputSchema,
   execute: async ({ id }, { experimental_context }): Promise<EnvironmentRemoveOutput> => {

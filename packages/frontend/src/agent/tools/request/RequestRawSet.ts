@@ -12,16 +12,10 @@ const inputSchema = z.object({
     .describe("The complete raw HTTP request. Supports environment variable substitution"),
 });
 
-const valueSchema = z.object({
-  before: z.string(),
-  after: z.string(),
-});
-
-const outputSchema = ToolResult.schema(valueSchema);
+const outputSchema = ToolResult.schema();
 
 type RequestRawSetInput = z.infer<typeof inputSchema>;
-type RequestRawSetValue = z.infer<typeof valueSchema>;
-type RequestRawSetOutput = ToolResultType<RequestRawSetValue>;
+type RequestRawSetOutput = ToolResultType;
 
 const formatBytes = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} bytes`;
@@ -38,18 +32,18 @@ export const display = {
       ? [{ text: "Replaced request with " }, { text: formatBytes(input.raw.length), muted: true }]
       : [{ text: "Replaced " }, { text: "request", muted: true }],
   error: () => "Failed to replace request",
-} satisfies ToolDisplay<RequestRawSetInput, RequestRawSetValue>;
+} satisfies ToolDisplay<RequestRawSetInput>;
 
 export const RequestRawSet = tool({
-  description: "Replace the entire raw HTTP request",
+  description:
+    "Replace the entire raw HTTP request with new content. Use this when you need to completely rewrite the request or paste in a request from another source. The raw parameter should contain the complete HTTP request including the request line (e.g., 'GET /path HTTP/1.1'), headers, and body. Line endings are normalized to CRLF as required by HTTP. Supports environment variable substitution using {{VAR_NAME}} syntax. For partial modifications, prefer the specific tools (RequestHeaderSet, RequestBodySet, RequestPathSet, etc.) as they preserve the rest of the request structure.",
   inputSchema,
   outputSchema,
   execute: async ({ raw }, { experimental_context }): Promise<RequestRawSetOutput> => {
     const context = experimental_context as AgentContext;
-    const before = context.httpRequest;
     const resolved = await resolveEnvironmentVariables(context.sdk, raw);
     const normalized = normalizeCRLF(resolved);
     context.setHttpRequest(normalized);
-    return ToolResult.ok({ message: "Raw request replaced", before, after: normalized });
+    return ToolResult.ok({ message: "Raw request replaced" });
   },
 });

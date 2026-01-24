@@ -10,16 +10,10 @@ const inputSchema = z.object({
   name: z.string().describe("The header name to remove"),
 });
 
-const valueSchema = z.object({
-  before: z.string(),
-  after: z.string(),
-});
-
-const outputSchema = ToolResult.schema(valueSchema);
+const outputSchema = ToolResult.schema();
 
 type RequestHeaderRemoveInput = z.infer<typeof inputSchema>;
-type RequestHeaderRemoveValue = z.infer<typeof valueSchema>;
-type RequestHeaderRemoveOutput = ToolResultType<RequestHeaderRemoveValue>;
+type RequestHeaderRemoveOutput = ToolResultType;
 
 export const display = {
   streaming: ({ input }) =>
@@ -31,20 +25,20 @@ export const display = {
     { text: truncate(input?.name ?? "unknown"), muted: true },
   ],
   error: ({ input }) => `Failed to remove header${withSuffix(input?.name)}`,
-} satisfies ToolDisplay<RequestHeaderRemoveInput, RequestHeaderRemoveValue>;
+} satisfies ToolDisplay<RequestHeaderRemoveInput>;
 
 export const RequestHeaderRemove = tool({
-  description: "Remove a header from the current HTTP request",
+  description:
+    "Remove an HTTP header from the current request by its name. Use this to test how the application behaves without certain headers - for example, removing Authorization to test unauthenticated access, removing Content-Type to test parsing behavior, or removing custom headers to bypass security controls. The header name matching is case-insensitive. If the header doesn't exist, the operation succeeds silently. Removes all occurrences if the header appears multiple times. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
   execute: ({ name }, { experimental_context }): RequestHeaderRemoveOutput => {
     const context = experimental_context as AgentContext;
-    const before = context.httpRequest;
-    if (before === "") {
+    if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
-    const after = HttpForge.create(before).removeHeader(name).build();
+    const after = HttpForge.create(context.httpRequest).removeHeader(name).build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Header "${name}" removed`, before, after });
+    return ToolResult.ok({ message: `Header "${name}" removed` });
   },
 });

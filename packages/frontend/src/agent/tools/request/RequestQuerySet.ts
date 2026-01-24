@@ -14,16 +14,10 @@ const inputSchema = z.object({
     .describe("The query parameter value. Supports environment variable substitution"),
 });
 
-const valueSchema = z.object({
-  before: z.string(),
-  after: z.string(),
-});
-
-const outputSchema = ToolResult.schema(valueSchema);
+const outputSchema = ToolResult.schema();
 
 type RequestQuerySetInput = z.infer<typeof inputSchema>;
-type RequestQuerySetValue = z.infer<typeof valueSchema>;
-type RequestQuerySetOutput = ToolResultType<RequestQuerySetValue>;
+type RequestQuerySetOutput = ToolResultType;
 
 export const display = {
   streaming: ({ input }) =>
@@ -45,21 +39,23 @@ export const display = {
     ];
   },
   error: ({ input }) => `Failed to set query param${withSuffix(input?.key)}`,
-} satisfies ToolDisplay<RequestQuerySetInput, RequestQuerySetValue>;
+} satisfies ToolDisplay<RequestQuerySetInput>;
 
 export const RequestQuerySet = tool({
-  description: "Add or update a query parameter in the current HTTP request",
+  description:
+    "Add or update a URL query parameter in the current HTTP request. If the parameter already exists, its value is replaced; if it doesn't exist, it's added. Use this to modify search terms, filter values, pagination parameters, or inject test payloads into query strings. The key is the parameter name and value is its content. The value supports environment variable substitution using {{VAR_NAME}} syntax. Pass an empty string as the value to set a parameter with no value (e.g., ?debug). For parameters that can appear multiple times, each call replaces the existing value. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
   execute: async ({ key, value }, { experimental_context }): Promise<RequestQuerySetOutput> => {
     const context = experimental_context as AgentContext;
-    const before = context.httpRequest;
-    if (before === "") {
+    if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
     const resolvedValue = await resolveEnvironmentVariables(context.sdk, value);
-    const after = HttpForge.create(before).upsertQueryParam(key, resolvedValue).build();
+    const after = HttpForge.create(context.httpRequest)
+      .upsertQueryParam(key, resolvedValue)
+      .build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Query param "${key}" set`, before, after });
+    return ToolResult.ok({ message: `Query param "${key}" set` });
   },
 });

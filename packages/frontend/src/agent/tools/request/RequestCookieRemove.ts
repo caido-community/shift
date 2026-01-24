@@ -10,16 +10,10 @@ const inputSchema = z.object({
   name: z.string().describe("The cookie name to remove"),
 });
 
-const valueSchema = z.object({
-  before: z.string(),
-  after: z.string(),
-});
-
-const outputSchema = ToolResult.schema(valueSchema);
+const outputSchema = ToolResult.schema();
 
 type RequestCookieRemoveInput = z.infer<typeof inputSchema>;
-type RequestCookieRemoveValue = z.infer<typeof valueSchema>;
-type RequestCookieRemoveOutput = ToolResultType<RequestCookieRemoveValue>;
+type RequestCookieRemoveOutput = ToolResultType;
 
 export const display = {
   streaming: ({ input }) =>
@@ -31,20 +25,20 @@ export const display = {
     { text: truncate(input?.name ?? "unknown"), muted: true },
   ],
   error: ({ input }) => `Failed to remove cookie${withSuffix(input?.name)}`,
-} satisfies ToolDisplay<RequestCookieRemoveInput, RequestCookieRemoveValue>;
+} satisfies ToolDisplay<RequestCookieRemoveInput>;
 
 export const RequestCookieRemove = tool({
-  description: "Remove a cookie from the current HTTP request",
+  description:
+    "Remove a cookie from the Cookie header of the current HTTP request by its name. Use this to test how the application behaves without certain cookies - for example, removing session cookies to test unauthenticated behavior, or removing CSRF tokens to test protection mechanisms. If the cookie doesn't exist, the operation succeeds silently. Removes all occurrences if the cookie appears multiple times. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
   execute: ({ name }, { experimental_context }): RequestCookieRemoveOutput => {
     const context = experimental_context as AgentContext;
-    const before = context.httpRequest;
-    if (before === "") {
+    if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
-    const after = HttpForge.create(before).removeCookie(name).build();
+    const after = HttpForge.create(context.httpRequest).removeCookie(name).build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Cookie "${name}" removed`, before, after });
+    return ToolResult.ok({ message: `Cookie "${name}" removed` });
   },
 });

@@ -4,6 +4,7 @@ import { type Model } from "shared";
 import type { AgentContext } from "@/agent/context";
 import { BASE_SYSTEM_PROMPT } from "@/agent/prompt";
 import { shiftAgentTools } from "@/agent/tools";
+import { trimOldToolCalls } from "@/agent/utils/messages";
 import { type FrontendSDK } from "@/types";
 import { createModel } from "@/utils/ai";
 
@@ -42,6 +43,11 @@ export const createShiftAgent = (options: AgentOptions) => {
     stopWhen: stepCountIs(maxIterations),
     maxRetries: 3,
     experimental_context: context,
+    // Trim old tool calls/results to reduce context size while preserving text content
+    prepareStep: ({ messages }) => {
+      const trimmed = trimOldToolCalls(messages, 15);
+      return { messages: trimmed };
+    },
   });
 
   return agent;

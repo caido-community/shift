@@ -15,16 +15,10 @@ const inputSchema = z.object({
     .describe("New text to replace the old text with. Supports environment variable substitution"),
 });
 
-const valueSchema = z.object({
-  before: z.string(),
-  after: z.string(),
-});
-
-const outputSchema = ToolResult.schema(valueSchema);
+const outputSchema = ToolResult.schema();
 
 type RequestRawEditInput = z.infer<typeof inputSchema>;
-type RequestRawEditValue = z.infer<typeof valueSchema>;
-type RequestRawEditOutput = ToolResultType<RequestRawEditValue>;
+type RequestRawEditOutput = ToolResultType;
 
 export const display = {
   streaming: ({ input }) =>
@@ -46,11 +40,11 @@ export const display = {
         ]
       : [{ text: "Edited " }, { text: "request", muted: true }],
   error: () => "Failed to edit request",
-} satisfies ToolDisplay<RequestRawEditInput, RequestRawEditValue>;
+} satisfies ToolDisplay<RequestRawEditInput>;
 
 export const RequestRawEdit = tool({
   description:
-    "Edit the raw HTTP request by replacing exact text. The oldText must match exactly (including whitespace). Use this for precise, surgical edits.",
+    "Perform a precise find-and-replace edit on the raw HTTP request text. Use this for surgical modifications that other tools can't handle - editing specific parts of headers, modifying request line components, or making changes that span multiple parts of the request. The oldText must match exactly one location in the request (including whitespace, line endings, and case). If oldText matches zero times or more than once, the operation fails with an error. The newText supports environment variable substitution using {{VAR_NAME}} syntax. Line endings are normalized to CRLF. For simpler modifications, prefer the specific tools (RequestHeaderSet, RequestBodySet, etc.) as they're less error-prone.",
   inputSchema,
   outputSchema,
   execute: async (
@@ -73,8 +67,6 @@ export const RequestRawEdit = tool({
 
     return ToolResult.ok({
       message: `Replaced ${normalizedOld.length} characters with ${normalizedNew.length} characters`,
-      before: result.value.before,
-      after: result.value.after,
     });
   },
 });

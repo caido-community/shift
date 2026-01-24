@@ -46,7 +46,8 @@ export const display = {
 } satisfies ToolDisplay<LearningRemoveInput, LearningRemoveValue>;
 
 export const LearningRemove = tool({
-  description: `Delete one or more learning entries by their index. Use this to remove obsolete or incorrect memory items.`,
+  description:
+    "Delete one or more learning entries from the project's persistent memory by their zero-based index. Use this to remove outdated information (expired tokens, rotated credentials), incorrect learnings, or entries that are no longer relevant. Accepts an array of indexes to remove multiple entries at once. The indexes correspond to the positions shown in the learnings list - be careful as removing entries will shift the indexes of subsequent entries. Returns the list of indexes that were successfully removed.",
   inputSchema,
   outputSchema,
   execute: async ({ indexes }): Promise<LearningRemoveOutput> => {

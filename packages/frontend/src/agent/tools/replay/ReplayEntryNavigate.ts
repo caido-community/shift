@@ -38,7 +38,7 @@ export const display = {
 
 export const ReplayEntryNavigate = tool({
   description:
-    "Navigate to a specific replay entry in the current session. Use this to go back to a previous request/response pair in the session history.",
+    "Navigate to a different replay entry within the current session's history. Each time you send a request, a new entry is created in the session. Use this to go back to a previous request/response pair - for example, to re-examine an earlier response, compare results, or restart from a known good state. The entryId must belong to the current session (entry IDs from other sessions will be rejected). After navigation, the request editor will show the selected entry's request, and the agent context will be updated accordingly. Returns the entry ID and associated request ID.",
   inputSchema,
   outputSchema,
   execute: async ({ entryId }, { experimental_context }): Promise<ReplayEntryNavigateOutput> => {

@@ -57,7 +57,8 @@ export const display = {
 } satisfies ToolDisplay<TodoAddInput, TodoAddValue>;
 
 export const TodoAdd = tool({
-  description: "Add new todo items to the list",
+  description:
+    "Add one or more todo items to track tasks during the current session. Use this to break down complex security testing workflows into trackable steps, plan multi-stage attacks, or keep track of findings to investigate. Each todo item gets a unique ID that can be used with TodoComplete or TodoRemove. The content array accepts multiple items to create several todos at once. Todos persist for the duration of the agent session and help maintain focus on the testing objective.",
   inputSchema,
   outputSchema,
   execute: ({ content }, { experimental_context }): TodoAddOutput => {

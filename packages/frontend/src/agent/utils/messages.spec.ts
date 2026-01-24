@@ -1,3 +1,4 @@
+import type { ModelMessage } from "ai";
 import type { ShiftMessage } from "shared";
 import { describe, expect, it } from "vitest";
 
@@ -7,6 +8,7 @@ import {
   findLastUserMessageIndex,
   hasToolPartsSinceIndex,
   hasToolPartsSinceLastUserMessage,
+  trimOldToolCalls,
 } from "./messages";
 
 function createUserMessage(text: string, id = "u1"): ShiftMessage {
@@ -270,5 +272,198 @@ describe("extractLastUserMessageText", () => {
     const messages = [createUserMessage("Hi")];
     const result = extractLastUserMessageText(messages);
     expect(result.remainingMessages).not.toBe(messages);
+  });
+});
+
+function createModelUserMessage(text: string): ModelMessage {
+  return {
+    role: "user",
+    content: [{ type: "text", text }],
+  };
+}
+
+function createModelAssistantMessage(text: string): ModelMessage {
+  return {
+    role: "assistant",
+    content: [{ type: "text", text }],
+  };
+}
+
+function createModelAssistantWithToolCall(
+  text: string,
+  toolCallId: string,
+  toolName: string
+): ModelMessage {
+  return {
+    role: "assistant",
+    content: [
+      { type: "text", text },
+      {
+        type: "tool-call",
+        toolCallId,
+        toolName,
+        input: {},
+      },
+    ],
+  } as ModelMessage;
+}
+
+function createModelToolMessage(toolCallId: string, toolName: string): ModelMessage {
+  return {
+    role: "tool",
+    content: [
+      {
+        type: "tool-result",
+        toolCallId,
+        toolName,
+        output: { type: "json", value: { result: "ok" } },
+      },
+    ],
+  } as ModelMessage;
+}
+
+describe("trimOldToolCalls", () => {
+  it("returns messages unchanged when length is within keepRecentCount", () => {
+    const messages: ModelMessage[] = [
+      createModelUserMessage("Hello"),
+      createModelAssistantWithToolCall("Using tool", "tc1", "TestTool"),
+      createModelToolMessage("tc1", "TestTool"),
+    ];
+    const result = trimOldToolCalls(messages, 5);
+    expect(result).toEqual(messages);
+  });
+
+  it("returns messages unchanged when length equals keepRecentCount", () => {
+    const messages: ModelMessage[] = [
+      createModelUserMessage("Hello"),
+      createModelAssistantWithToolCall("Using tool", "tc1", "TestTool"),
+      createModelToolMessage("tc1", "TestTool"),
+    ];
+    const result = trimOldToolCalls(messages, 3);
+    expect(result).toEqual(messages);
+  });
+
+  it("removes tool-call parts from old assistant messages", () => {
+    const messages: ModelMessage[] = [
+      createModelUserMessage("First"),
+      createModelAssistantWithToolCall("Old tool call", "tc1", "OldTool"),
+      createModelToolMessage("tc1", "OldTool"),
+      createModelUserMessage("Second"),
+      createModelAssistantWithToolCall("Recent tool call", "tc2", "RecentTool"),
+      createModelToolMessage("tc2", "RecentTool"),
+    ];
+    const result = trimOldToolCalls(messages, 3);
+
+    const oldAssistant = result[1] as { content: { type: string }[] };
+    expect(oldAssistant.content).toHaveLength(1);
+    expect(oldAssistant.content[0]!.type).toBe("text");
+
+    const recentAssistant = result[4] as { content: { type: string }[] };
+    expect(recentAssistant.content).toHaveLength(2);
+    expect(recentAssistant.content[0]!.type).toBe("text");
+    expect(recentAssistant.content[1]!.type).toBe("tool-call");
+  });
+
+  it("removes tool-result parts from old tool messages", () => {
+    const messages: ModelMessage[] = [
+      createModelUserMessage("First"),
+      createModelAssistantWithToolCall("Old tool call", "tc1", "OldTool"),
+      createModelToolMessage("tc1", "OldTool"),
+      createModelUserMessage("Second"),
+      createModelAssistantWithToolCall("Recent tool call", "tc2", "RecentTool"),
+      createModelToolMessage("tc2", "RecentTool"),
+    ];
+    const result = trimOldToolCalls(messages, 3);
+
+    const oldToolMsg = result[2] as { content: { type: string }[] };
+    expect(oldToolMsg.content).toHaveLength(0);
+
+    const recentToolMsg = result[5] as { content: { type: string }[] };
+    expect(recentToolMsg.content).toHaveLength(1);
+    expect(recentToolMsg.content[0]!.type).toBe("tool-result");
+  });
+
+  it("preserves user messages unchanged", () => {
+    const messages: ModelMessage[] = [
+      createModelUserMessage("First question"),
+      createModelAssistantWithToolCall("Response", "tc1", "Tool"),
+      createModelToolMessage("tc1", "Tool"),
+      createModelUserMessage("Second question"),
+      createModelAssistantMessage("Final response"),
+    ];
+    const result = trimOldToolCalls(messages, 2);
+
+    const firstUser = result[0] as { content: { type: string; text?: string }[] };
+    expect(firstUser.content).toHaveLength(1);
+    expect(firstUser.content[0]!.type).toBe("text");
+    expect(firstUser.content[0]!.text).toBe("First question");
+  });
+
+  it("preserves text content in assistant messages while removing tool calls", () => {
+    const messages: ModelMessage[] = [
+      createModelUserMessage("Question"),
+      createModelAssistantWithToolCall("I will use a tool now", "tc1", "Tool"),
+      createModelToolMessage("tc1", "Tool"),
+      createModelUserMessage("Follow up"),
+      createModelAssistantMessage("Done"),
+    ];
+    const result = trimOldToolCalls(messages, 2);
+
+    const oldAssistant = result[1] as { content: { type: string; text?: string }[] };
+    expect(oldAssistant.content).toHaveLength(1);
+    expect(oldAssistant.content[0]!.type).toBe("text");
+    expect(oldAssistant.content[0]!.text).toBe("I will use a tool now");
+  });
+
+  it("handles empty messages array", () => {
+    const result = trimOldToolCalls([], 5);
+    expect(result).toEqual([]);
+  });
+
+  it("handles messages with only text content", () => {
+    const messages: ModelMessage[] = [
+      createModelUserMessage("Hello"),
+      createModelAssistantMessage("Hi there"),
+      createModelUserMessage("How are you?"),
+      createModelAssistantMessage("I am fine"),
+    ];
+    const result = trimOldToolCalls(messages, 2);
+    expect(result).toEqual(messages);
+  });
+
+  it("removes orphaned tool results in recent messages when their tool call was removed", () => {
+    const messages: ModelMessage[] = [
+      createModelUserMessage("First"),
+      createModelAssistantWithToolCall("Old tool call", "tc1", "OldTool"),
+      createModelUserMessage("Second"),
+      createModelToolMessage("tc1", "OldTool"),
+      createModelAssistantMessage("Done"),
+    ];
+    const result = trimOldToolCalls(messages, 3);
+
+    const oldAssistant = result[1] as { content: { type: string }[] };
+    expect(oldAssistant.content).toHaveLength(1);
+    expect(oldAssistant.content[0]!.type).toBe("text");
+
+    const toolMsg = result[3] as { content: { type: string }[] };
+    expect(toolMsg.content).toHaveLength(0);
+  });
+
+  it("preserves tool results when their tool call is in recent messages", () => {
+    const messages: ModelMessage[] = [
+      createModelUserMessage("First"),
+      createModelAssistantMessage("Text only"),
+      createModelUserMessage("Second"),
+      createModelAssistantWithToolCall("Recent tool call", "tc1", "Tool"),
+      createModelToolMessage("tc1", "Tool"),
+    ];
+    const result = trimOldToolCalls(messages, 3);
+
+    const recentAssistant = result[3] as { content: { type: string }[] };
+    expect(recentAssistant.content).toHaveLength(2);
+
+    const toolMsg = result[4] as { content: { type: string }[] };
+    expect(toolMsg.content).toHaveLength(1);
+    expect(toolMsg.content[0]!.type).toBe("tool-result");
   });
 });

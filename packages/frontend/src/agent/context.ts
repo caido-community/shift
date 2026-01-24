@@ -172,9 +172,7 @@ export class AgentContext {
     }
 
     if (this.httpRequest !== "") {
-      parts.push(
-        `<current_http_request>\n\`\`\`\n${this.httpRequest}\n\`\`\`\n</current_http_request>`
-      );
+      parts.push(`<current_http_request>\n${this.httpRequest}\n</current_http_request>`);
     }
 
     if (isPresent(this.entriesContext) && this.entriesContext.recentEntryIds.length > 0) {
