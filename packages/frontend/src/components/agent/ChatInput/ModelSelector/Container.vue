@@ -9,10 +9,12 @@ const {
   models,
   size = "default",
   disabled = false,
+  direction = "up",
 } = defineProps<{
   models: Model[];
   size?: "default" | "small";
   disabled?: boolean;
+  direction?: "up" | "down";
 }>();
 
 const selectedModel = defineModel<Model | undefined>();
@@ -83,7 +85,10 @@ const handleProviderClick = (provider: ProviderInfo) => {
       leave-to-class="opacity-0 scale-95">
       <div
         v-if="isOpen"
-        class="absolute left-0 bottom-full mb-1 z-[10001] flex h-52 w-72 flex-row overflow-hidden rounded-lg border border-surface-700 bg-surface-900 shadow-xl">
+        :class="[
+          'absolute left-0 z-[10001] flex h-52 w-72 flex-row overflow-hidden rounded-lg border border-surface-700 bg-surface-900 shadow-xl',
+          direction === 'up' ? 'bottom-full mb-1' : 'top-full mt-1',
+        ]">
         <div
           class="flex w-28 flex-col overflow-y-auto border-r border-surface-700 bg-surface-800/30">
           <button
