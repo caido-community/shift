@@ -155,6 +155,16 @@ export class AgentContext {
   toContextPrompt(): string {
     const parts: string[] = [];
 
+    const now = new Date();
+    const timestamp = now.toISOString();
+    const dateStr = now.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    parts.push(`<current_time>\nTimestamp: ${timestamp}\nDate: ${dateStr}\n</current_time>`);
+
     if (this.todos.length > 0) {
       const todoList = this.todos
         .map((t) => `- [${t.completed ? "completed" : "pending"}] (id: ${t.id}) ${t.content}`)
