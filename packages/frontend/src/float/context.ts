@@ -1,3 +1,9 @@
+import {
+  type AutomatePageContext,
+  type GlobalContext,
+  type HTTPHistoryPageContext,
+  type ReplayPageContext,
+} from "@caido/sdk-frontend";
 import { type EditorView } from "@codemirror/view";
 
 import { type ActionContext } from "@/float/types";
@@ -13,9 +19,7 @@ const truncate = (value: string, maxLength = MAX_CONTEXT_LENGTH): string => {
   return `${value.slice(0, maxLength)}... [truncated, ${value.length - maxLength} more characters]`;
 };
 
-// TODO: we rely a lot on the DOM of Caido, we could create a test suite that would test different pages to make sure the elements we use exist
-
-const getBaseContext = (sdk: FrontendSDK): ActionContext => {
+const getBaseContext = (sdk: FrontendSDK, globalContext: GlobalContext): ActionContext => {
   const getActiveProject = () => {
     const projectNameElement = document.querySelector(".c-current-project[data-project-id]") as
       | HTMLElement
@@ -157,7 +161,7 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
   const context: ActionContext = {
     page: {
       description: "The page you are currently on",
-      value: window.location.hash,
+      value: globalContext.page?.kind ?? "Unknown",
     },
     selection: {
       description: "The text that user has currently selected",
@@ -200,121 +204,108 @@ const getBaseContext = (sdk: FrontendSDK): ActionContext => {
   return context;
 };
 
-const getAutomateContext = (sdk: FrontendSDK): ActionContext => {
-  const getSelectedAutomateTab = () => {
-    const activeTab = document.querySelector('[data-is-selected="true"][data-session-id]');
-    return isPresent(activeTab) ? activeTab.textContent : undefined;
-  };
+const getAutomateContext = (sdk: FrontendSDK, pageContext: AutomatePageContext): ActionContext => {
+  const getSelectedSession = () => {
+    if (pageContext.selection.kind === "Empty") {
+      return { name: "No session selected", id: undefined };
+    }
 
-  const getSelectedAutomateTabSessionId = () => {
-    const activeTab = document.querySelector('[data-is-selected="true"][data-session-id]');
-    return isPresent(activeTab) ? activeTab.getAttribute("data-session-id") : undefined;
+    const selected = pageContext.selection.main;
+    if (selected.kind === "AutomateSession") {
+      const session = sdk.automate.getSessions().find((s) => s.id === selected.id);
+      return { name: session?.name ?? "Unknown session", id: selected.id };
+    }
+
+    if (selected.kind === "AutomateEntry") {
+      const sessions = sdk.automate.getSessions();
+      for (const session of sessions) {
+        const entries = sdk.automate.getEntries(session.id);
+        const entry = entries.find((e) => e.id === selected.id);
+        if (isPresent(entry)) {
+          return { name: entry.name, id: selected.id, sessionId: session.id };
+        }
+      }
+      return { name: "Unknown entry", id: selected.id };
+    }
+
+    return { name: "No session selected", id: undefined };
   };
 
   return {
     automate: {
-      description: "The current state of the #/automate page",
-      value: {
-        tab: getSelectedAutomateTab() ?? "No tab selected",
-        sessionId: getSelectedAutomateTabSessionId() ?? "No session id",
-      },
+      description: "The current state of the Automate page",
+      value: getSelectedSession(),
     },
   };
 };
 
-const getReplayContext = (sdk: FrontendSDK): ActionContext => {
-  const getCurrentlySelectedReplayTab = () => {
-    const currentSession = sdk.replay.getCurrentSession();
-    if (isPresent(currentSession)) {
-      return currentSession.name;
+const getReplayContext = (sdk: FrontendSDK, pageContext: ReplayPageContext): ActionContext => {
+  const getSelectedSession = () => {
+    if (pageContext.selection.kind === "Empty") {
+      return { name: "No session selected", id: undefined };
     }
 
-    return "No session selected";
-  };
-
-  const getCurrentlySelectedReplayTabSessionId = () => {
-    const currentSession = sdk.replay.getCurrentSession();
-    if (isPresent(currentSession)) {
-      return currentSession.id;
-    }
-
-    return "No session id";
+    const sessionId = pageContext.selection.main;
+    const session = sdk.replay.getSessions().find((s) => s.id === sessionId);
+    return {
+      name: session?.name ?? "Unknown session",
+      id: sessionId,
+    };
   };
 
   return {
     replay: {
-      description: "The current state of the #/replay page",
-      value: {
-        tab: getCurrentlySelectedReplayTab() ?? "No tab selected",
-        sessionId: getCurrentlySelectedReplayTabSessionId() ?? "No session id",
-      },
+      description: "The current state of the Replay page",
+      value: getSelectedSession(),
     },
   };
 };
 
-const getHttpHistoryContext = (sdk: FrontendSDK): ActionContext => {
-  const getHttpQLQuery = () => {
-    return sdk.httpHistory.getQuery();
-  };
-
-  // TODO: broken since table is a virtual list, if user scrolls the table, the row will be gone
-  const getCurrentRow = () => {
-    const selectedRow = document.querySelector('.c-table__item-row[data-is-selected="true"]');
-
-    if (!isPresent(selectedRow)) {
-      return {};
+const getHttpHistoryContext = (
+  sdk: FrontendSDK,
+  pageContext: HTTPHistoryPageContext
+): ActionContext => {
+  const getSelection = () => {
+    if (pageContext.selection.kind === "Empty") {
+      return { selectedRequestIds: [] };
     }
 
-    const headerRow = document.querySelector(".c-table__header-row");
-    if (!isPresent(headerRow)) {
-      return {};
-    }
-
-    const cellValues = Array.from(selectedRow.querySelectorAll(".c-item-cell__inner")).map(
-      (cell) => cell.textContent ?? ""
-    );
-
-    const headerValues = Array.from(headerRow.querySelectorAll(".c-header-cell__content")).map(
-      (header) => header.textContent ?? ""
-    );
-
-    const rowData: Record<string, string> = {};
-    headerValues.forEach((header, index) => {
-      rowData[header] = cellValues[index] ?? "";
-    });
-
-    return rowData;
+    const allSelected = [pageContext.selection.main, ...pageContext.selection.secondary];
+    return { selectedRequestIds: allSelected };
   };
 
   return {
     httpHistory: {
-      description: "The current state of the #/http-history page",
+      description: "The current state of the HTTP History page",
       value: {
-        query: getHttpQLQuery(),
-        currentRowData: getCurrentRow(),
+        query: sdk.httpHistory.getQuery(),
+        ...getSelection(),
       },
     },
   };
 };
 
 export const getContext = (sdk: FrontendSDK): ActionContext => {
+  const globalContext = sdk.window.getContext();
+  const pageContext = globalContext.page;
+
   const context: ActionContext = {};
 
-  const baseContext = getBaseContext(sdk);
+  const baseContext = getBaseContext(sdk, globalContext);
   Object.assign(context, baseContext);
 
-  if (window.location.hash === "#/automate") {
-    const automateContext = getAutomateContext(sdk);
+  if (pageContext?.kind === "Automate") {
+    const automateContext = getAutomateContext(sdk, pageContext);
     Object.assign(context, automateContext);
   }
 
-  if (window.location.hash === "#/replay") {
-    const replayContext = getReplayContext(sdk);
+  if (pageContext?.kind === "Replay") {
+    const replayContext = getReplayContext(sdk, pageContext);
     Object.assign(context, replayContext);
   }
 
-  if (window.location.hash === "#/http-history") {
-    const httpHistoryContext = getHttpHistoryContext(sdk);
+  if (pageContext?.kind === "HTTPHistory") {
+    const httpHistoryContext = getHttpHistoryContext(sdk, pageContext);
     Object.assign(context, httpHistoryContext);
   }
 
