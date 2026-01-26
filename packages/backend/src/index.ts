@@ -10,6 +10,8 @@ import {
   getAgents,
   getLearnings,
   getModelsConfig,
+  getProjectOverride,
+  getProjectOverrides,
   getSettings,
   getSkillDefinitions,
   getSkills,
@@ -17,8 +19,10 @@ import {
   removeAgent,
   removeLearnings,
   removeModel,
+  removeProjectOverride,
   removeSkill,
   setLearnings,
+  setProjectOverride,
   updateDynamicSkill,
   updateLearning,
   updateModelConfig,
@@ -57,6 +61,10 @@ export type API = DefineAPI<{
   updateDynamicSkill: typeof updateDynamicSkill;
   removeSkill: typeof removeSkill;
   refreshSkills: typeof refreshSkills;
+  getProjectOverride: typeof getProjectOverride;
+  getProjectOverrides: typeof getProjectOverrides;
+  setProjectOverride: typeof setProjectOverride;
+  removeProjectOverride: typeof removeProjectOverride;
   getSettings: typeof getSettings;
   updateSettings: typeof updateSettings;
   updateRenaming: typeof updateRenaming;
@@ -107,6 +115,10 @@ export function init(sdk: SDK<API>) {
   sdk.api.register("updateDynamicSkill", updateDynamicSkill);
   sdk.api.register("removeSkill", removeSkill);
   sdk.api.register("refreshSkills", refreshSkills);
+  sdk.api.register("getProjectOverride", getProjectOverride);
+  sdk.api.register("getProjectOverrides", getProjectOverrides);
+  sdk.api.register("setProjectOverride", setProjectOverride);
+  sdk.api.register("removeProjectOverride", removeProjectOverride);
 
   sdk.api.register("getSettings", getSettings);
   sdk.api.register("updateSettings", updateSettings);

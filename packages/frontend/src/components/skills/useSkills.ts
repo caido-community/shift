@@ -12,7 +12,9 @@ import {
   addDynamicSkill,
   addStaticSkill,
   refreshSkills,
+  removeProjectOverride,
   removeSkill,
+  setProjectOverride,
   updateDynamicSkill,
   updateStaticSkill,
 } from "@/stores/skills/store.effects";
@@ -80,6 +82,20 @@ export const useSkills = () => {
     closeEditDialog();
   };
 
+  const handleUpdateProjectOverride = async (skillId: string, additionalContent: string) => {
+    if (additionalContent === "") {
+      const result = await removeProjectOverride(sdk, dispatch, skillId);
+      if (result.kind === "Error") {
+        sdk.window.showToast(result.error, { variant: "error" });
+      }
+    } else {
+      const result = await setProjectOverride(sdk, dispatch, { skillId, additionalContent });
+      if (result.kind === "Error") {
+        sdk.window.showToast(result.error, { variant: "error" });
+      }
+    }
+  };
+
   const handleDelete = async (id: string) => {
     await removeSkill(sdk, dispatch, id);
   };
@@ -110,6 +126,7 @@ export const useSkills = () => {
     handleAddDynamic,
     handleUpdateStatic,
     handleUpdateDynamic,
+    handleUpdateProjectOverride,
     handleDelete,
     handleRefresh,
     getSkillContent,

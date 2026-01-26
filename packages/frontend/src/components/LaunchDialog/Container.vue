@@ -9,7 +9,7 @@ import { useLaunchDialog } from "./useLaunchDialog";
 
 import { ModelSelector } from "@/components/agent/ChatInput/ModelSelector";
 
-const { onConfirm, onCancel } = defineProps<LaunchDialogProps>();
+const { onConfirm, onCancel, initialSkillIds } = defineProps<LaunchDialogProps>();
 
 const {
   entries,
@@ -29,6 +29,7 @@ const {
 } = useLaunchDialog({
   onConfirm,
   onCancel,
+  initialSkillIds,
 });
 
 const skillsPopoverRef = ref<InstanceType<typeof Popover>>();

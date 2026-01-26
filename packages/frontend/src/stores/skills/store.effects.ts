@@ -1,7 +1,9 @@
 import {
   type CreateDynamicSkillInput,
   type CreateStaticSkillInput,
+  type ProjectSkillOverride,
   Result,
+  type SetProjectOverrideInput,
   type UpdateDynamicSkillInput,
   type UpdateStaticSkillInput,
 } from "shared";
@@ -85,7 +87,7 @@ export async function updateStaticSkill(
     return Result.err(result.error);
   }
 
-  dispatch({ type: "UPDATE_STATIC_SUCCESS", id, input });
+  await fetchSkills(sdk, dispatch);
   return Result.ok(undefined);
 }
 
@@ -135,4 +137,43 @@ export async function refreshSkills(sdk: FrontendSDK, dispatch: Dispatch) {
   }
 
   dispatch({ type: "REFRESH_SUCCESS", skills: skillsResult.value });
+}
+
+export async function getProjectOverride(
+  sdk: FrontendSDK,
+  skillId: string
+): Promise<Result<ProjectSkillOverride | undefined>> {
+  const result = await sdk.backend.getProjectOverride(skillId);
+  if (result.kind === "Error") {
+    return Result.err(result.error);
+  }
+  return Result.ok(result.value);
+}
+
+export async function setProjectOverride(
+  sdk: FrontendSDK,
+  dispatch: Dispatch,
+  input: SetProjectOverrideInput
+): Promise<Result<void>> {
+  const result = await sdk.backend.setProjectOverride(input);
+  if (result.kind === "Error") {
+    return Result.err(result.error);
+  }
+
+  await fetchSkills(sdk, dispatch);
+  return Result.ok(undefined);
+}
+
+export async function removeProjectOverride(
+  sdk: FrontendSDK,
+  dispatch: Dispatch,
+  skillId: string
+): Promise<Result<void>> {
+  const result = await sdk.backend.removeProjectOverride(skillId);
+  if (result.kind === "Error") {
+    return Result.err(result.error);
+  }
+
+  await fetchSkills(sdk, dispatch);
+  return Result.ok(undefined);
 }

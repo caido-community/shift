@@ -13,6 +13,7 @@ import { resolveModel } from "@/utils/ai";
 type UseLaunchDialogOptions = {
   onConfirm: (result: LaunchDialogResult) => void;
   onCancel: () => void;
+  initialSkillIds?: string[];
 };
 
 export function useLaunchDialog(options: UseLaunchDialogOptions) {
@@ -25,7 +26,7 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
   const entries = ref<SelectionEntry[]>([{ id: 0, selection: "", comment: "" }]);
   const instructions = ref("");
   const maxIterations = ref(settingsStore.maxIterations ?? 35);
-  const selectedSkillIds = ref<string[]>([]);
+  const selectedSkillIds = ref<string[]>(options.initialSkillIds ?? []);
 
   const initialModel = resolveModel({
     sdk,
