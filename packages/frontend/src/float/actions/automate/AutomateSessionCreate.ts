@@ -5,6 +5,7 @@ import {
 import { tool } from "ai";
 import { z } from "zod";
 
+import { normalizeCRLF } from "@/agent/utils/http";
 import { ActionResult, type FloatToolContext } from "@/float/types";
 
 const MARKER = "§§§";
@@ -138,7 +139,7 @@ export const automateSessionCreateTool = tool({
     const { sdk } = experimental_context as FloatToolContext;
     const { sanitized, placeholders } = extractPlaceholders(rawRequest);
 
-    const raw = sanitized.replace(/\r?\n/g, "\r\n");
+    const raw = normalizeCRLF(sanitized);
 
     const createResult = await sdk.graphql.createAutomateSession({
       input: {
