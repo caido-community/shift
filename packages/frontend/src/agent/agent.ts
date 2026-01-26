@@ -12,11 +12,24 @@ type BuildInstructionsOptions = {
   context: AgentContext;
   steps: number;
   maxSteps: number;
+  model: Model;
 };
 
+function isGeminiModel(model: Model): boolean {
+  return model.id.toLowerCase().includes("gemini");
+}
+
 function buildInstructions(options: BuildInstructionsOptions): string {
-  const { context, steps, maxSteps } = options;
+  const { context, steps, maxSteps, model } = options;
   const parts: string[] = [BASE_SYSTEM_PROMPT];
+
+  // TODO: temporary fix, seems like signatures are broken when agent returns multiple toolcalls
+  if (isGeminiModel(model)) {
+    parts.push(
+      `IMPORTANT: You must NEVER call multiple tools in parallel. Only call ONE tool per response. ` +
+        `Wait for each tool result before making the next tool call.`
+    );
+  }
 
   const skillsPrompt = context.toSkillsPrompt();
   if (skillsPrompt !== "") {
@@ -58,6 +71,7 @@ export const createShiftAgent = (options: AgentOptions) => {
       context,
       steps: 0,
       maxSteps: maxIterations,
+      model,
     }),
     tools: shiftAgentTools,
     toolChoice: "auto",
@@ -72,6 +86,7 @@ export const createShiftAgent = (options: AgentOptions) => {
         context,
         steps: settings.steps.length,
         maxSteps: maxIterations,
+        model,
       }),
     }),
   });
