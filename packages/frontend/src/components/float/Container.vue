@@ -4,7 +4,7 @@ import { storeToRefs } from "pinia";
 import { onMounted, ref } from "vue";
 
 import { Actions } from "@/components/float/actions";
-import { useDrag } from "@/components/float/useDrag";
+import { useFloat } from "@/components/float/useDrag";
 import { useFloatStore } from "@/stores/float";
 
 const { initialTop, initialLeft } = defineProps<{
@@ -12,7 +12,9 @@ const { initialTop, initialLeft } = defineProps<{
   initialLeft: number;
 }>();
 
-const { style, onDragMouseDown } = useDrag({
+const containerRef = ref<HTMLElement | null>(null);
+
+const { style, isResizing, onDragMouseDown, onResizeMouseDown } = useFloat(containerRef, {
   initialTop,
   initialLeft,
 });
@@ -34,6 +36,7 @@ onKeyStroke("Escape", () => {
 
 <template>
   <div
+    ref="containerRef"
     class="fixed bg-surface-800 border border-surface-700 rounded-md p-3 flex flex-col gap-2 shadow-md"
     :style="style"
     @mousedown="onDragMouseDown">
@@ -62,5 +65,9 @@ onKeyStroke("Escape", () => {
       </div>
     </div>
     <Actions />
+    <div
+      class="absolute bottom-0 right-0 w-3 h-3 cursor-nwse-resize hover:bg-secondary-500/50 transition-colors rounded-br-md"
+      :class="{ 'bg-secondary-500/50': isResizing }"
+      @mousedown="onResizeMouseDown" />
   </div>
 </template>
