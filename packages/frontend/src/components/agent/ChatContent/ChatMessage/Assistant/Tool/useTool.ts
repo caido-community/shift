@@ -63,6 +63,11 @@ export function useTool(options: UseToolOptions, defaultErrorMessage: string): U
   });
 
   const errorMessage = computed(() => {
+    const metadata = toValue(options.messageMetadata);
+    if (metadata?.state === "aborted") {
+      return "Aborted";
+    }
+
     const out = toValue(options.output);
     if (Result.isResult(out) && out.kind === "Error") {
       return (out.error as FrontendError).message;
