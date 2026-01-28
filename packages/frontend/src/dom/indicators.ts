@@ -1,4 +1,4 @@
-import { type ListenerHandle } from "@caido/sdk-frontend";
+import { type Indicator, type ListenerHandle } from "@caido/sdk-frontend";
 import { type ChatStatus } from "ai";
 import { watch, type WatchStopHandle } from "vue";
 
@@ -6,7 +6,7 @@ import { useAgentStore } from "@/stores/agent";
 import { type FrontendSDK } from "@/types";
 
 type IndicatorStatus = "streaming" | "error" | "idle";
-type IndicatorType = "tab" | "collection";
+type IndicatorType = "tab";
 
 const BASE_INDICATOR_CLASS = "internal-shift-indicator";
 const TOOLTIP = "This {{ type }} is controlled by Shift AI";
@@ -23,6 +23,16 @@ const getIndicatorStatusFromChatStatus = (status: ChatStatus): IndicatorStatus =
   return "idle";
 };
 
+const getIconFromChatStatus = (status: ChatStatus): string => {
+  if (status === "error") {
+    return "fas fa-wand-magic-sparkles c-text-error-500";
+  }
+  if (status === "streaming" || status === "submitted") {
+    return "fas fa-wand-magic-sparkles c-text-success-500";
+  }
+  return "fas fa-wand-magic-sparkles";
+};
+
 const getStatusClass = (status: IndicatorStatus): string | undefined => {
   switch (status) {
     case "streaming":
@@ -31,6 +41,18 @@ const getStatusClass = (status: IndicatorStatus): string | undefined => {
       return "text-error-500";
     default:
       return undefined;
+  }
+};
+
+const getDescriptionFromChatStatus = (status: ChatStatus): string => {
+  switch (status) {
+    case "error":
+      return "Shift AI encountered an error";
+    case "streaming":
+    case "submitted":
+      return "Shift AI is processing...";
+    default:
+      return "This session is controlled by Shift AI";
   }
 };
 
@@ -75,17 +97,7 @@ const createIndicator = (
   indicator.setAttribute("role", "img");
   indicator.dataset.shiftAiIndicatorTooltip = tooltip;
 
-  switch (type) {
-    case "collection": {
-      const insertBeforeTarget = container.children.item(1);
-      container.insertBefore(indicator, insertBeforeTarget);
-      break;
-    }
-    case "tab": {
-      container.insertBefore(indicator, container.children.item(0));
-      break;
-    }
-  }
+  container.insertBefore(indicator, container.children.item(0));
 
   return indicator;
 };
@@ -115,6 +127,8 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
   let sessionChangeUnsubscribe: ListenerHandle | undefined = undefined;
   let storeWatchUnsubscribe: WatchStopHandle | undefined = undefined;
   let tableObserver: MutationObserver | undefined = undefined;
+
+  const sessionIndicators = new Map<string, Indicator>();
 
   const start = () => {
     if (location.hash === "#/replay") {
@@ -158,7 +172,7 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
 
   const drawIndicators = () => {
     drawTabIndicators();
-    drawCollectionIndicators();
+    drawSessionIndicators();
     drawShiftCollectionIndicator();
   };
 
@@ -219,48 +233,53 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
     });
   };
 
-  const drawCollectionIndicators = () => {
+  const drawSessionIndicators = () => {
     const agentStore = useAgentStore();
+    const sessions = sdk.replay.getSessions();
 
-    const entries = document.querySelectorAll("[data-is-draggable][data-id]");
+    const activeSessionIds = new Set<string>();
 
-    entries.forEach((entry) => {
-      const id = entry.getAttribute("data-id");
-      if (id === null || id.length === 0 || !id.startsWith("session-")) {
-        return;
-      }
-
-      const sessionId = id.slice(8);
-      const group = entry.querySelector(".group");
-      if (group === null) {
-        return;
-      }
-
-      const expectedIndicatorId = `${BASE_INDICATOR_CLASS}-collection-${sessionId}`;
-      const existingIndicator = group.querySelector(`.${BASE_INDICATOR_CLASS}`);
-      if (existingIndicator && existingIndicator.id !== expectedIndicatorId) {
-        existingIndicator.remove();
-      }
+    for (const replaySession of sessions) {
+      const sessionId = replaySession.id;
 
       const hasPersistedData = agentStore.state.persistedSessionIds.has(sessionId);
       const hasActiveSession = agentStore.state.sessions.has(sessionId);
 
       if (!hasPersistedData && !hasActiveSession) {
-        return;
+        continue;
       }
 
       const session = agentStore.getSession(sessionId);
       if (session === undefined || session.chat.messages.length === 0) {
-        const existingIndicator = group.querySelector(`.${BASE_INDICATOR_CLASS}`);
-        if (existingIndicator) {
-          existingIndicator.remove();
+        if (sessionIndicators.has(sessionId)) {
+          sessionIndicators.get(sessionId)?.remove();
+          sessionIndicators.delete(sessionId);
         }
-        return;
+        continue;
       }
 
-      const status = getIndicatorStatusFromChatStatus(session.chat.status);
-      createIndicator(group, "collection", sessionId, status);
-    });
+      activeSessionIds.add(sessionId);
+
+      const icon = getIconFromChatStatus(session.chat.status);
+      const description = getDescriptionFromChatStatus(session.chat.status);
+
+      if (sessionIndicators.has(sessionId)) {
+        sessionIndicators.get(sessionId)?.remove();
+      }
+
+      const indicator = sdk.replay.addSessionIndicator(sessionId, {
+        icon,
+        description,
+      });
+      sessionIndicators.set(sessionId, indicator);
+    }
+
+    for (const [sessionId, indicator] of sessionIndicators) {
+      if (!activeSessionIds.has(sessionId)) {
+        indicator.remove();
+        sessionIndicators.delete(sessionId);
+      }
+    }
   };
 
   const drawShiftCollectionIndicator = () => {
@@ -284,7 +303,6 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
 
     tableObserver = new MutationObserver(() => {
       requestAnimationFrame(() => {
-        drawCollectionIndicators();
         drawShiftCollectionIndicator();
       });
     });
@@ -324,8 +342,13 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
   };
 
   const removeIndicators = () => {
-    const indicators = document.querySelectorAll(`.${BASE_INDICATOR_CLASS}`);
-    indicators.forEach((indicator) => indicator.remove());
+    for (const indicator of sessionIndicators.values()) {
+      indicator.remove();
+    }
+    sessionIndicators.clear();
+
+    const domIndicators = document.querySelectorAll(`.${BASE_INDICATOR_CLASS}`);
+    domIndicators.forEach((indicator) => indicator.remove());
   };
 
   return {

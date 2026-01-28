@@ -12,7 +12,7 @@ const { initialTop, initialLeft } = defineProps<{
   initialLeft: number;
 }>();
 
-const containerRef = ref<HTMLElement | null>(null);
+const containerRef = ref<HTMLElement | undefined>(undefined);
 
 const { style, isResizing, onDragMouseDown, onResizeMouseDown } = useFloat(containerRef, {
   initialTop,

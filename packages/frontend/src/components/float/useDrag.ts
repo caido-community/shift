@@ -9,7 +9,7 @@ const MIN_HEIGHT = 100;
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
 
 export const useFloat = (
-  target: Ref<HTMLElement | null>,
+  target: Ref<HTMLElement | undefined>,
   options: { initialTop: number; initialLeft: number }
 ) => {
   const top = ref(options.initialTop);
