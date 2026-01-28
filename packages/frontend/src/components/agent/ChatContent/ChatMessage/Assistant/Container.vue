@@ -10,6 +10,7 @@ import { useAssistantMessage } from "./useAssistantMessage";
 
 import { getToolErrorText } from "@/agent/utils/tools";
 import { TextShimmer } from "@/components/common/TextShimmer";
+import { useAnimatedDots } from "@/utils";
 
 const { message } = defineProps<{
   message: ShiftMessage & { role: "assistant" };
@@ -31,6 +32,8 @@ const isWaitingForNextPart = computed(() => {
     return true;
   });
 });
+
+const processingText = useAnimatedDots("Processing", isWaitingForNextPart);
 </script>
 
 <template>
@@ -67,7 +70,7 @@ const isWaitingForNextPart = computed(() => {
     <TextShimmer
       v-if="isWaitingForNextPart"
       class="font-mono select-none text-surface-300 text-sm animate-fade-in w-fit"
-      >Processing...</TextShimmer
+      >{{ processingText }}</TextShimmer
     >
   </div>
 </template>

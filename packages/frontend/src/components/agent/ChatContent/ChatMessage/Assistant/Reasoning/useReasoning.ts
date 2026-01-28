@@ -2,6 +2,8 @@ import type { ReasoningUIPart } from "ai";
 import type { MessageState } from "shared";
 import { computed, type MaybeRefOrGetter, ref, toValue, watch } from "vue";
 
+import { useAnimatedDots } from "@/utils";
+
 type DisplayState = "streaming" | "done" | "aborted" | "error" | "invalid";
 
 export const useReasoning = (args: {
@@ -34,9 +36,11 @@ export const useReasoning = (args: {
     return text.length > 0 && text !== "[REDACTED]";
   });
 
+  const thinkingText = useAnimatedDots("Thinking", isStreaming);
+
   const reasoningLabel = computed(() => {
     const state = displayState.value;
-    if (state === "streaming") return "Thinking...";
+    if (state === "streaming") return thinkingText.value;
     if (state === "aborted") return "Thinking cancelled";
     if (state === "error") return "Thinking failed";
     if (state === "done") return "Thought";

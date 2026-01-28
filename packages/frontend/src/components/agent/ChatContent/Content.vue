@@ -8,6 +8,7 @@ import { ChatMessage } from "./ChatMessage";
 
 import { TextShimmer } from "@/components/common/TextShimmer";
 import { useAgentStore } from "@/stores/agent/store";
+import { useAnimatedDots } from "@/utils";
 
 const session = useSession();
 const store = useAgentStore();
@@ -15,6 +16,7 @@ const messages = computed(() => session.chat.messages);
 const isSubmitted = computed(() => session.isWaitingForFirstToken());
 const isErrored = computed(() => session.isErrored());
 const debugMode = computed(() => store.debugMode);
+const generatingText = useAnimatedDots("Generating", isSubmitted);
 
 const container = ref<HTMLElement>();
 const { arrivedState } = useScroll(container);
@@ -43,7 +45,7 @@ watch(
     <div
       v-if="isSubmitted"
       class="text-surface-300 font-mono text-sm px-2.5">
-      <TextShimmer class="select-none">Generating...</TextShimmer>
+      <TextShimmer class="select-none">{{ generatingText }}</TextShimmer>
     </div>
     <div
       v-else-if="isErrored"
