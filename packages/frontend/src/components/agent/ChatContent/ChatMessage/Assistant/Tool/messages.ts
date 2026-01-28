@@ -26,6 +26,8 @@ import { display as responseSearchDisplay } from "@/agent/tools/response/Respons
 import { display as todoAddDisplay } from "@/agent/tools/todo/TodoAdd";
 import { display as todoCompleteDisplay } from "@/agent/tools/todo/TodoComplete";
 import { display as todoRemoveDisplay } from "@/agent/tools/todo/TodoRemove";
+import { display as workflowConvertListDisplay } from "@/agent/tools/workflows/WorkflowConvertList";
+import { display as workflowConvertRunDisplay } from "@/agent/tools/workflows/WorkflowConvertRun";
 import { type ToolDisplay } from "@/agent/types";
 
 const configs = {
@@ -57,6 +59,8 @@ const configs = {
   HistorySearch: historySearchDisplay,
   FindingsCreate: FindingsCreateDisplay,
   ReplayEntryNavigate: replayEntryNavigateDisplay,
+  WorkflowConvertList: workflowConvertListDisplay,
+  WorkflowConvertRun: workflowConvertRunDisplay,
 } as const;
 
 type ToolName = keyof typeof configs;
