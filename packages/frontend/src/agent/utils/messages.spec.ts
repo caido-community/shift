@@ -8,6 +8,7 @@ import {
   findLastUserMessageIndex,
   hasToolPartsSinceIndex,
   hasToolPartsSinceLastUserMessage,
+  stripUnfinishedToolCalls,
   trimOldToolCalls,
 } from "./messages";
 
@@ -39,6 +40,23 @@ function createAssistantMessageWithTool(id = "a1"): ShiftMessage {
         toolName: "TestTool",
         args: {},
         state: "result",
+      },
+    ],
+  } as ShiftMessage;
+}
+
+function createAssistantMessageWithToolState(state: string, id = "a1"): ShiftMessage {
+  return {
+    id,
+    role: "assistant",
+    parts: [
+      { type: "text", text: "Using tool" },
+      {
+        type: "tool-invocation",
+        toolCallId: "tc1",
+        toolName: "TestTool",
+        args: {},
+        state,
       },
     ],
   } as ShiftMessage;
@@ -465,5 +483,40 @@ describe("trimOldToolCalls", () => {
     const toolMsg = result[4] as { content: { type: string }[] };
     expect(toolMsg.content).toHaveLength(1);
     expect(toolMsg.content[0]!.type).toBe("tool-result");
+  });
+});
+
+describe("stripUnfinishedToolCalls", () => {
+  it("removes tool parts without finished state", () => {
+    const messages = [
+      createUserMessage("Hello"),
+      createAssistantMessageWithToolState("input-available"),
+    ];
+
+    const result = stripUnfinishedToolCalls(messages);
+    const assistant = result[1]!;
+
+    expect(assistant.parts).toHaveLength(1);
+    expect(assistant.parts[0]!.type).toBe("text");
+  });
+
+  it("preserves finished tool parts", () => {
+    const messages = [
+      createUserMessage("Hello"),
+      createAssistantMessageWithToolState("output-available"),
+    ];
+
+    const result = stripUnfinishedToolCalls(messages);
+    const assistant = result[1]!;
+
+    expect(assistant.parts).toHaveLength(2);
+    expect(assistant.parts[1]!.type).toBe("tool-invocation");
+  });
+
+  it("returns original array when no changes are needed", () => {
+    const messages = [createUserMessage("Hello"), createAssistantMessageWithToolState("result")];
+
+    const result = stripUnfinishedToolCalls(messages);
+    expect(result).toBe(messages);
   });
 });

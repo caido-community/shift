@@ -15,6 +15,7 @@ const createModelWithStaticSkill = (): SkillsModel => ({
       scope: "project",
     },
   ],
+  projectOverrides: [],
 });
 
 const createModelWithDynamicSkill = (): SkillsModel => ({
@@ -27,6 +28,7 @@ const createModelWithDynamicSkill = (): SkillsModel => ({
       scope: "project",
     },
   ],
+  projectOverrides: [],
 });
 
 describe("skills update", () => {
@@ -215,6 +217,7 @@ describe("skills update", () => {
             scope: "global",
           },
         ],
+        projectOverrides: [],
       };
 
       const result = update(model, {
@@ -224,6 +227,141 @@ describe("skills update", () => {
 
       expect(result.skills).toHaveLength(1);
       expect(result.skills[0]?.id).toBe("skill-2");
+    });
+
+    it("removes associated project overrides when removing skill", () => {
+      const model: SkillsModel = {
+        skills: [
+          {
+            type: "static",
+            id: "skill-1",
+            title: "Skill 1",
+            content: "Content 1",
+            scope: "global",
+          },
+        ],
+        projectOverrides: [
+          { skillId: "skill-1", projectId: "project-1", additionalContent: "Extra" },
+          { skillId: "skill-1", projectId: "project-2", additionalContent: "More" },
+        ],
+      };
+
+      const result = update(model, {
+        type: "REMOVE_SKILL",
+        id: "skill-1",
+      });
+
+      expect(result.skills).toHaveLength(0);
+      expect(result.projectOverrides).toHaveLength(0);
+    });
+  });
+
+  describe("SET_PROJECT_OVERRIDE", () => {
+    it("adds a new project override", () => {
+      const model = createModelWithStaticSkill();
+
+      const result = update(model, {
+        type: "SET_PROJECT_OVERRIDE",
+        override: {
+          skillId: "skill-1",
+          projectId: "project-1",
+          additionalContent: "Project-specific instructions",
+        },
+      });
+
+      expect(result.projectOverrides).toHaveLength(1);
+      expect(result.projectOverrides[0]).toEqual({
+        skillId: "skill-1",
+        projectId: "project-1",
+        additionalContent: "Project-specific instructions",
+      });
+    });
+
+    it("updates an existing project override", () => {
+      const model: SkillsModel = {
+        skills: [
+          {
+            type: "static",
+            id: "skill-1",
+            title: "Test Skill",
+            content: "Test content",
+            scope: "global",
+          },
+        ],
+        projectOverrides: [
+          { skillId: "skill-1", projectId: "project-1", additionalContent: "Old content" },
+        ],
+      };
+
+      const result = update(model, {
+        type: "SET_PROJECT_OVERRIDE",
+        override: {
+          skillId: "skill-1",
+          projectId: "project-1",
+          additionalContent: "Updated content",
+        },
+      });
+
+      expect(result.projectOverrides).toHaveLength(1);
+      expect(result.projectOverrides[0]?.additionalContent).toBe("Updated content");
+    });
+
+    it("preserves other overrides when adding new one", () => {
+      const model: SkillsModel = {
+        skills: [],
+        projectOverrides: [
+          { skillId: "skill-1", projectId: "project-1", additionalContent: "Existing" },
+        ],
+      };
+
+      const result = update(model, {
+        type: "SET_PROJECT_OVERRIDE",
+        override: {
+          skillId: "skill-2",
+          projectId: "project-1",
+          additionalContent: "New override",
+        },
+      });
+
+      expect(result.projectOverrides).toHaveLength(2);
+    });
+  });
+
+  describe("REMOVE_PROJECT_OVERRIDE", () => {
+    it("removes a project override", () => {
+      const model: SkillsModel = {
+        skills: [],
+        projectOverrides: [
+          { skillId: "skill-1", projectId: "project-1", additionalContent: "Content" },
+        ],
+      };
+
+      const result = update(model, {
+        type: "REMOVE_PROJECT_OVERRIDE",
+        skillId: "skill-1",
+        projectId: "project-1",
+      });
+
+      expect(result.projectOverrides).toHaveLength(0);
+    });
+
+    it("preserves other overrides when removing one", () => {
+      const model: SkillsModel = {
+        skills: [],
+        projectOverrides: [
+          { skillId: "skill-1", projectId: "project-1", additionalContent: "Keep" },
+          { skillId: "skill-1", projectId: "project-2", additionalContent: "Remove" },
+        ],
+      };
+
+      const result = update(model, {
+        type: "REMOVE_PROJECT_OVERRIDE",
+        skillId: "skill-1",
+        projectId: "project-2",
+      });
+
+      expect(result.projectOverrides).toHaveLength(1);
+      expect(result.projectOverrides[0]?.projectId).toBe("project-1");
     });
   });
 

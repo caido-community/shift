@@ -1,6 +1,7 @@
 import type {
   AgentSkillDefinition,
   DynamicSkillDefinition,
+  ProjectSkillOverride,
   StaticSkillDefinition,
   UpdateDynamicSkillInput,
   UpdateStaticSkillInput,
@@ -10,6 +11,7 @@ import { DEFAULT_SKILLS } from "../../skills/defaults";
 
 export type SkillsModel = {
   skills: AgentSkillDefinition[];
+  projectOverrides: ProjectSkillOverride[];
 };
 
 export type SkillsMessage =
@@ -27,10 +29,13 @@ export type SkillsMessage =
       updates: UpdateDynamicSkillInput;
       projectId: string | undefined;
     }
-  | { type: "REMOVE_SKILL"; id: string };
+  | { type: "REMOVE_SKILL"; id: string }
+  | { type: "SET_PROJECT_OVERRIDE"; override: ProjectSkillOverride }
+  | { type: "REMOVE_PROJECT_OVERRIDE"; skillId: string; projectId: string };
 
 export function createInitialModel(): SkillsModel {
   return {
     skills: [...DEFAULT_SKILLS],
+    projectOverrides: [],
   };
 }

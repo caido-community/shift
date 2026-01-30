@@ -5,7 +5,10 @@ import {
   CreateDynamicSkillSchema,
   type CreateStaticSkillInput,
   CreateStaticSkillSchema,
+  type ProjectSkillOverride,
   type Result,
+  type SetProjectOverrideInput,
+  SetProjectOverrideSchema,
   type UpdateDynamicSkillInput,
   UpdateDynamicSkillSchema,
   type UpdateStaticSkillInput,
@@ -128,6 +131,58 @@ export async function refreshSkills(_sdk: BackendSDK): Promise<Result<void>> {
     const store = getSkillsStore();
     await store.refreshDynamicSkills();
     return { kind: "Ok", value: undefined };
+  } catch (error) {
+    return { kind: "Error", error: (error as Error).message };
+  }
+}
+
+export function getProjectOverride(
+  _sdk: BackendSDK,
+  skillId: string
+): Result<ProjectSkillOverride | undefined> {
+  try {
+    const store = getSkillsStore();
+    const override = store.getProjectOverrideForSkill(skillId);
+    return { kind: "Ok", value: override };
+  } catch (error) {
+    return { kind: "Error", error: (error as Error).message };
+  }
+}
+
+export function getProjectOverrides(_sdk: BackendSDK): Result<ProjectSkillOverride[]> {
+  try {
+    const store = getSkillsStore();
+    const overrides = store.getAllProjectOverrides();
+    return { kind: "Ok", value: overrides };
+  } catch (error) {
+    return { kind: "Error", error: (error as Error).message };
+  }
+}
+
+export async function setProjectOverride(
+  _sdk: BackendSDK,
+  input: SetProjectOverrideInput
+): Promise<Result<void>> {
+  try {
+    const parsed = SetProjectOverrideSchema.safeParse(input);
+    if (!parsed.success) {
+      return { kind: "Error", error: parsed.error.message };
+    }
+
+    const store = getSkillsStore();
+    return await store.setProjectOverride(parsed.data);
+  } catch (error) {
+    return { kind: "Error", error: (error as Error).message };
+  }
+}
+
+export async function removeProjectOverride(
+  _sdk: BackendSDK,
+  skillId: string
+): Promise<Result<void>> {
+  try {
+    const store = getSkillsStore();
+    return await store.removeProjectOverride(skillId);
   } catch (error) {
     return { kind: "Error", error: (error as Error).message };
   }

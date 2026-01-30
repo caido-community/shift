@@ -2,10 +2,12 @@ import type {
   CreatedReplaySessionSubscription,
   UpdatedReplaySessionSubscription,
 } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
+import type { AgentSkillDefinition } from "shared";
 
 import { LaunchDialog, type LaunchDialogResult } from "@/components/LaunchDialog";
 import { useAgentStore } from "@/stores/agent";
 import { useSettingsStore } from "@/stores/settings";
+import { useSkillsStore } from "@/stores/skills";
 import { useUIStore } from "@/stores/ui";
 import type { FrontendSDK } from "@/types";
 import { isPresent } from "@/utils/optional";
@@ -13,6 +15,11 @@ import { isPresent } from "@/utils/optional";
 const SHIFT_COLLECTION_NAME = "Shift";
 
 const sessionToCollectionId = new Map<string, string | undefined>();
+
+function findSkillsByCollectionName(collectionName: string): AgentSkillDefinition[] {
+  const skillsStore = useSkillsStore();
+  return skillsStore.definitions.filter((skill) => skill.autoExecuteCollection === collectionName);
+}
 
 async function ensureCollection(
   sdk: FrontendSDK
@@ -38,7 +45,7 @@ async function ensureCollection(
   return sdk.replay.createCollection(SHIFT_COLLECTION_NAME);
 }
 
-function showLaunchDialog(sdk: FrontendSDK, sessionId: string) {
+function showLaunchDialog(sdk: FrontendSDK, sessionId: string, preSelectedSkillIds?: string[]) {
   let dialog: { close: () => void } = { close: () => {} };
 
   const handleConfirm = (result: LaunchDialogResult) => {
@@ -56,6 +63,7 @@ function showLaunchDialog(sdk: FrontendSDK, sessionId: string) {
       props: {
         onConfirm: () => handleConfirm,
         onCancel: () => handleCancel,
+        initialSkillIds: preSelectedSkillIds,
       },
     },
     {
@@ -67,6 +75,40 @@ function showLaunchDialog(sdk: FrontendSDK, sessionId: string) {
       position: "center",
     }
   );
+}
+
+function autoLaunchAgent(sdk: FrontendSDK, sessionId: string, skillIds: string[]) {
+  const agentStore = useAgentStore();
+  const uiStore = useUIStore();
+
+  if (!agentStore.isReady) {
+    sdk.window.showToast("Agent not ready. Please configure a model first.", { variant: "error" });
+    return;
+  }
+
+  let session;
+  try {
+    session = agentStore.getSession(sessionId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    sdk.window.showToast(`Failed to create agent session: ${message}`, { variant: "error" });
+    return;
+  }
+
+  if (session === undefined) {
+    sdk.window.showToast("Failed to create agent session", { variant: "error" });
+    return;
+  }
+
+  if (skillIds.length > 0) {
+    session.store.setSelectedSkillIds(skillIds);
+  }
+
+  agentStore.dispatch({ type: "SELECT_SESSION", sessionId });
+  sdk.replay.openTab(sessionId);
+  uiStore.setDrawerVisible(true);
+
+  session.chat.sendMessage({ text: "Proceed with testing." });
 }
 
 function launchAgent(sdk: FrontendSDK, sessionId: string, config: LaunchDialogResult) {
@@ -124,6 +166,20 @@ function launchAgent(sdk: FrontendSDK, sessionId: string, config: LaunchDialogRe
   session.chat.sendMessage({ text: message });
 }
 
+function handleSessionInCollection(sdk: FrontendSDK, sessionId: string, collectionName: string) {
+  const boundSkills = findSkillsByCollectionName(collectionName);
+
+  if (boundSkills.length > 0) {
+    const skillIds = boundSkills.map((s) => s.id);
+    autoLaunchAgent(sdk, sessionId, skillIds);
+    return;
+  }
+
+  if (collectionName === SHIFT_COLLECTION_NAME) {
+    showLaunchDialog(sdk, sessionId);
+  }
+}
+
 function handleCreatedReplaySession(sdk: FrontendSDK, result: CreatedReplaySessionSubscription) {
   const { createdReplaySession: data } = result;
   const session = data.sessionEdge.node;
@@ -137,9 +193,9 @@ function handleCreatedReplaySession(sdk: FrontendSDK, result: CreatedReplaySessi
   const collection = collections.find((col) => col.id === collectionId);
   const collectionName = collection?.name;
 
-  if (collectionName !== SHIFT_COLLECTION_NAME) return;
+  if (collectionName === undefined) return;
 
-  showLaunchDialog(sdk, session.id);
+  handleSessionInCollection(sdk, session.id, collectionName);
 }
 
 function handleUpdatedReplaySession(sdk: FrontendSDK, result: UpdatedReplaySessionSubscription) {
@@ -158,9 +214,9 @@ function handleUpdatedReplaySession(sdk: FrontendSDK, result: UpdatedReplaySessi
   const collection = collections.find((col) => col.id === nextCollectionId);
   const collectionName = collection?.name;
 
-  if (collectionName !== SHIFT_COLLECTION_NAME) return;
+  if (collectionName === undefined) return;
 
-  showLaunchDialog(sdk, session.id);
+  handleSessionInCollection(sdk, session.id, collectionName);
 }
 
 function loadCurrentSessions(sdk: FrontendSDK) {

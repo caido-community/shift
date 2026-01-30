@@ -21,6 +21,7 @@ import {
 } from "./request";
 import { ResponseRangeRead, ResponseSearch } from "./response";
 import { TodoAdd, TodoComplete, TodoRemove } from "./todo";
+import { WorkflowConvertList, WorkflowConvertRun } from "./workflows";
 
 export const shiftAgentTools = {
   TodoAdd,
@@ -51,4 +52,6 @@ export const shiftAgentTools = {
   HistorySearch,
   FindingsCreate,
   ReplayEntryNavigate,
+  WorkflowConvertList,
+  WorkflowConvertRun,
 };

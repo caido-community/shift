@@ -10,6 +10,7 @@ const StaticSkillDefinitionSchema = z.object({
   content: z.string().min(1),
   scope: SkillScopeSchema,
   projectId: z.string().min(1).optional(),
+  autoExecuteCollection: z.string().optional(),
 });
 export type StaticSkillDefinition = z.infer<typeof StaticSkillDefinitionSchema>;
 
@@ -20,6 +21,7 @@ const DynamicSkillDefinitionSchema = z.object({
   url: z.url(),
   scope: SkillScopeSchema,
   projectId: z.string().min(1).optional(),
+  autoExecuteCollection: z.string().optional(),
 });
 export type DynamicSkillDefinition = z.infer<typeof DynamicSkillDefinitionSchema>;
 
@@ -54,6 +56,7 @@ export const UpdateStaticSkillSchema = z.object({
   title: z.string().min(1).optional(),
   content: z.string().min(1).optional(),
   scope: SkillScopeSchema.optional(),
+  autoExecuteCollection: z.string().optional().nullable(),
 });
 export type UpdateStaticSkillInput = z.infer<typeof UpdateStaticSkillSchema>;
 
@@ -61,5 +64,19 @@ export const UpdateDynamicSkillSchema = z.object({
   title: z.string().min(1).optional(),
   url: z.url().optional(),
   scope: SkillScopeSchema.optional(),
+  autoExecuteCollection: z.string().optional().nullable(),
 });
 export type UpdateDynamicSkillInput = z.infer<typeof UpdateDynamicSkillSchema>;
+
+const ProjectSkillOverrideSchema = z.object({
+  skillId: z.string().min(1),
+  projectId: z.string().min(1),
+  additionalContent: z.string(),
+});
+export type ProjectSkillOverride = z.infer<typeof ProjectSkillOverrideSchema>;
+
+export const SetProjectOverrideSchema = z.object({
+  skillId: z.string().min(1),
+  additionalContent: z.string(),
+});
+export type SetProjectOverrideInput = z.infer<typeof SetProjectOverrideSchema>;

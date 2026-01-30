@@ -8,6 +8,7 @@ import type { ShiftMessage } from "shared";
 
 type ToolCallPart = { type: "tool-call"; toolCallId: string };
 type ToolResultPart = { type: "tool-result"; toolCallId: string };
+type ToolUIState = { state?: string };
 
 function isToolCallPart(part: { type: string }): part is ToolCallPart {
   return part.type === "tool-call";
@@ -69,6 +70,45 @@ export function trimOldToolCalls(
 
     return msg;
   });
+}
+
+function isFinishedToolState(state: string | undefined): boolean {
+  return state === "output-available" || state === "result" || state === "error";
+}
+
+export function stripUnfinishedToolCalls(messages: ShiftMessage[]): ShiftMessage[] {
+  let didChange = false;
+
+  const updated = messages.map((message) => {
+    if (message.role !== "assistant") {
+      return message;
+    }
+
+    const filteredParts = message.parts.filter((part) => {
+      if (!isToolUIPart(part)) {
+        return true;
+      }
+
+      if (isFinishedToolState((part as ToolUIState).state)) {
+        return true;
+      }
+
+      didChange = true;
+      return false;
+    });
+
+    if (filteredParts.length === message.parts.length) {
+      return message;
+    }
+
+    didChange = true;
+    return {
+      ...message,
+      parts: filteredParts,
+    } as ShiftMessage;
+  });
+
+  return didChange ? updated : messages;
 }
 
 export function findLastUserMessageIndex(messages: ShiftMessage[]): number {

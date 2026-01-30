@@ -8,6 +8,7 @@ import {
   extractLastUserMessageText,
   hasToolPartsSinceLastUserMessage,
 } from "@/agent/utils/messages";
+import { useAgentStore } from "@/stores/agent";
 import { type SessionStore, useSessionStore } from "@/stores/agent/session";
 import { type FrontendSDK } from "@/types";
 
@@ -63,6 +64,14 @@ export class AgentSession {
     const result = await this.sdk.backend.writeAgent(this.id, this.chat.messages);
     if (result.kind === "Error") {
       console.error("Failed to persist agent messages:", result.error);
+      return;
+    }
+
+    const agentStore = useAgentStore();
+    if (this.chat.messages.length > 0) {
+      agentStore.dispatch({ type: "ADD_PERSISTED_SESSION_ID", sessionId: this.id });
+    } else {
+      agentStore.dispatch({ type: "REMOVE_PERSISTED_SESSION_ID", sessionId: this.id });
     }
   }
 

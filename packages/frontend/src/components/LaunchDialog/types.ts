@@ -20,4 +20,5 @@ export type LaunchDialogResult = {
 export type LaunchDialogProps = {
   onConfirm: (result: LaunchDialogResult) => void;
   onCancel: () => void;
+  initialSkillIds?: string[];
 };

@@ -24,6 +24,7 @@ const {
   handleAddDynamic,
   handleUpdateStatic,
   handleUpdateDynamic,
+  handleUpdateProjectOverride,
   handleDelete,
   handleRefresh,
   getSkillContent,
@@ -184,6 +185,7 @@ const getScopeSeverity = (scope: "global" | "project") => {
       :skill-content="editingSkill !== undefined ? getSkillContent(editingSkill.id) : ''"
       @update-static="handleUpdateStatic"
       @update-dynamic="handleUpdateDynamic"
+      @update-project-override="handleUpdateProjectOverride"
       @update:visible="!$event && closeEditDialog()" />
   </div>
 </template>

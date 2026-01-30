@@ -2,9 +2,15 @@
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
+import Select from "primevue/select";
 import Textarea from "primevue/textarea";
-import type { AgentSkillDefinition } from "shared";
+import type { AgentSkillDefinition, UpdateDynamicSkillInput, UpdateStaticSkillInput } from "shared";
 import { computed, ref, watch } from "vue";
+
+import { useSDK } from "@/plugins/sdk";
+import { getProjectOverride } from "@/stores/skills/store.effects";
+
+const sdk = useSDK();
 
 const { skill, skillContent } = defineProps<{
   skill: AgentSkillDefinition | undefined;
@@ -14,25 +20,54 @@ const { skill, skillContent } = defineProps<{
 const visible = defineModel<boolean>("visible", { required: true });
 
 const emit = defineEmits<{
-  updateStatic: [id: string, input: { title?: string; content?: string }];
-  updateDynamic: [id: string, input: { title?: string; url?: string }];
+  updateStatic: [id: string, input: UpdateStaticSkillInput];
+  updateDynamic: [id: string, input: UpdateDynamicSkillInput];
+  updateProjectOverride: [skillId: string, additionalContent: string];
 }>();
 
 const title = ref("");
 const content = ref("");
 const url = ref("");
+const autoExecuteCollection = ref<string | undefined>(undefined);
+const projectSpecificContent = ref("");
+const originalProjectSpecificContent = ref("");
+
+const isGlobalSkill = computed(() => skill?.scope === "global");
+
+const collectionOptions = computed(() => {
+  const collections = sdk.replay.getCollections();
+  return [
+    { name: "None", value: undefined },
+    ...collections.map((c) => ({ name: c.name, value: c.name })),
+  ];
+});
 
 watch(
   () => skill,
-  (newSkill) => {
+  async (newSkill) => {
     if (newSkill !== undefined) {
       title.value = newSkill.title;
+      autoExecuteCollection.value = newSkill.autoExecuteCollection;
       if (newSkill.type === "static") {
         content.value = newSkill.content;
         url.value = "";
       } else {
         content.value = skillContent;
         url.value = newSkill.url;
+      }
+
+      if (newSkill.scope === "global") {
+        const result = await getProjectOverride(sdk, newSkill.id);
+        if (result.kind === "Ok" && result.value !== undefined) {
+          projectSpecificContent.value = result.value.additionalContent;
+          originalProjectSpecificContent.value = result.value.additionalContent;
+        } else {
+          projectSpecificContent.value = "";
+          originalProjectSpecificContent.value = "";
+        }
+      } else {
+        projectSpecificContent.value = "";
+        originalProjectSpecificContent.value = "";
       }
     }
   },
@@ -61,17 +96,34 @@ const hasUrlError = computed(() => url.value.trim() !== "" && !isValidUrl(url.va
 const handleSave = () => {
   if (skill === undefined || !canSave()) return;
 
+  const collectionValue =
+    autoExecuteCollection.value === skill.autoExecuteCollection
+      ? undefined
+      : autoExecuteCollection.value === undefined
+        ? null
+        : autoExecuteCollection.value;
+
   if (skill.type === "static") {
     emit("updateStatic", skill.id, {
       title: title.value.trim(),
       content: content.value.trim(),
+      autoExecuteCollection: collectionValue,
     });
   } else {
     emit("updateDynamic", skill.id, {
       title: title.value.trim(),
       url: url.value.trim(),
+      autoExecuteCollection: collectionValue,
     });
   }
+
+  if (
+    isGlobalSkill.value &&
+    projectSpecificContent.value.trim() !== originalProjectSpecificContent.value.trim()
+  ) {
+    emit("updateProjectOverride", skill.id, projectSpecificContent.value.trim());
+  }
+
   visible.value = false;
 };
 
@@ -99,6 +151,25 @@ const handleCancel = () => {
           id="edit-title"
           v-model="title"
           class="w-full" />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label
+          for="edit-collection"
+          class="font-medium text-surface-200">
+          Auto-Execute in Collection
+        </label>
+        <Select
+          id="edit-collection"
+          v-model="autoExecuteCollection"
+          :options="collectionOptions"
+          option-label="name"
+          option-value="value"
+          placeholder="Select a collection"
+          class="w-full" />
+        <p class="text-xs text-surface-400">
+          When a request is sent to this collection, the agent will auto-launch with this skill.
+        </p>
       </div>
 
       <template v-if="skill.type === 'static'">
@@ -148,6 +219,25 @@ const handleCancel = () => {
             class="w-full font-mono text-sm opacity-60" />
         </div>
       </template>
+
+      <div
+        v-if="isGlobalSkill"
+        class="flex flex-col gap-2 border-t border-surface-700 pt-4">
+        <label
+          for="edit-project-content"
+          class="font-medium text-surface-200">
+          Project-Specific Content
+        </label>
+        <Textarea
+          id="edit-project-content"
+          v-model="projectSpecificContent"
+          rows="5"
+          placeholder="Additional content to append for this project only..."
+          class="w-full font-mono text-sm" />
+        <p class="text-xs text-surface-400">
+          This content will be appended to the skill when used in the current project.
+        </p>
+      </div>
     </div>
     <template #footer>
       <Button

@@ -4,7 +4,9 @@ import {
   type CreateDynamicSkillInput,
   type CreateStaticSkillInput,
   type DynamicSkillDefinition,
+  type ProjectSkillOverride,
   Result,
+  type SetProjectOverrideInput,
   type UpdateDynamicSkillInput,
   type UpdateStaticSkillInput,
 } from "shared";
@@ -60,6 +62,26 @@ class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
     return this.getModel().skills.filter((skill) => this.isSkillVisibleInCurrentProject(skill));
   }
 
+  private getProjectOverride(skillId: string): ProjectSkillOverride | undefined {
+    if (this.currentProjectId === undefined) {
+      return undefined;
+    }
+    return this.getModel().projectOverrides.find(
+      (o) => o.skillId === skillId && o.projectId === this.currentProjectId
+    );
+  }
+
+  private applyProjectOverride(skill: AgentSkill): AgentSkill {
+    const override = this.getProjectOverride(skill.id);
+    if (override === undefined || override.additionalContent.trim() === "") {
+      return skill;
+    }
+    return {
+      ...skill,
+      content: `${skill.content}\n\n${override.additionalContent}`,
+    };
+  }
+
   getSkills(): AgentSkill[] {
     const result: AgentSkill[] = [];
 
@@ -68,21 +90,36 @@ class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
         continue;
       }
 
+      let skill: AgentSkill;
       if (definition.type === "static") {
-        result.push({
+        skill = {
           id: definition.id,
           title: definition.title,
           content: definition.content,
-        });
+        };
       } else {
         const cached = this.resolvedCache.get(definition.id);
-        if (cached !== undefined) {
-          result.push(cached);
+        if (cached === undefined) {
+          continue;
         }
+        skill = cached;
       }
+
+      result.push(this.applyProjectOverride(skill));
     }
 
     return result;
+  }
+
+  getProjectOverrideForSkill(skillId: string): ProjectSkillOverride | undefined {
+    return this.getProjectOverride(skillId);
+  }
+
+  getAllProjectOverrides(): ProjectSkillOverride[] {
+    if (this.currentProjectId === undefined) {
+      return [];
+    }
+    return this.getModel().projectOverrides.filter((o) => o.projectId === this.currentProjectId);
   }
 
   async addStaticSkill(input: CreateStaticSkillInput): Promise<Result<string>> {
@@ -216,6 +253,52 @@ class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
 
     await this.persist();
     this.notify();
+  }
+
+  async setProjectOverride(input: SetProjectOverrideInput): Promise<Result<void>> {
+    if (this.currentProjectId === undefined) {
+      return Result.err("Cannot set project override without an active project");
+    }
+
+    const skill = this.getModel().skills.find((s) => s.id === input.skillId);
+    if (skill === undefined) {
+      return Result.err("Skill not found");
+    }
+
+    if (skill.scope !== "global") {
+      return Result.err("Project overrides can only be set for global skills");
+    }
+
+    this.dispatch({
+      type: "SET_PROJECT_OVERRIDE",
+      override: {
+        skillId: input.skillId,
+        projectId: this.currentProjectId,
+        additionalContent: input.additionalContent,
+      },
+    });
+
+    await this.persist();
+    this.notify();
+
+    return Result.ok(undefined);
+  }
+
+  async removeProjectOverride(skillId: string): Promise<Result<void>> {
+    if (this.currentProjectId === undefined) {
+      return Result.err("Cannot remove project override without an active project");
+    }
+
+    this.dispatch({
+      type: "REMOVE_PROJECT_OVERRIDE",
+      skillId,
+      projectId: this.currentProjectId,
+    });
+
+    await this.persist();
+    this.notify();
+
+    return Result.ok(undefined);
   }
 
   async refreshDynamicSkills(): Promise<void> {

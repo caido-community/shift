@@ -25,6 +25,18 @@ export const useAgentStore = defineStore("agent", () => {
     return modelsReady && settingsReady;
   });
 
+  async function loadPersistedSessionIds() {
+    const result = await sdk.backend.getAgents();
+    if (result.kind === "Ok") {
+      const sessionIds = result.value
+        .filter((agent) => agent.messages.length > 0)
+        .map((agent) => agent.chatID);
+      dispatch({ type: "SET_PERSISTED_SESSION_IDS", sessionIds });
+    }
+  }
+
+  loadPersistedSessionIds();
+
   function dispatch(message: AgentMessage) {
     model.value = update(model.value, message);
   }

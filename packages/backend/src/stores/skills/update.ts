@@ -42,6 +42,12 @@ function handleUpdateStaticSkill(
         skill.scope = message.updates.scope;
         skill.projectId = message.updates.scope === "project" ? message.projectId : undefined;
       }
+      if (message.updates.autoExecuteCollection !== undefined) {
+        skill.autoExecuteCollection =
+          message.updates.autoExecuteCollection === null
+            ? undefined
+            : message.updates.autoExecuteCollection;
+      }
     }
   });
 }
@@ -68,6 +74,12 @@ function handleUpdateDynamicSkill(
         skill.scope = message.updates.scope;
         skill.projectId = message.updates.scope === "project" ? message.projectId : undefined;
       }
+      if (message.updates.autoExecuteCollection !== undefined) {
+        skill.autoExecuteCollection =
+          message.updates.autoExecuteCollection === null
+            ? undefined
+            : message.updates.autoExecuteCollection;
+      }
     }
   });
 }
@@ -78,6 +90,34 @@ function handleRemoveSkill(
 ): SkillsModel {
   return create(model, (draft) => {
     draft.skills = draft.skills.filter((s) => s.id !== message.id);
+    draft.projectOverrides = draft.projectOverrides.filter((o) => o.skillId !== message.id);
+  });
+}
+
+function handleSetProjectOverride(
+  model: SkillsModel,
+  message: Extract<SkillsMessage, { type: "SET_PROJECT_OVERRIDE" }>
+): SkillsModel {
+  return create(model, (draft) => {
+    const existingIndex = draft.projectOverrides.findIndex(
+      (o) => o.skillId === message.override.skillId && o.projectId === message.override.projectId
+    );
+    if (existingIndex !== -1) {
+      draft.projectOverrides[existingIndex] = message.override;
+    } else {
+      draft.projectOverrides.push(message.override);
+    }
+  });
+}
+
+function handleRemoveProjectOverride(
+  model: SkillsModel,
+  message: Extract<SkillsMessage, { type: "REMOVE_PROJECT_OVERRIDE" }>
+): SkillsModel {
+  return create(model, (draft) => {
+    draft.projectOverrides = draft.projectOverrides.filter(
+      (o) => !(o.skillId === message.skillId && o.projectId === message.projectId)
+    );
   });
 }
 
@@ -93,6 +133,10 @@ export function update(model: SkillsModel, message: SkillsMessage): SkillsModel 
       return handleUpdateDynamicSkill(model, message);
     case "REMOVE_SKILL":
       return handleRemoveSkill(model, message);
+    case "SET_PROJECT_OVERRIDE":
+      return handleSetProjectOverride(model, message);
+    case "REMOVE_PROJECT_OVERRIDE":
+      return handleRemoveProjectOverride(model, message);
     default:
       return model;
   }

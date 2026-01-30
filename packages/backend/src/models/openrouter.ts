@@ -14,6 +14,7 @@ const OpenRouterModelIds = {
   GROK_4_1_FAST: "x-ai/grok-4.1-fast",
   MINIMAX_M2_1: "minimax/minimax-m2.1",
   GLM_4_7: "z-ai/glm-4.7",
+  KIMI_K2_5: "moonshotai/kimi-k2.5",
 } as const;
 
 export const openrouterModels: Model[] = [
@@ -113,6 +114,14 @@ export const openrouterModels: Model[] = [
       reasoning: true,
     },
   },
+  {
+    id: OpenRouterModelIds.KIMI_K2_5,
+    name: "Kimi K2.5",
+    provider: ModelProvider.OpenRouter,
+    capabilities: {
+      reasoning: true,
+    },
+  },
 ];
 
 export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
@@ -129,4 +138,5 @@ export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
   [OpenRouterModelIds.GEMINI_3_PRO_PREVIEW]: ["agent", "float"],
   [OpenRouterModelIds.MINIMAX_M2_1]: ["agent", "float"],
   [OpenRouterModelIds.GLM_4_7]: ["agent", "float"],
+  [OpenRouterModelIds.KIMI_K2_5]: ["agent", "float"],
 };
