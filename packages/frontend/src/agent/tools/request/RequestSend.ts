@@ -90,10 +90,10 @@ export const display = {
 
 export const RequestSend = tool({
   description:
-    "Send the current HTTP request to the target server and wait for a response. Use this after modifying the request with other tools to test changes, verify behavior, or continue an attack workflow. The request is sent using the connection settings from the replay session (host, port, TLS). Returns the response (truncated to 2000 chars if larger) with non-security-relevant headers filtered out, roundtrip time in milliseconds, response ID for use with ResponseSearch/ResponseRangeRead, and the status line. Times out after 30 seconds.",
+    "Send the current HTTP request to the target server and wait for a response. Use this after modifying the request with other tools to test changes, verify behavior, or continue an attack workflow. The request is sent using the connection settings from the replay session (host, port, TLS). Returns the response (truncated to 5k chars if larger) with non-security-relevant headers filtered out, roundtrip time in milliseconds, response ID for use with ResponseSearch/ResponseRangeRead, and the status line. Times out after 30 seconds.",
   inputSchema,
   outputSchema,
-  execute: async (_input, { experimental_context }): Promise<RequestSendOutput> => {
+  execute: async (_input, { abortSignal, experimental_context }): Promise<RequestSendOutput> => {
     const context = experimental_context as AgentContext;
     const sdk = context.sdk;
 
@@ -121,6 +121,17 @@ export const RequestSend = tool({
       setTimeout(() => reject(new Error("Request timeout after 30 seconds")), 30000);
     });
 
+    const abortPromise = new Promise<never>((_, reject) => {
+      abortSignal?.addEventListener("abort", () => {
+        if (location.hash !== "#/replay") return;
+        const currentSession = sdk.replay.getCurrentSession();
+        if (currentSession?.id === replaySession.id) {
+          document.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')?.click();
+        }
+        reject(new Error("Request cancelled"));
+      });
+    });
+
     const responsePromise = (async () => {
       for await (const event of iterator) {
         if (event.updatedReplaySession.sessionEdge.node.id === replaySession.id) {
@@ -132,7 +143,7 @@ export const RequestSend = tool({
     })();
 
     try {
-      await Promise.race([responsePromise, timeout]);
+      await Promise.race([responsePromise, timeout, abortPromise]);
     } catch (error) {
       return ToolResult.err((error as Error).message);
     }
@@ -152,7 +163,7 @@ export const RequestSend = tool({
     const statusLine = extractStatusLine(result.response.raw);
     const filteredResponse = filterResponseHeaders(result.response.raw);
 
-    const maxResponseLength = 2000;
+    const maxResponseLength = 5000;
     const totalLength = filteredResponse.length;
     const remainingLength = totalLength - maxResponseLength;
     const suffix =
