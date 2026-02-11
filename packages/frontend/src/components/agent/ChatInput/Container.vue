@@ -4,7 +4,6 @@ import Button from "primevue/button";
 import { AgentSelector } from "./AgentSelector";
 import { ModelSelector } from "./ModelSelector";
 import { ModeSelector } from "./ModeSelector";
-import { ReasoningEffortSelector } from "./ReasoningEffortSelector";
 import { useChatInput } from "./useChatInput";
 
 const {
@@ -15,7 +14,7 @@ const {
   agentModels,
   isGenerating,
   hasProviderConfigured,
-  supportsReasoningEffort,
+  reasoningEffort,
   canSend,
   handleSend,
   handleStop,
@@ -58,10 +57,9 @@ const {
         <div class="flex items-center gap-2 shrink-0">
           <ModelSelector
             v-model="model"
+            v-model:reasoning-effort="reasoningEffort"
             :models="agentModels"
-            :disabled="isGenerating || !hasProviderConfigured" />
-          <ReasoningEffortSelector
-            v-if="supportsReasoningEffort"
+            reasoning-mode="variant"
             :disabled="isGenerating || !hasProviderConfigured" />
           <ModeSelector />
           <AgentSelector />
