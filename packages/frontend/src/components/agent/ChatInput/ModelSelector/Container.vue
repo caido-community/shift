@@ -57,10 +57,10 @@ const handleProviderClick = (provider: ProviderInfo) => {
       type="button"
       :disabled="disabled"
       :class="[
-        'flex items-center gap-2 rounded transition-colors border',
+        'flex items-center rounded transition-colors',
         size === 'default'
-          ? 'px-3 py-1.5 text-sm bg-surface-800 border-surface-700 hover:bg-surface-700 hover:text-surface-100'
-          : 'px-2 py-1 text-xs bg-surface-900 border-surface-700 hover:bg-surface-950 hover:text-surface-200',
+          ? 'gap-1.5 px-1 py-1 text-sm hover:text-surface-200'
+          : 'gap-1 px-1 py-1 text-xs hover:text-surface-200',
         'text-surface-400',
         disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
       ]"
@@ -70,8 +70,8 @@ const handleProviderClick = (provider: ProviderInfo) => {
       </span>
       <i
         :class="[
-          'fas fa-chevron-down transition-transform',
-          size === 'default' ? 'text-xs' : 'text-[10px]',
+          'fas fa-chevron-down transition-transform text-surface-600',
+          size === 'default' ? 'text-[8px]' : 'text-[7px]',
           isOpen ? 'rotate-180' : '',
         ]" />
     </button>
