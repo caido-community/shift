@@ -12,7 +12,10 @@ import { type EditorElement, isPresent } from "@/utils";
 
 const MAX_CONTEXT_LENGTH = 10_000;
 
-const truncate = (value: string, maxLength = MAX_CONTEXT_LENGTH): string => {
+const truncate = (value: string | undefined, maxLength = MAX_CONTEXT_LENGTH): string => {
+  if (typeof value !== "string") {
+    return "";
+  }
   if (value.length <= maxLength) {
     return value;
   }
