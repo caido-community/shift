@@ -76,6 +76,7 @@ export function useChatInput() {
   );
   const isGenerating = computed(() => session.isGenerating());
   const hasProviderConfigured = computed(() => isAnyProviderConfigured(sdk));
+  const supportsReasoningEffort = computed(() => model.value?.capabilities.reasoning === true);
   const hasMessage = computed(() => inputMessage.value.trim() !== "");
   const canSend = computed(
     () => hasMessage.value && hasProviderConfigured.value && model.value !== undefined
@@ -126,6 +127,7 @@ export function useChatInput() {
     agentModels,
     isGenerating,
     hasProviderConfigured,
+    supportsReasoningEffort,
     canSend,
     handleSend,
     handleStop,

@@ -3,6 +3,7 @@ import type { AgentMode, Model, Result } from "shared";
 import type { SessionMessage, SessionModel, SessionUpdateResult } from "./store.model";
 
 import type { Todo } from "@/agent/types";
+import type { ReasoningEffort } from "@/utils/ai";
 
 function handleSetModel(model: SessionModel, newModel: Model | undefined): SessionModel {
   return {
@@ -192,6 +193,16 @@ function handleSetMode(model: SessionModel, mode: AgentMode): SessionModel {
   };
 }
 
+function handleSetReasoningEffort(
+  model: SessionModel,
+  reasoningEffort: ReasoningEffort
+): SessionModel {
+  return {
+    ...model,
+    reasoningEffort,
+  };
+}
+
 function handleSetCustomAgent(
   model: SessionModel,
   agentId: string,
@@ -261,6 +272,9 @@ export function update(model: SessionModel, message: SessionMessage): SessionUpd
 
     case "SET_MODE":
       return handleSetMode(model, message.mode);
+
+    case "SET_REASONING_EFFORT":
+      return handleSetReasoningEffort(model, message.reasoningEffort);
 
     case "SET_CUSTOM_AGENT":
       return handleSetCustomAgent(model, message.agentId, message.allowedWorkflowIds);

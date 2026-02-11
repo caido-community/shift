@@ -12,6 +12,7 @@ const session = useSession();
 const isOpen = ref(false);
 const containerRef = ref<HTMLElement>();
 const hoveredAgentId = ref<string | undefined>(undefined);
+const hoveredPopoverTop = ref<number | undefined>(undefined);
 
 const selectedAgentId = computed(() => session.store.selectedCustomAgentId);
 
@@ -31,12 +32,14 @@ const hoveredAgent = computed(() =>
 onClickOutside(containerRef, () => {
   isOpen.value = false;
   hoveredAgentId.value = undefined;
+  hoveredPopoverTop.value = undefined;
 });
 
 const toggle = () => {
   isOpen.value = !isOpen.value;
   if (!isOpen.value) {
     hoveredAgentId.value = undefined;
+    hoveredPopoverTop.value = undefined;
   }
 };
 
@@ -46,11 +49,33 @@ const selectAgent = (agentId: string) => {
     session.store.setCustomAgent(agent);
   }
   isOpen.value = false;
+  hoveredAgentId.value = undefined;
+  hoveredPopoverTop.value = undefined;
 };
 
 const clearAgent = () => {
   session.store.clearCustomAgent();
   isOpen.value = false;
+  hoveredAgentId.value = undefined;
+  hoveredPopoverTop.value = undefined;
+};
+
+const handleAgentEnter = (agentId: string, event: MouseEvent) => {
+  const target = event.currentTarget;
+  if (!(target instanceof HTMLElement)) return;
+
+  hoveredAgentId.value = agentId;
+  hoveredPopoverTop.value = target.offsetTop + target.offsetHeight / 2;
+};
+
+const handleAgentLeave = () => {
+  hoveredAgentId.value = undefined;
+  hoveredPopoverTop.value = undefined;
+};
+
+const handleNoAgentEnter = () => {
+  hoveredAgentId.value = undefined;
+  hoveredPopoverTop.value = undefined;
 };
 </script>
 
@@ -99,7 +124,7 @@ const clearAgent = () => {
                   ? 'bg-surface-700/50 text-surface-100'
                   : 'text-surface-300 hover:bg-surface-800 hover:text-surface-100',
               ]"
-              @mouseenter="hoveredAgentId = undefined"
+              @mouseenter="handleNoAgentEnter"
               @click="clearAgent">
               No Agent
             </button>
@@ -113,8 +138,8 @@ const clearAgent = () => {
                   ? 'bg-surface-700/50 text-surface-100'
                   : 'text-surface-300 hover:bg-surface-800 hover:text-surface-100',
               ]"
-              @mouseenter="hoveredAgentId = agent.id"
-              @mouseleave="hoveredAgentId = undefined"
+              @mouseenter="handleAgentEnter(agent.id, $event)"
+              @mouseleave="handleAgentLeave"
               @click="selectAgent(agent.id)">
               <div class="flex items-center justify-between gap-2">
                 <div class="flex flex-col gap-0.5 min-w-0">
@@ -134,8 +159,9 @@ const clearAgent = () => {
             leave-from-class="opacity-100 translate-x-0"
             leave-to-class="opacity-0 -translate-x-1">
             <div
-              v-if="hoveredAgent?.description"
-              class="absolute right-full bottom-0 mr-1 w-max max-w-96 rounded-lg border border-surface-700 bg-surface-900 px-3 py-2.5 text-[13px] text-surface-300 shadow-xl leading-relaxed whitespace-normal">
+              v-if="hoveredAgent?.description && hoveredPopoverTop !== undefined"
+              :style="{ top: `${hoveredPopoverTop}px` }"
+              class="absolute right-full top-0 mr-1 w-max max-w-96 -translate-y-1/2 rounded-lg border border-surface-700 bg-surface-900 px-3 py-2.5 text-[13px] text-surface-300 shadow-xl leading-relaxed whitespace-normal">
               {{ hoveredAgent.description }}
             </div>
           </Transition>

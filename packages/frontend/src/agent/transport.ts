@@ -81,6 +81,7 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
           model: model,
           context: context,
           maxIterations,
+          reasoningEffort: this.store.reasoningEffort,
         });
 
         const sanitizedMessages = stripReasoningParts(stripUnfinishedToolCalls(options.messages));

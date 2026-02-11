@@ -38,10 +38,13 @@ export class ProviderNotConfiguredError extends Error {
 type CreateModelOptions = {
   structuredOutput?: boolean;
   reasoning?: boolean;
+  reasoningEffort?: ReasoningEffort;
 };
 
+export type ReasoningEffort = "low" | "medium" | "high";
+
 export function createModel(sdk: FrontendSDK, model: Model, options: CreateModelOptions = {}) {
-  const { structuredOutput = true, reasoning = true } = options;
+  const { structuredOutput = true, reasoning = true, reasoningEffort = "medium" } = options;
 
   const isReasoningModel = reasoning && (model?.capabilities.reasoning ?? false);
 
@@ -56,7 +59,7 @@ export function createModel(sdk: FrontendSDK, model: Model, options: CreateModel
   const caidoModel = provider(modelKey, {
     ...(isReasoningModel && {
       reasoning: {
-        effort: "high",
+        effort: reasoningEffort,
       },
     }),
     capabilities: {

@@ -13,6 +13,7 @@ import { update } from "./store.update";
 
 import type { Todo } from "@/agent/types";
 import { generateId } from "@/agent/utils/id";
+import type { ReasoningEffort } from "@/utils/ai";
 
 function isResultUpdate<T>(result: SessionUpdateResult): result is SessionUpdateResultWithValue<T> {
   return typeof result === "object" && "result" in result && "model" in result;
@@ -42,6 +43,7 @@ function createSessionStore(sessionId: string) {
     const selectedCustomAgentId = computed(() => model.value.selectedCustomAgentId);
     const mode = computed(() => model.value.mode);
     const allowedWorkflowIds = computed(() => model.value.allowedWorkflowIds);
+    const reasoningEffort = computed(() => model.value.reasoningEffort);
 
     function addTodo(content: string): Result<Todo> {
       const id = generateId();
@@ -132,6 +134,10 @@ function createSessionStore(sessionId: string) {
       dispatch({ type: "SET_MODE", mode: value });
     }
 
+    function setReasoningEffort(value: ReasoningEffort): void {
+      dispatch({ type: "SET_REASONING_EFFORT", reasoningEffort: value });
+    }
+
     function setCustomAgent(agent: ResolvedCustomAgent): void {
       dispatch({
         type: "SET_CUSTOM_AGENT",
@@ -174,7 +180,9 @@ function createSessionStore(sessionId: string) {
       selectedCustomAgentId,
       mode,
       allowedWorkflowIds,
+      reasoningEffort,
       setMode,
+      setReasoningEffort,
       setCustomAgent,
       clearCustomAgent,
     };

@@ -1,6 +1,7 @@
 import type { AgentMode, Model, Result } from "shared";
 
 import type { QueuedMessage, Todo } from "@/agent/types";
+import type { ReasoningEffort } from "@/utils/ai";
 
 export type Snapshot = {
   messageId: string;
@@ -18,6 +19,7 @@ export type SessionModel = {
   selectedCustomAgentId: string | undefined;
   mode: AgentMode;
   allowedWorkflowIds: string[] | undefined;
+  reasoningEffort: ReasoningEffort;
 };
 
 export function createInitialModel(): SessionModel {
@@ -32,6 +34,7 @@ export function createInitialModel(): SessionModel {
     selectedCustomAgentId: undefined,
     mode: "focus",
     allowedWorkflowIds: undefined,
+    reasoningEffort: "medium",
   };
 }
 
@@ -52,6 +55,7 @@ export type SessionMessage =
   | { type: "SET_SELECTED_SKILL_IDS"; ids: string[] }
   | { type: "TOGGLE_SKILL"; id: string }
   | { type: "SET_MODE"; mode: AgentMode }
+  | { type: "SET_REASONING_EFFORT"; reasoningEffort: ReasoningEffort }
   | {
       type: "SET_CUSTOM_AGENT";
       agentId: string;

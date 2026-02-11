@@ -6,7 +6,7 @@ import { BASE_SYSTEM_PROMPT, WILDCARD_MODE_PROMPT } from "@/agent/prompt";
 import { shiftAgentTools } from "@/agent/tools";
 import { trimOldToolCalls } from "@/agent/utils/messages";
 import { type FrontendSDK } from "@/types";
-import { createModel } from "@/utils/ai";
+import { createModel, type ReasoningEffort } from "@/utils/ai";
 
 type BuildInstructionsOptions = {
   context: AgentContext;
@@ -70,12 +70,13 @@ type AgentOptions = {
   model: Model;
   context: AgentContext;
   maxIterations: number;
+  reasoningEffort: ReasoningEffort;
 };
 
 export const createShiftAgent = (options: AgentOptions) => {
-  const { sdk, model, context, maxIterations } = options;
+  const { sdk, model, context, maxIterations, reasoningEffort } = options;
 
-  const caidoModel = createModel(sdk, model);
+  const caidoModel = createModel(sdk, model, { reasoningEffort });
   const tools = getToolsForMode(context.mode);
   const agent = new ToolLoopAgent({
     model: caidoModel,
