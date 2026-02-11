@@ -34,6 +34,12 @@ type EntriesContext = {
   recentEntryIds: string[];
 };
 
+type ConvertWorkflowContext = {
+  id: string;
+  name: string;
+  description: string;
+};
+
 const HTTP_REQUEST_CONTEXT_CHARS = 12_000;
 
 export class AgentContext {
@@ -204,6 +210,23 @@ export class AgentContext {
     return instructions;
   }
 
+  private getRestrictedConvertWorkflows(): ConvertWorkflowContext[] | undefined {
+    const allowedIds = this.allowedWorkflowIds;
+    if (allowedIds === undefined) {
+      return undefined;
+    }
+
+    const allowedSet = new Set(allowedIds);
+    return this.sdk.workflows
+      .getWorkflows()
+      .filter((workflow) => workflow.kind === "Convert" && allowedSet.has(workflow.id))
+      .map((workflow) => ({
+        id: workflow.id,
+        name: workflow.name,
+        description: workflow.description,
+      }));
+  }
+
   toContextPrompt(): string {
     const parts: string[] = [];
 
@@ -226,6 +249,12 @@ export class AgentContext {
     if (this.httpRequest !== "") {
       const requestForPrompt = truncateContextValue(this.httpRequest, HTTP_REQUEST_CONTEXT_CHARS);
       parts.push(`<current_http_request>\n${requestForPrompt}\n</current_http_request>`);
+    }
+
+    const restrictedConvertWorkflows = this.getRestrictedConvertWorkflows();
+    if (restrictedConvertWorkflows !== undefined) {
+      const workflowList = JSON.stringify(restrictedConvertWorkflows, null, 2);
+      parts.push(`<allowed_convert_workflows>\n${workflowList}\n</allowed_convert_workflows>`);
     }
 
     if (isPresent(this.entriesContext) && this.entriesContext.recentEntryIds.length > 0) {
