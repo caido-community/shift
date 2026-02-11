@@ -44,14 +44,21 @@ export const WorkflowConvertList = tool({
   outputSchema,
   execute: (_input, { experimental_context }): WorkflowConvertListOutput => {
     const context = experimental_context as AgentContext;
-    const workflows = context.sdk.workflows
+    const allowedIds = context.allowedWorkflowIds;
+
+    let convertWorkflows = context.sdk.workflows
       .getWorkflows()
-      .filter((workflow) => workflow.kind === "Convert")
-      .map((workflow) => ({
-        id: workflow.id,
-        name: workflow.name,
-        description: workflow.description,
-      }));
+      .filter((workflow) => workflow.kind === "Convert");
+
+    if (allowedIds !== undefined) {
+      convertWorkflows = convertWorkflows.filter((w) => allowedIds.includes(w.id));
+    }
+
+    const workflows = convertWorkflows.map((workflow) => ({
+      id: workflow.id,
+      name: workflow.name,
+      description: workflow.description,
+    }));
 
     const message =
       workflows.length === 0

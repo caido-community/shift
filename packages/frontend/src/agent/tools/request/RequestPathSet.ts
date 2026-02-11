@@ -49,8 +49,12 @@ export const RequestPathSet = tool({
         "Path must not include query string. Use RequestQuerySet for query parameters or RequestQueryAdd when you want to add the same parameter multiple times."
       );
     }
-    const after = HttpForge.create(context.httpRequest).path(resolvedPath).build();
+    const forge = HttpForge.create(context.httpRequest).path(resolvedPath);
+    const after = forge.build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Path set to "${resolvedPath}"` });
+    const method = forge.getMethod() ?? "GET";
+    const query = forge.getQuery();
+    const fullPath = query !== null ? `${resolvedPath}?${query}` : resolvedPath;
+    return ToolResult.ok({ message: `Path set to "${resolvedPath}"\n${method} ${fullPath}` });
   },
 });

@@ -33,8 +33,12 @@ export const RequestMethodSet = tool({
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
-    const after = HttpForge.create(context.httpRequest).method(method).build();
+    const forge = HttpForge.create(context.httpRequest).method(method);
+    const after = forge.build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Method set to "${method}"` });
+    const path = forge.getPath() ?? "/";
+    const query = forge.getQuery();
+    const fullPath = query !== null ? `${path}?${query}` : path;
+    return ToolResult.ok({ message: `Method set to "${method}"\n${method} ${fullPath}` });
   },
 });

@@ -47,8 +47,10 @@ export const RequestQueryAdd = tool({
       return ToolResult.err("No HTTP request loaded");
     }
     const resolvedValue = await resolveEnvironmentVariables(context.sdk, value);
-    const after = HttpForge.create(context.httpRequest).addQueryParam(key, resolvedValue).build();
+    const forge = HttpForge.create(context.httpRequest).addQueryParam(key, resolvedValue);
+    const after = forge.build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Query param "${key}" added` });
+    const query = forge.getQuery() ?? "";
+    return ToolResult.ok({ message: `Query param "${key}" added\nQuery: ?${query}` });
   },
 });

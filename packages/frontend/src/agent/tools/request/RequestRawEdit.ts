@@ -42,6 +42,8 @@ export const display = {
   error: () => "Failed to edit request",
 } satisfies ToolDisplay<RequestRawEditInput>;
 
+const MAX_LENGTH = 2000;
+
 export const RequestRawEdit = tool({
   description:
     "Perform a precise find-and-replace edit on the raw HTTP request text. Use this for surgical modifications that other tools can't handle - editing specific parts of headers, modifying request line components, or making changes that span multiple parts of the request. The oldText must match exactly one location in the request (including whitespace, line endings, and case). If oldText matches zero times or more than once, the operation fails with an error. The newText supports environment variable substitution using {{VAR_NAME}} syntax. Line endings are normalized to CRLF. For simpler modifications, prefer the specific tools (RequestHeaderSet, RequestBodySet, etc.) as they're less error-prone.",
@@ -52,6 +54,7 @@ export const RequestRawEdit = tool({
     { experimental_context }
   ): Promise<RequestRawEditOutput> => {
     const context = experimental_context as AgentContext;
+
     const before = context.httpRequest;
 
     const normalizedOld = normalizeCRLF(oldText);
@@ -65,8 +68,11 @@ export const RequestRawEdit = tool({
 
     context.setHttpRequest(result.value.after);
 
+    const truncated = result.value.after.length > MAX_LENGTH;
+    const preview = truncated ? result.value.after.slice(0, MAX_LENGTH) : result.value.after;
+    const truncationNote = truncated ? "\n\n[... truncated]" : "";
     return ToolResult.ok({
-      message: `Replaced ${normalizedOld.length} characters with ${normalizedNew.length} characters`,
+      message: `Replaced ${normalizedOld.length} characters with ${normalizedNew.length} characters\n\n${preview}${truncationNote}`,
     });
   },
 });

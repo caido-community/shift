@@ -50,8 +50,10 @@ export const RequestHeaderSet = tool({
       return ToolResult.err("No HTTP request loaded");
     }
     const resolvedValue = await resolveEnvironmentVariables(context.sdk, value);
-    const after = HttpForge.create(context.httpRequest).setHeader(name, resolvedValue).build();
+    const forge = HttpForge.create(context.httpRequest).setHeader(name, resolvedValue);
+    const after = forge.build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Header "${name}" set` });
+    const headerValue = forge.getHeader(name);
+    return ToolResult.ok({ message: `Header "${name}" set\n${name}: ${headerValue ?? ""}` });
   },
 });

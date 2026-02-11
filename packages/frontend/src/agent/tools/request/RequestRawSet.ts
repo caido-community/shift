@@ -34,6 +34,7 @@ export const display = {
   error: () => "Failed to replace request",
 } satisfies ToolDisplay<RequestRawSetInput>;
 
+const MAX_LENGTH = 2000;
 export const RequestRawSet = tool({
   description:
     "Replace the entire raw HTTP request with new content. Use this when you need to completely rewrite the request or paste in a request from another source. The raw parameter should contain the complete HTTP request including the request line (e.g., 'GET /path HTTP/1.1'), headers, and body. Line endings are normalized to CRLF as required by HTTP. Supports environment variable substitution using {{VAR_NAME}} syntax. For partial modifications, prefer the specific tools (RequestHeaderSet, RequestBodySet, RequestPathSet, etc.) as they preserve the rest of the request structure.",
@@ -44,6 +45,10 @@ export const RequestRawSet = tool({
     const resolved = await resolveEnvironmentVariables(context.sdk, raw);
     const normalized = normalizeCRLF(resolved);
     context.setHttpRequest(normalized);
-    return ToolResult.ok({ message: "Raw request replaced" });
+
+    const truncated = normalized.length > MAX_LENGTH;
+    const preview = truncated ? normalized.slice(0, MAX_LENGTH) : normalized;
+    const truncationNote = truncated ? "\n\n[... truncated]" : "";
+    return ToolResult.ok({ message: `Raw request replaced\n\n${preview}${truncationNote}` });
   },
 });

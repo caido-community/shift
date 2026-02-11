@@ -37,8 +37,12 @@ export const RequestQueryRemove = tool({
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
-    const after = HttpForge.create(context.httpRequest).removeQueryParam(key).build();
+    const forge = HttpForge.create(context.httpRequest).removeQueryParam(key);
+    const after = forge.build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Query param "${key}" removed` });
+    const query = forge.getQuery();
+    return ToolResult.ok({
+      message: `Query param "${key}" removed\nQuery: ${query !== null ? `?${query}` : "(empty)"}`,
+    });
   },
 });

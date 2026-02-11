@@ -12,6 +12,9 @@ const inputSchema = z.object({
 
 const valueSchema = z.object({
   output: z.string(),
+  truncated: z.boolean(),
+  originalLength: z.number(),
+  shownLength: z.number(),
 });
 
 const outputSchema = ToolResult.schema(valueSchema);
@@ -29,11 +32,32 @@ export const display = {
     if (!isPresent(output)) {
       return [{ text: "Ran " }, { text: "convert workflow", muted: true }];
     }
-    return [{ text: "Retrieved " }, { text: "workflow output", muted: true }];
+    return output.truncated
+      ? [{ text: "Retrieved " }, { text: "workflow output preview", muted: true }]
+      : [{ text: "Retrieved " }, { text: "workflow output", muted: true }];
   },
   error: ({ input }) =>
     input ? `Failed to run workflow ${input.id}` : "Failed to run convert workflow",
 } satisfies ToolDisplay<WorkflowConvertRunInput, WorkflowConvertRunValue>;
+
+const MAX_OUTPUT_CHARS = 8_000;
+
+function createExcerpt(value: string, maxLength: number): string {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  const marker = "\n...[truncated]...\n";
+  if (maxLength <= marker.length + 2) {
+    return value.slice(0, maxLength);
+  }
+
+  const remaining = maxLength - marker.length;
+  const headLength = Math.ceil(remaining / 2);
+  const tailLength = Math.max(0, remaining - headLength);
+
+  return `${value.slice(0, headLength)}${marker}${value.slice(value.length - tailLength)}`;
+}
 
 export const WorkflowConvertRun = tool({
   description:
@@ -42,6 +66,11 @@ export const WorkflowConvertRun = tool({
   outputSchema,
   execute: async ({ id, input }, { experimental_context }): Promise<WorkflowConvertRunOutput> => {
     const context = experimental_context as AgentContext;
+    const allowedIds = context.allowedWorkflowIds;
+    if (allowedIds !== undefined && !allowedIds.includes(id)) {
+      return ToolResult.err("Workflow not allowed", `Workflow "${id}" is not in the allowlist`);
+    }
+
     const result = await context.sdk.graphql.runConvertWorkflow({ id, input });
     const error = result.runConvertWorkflow.error;
     if (isPresent(error)) {
@@ -54,7 +83,26 @@ export const WorkflowConvertRun = tool({
       return ToolResult.err("Convert workflow failed", detail);
     }
 
-    const output = result.runConvertWorkflow.output ?? "";
-    return ToolResult.ok({ message: "Convert workflow executed", output });
+    const fullOutput = result.runConvertWorkflow.output ?? "";
+    const originalLength = fullOutput.length;
+
+    if (originalLength <= MAX_OUTPUT_CHARS) {
+      return ToolResult.ok({
+        message: "Convert workflow executed",
+        output: fullOutput,
+        truncated: false,
+        originalLength,
+        shownLength: originalLength,
+      });
+    }
+
+    const output = createExcerpt(fullOutput, MAX_OUTPUT_CHARS);
+    return ToolResult.ok({
+      message: "Convert workflow executed with truncated preview",
+      output,
+      truncated: true,
+      originalLength,
+      shownLength: output.length,
+    });
   },
 });

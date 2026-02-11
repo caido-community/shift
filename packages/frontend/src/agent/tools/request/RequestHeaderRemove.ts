@@ -37,8 +37,12 @@ export const RequestHeaderRemove = tool({
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
-    const after = HttpForge.create(context.httpRequest).removeHeader(name).build();
+    const forge = HttpForge.create(context.httpRequest).removeHeader(name);
+    const after = forge.build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Header "${name}" removed` });
+    const remaining = forge.getHeader(name);
+    const verification =
+      remaining === null ? `${name} header is no longer present` : `${name}: ${remaining}`;
+    return ToolResult.ok({ message: `Header "${name}" removed\n${verification}` });
   },
 });

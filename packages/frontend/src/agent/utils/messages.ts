@@ -9,6 +9,7 @@ import type { ShiftMessage } from "shared";
 type ToolCallPart = { type: "tool-call"; toolCallId: string };
 type ToolResultPart = { type: "tool-result"; toolCallId: string };
 type ToolUIState = { state?: string };
+type ReasoningPart = { type: "reasoning" };
 
 function isToolCallPart(part: { type: string }): part is ToolCallPart {
   return part.type === "tool-call";
@@ -16,6 +17,10 @@ function isToolCallPart(part: { type: string }): part is ToolCallPart {
 
 function isToolResultPart(part: { type: string }): part is ToolResultPart {
   return part.type === "tool-result";
+}
+
+function isReasoningPart(part: { type: string }): part is ReasoningPart {
+  return part.type === "reasoning";
 }
 
 export function trimOldToolCalls(
@@ -70,6 +75,44 @@ export function trimOldToolCalls(
 
     return msg;
   });
+}
+
+export function stripReasoningParts(messages: ShiftMessage[]): ShiftMessage[] {
+  let didChange = false;
+  const updated: ShiftMessage[] = [];
+
+  for (const message of messages) {
+    if (message.role !== "assistant") {
+      updated.push(message);
+      continue;
+    }
+
+    const filteredParts = message.parts.filter((part) => {
+      if (isReasoningPart(part)) {
+        didChange = true;
+        return false;
+      }
+      return true;
+    });
+
+    if (filteredParts.length === 0) {
+      didChange = true;
+      continue;
+    }
+
+    if (filteredParts.length === message.parts.length) {
+      updated.push(message);
+      continue;
+    }
+
+    didChange = true;
+    updated.push({
+      ...message,
+      parts: filteredParts,
+    });
+  }
+
+  return didChange ? updated : messages;
 }
 
 function isFinishedToolState(state: string | undefined): boolean {

@@ -8,6 +8,7 @@ import {
   findLastUserMessageIndex,
   hasToolPartsSinceIndex,
   hasToolPartsSinceLastUserMessage,
+  stripReasoningParts,
   stripUnfinishedToolCalls,
   trimOldToolCalls,
 } from "./messages";
@@ -518,5 +519,41 @@ describe("stripUnfinishedToolCalls", () => {
 
     const result = stripUnfinishedToolCalls(messages);
     expect(result).toBe(messages);
+  });
+});
+
+describe("stripReasoningParts", () => {
+  it("removes assistant reasoning-only messages", () => {
+    const messages: ShiftMessage[] = [
+      { id: "u1", role: "user", parts: [{ type: "text", text: "hello" }] } as ShiftMessage,
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [{ type: "reasoning", text: "internal", state: "done" }],
+      } as ShiftMessage,
+    ];
+
+    const result = stripReasoningParts(messages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.role).toBe("user");
+  });
+
+  it("preserves non-reasoning assistant parts", () => {
+    const messages: ShiftMessage[] = [
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [
+          { type: "reasoning", text: "internal", state: "done" },
+          { type: "text", text: "visible" },
+        ],
+      } as ShiftMessage,
+    ];
+
+    const result = stripReasoningParts(messages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.parts).toEqual([{ type: "text", text: "visible" }]);
   });
 });

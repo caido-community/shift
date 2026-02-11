@@ -37,8 +37,12 @@ export const RequestCookieRemove = tool({
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
-    const after = HttpForge.create(context.httpRequest).removeCookie(name).build();
+    const forge = HttpForge.create(context.httpRequest).removeCookie(name);
+    const after = forge.build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Cookie "${name}" removed` });
+    const cookieHeader = forge.getHeader("Cookie");
+    return ToolResult.ok({
+      message: `Cookie "${name}" removed\nCookie: ${cookieHeader ?? "(none)"}`,
+    });
   },
 });
