@@ -55,7 +55,7 @@ export const RequestRawEdit = tool({
   ): Promise<RequestRawEditOutput> => {
     const context = experimental_context as AgentContext;
 
-    const before = context.httpRequest;
+    const before = normalizeCRLF(context.httpRequest);
 
     const normalizedOld = normalizeCRLF(oldText);
     const resolvedNew = await resolveEnvironmentVariables(context.sdk, newText);
