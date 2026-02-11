@@ -3,8 +3,10 @@ import { type Model, ModelProvider, type ModelUsageType } from "shared";
 const OpenRouterModelIds = {
   CLAUDE_OPUS_4_5: "anthropic/claude-opus-4.5",
   CLAUDE_OPUS_4_5_THINKING: "anthropic/claude-opus-4.5:thinking",
+  CLAUDE_OPUS_4_6: "anthropic/claude-opus-4.6",
   CLAUDE_SONNET_4_5: "anthropic/claude-sonnet-4.5",
   CLAUDE_SONNET_4_5_THINKING: "anthropic/claude-sonnet-4.5:thinking",
+  DEEPSEEK_V3_2: "deepseek/deepseek-v3.2",
   GEMINI_3_FLASH_PREVIEW: "google/gemini-3-flash-preview",
   GEMINI_3_FLASH_PREVIEW_THINKING: "google/gemini-3-flash-preview:thinking",
   GEMINI_3_PRO_PREVIEW: "google/gemini-3-pro-preview",
@@ -29,6 +31,14 @@ export const openrouterModels: Model[] = [
   {
     id: OpenRouterModelIds.CLAUDE_OPUS_4_5_THINKING,
     name: "Opus 4.5 Thinking",
+    provider: ModelProvider.OpenRouter,
+    capabilities: {
+      reasoning: true,
+    },
+  },
+  {
+    id: OpenRouterModelIds.CLAUDE_OPUS_4_6,
+    name: "Opus 4.6",
     provider: ModelProvider.OpenRouter,
     capabilities: {
       reasoning: true,
@@ -122,11 +132,21 @@ export const openrouterModels: Model[] = [
       reasoning: true,
     },
   },
+  {
+    id: OpenRouterModelIds.DEEPSEEK_V3_2,
+    name: "DeepSeek V3.2",
+    provider: ModelProvider.OpenRouter,
+    capabilities: {
+      reasoning: true,
+    },
+  },
 ];
 
 export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
   [OpenRouterModelIds.CLAUDE_OPUS_4_5]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_OPUS_4_5_THINKING]: ["agent", "float"],
+  [OpenRouterModelIds.CLAUDE_OPUS_4_6]: ["agent", "float"],
+  [OpenRouterModelIds.DEEPSEEK_V3_2]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_SONNET_4_5]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_SONNET_4_5_THINKING]: ["agent", "float"],
   [OpenRouterModelIds.GPT_5_2]: ["agent", "float"],

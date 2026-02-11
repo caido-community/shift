@@ -2,6 +2,7 @@ import { type Model, ModelProvider, type ModelUsageType } from "shared";
 
 const AnthropicModelIds = {
   CLAUDE_OPUS_4_5: "claude-opus-4-5-20251101",
+  CLAUDE_OPUS_4_6: "claude-opus-4-6",
   CLAUDE_SONNET_4_5: "claude-sonnet-4-5-20250929",
   CLAUDE_HAIKU_4_5: "claude-haiku-4-5-20251001",
   CLAUDE_OPUS_4_1: "claude-opus-4-1-20250805",
@@ -13,6 +14,14 @@ export const anthropicModels: Model[] = [
   {
     id: AnthropicModelIds.CLAUDE_OPUS_4_5,
     name: "Opus 4.5",
+    provider: ModelProvider.Anthropic,
+    capabilities: {
+      reasoning: true,
+    },
+  },
+  {
+    id: AnthropicModelIds.CLAUDE_OPUS_4_6,
+    name: "Opus 4.6",
     provider: ModelProvider.Anthropic,
     capabilities: {
       reasoning: true,
@@ -62,6 +71,7 @@ export const anthropicModels: Model[] = [
 
 export const defaultAnthropicModelsConfig: Record<string, ModelUsageType[]> = {
   [AnthropicModelIds.CLAUDE_OPUS_4_5]: ["agent", "float"],
+  [AnthropicModelIds.CLAUDE_OPUS_4_6]: ["agent", "float"],
   [AnthropicModelIds.CLAUDE_SONNET_4_5]: ["agent", "float"],
   [AnthropicModelIds.CLAUDE_HAIKU_4_5]: ["agent", "float"],
   [AnthropicModelIds.CLAUDE_OPUS_4_1]: ["agent", "float"],
