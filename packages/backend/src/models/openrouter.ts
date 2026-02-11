@@ -6,7 +6,6 @@ const OpenRouterModelIds = {
   CLAUDE_OPUS_4_6: "anthropic/claude-opus-4.6",
   CLAUDE_SONNET_4_5: "anthropic/claude-sonnet-4.5",
   CLAUDE_SONNET_4_5_THINKING: "anthropic/claude-sonnet-4.5:thinking",
-  DEEPSEEK_V3_2: "deepseek/deepseek-v3.2",
   GEMINI_3_FLASH_PREVIEW: "google/gemini-3-flash-preview",
   GEMINI_3_FLASH_PREVIEW_THINKING: "google/gemini-3-flash-preview:thinking",
   GEMINI_3_PRO_PREVIEW: "google/gemini-3-pro-preview",
@@ -15,7 +14,7 @@ const OpenRouterModelIds = {
   GPT_4_1: "openai/gpt-4.1",
   GROK_4_1_FAST: "x-ai/grok-4.1-fast",
   MINIMAX_M2_1: "minimax/minimax-m2.1",
-  GLM_4_7: "z-ai/glm-4.7",
+  GLM_5: "z-ai/glm-5",
   KIMI_K2_5: "moonshotai/kimi-k2.5",
 } as const;
 
@@ -117,8 +116,8 @@ export const openrouterModels: Model[] = [
     },
   },
   {
-    id: OpenRouterModelIds.GLM_4_7,
-    name: "GLM 4.7",
+    id: OpenRouterModelIds.GLM_5,
+    name: "GLM 5",
     provider: ModelProvider.OpenRouter,
     capabilities: {
       reasoning: true,
@@ -132,21 +131,12 @@ export const openrouterModels: Model[] = [
       reasoning: true,
     },
   },
-  {
-    id: OpenRouterModelIds.DEEPSEEK_V3_2,
-    name: "DeepSeek V3.2",
-    provider: ModelProvider.OpenRouter,
-    capabilities: {
-      reasoning: true,
-    },
-  },
 ];
 
 export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
   [OpenRouterModelIds.CLAUDE_OPUS_4_5]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_OPUS_4_5_THINKING]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_OPUS_4_6]: ["agent", "float"],
-  [OpenRouterModelIds.DEEPSEEK_V3_2]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_SONNET_4_5]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_SONNET_4_5_THINKING]: ["agent", "float"],
   [OpenRouterModelIds.GPT_5_2]: ["agent", "float"],
@@ -157,6 +147,6 @@ export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
   [OpenRouterModelIds.GEMINI_3_FLASH_PREVIEW_THINKING]: ["agent", "float"],
   [OpenRouterModelIds.GEMINI_3_PRO_PREVIEW]: ["agent", "float"],
   [OpenRouterModelIds.MINIMAX_M2_1]: ["agent", "float"],
-  [OpenRouterModelIds.GLM_4_7]: ["agent", "float"],
+  [OpenRouterModelIds.GLM_5]: ["agent", "float"],
   [OpenRouterModelIds.KIMI_K2_5]: ["agent", "float"],
 };
