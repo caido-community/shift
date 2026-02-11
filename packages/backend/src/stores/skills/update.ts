@@ -42,12 +42,6 @@ function handleUpdateStaticSkill(
         skill.scope = message.updates.scope;
         skill.projectId = message.updates.scope === "project" ? message.projectId : undefined;
       }
-      if (message.updates.autoExecuteCollection !== undefined) {
-        skill.autoExecuteCollection =
-          message.updates.autoExecuteCollection === null
-            ? undefined
-            : message.updates.autoExecuteCollection;
-      }
     }
   });
 }
@@ -73,12 +67,6 @@ function handleUpdateDynamicSkill(
       if (message.updates.scope !== undefined) {
         skill.scope = message.updates.scope;
         skill.projectId = message.updates.scope === "project" ? message.projectId : undefined;
-      }
-      if (message.updates.autoExecuteCollection !== undefined) {
-        skill.autoExecuteCollection =
-          message.updates.autoExecuteCollection === null
-            ? undefined
-            : message.updates.autoExecuteCollection;
       }
     }
   });

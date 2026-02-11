@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const SkillScopeSchema = z.enum(["global", "project"]);
+export const SkillScopeSchema = z.enum(["global", "project"]);
 export type SkillScope = z.infer<typeof SkillScopeSchema>;
 
 const StaticSkillDefinitionSchema = z.object({
@@ -10,7 +10,6 @@ const StaticSkillDefinitionSchema = z.object({
   content: z.string().min(1),
   scope: SkillScopeSchema,
   projectId: z.string().min(1).optional(),
-  autoExecuteCollection: z.string().optional(),
 });
 export type StaticSkillDefinition = z.infer<typeof StaticSkillDefinitionSchema>;
 
@@ -21,7 +20,6 @@ const DynamicSkillDefinitionSchema = z.object({
   url: z.url(),
   scope: SkillScopeSchema,
   projectId: z.string().min(1).optional(),
-  autoExecuteCollection: z.string().optional(),
 });
 export type DynamicSkillDefinition = z.infer<typeof DynamicSkillDefinitionSchema>;
 
@@ -56,7 +54,6 @@ export const UpdateStaticSkillSchema = z.object({
   title: z.string().min(1).optional(),
   content: z.string().min(1).optional(),
   scope: SkillScopeSchema.optional(),
-  autoExecuteCollection: z.string().optional().nullable(),
 });
 export type UpdateStaticSkillInput = z.infer<typeof UpdateStaticSkillSchema>;
 
@@ -64,7 +61,6 @@ export const UpdateDynamicSkillSchema = z.object({
   title: z.string().min(1).optional(),
   url: z.url().optional(),
   scope: SkillScopeSchema.optional(),
-  autoExecuteCollection: z.string().optional().nullable(),
 });
 export type UpdateDynamicSkillInput = z.infer<typeof UpdateDynamicSkillSchema>;
 

@@ -1,10 +1,11 @@
 import { useEventListener } from "@vueuse/core";
-import type { AgentSkill, Model } from "shared";
+import type { AgentSkill, Model, ResolvedCustomAgent } from "shared";
 import { computed, ref, watch } from "vue";
 
 import type { LaunchDialogResult, SelectionEntry } from "./types";
 
 import { useSDK } from "@/plugins/sdk";
+import { useCustomAgentsStore } from "@/stores/custom-agents/store";
 import { useModelsStore } from "@/stores/models";
 import { useSettingsStore } from "@/stores/settings";
 import { useSkillsStore } from "@/stores/skills";
@@ -14,6 +15,7 @@ type UseLaunchDialogOptions = {
   onConfirm: (result: LaunchDialogResult) => void;
   onCancel: () => void;
   initialSkillIds?: string[];
+  initialCustomAgentId?: string;
 };
 
 export function useLaunchDialog(options: UseLaunchDialogOptions) {
@@ -21,12 +23,14 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
   const settingsStore = useSettingsStore();
   const modelsStore = useModelsStore();
   const skillsStore = useSkillsStore();
+  const customAgentsStore = useCustomAgentsStore();
 
   let nextEntryId = 1;
   const entries = ref<SelectionEntry[]>([{ id: 0, selection: "", comment: "" }]);
   const instructions = ref("");
   const maxIterations = ref(settingsStore.maxIterations ?? 35);
   const selectedSkillIds = ref<string[]>(options.initialSkillIds ?? []);
+  const selectedCustomAgentId = ref<string | undefined>(options.initialCustomAgentId);
 
   const initialModel = resolveModel({
     sdk,
@@ -38,6 +42,18 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
 
   const availableModels = computed(() => modelsStore.getEnabledModels({ usageType: "agent" }));
   const skillOptions = computed(() => skillsStore.skills);
+  const agentOptions = computed(() => customAgentsStore.agents);
+
+  const selectedAgent = computed((): ResolvedCustomAgent | undefined => {
+    if (selectedCustomAgentId.value === undefined) return undefined;
+    return customAgentsStore.getAgentById(selectedCustomAgentId.value);
+  });
+
+  const hasAgent = computed(() => selectedAgent.value !== undefined);
+
+  const selectAgent = (agentId: string | undefined) => {
+    selectedCustomAgentId.value = agentId;
+  };
 
   watch(
     () => settingsStore.maxIterations,
@@ -109,6 +125,7 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
       .filter((entry) => entry.selection !== "" || entry.comment !== "");
 
     options.onConfirm({
+      customAgentId: selectedCustomAgentId.value,
       model: selectedModel.value,
       selectedSkillIds: selectedSkillIds.value,
       maxIterations: maxIterations.value,
@@ -148,10 +165,15 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
     maxIterations,
     selectedModel,
     selectedSkillIds,
+    selectedCustomAgentId,
+    selectedAgent,
+    hasAgent,
     availableModels,
     skillOptions,
+    agentOptions,
     isSkillSelected,
     toggleSkill,
+    selectAgent,
     getSelectedSkills,
     addEmptyEntry,
     removeEntry,

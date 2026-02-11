@@ -13,6 +13,7 @@ import { setupAgents } from "@/agent";
 import { createDOMManager } from "@/dom";
 import { setupFloat } from "@/float";
 import { setupRenaming } from "@/renaming";
+import { useCustomAgentsStore } from "@/stores/custom-agents/store";
 import { useLearningsStore } from "@/stores/learnings";
 import { useModelsStore } from "@/stores/models";
 import { useSettingsStore } from "@/stores/settings";
@@ -23,16 +24,19 @@ async function initializeStores(sdk: FrontendSDK) {
   const settingsStore = useSettingsStore();
   const learningsStore = useLearningsStore();
   const skillsStore = useSkillsStore();
+  const customAgentsStore = useCustomAgentsStore();
 
   await Promise.all([
     modelsStore.initialize(),
     settingsStore.initialize(),
     learningsStore.initialize(),
     skillsStore.initialize(),
+    customAgentsStore.initialize(),
   ]);
 
   sdk.projects.onCurrentProjectChange(() => {
     skillsStore.initialize();
+    customAgentsStore.initialize();
     learningsStore.initialize();
   });
 }

@@ -3,6 +3,7 @@ import Button from "primevue/button";
 import MenuBar from "primevue/menubar";
 import { computed, ref } from "vue";
 
+import { CustomAgentsContainer } from "@/components/custom-agents";
 import { LearningsContainer } from "@/components/learnings";
 import { ModelsContainer } from "@/components/models";
 import { RenamingContainer } from "@/components/renaming";
@@ -10,11 +11,18 @@ import { SettingsContainer } from "@/components/settings";
 import { SkillsContainer } from "@/components/skills";
 import { TutorialContainer } from "@/components/tutorial";
 
-const page = ref<"Skills" | "Models" | "Learnings" | "Session Renaming" | "Settings" | "Tutorial">(
-  "Skills"
-);
+const page = ref<
+  "Agents" | "Skills" | "Models" | "Learnings" | "Session Renaming" | "Settings" | "Tutorial"
+>("Agents");
 
 const items = [
+  {
+    label: "Agents",
+    isActive: () => page.value === "Agents",
+    command: () => {
+      page.value = "Agents";
+    },
+  },
   {
     label: "Models",
     isActive: () => page.value === "Models",
@@ -61,6 +69,8 @@ const items = [
 
 const component = computed(() => {
   switch (page.value) {
+    case "Agents":
+      return CustomAgentsContainer;
     case "Skills":
       return SkillsContainer;
     case "Models":
@@ -74,7 +84,7 @@ const component = computed(() => {
     case "Tutorial":
       return TutorialContainer;
     default:
-      return SkillsContainer;
+      return CustomAgentsContainer;
   }
 });
 

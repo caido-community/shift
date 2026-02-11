@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import type { Model, Result } from "shared";
+import type { AgentMode, Model, ResolvedCustomAgent, Result } from "shared";
 import { computed, readonly, shallowRef } from "vue";
 
 import {
@@ -39,6 +39,9 @@ function createSessionStore(sessionId: string) {
     const httpRequest = computed(() => model.value.httpRequest);
     const snapshots = computed(() => model.value.snapshots);
     const selectedSkillIds = computed(() => model.value.selectedSkillIds);
+    const selectedCustomAgentId = computed(() => model.value.selectedCustomAgentId);
+    const mode = computed(() => model.value.mode);
+    const allowedWorkflowIds = computed(() => model.value.allowedWorkflowIds);
 
     function addTodo(content: string): Result<Todo> {
       const id = generateId();
@@ -125,6 +128,22 @@ function createSessionStore(sessionId: string) {
       return model.value.selectedSkillIds.includes(id);
     }
 
+    function setMode(value: AgentMode): void {
+      dispatch({ type: "SET_MODE", mode: value });
+    }
+
+    function setCustomAgent(agent: ResolvedCustomAgent): void {
+      dispatch({
+        type: "SET_CUSTOM_AGENT",
+        agentId: agent.id,
+        allowedWorkflowIds: agent.allowedWorkflowIds,
+      });
+    }
+
+    function clearCustomAgent(): void {
+      dispatch({ type: "CLEAR_CUSTOM_AGENT" });
+    }
+
     return {
       state: readonly(model),
       model: currentModel,
@@ -152,6 +171,12 @@ function createSessionStore(sessionId: string) {
       setSelectedSkillIds,
       toggleSkill,
       isSkillSelected,
+      selectedCustomAgentId,
+      mode,
+      allowedWorkflowIds,
+      setMode,
+      setCustomAgent,
+      clearCustomAgent,
     };
   })();
 }

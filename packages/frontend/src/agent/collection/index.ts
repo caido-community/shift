@@ -2,12 +2,12 @@ import type {
   CreatedReplaySessionSubscription,
   UpdatedReplaySessionSubscription,
 } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
-import type { AgentSkillDefinition } from "shared";
+import type { CustomAgent } from "shared";
 
 import { LaunchDialog, type LaunchDialogResult } from "@/components/LaunchDialog";
 import { useAgentStore } from "@/stores/agent";
+import { useCustomAgentsStore } from "@/stores/custom-agents/store";
 import { useSettingsStore } from "@/stores/settings";
-import { useSkillsStore } from "@/stores/skills";
 import { useUIStore } from "@/stores/ui";
 import type { FrontendSDK } from "@/types";
 import { isPresent } from "@/utils/optional";
@@ -16,9 +16,11 @@ const SHIFT_COLLECTION_NAME = "Shift";
 
 const sessionToCollectionId = new Map<string, string | undefined>();
 
-function findSkillsByCollectionName(collectionName: string): AgentSkillDefinition[] {
-  const skillsStore = useSkillsStore();
-  return skillsStore.definitions.filter((skill) => skill.autoExecuteCollection === collectionName);
+function findAgentsByCollectionName(collectionName: string): CustomAgent[] {
+  const customAgentsStore = useCustomAgentsStore();
+  return customAgentsStore.definitions.filter((agent) =>
+    agent.boundCollections.includes(collectionName)
+  );
 }
 
 async function ensureCollection(
@@ -77,8 +79,9 @@ function showLaunchDialog(sdk: FrontendSDK, sessionId: string, preSelectedSkillI
   );
 }
 
-function autoLaunchAgent(sdk: FrontendSDK, sessionId: string, skillIds: string[]) {
+function autoLaunchWithAgent(sdk: FrontendSDK, sessionId: string, agent: CustomAgent) {
   const agentStore = useAgentStore();
+  const customAgentsStore = useCustomAgentsStore();
   const uiStore = useUIStore();
 
   if (!agentStore.isReady) {
@@ -100,8 +103,9 @@ function autoLaunchAgent(sdk: FrontendSDK, sessionId: string, skillIds: string[]
     return;
   }
 
-  if (skillIds.length > 0) {
-    session.store.setSelectedSkillIds(skillIds);
+  const resolved = customAgentsStore.getAgentById(agent.id);
+  if (resolved !== undefined) {
+    session.store.setCustomAgent(resolved);
   }
 
   agentStore.dispatch({ type: "SELECT_SESSION", sessionId });
@@ -113,6 +117,7 @@ function autoLaunchAgent(sdk: FrontendSDK, sessionId: string, skillIds: string[]
 
 function launchAgent(sdk: FrontendSDK, sessionId: string, config: LaunchDialogResult) {
   const agentStore = useAgentStore();
+  const customAgentsStore = useCustomAgentsStore();
   const uiStore = useUIStore();
 
   if (!agentStore.isReady) {
@@ -138,7 +143,12 @@ function launchAgent(sdk: FrontendSDK, sessionId: string, config: LaunchDialogRe
     session.model = config.model;
   }
 
-  if (config.selectedSkillIds.length > 0) {
+  if (isPresent(config.customAgentId)) {
+    const resolved = customAgentsStore.getAgentById(config.customAgentId);
+    if (resolved !== undefined) {
+      session.store.setCustomAgent(resolved);
+    }
+  } else if (config.selectedSkillIds.length > 0) {
     session.store.setSelectedSkillIds(config.selectedSkillIds);
   }
 
@@ -167,12 +177,14 @@ function launchAgent(sdk: FrontendSDK, sessionId: string, config: LaunchDialogRe
 }
 
 function handleSessionInCollection(sdk: FrontendSDK, sessionId: string, collectionName: string) {
-  const boundSkills = findSkillsByCollectionName(collectionName);
+  const boundAgents = findAgentsByCollectionName(collectionName);
 
-  if (boundSkills.length > 0) {
-    const skillIds = boundSkills.map((s) => s.id);
-    autoLaunchAgent(sdk, sessionId, skillIds);
-    return;
+  if (boundAgents.length > 0) {
+    const agent = boundAgents[0];
+    if (agent !== undefined) {
+      autoLaunchWithAgent(sdk, sessionId, agent);
+      return;
+    }
   }
 
   if (collectionName === SHIFT_COLLECTION_NAME) {

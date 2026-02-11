@@ -1,4 +1,4 @@
-import type { Model, Result } from "shared";
+import type { AgentMode, Model, Result } from "shared";
 
 import type { SessionMessage, SessionModel, SessionUpdateResult } from "./store.model";
 
@@ -185,6 +185,33 @@ function handleToggleSkill(model: SessionModel, id: string): SessionModel {
   };
 }
 
+function handleSetMode(model: SessionModel, mode: AgentMode): SessionModel {
+  return {
+    ...model,
+    mode,
+  };
+}
+
+function handleSetCustomAgent(
+  model: SessionModel,
+  agentId: string,
+  allowedWorkflowIds: string[] | undefined
+): SessionModel {
+  return {
+    ...model,
+    selectedCustomAgentId: agentId,
+    allowedWorkflowIds,
+  };
+}
+
+function handleClearCustomAgent(model: SessionModel): SessionModel {
+  return {
+    ...model,
+    selectedCustomAgentId: undefined,
+    allowedWorkflowIds: undefined,
+  };
+}
+
 export function update(model: SessionModel, message: SessionMessage): SessionUpdateResult {
   switch (message.type) {
     case "SET_MODEL":
@@ -231,6 +258,15 @@ export function update(model: SessionModel, message: SessionMessage): SessionUpd
 
     case "TOGGLE_SKILL":
       return handleToggleSkill(model, message.id);
+
+    case "SET_MODE":
+      return handleSetMode(model, message.mode);
+
+    case "SET_CUSTOM_AGENT":
+      return handleSetCustomAgent(model, message.agentId, message.allowedWorkflowIds);
+
+    case "CLEAR_CUSTOM_AGENT":
+      return handleClearCustomAgent(model);
 
     default:
       return model;
