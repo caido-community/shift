@@ -82,9 +82,43 @@ class CustomAgentsStore extends GlobalStore<CustomAgentsModel, CustomAgentsMessa
     );
   }
 
+  private findBoundCollectionConflict(
+    boundCollections: string[],
+    excludedAgentId?: string
+  ): { collectionName: string; agentName: string } | undefined {
+    const existingBindings = new Map<string, string>();
+    for (const agent of this.getAgentDefinitions()) {
+      if (excludedAgentId !== undefined && agent.id === excludedAgentId) {
+        continue;
+      }
+      for (const collectionName of agent.boundCollections) {
+        if (!existingBindings.has(collectionName)) {
+          existingBindings.set(collectionName, agent.name);
+        }
+      }
+    }
+
+    for (const collectionName of boundCollections) {
+      const agentName = existingBindings.get(collectionName);
+      if (agentName !== undefined) {
+        return { collectionName, agentName };
+      }
+    }
+
+    return undefined;
+  }
+
   async addAgent(input: CreateCustomAgentInput): Promise<Result<string>> {
     if (input.scope === "project" && this.currentProjectId === undefined) {
       return Result.err("Cannot create project-scoped agent without an active project");
+    }
+
+    const boundCollections = [...new Set(input.boundCollections ?? [])];
+    const conflict = this.findBoundCollectionConflict(boundCollections);
+    if (conflict !== undefined) {
+      return Result.err(
+        `Collection "${conflict.collectionName}" is already bound to "${conflict.agentName}"`
+      );
     }
 
     const id = generateID("agent-");
@@ -99,7 +133,7 @@ class CustomAgentsStore extends GlobalStore<CustomAgentsModel, CustomAgentsMessa
       instructions: input.instructions ?? "",
       scope: input.scope,
       projectId: input.scope === "project" ? this.currentProjectId : undefined,
-      boundCollections: input.boundCollections ?? [],
+      boundCollections,
     };
 
     this.dispatch({ type: "ADD_AGENT", agent });
@@ -120,10 +154,26 @@ class CustomAgentsStore extends GlobalStore<CustomAgentsModel, CustomAgentsMessa
       return Result.err("Cannot change scope to project without an active project");
     }
 
+    const nextBoundCollections =
+      updates.boundCollections === undefined
+        ? existing.boundCollections
+        : [...new Set(updates.boundCollections)];
+    const conflict = this.findBoundCollectionConflict(nextBoundCollections, id);
+    if (conflict !== undefined) {
+      return Result.err(
+        `Collection "${conflict.collectionName}" is already bound to "${conflict.agentName}"`
+      );
+    }
+
+    const sanitizedUpdates: UpdateCustomAgentInput =
+      updates.boundCollections === undefined
+        ? updates
+        : { ...updates, boundCollections: nextBoundCollections };
+
     this.dispatch({
       type: "UPDATE_AGENT",
       id,
-      updates,
+      updates: sanitizedUpdates,
       projectId: updates.scope === "project" ? this.currentProjectId : undefined,
     });
 

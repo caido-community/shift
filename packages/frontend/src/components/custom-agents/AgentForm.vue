@@ -15,10 +15,12 @@ import type {
 import { computed, ref, watch } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
+import { useCustomAgentsStore } from "@/stores/custom-agents/store";
 import { useSkillsStore } from "@/stores/skills";
 
 const sdk = useSDK();
 const skillsStore = useSkillsStore();
+const customAgentsStore = useCustomAgentsStore();
 
 const { agent = undefined } = defineProps<{
   agent?: CustomAgent;
@@ -65,6 +67,27 @@ const workflowOptions = computed(() =>
     }))
 );
 
+const occupiedCollectionOwners = computed(() => {
+  const occupied = new Map<string, string>();
+  for (const definition of customAgentsStore.definitions) {
+    if (agent !== undefined && definition.id === agent.id) {
+      continue;
+    }
+    for (const collectionName of definition.boundCollections) {
+      if (!occupied.has(collectionName)) {
+        occupied.set(collectionName, definition.name);
+      }
+    }
+  }
+  return occupied;
+});
+
+const conflictingCollections = computed(() =>
+  selectedCollections.value.filter((collectionName) =>
+    occupiedCollectionOwners.value.has(collectionName)
+  )
+);
+
 const collectionOptions = computed(() =>
   sdk.replay.getCollections().map((c) => ({
     label: c.name,
@@ -90,6 +113,24 @@ const addBinaryPath = () => {
 
 const removeBinaryPath = (binaryPath: string) => {
   selectedBinaryPaths.value = selectedBinaryPaths.value.filter((value) => value !== binaryPath);
+};
+
+const handleCollectionChange = (value: string[]) => {
+  const added = value.find(
+    (collectionName) =>
+      !selectedCollections.value.includes(collectionName) &&
+      occupiedCollectionOwners.value.has(collectionName)
+  );
+
+  if (added !== undefined) {
+    const owner = occupiedCollectionOwners.value.get(added);
+    sdk.window.showToast(`"${added}" is already bound to "${owner}"`, {
+      variant: "error",
+    });
+    return;
+  }
+
+  selectedCollections.value = value;
 };
 
 watch(
@@ -124,6 +165,18 @@ watch(
 
 const handleSave = () => {
   if (!canSave.value) return;
+
+  const firstConflict = conflictingCollections.value[0];
+  if (firstConflict !== undefined) {
+    console.log(occupiedCollectionOwners.value);
+    const owner = occupiedCollectionOwners.value.get(firstConflict);
+    const message =
+      owner === undefined
+        ? `Collection "${firstConflict}" is already bound to another agent`
+        : `Collection "${firstConflict}" is already bound to "${owner}"`;
+    sdk.window.showToast(message, { variant: "error" });
+    return;
+  }
 
   if (agent !== undefined) {
     emit("update", agent.id, {
@@ -369,12 +422,13 @@ const handleSave = () => {
             <div class="flex flex-col gap-2">
               <label class="text-sm font-medium text-surface-200">Bound Collections</label>
               <MultiSelect
-                v-model="selectedCollections"
+                :model-value="selectedCollections"
                 :options="collectionOptions"
                 option-label="label"
                 option-value="value"
                 placeholder="Select collections..."
-                class="w-full" />
+                class="w-full"
+                @update:model-value="handleCollectionChange" />
               <p class="text-xs text-surface-400">
                 Agent will auto-launch when a request is sent to these replay collections.
               </p>

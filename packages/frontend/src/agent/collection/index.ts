@@ -179,6 +179,19 @@ function launchAgent(sdk: FrontendSDK, sessionId: string, config: LaunchDialogRe
 function handleSessionInCollection(sdk: FrontendSDK, sessionId: string, collectionName: string) {
   const boundAgents = findAgentsByCollectionName(collectionName);
 
+  if (boundAgents.length > 1) {
+    sdk.window.showToast(
+      `Multiple agents are bound to "${collectionName}". Keep only one bound agent per collection.`,
+      { variant: "warning" }
+    );
+
+    if (collectionName === SHIFT_COLLECTION_NAME) {
+      showLaunchDialog(sdk, sessionId);
+    }
+
+    return;
+  }
+
   if (boundAgents.length > 0) {
     const agent = boundAgents[0];
     if (agent !== undefined) {
