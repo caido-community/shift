@@ -143,13 +143,6 @@ async function runBinary(
   const child = spawn(binaryPath, args);
   runningExecutions.set(executionId, child);
 
-  if (child.stdin !== null) {
-    if (stdin !== undefined) {
-      child.stdin.write(stdin);
-    }
-    child.stdin.end();
-  }
-
   if (child.stdout !== null) {
     child.stdout.on("data", (data) => {
       const chunk = appendStreamChunk(stdout, data);
@@ -191,6 +184,22 @@ async function runBinary(
       clearTimeout(timeoutId);
       resolve(payload);
     };
+
+    if (child.stdin !== null) {
+      child.stdin.once("error", (error) => {
+        finish({
+          code: undefined,
+          signal: undefined,
+          error: `Failed to write to stdin: ${error.message}`,
+        });
+        child.kill("SIGKILL");
+      });
+
+      if (stdin !== undefined) {
+        child.stdin.write(stdin);
+      }
+      child.stdin.end();
+    }
 
     child.once("error", (error) => {
       finish({

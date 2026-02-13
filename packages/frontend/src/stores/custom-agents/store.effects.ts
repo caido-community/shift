@@ -68,14 +68,19 @@ export async function updateCustomAgent(
   return Result.ok(undefined);
 }
 
-export async function removeCustomAgent(sdk: FrontendSDK, dispatch: Dispatch, id: string) {
+export async function removeCustomAgent(
+  sdk: FrontendSDK,
+  dispatch: Dispatch,
+  id: string
+): Promise<Result<void>> {
   dispatch({ type: "REMOVE_REQUEST", id });
 
   const result = await sdk.backend.removeCustomAgent(id);
   if (result.kind === "Error") {
     dispatch({ type: "REMOVE_FAILURE", error: result.error });
-    return;
+    return Result.err(result.error);
   }
 
   dispatch({ type: "REMOVE_SUCCESS", id });
+  return Result.ok(undefined);
 }
