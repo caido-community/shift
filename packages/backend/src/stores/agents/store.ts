@@ -1,4 +1,4 @@
-import type { ShiftMessage, StoredAgent } from "shared";
+import type { ShiftMessage, StoredAgent, StoredAgentSessionState } from "shared";
 
 import { ProjectStore } from "../project-store";
 
@@ -33,8 +33,12 @@ class AgentsStore extends ProjectStore<AgentsModel, AgentsMessage> {
     return this.getModel();
   }
 
-  async writeAgent(chatID: string, messages: ShiftMessage[]): Promise<void> {
-    this.dispatch({ type: "WRITE_AGENT", chatID, messages, updatedAt: Date.now() });
+  async writeAgent(
+    chatID: string,
+    messages: ShiftMessage[],
+    sessionState: StoredAgentSessionState | undefined
+  ): Promise<void> {
+    this.dispatch({ type: "WRITE_AGENT", chatID, messages, updatedAt: Date.now(), sessionState });
     await this.persist();
     this.notify();
   }

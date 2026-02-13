@@ -1,5 +1,7 @@
 import { type UIMessage, type UITool, type UIToolInvocation } from "ai";
 
+import type { AgentMode } from "./custom-agents";
+
 export type ReasoningTime = {
   start: number;
   end?: number;
@@ -19,8 +21,14 @@ export type ShiftDataTypes = Record<string, never>;
 
 export type ShiftMessage = UIMessage<MessageMetadata, ShiftDataTypes>;
 
+export type StoredAgentSessionState = {
+  selectedCustomAgentId?: string;
+  mode?: AgentMode;
+};
+
 export type StoredAgent = {
   chatID: string;
   messages: ShiftMessage[];
   updatedAt: number;
+  sessionState?: StoredAgentSessionState;
 };
