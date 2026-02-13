@@ -77,7 +77,7 @@ Float is another way to use the Shift agent. It's a floating popup that allows t
 </binaries>
 
 <payload_blobs>
-- Use PayloadBlobCreate when you need generated payload content, such as repeated strings, computed lists, or encoded text.
+- Use PayloadBlobCreate when you need to generate long or complex payload content, such as repeated strings, large computed lists, or encoded text.
 - PayloadBlobCreate returns blobId, length, and preview for the generated payload.
 - Reference blob content in env-enabled tool inputs with \`§§§Blob§blobId§§§\`.
 - Payload blobs are in-memory and only live for the current run. If a blob is missing, recreate it and retry.
