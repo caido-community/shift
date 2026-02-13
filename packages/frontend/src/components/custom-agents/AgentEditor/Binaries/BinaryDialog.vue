@@ -111,16 +111,21 @@ const handleSave = () => {
         </p>
       </div>
 
-      <div class="flex flex-col gap-2">
+      <div class="flex flex-col">
         <label
           for="binary-instructions"
           class="text-base font-medium text-surface-200">
           Instructions
         </label>
+        <p class="text-sm text-surface-400 mb-2">
+          If no instructions are provided, the agent will try to figure out usage with the -h flag.
+          Explain how to run the tool, what the input is, what output to expect, and any required
+          resources like wordlists (include their paths).
+        </p>
         <Textarea
           id="binary-instructions"
           v-model="instructions"
-          placeholder="Optional usage guidance for this binary..."
+          placeholder="Example: input/output format, flags, required wordlist paths..."
           rows="6"
           class="w-full font-mono text-sm" />
       </div>
