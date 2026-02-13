@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { AgentContext } from "@/agent/context";
 import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { normalizeCRLF } from "@/agent/utils/http";
+import { normalizeCRLF, normalizeRawHttpRequest } from "@/agent/utils/http";
 import { replaceUniqueText } from "@/agent/utils/text";
 import { truncate } from "@/utils";
 
@@ -72,10 +72,11 @@ export const RequestRawEdit = tool({
       return ToolResult.err(result.error);
     }
 
-    context.setHttpRequest(result.value.after);
+    const after = normalizeRawHttpRequest(result.value.after);
+    context.setHttpRequest(after);
 
-    const truncated = result.value.after.length > MAX_LENGTH;
-    const preview = truncated ? result.value.after.slice(0, MAX_LENGTH) : result.value.after;
+    const truncated = after.length > MAX_LENGTH;
+    const preview = truncated ? after.slice(0, MAX_LENGTH) : after;
     const truncationNote = truncated ? "\n\n[... truncated]" : "";
     return ToolResult.ok({
       message: `Replaced ${normalizedOld.length} characters with ${normalizedNew.length} characters\n\n${preview}${truncationNote}`,

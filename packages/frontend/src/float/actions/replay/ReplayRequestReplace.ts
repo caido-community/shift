@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { normalizeRawHttpRequest } from "@/agent/utils/http";
 import { ActionResult, type FloatToolContext } from "@/float/types";
 import { withActiveEditorView } from "@/float/utils";
 
@@ -15,7 +16,7 @@ export const replayRequestReplaceTool = tool({
   execute: ({ text }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     return withActiveEditorView(sdk, (context) => {
-      context.update(text);
+      context.update(normalizeRawHttpRequest(text));
       return ActionResult.ok("Request replaced in replay editor");
     });
   },

@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { AgentContext } from "@/agent/context";
 import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { normalizeCRLF } from "@/agent/utils/http";
+import { normalizeRawHttpRequest } from "@/agent/utils/http";
 
 const inputSchema = z.object({
   raw: z
@@ -49,7 +49,7 @@ export const RequestRawSet = tool({
       return ToolResult.err("Failed to resolve placeholders", resolvedResult.error);
     }
     const resolved = resolvedResult.value;
-    const normalized = normalizeCRLF(resolved);
+    const normalized = normalizeRawHttpRequest(resolved);
     context.setHttpRequest(normalized);
 
     const truncated = normalized.length > MAX_LENGTH;
