@@ -11,6 +11,7 @@ const CustomAgentSchema = z.object({
   description: z.string(),
   skillIds: z.array(z.string()),
   allowedWorkflowIds: z.array(z.string()).optional(),
+  allowedBinaryPaths: z.array(z.string()).optional(),
   instructions: z.string(),
   scope: SkillScopeSchema,
   projectId: z.string().min(1).optional(),
@@ -24,6 +25,7 @@ const ResolvedCustomAgentSchema = z.object({
   description: z.string(),
   skills: z.array(z.object({ id: z.string(), title: z.string(), content: z.string() })),
   allowedWorkflowIds: z.array(z.string()).optional(),
+  allowedBinaryPaths: z.array(z.string()).optional(),
   instructions: z.string(),
 });
 export type ResolvedCustomAgent = z.infer<typeof ResolvedCustomAgentSchema>;
@@ -33,6 +35,7 @@ export const CreateCustomAgentSchema = z.object({
   description: z.string().default(""),
   skillIds: z.array(z.string()).default([]),
   allowedWorkflowIds: z.array(z.string()).optional(),
+  allowedBinaryPaths: z.array(z.string()).optional(),
   instructions: z.string().default(""),
   scope: SkillScopeSchema,
   boundCollections: z.array(z.string()).default([]),
@@ -44,6 +47,7 @@ export const UpdateCustomAgentSchema = z.object({
   description: z.string().optional(),
   skillIds: z.array(z.string()).optional(),
   allowedWorkflowIds: z.array(z.string()).optional().nullable(),
+  allowedBinaryPaths: z.array(z.string()).optional().nullable(),
   instructions: z.string().optional(),
   scope: SkillScopeSchema.optional(),
   boundCollections: z.array(z.string()).optional(),

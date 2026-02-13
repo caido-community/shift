@@ -1,3 +1,4 @@
+import { display as binaryExecRunDisplay } from "@/agent/tools/binaries/BinaryExecRun";
 import { display as environmentCreateDisplay } from "@/agent/tools/environment/EnvironmentCreate";
 import { display as environmentRemoveDisplay } from "@/agent/tools/environment/EnvironmentRemove";
 import { display as environmentUpdateDisplay } from "@/agent/tools/environment/EnvironmentUpdate";
@@ -33,6 +34,7 @@ import { display as workflowConvertRunDisplay } from "@/agent/tools/workflows/Wo
 import { type ToolDisplay } from "@/agent/types";
 
 const configs = {
+  BinaryExecRun: binaryExecRunDisplay,
   TodoAdd: todoAddDisplay,
   TodoComplete: todoCompleteDisplay,
   TodoRemove: todoRemoveDisplay,

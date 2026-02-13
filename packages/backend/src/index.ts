@@ -6,7 +6,9 @@ import {
   addLearning,
   addModel,
   addStaticSkill,
+  cancelAgentBinaryExecution,
   clearLearnings,
+  executeAgentBinary,
   getAgent,
   getAgents,
   getCustomAgentDefinitions,
@@ -46,6 +48,7 @@ import {
   getSettingsStore,
   getSkillsStore,
 } from "./stores";
+import type { BackendEvents } from "./types";
 
 export * from "./types";
 
@@ -76,6 +79,8 @@ export type API = DefineAPI<{
   addCustomAgent: typeof addCustomAgent;
   updateCustomAgent: typeof updateCustomAgent;
   removeCustomAgent: typeof removeCustomAgent;
+  executeAgentBinary: typeof executeAgentBinary;
+  cancelAgentBinaryExecution: typeof cancelAgentBinaryExecution;
   getSettings: typeof getSettings;
   updateSettings: typeof updateSettings;
   updateRenaming: typeof updateRenaming;
@@ -87,7 +92,7 @@ export type API = DefineAPI<{
   clearLearnings: typeof clearLearnings;
 }>;
 
-export function init(sdk: SDK<API>) {
+export function init(sdk: SDK<API, BackendEvents>) {
   setSDK(sdk);
   const modelsStore = getModelsStore();
   const agentsStore = getAgentsStore();
@@ -139,6 +144,8 @@ export function init(sdk: SDK<API>) {
   sdk.api.register("addCustomAgent", addCustomAgent);
   sdk.api.register("updateCustomAgent", updateCustomAgent);
   sdk.api.register("removeCustomAgent", removeCustomAgent);
+  sdk.api.register("executeAgentBinary", executeAgentBinary);
+  sdk.api.register("cancelAgentBinaryExecution", cancelAgentBinaryExecution);
 
   sdk.api.register("getSettings", getSettings);
   sdk.api.register("updateSettings", updateSettings);

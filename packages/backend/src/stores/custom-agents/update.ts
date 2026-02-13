@@ -39,6 +39,12 @@ function handleUpdateAgent(
           ? undefined
           : message.updates.allowedWorkflowIds;
     }
+    if (message.updates.allowedBinaryPaths !== undefined) {
+      agent.allowedBinaryPaths =
+        message.updates.allowedBinaryPaths === null
+          ? undefined
+          : message.updates.allowedBinaryPaths;
+    }
     if (message.updates.instructions !== undefined) {
       agent.instructions = message.updates.instructions;
     }

@@ -70,6 +70,7 @@ class CustomAgentsStore extends GlobalStore<CustomAgentsModel, CustomAgentsMessa
         description: agent.description,
         skills,
         allowedWorkflowIds: agent.allowedWorkflowIds,
+        allowedBinaryPaths: agent.allowedBinaryPaths,
         instructions: agent.instructions,
       };
     });
@@ -94,6 +95,7 @@ class CustomAgentsStore extends GlobalStore<CustomAgentsModel, CustomAgentsMessa
       description: input.description ?? "",
       skillIds: input.skillIds ?? [],
       allowedWorkflowIds: input.allowedWorkflowIds,
+      allowedBinaryPaths: input.allowedBinaryPaths,
       instructions: input.instructions ?? "",
       scope: input.scope,
       projectId: input.scope === "project" ? this.currentProjectId : undefined,

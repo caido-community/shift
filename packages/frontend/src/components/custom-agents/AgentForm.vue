@@ -44,6 +44,8 @@ const scope = ref<SkillScope>("project");
 const selectedSkillIds = ref<string[]>([]);
 const selectedWorkflowIds = ref<string[]>([]);
 const allWorkflowsEnabled = ref(true);
+const selectedBinaryPaths = ref<string[]>([]);
+const binaryPathInput = ref("");
 const selectedCollections = ref<string[]>([]);
 
 const skillOptions = computed(() =>
@@ -71,6 +73,24 @@ const collectionOptions = computed(() =>
 );
 
 const canSave = computed(() => name.value.trim() !== "");
+const canAddBinaryPath = computed(() => {
+  const value = binaryPathInput.value.trim();
+  return value !== "" && !selectedBinaryPaths.value.includes(value);
+});
+
+const addBinaryPath = () => {
+  const value = binaryPathInput.value.trim();
+  if (value === "" || selectedBinaryPaths.value.includes(value)) {
+    return;
+  }
+
+  selectedBinaryPaths.value = [...selectedBinaryPaths.value, value];
+  binaryPathInput.value = "";
+};
+
+const removeBinaryPath = (binaryPath: string) => {
+  selectedBinaryPaths.value = selectedBinaryPaths.value.filter((value) => value !== binaryPath);
+};
 
 watch(
   () => agent,
@@ -83,6 +103,8 @@ watch(
       selectedSkillIds.value = [...newAgent.skillIds];
       allWorkflowsEnabled.value = newAgent.allowedWorkflowIds === undefined;
       selectedWorkflowIds.value = newAgent.allowedWorkflowIds ?? [];
+      selectedBinaryPaths.value = newAgent.allowedBinaryPaths ?? [];
+      binaryPathInput.value = "";
       selectedCollections.value = [...newAgent.boundCollections];
     } else {
       name.value = "";
@@ -92,6 +114,8 @@ watch(
       selectedSkillIds.value = [];
       selectedWorkflowIds.value = [];
       allWorkflowsEnabled.value = true;
+      selectedBinaryPaths.value = [];
+      binaryPathInput.value = "";
       selectedCollections.value = [];
     }
   },
@@ -109,6 +133,7 @@ const handleSave = () => {
       scope: scope.value,
       skillIds: selectedSkillIds.value,
       allowedWorkflowIds: allWorkflowsEnabled.value ? null : selectedWorkflowIds.value,
+      allowedBinaryPaths: selectedBinaryPaths.value.length === 0 ? null : selectedBinaryPaths.value,
       boundCollections: selectedCollections.value,
     });
   } else {
@@ -119,6 +144,8 @@ const handleSave = () => {
       scope: scope.value,
       skillIds: selectedSkillIds.value,
       allowedWorkflowIds: allWorkflowsEnabled.value ? undefined : selectedWorkflowIds.value,
+      allowedBinaryPaths:
+        selectedBinaryPaths.value.length === 0 ? undefined : selectedBinaryPaths.value,
       boundCollections: selectedCollections.value,
     });
   }
@@ -284,6 +311,47 @@ const handleSave = () => {
                 class="w-full font-mono text-sm" />
               <p class="text-xs text-surface-400">
                 Provide custom guidelines that shape how this agent behaves and responds.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <label class="text-sm font-medium text-surface-200">Whitelisted Binaries</label>
+              <div class="flex items-center gap-2">
+                <InputText
+                  v-model="binaryPathInput"
+                  placeholder="/Users/you/bin/ffuf"
+                  class="w-full font-mono text-xs"
+                  @keydown.enter.prevent="addBinaryPath" />
+                <Button
+                  label="Add"
+                  size="small"
+                  :disabled="!canAddBinaryPath"
+                  @click="addBinaryPath" />
+              </div>
+              <div
+                v-if="selectedBinaryPaths.length > 0"
+                class="flex flex-col gap-1 rounded-md border border-surface-700 bg-surface-800/40 p-2">
+                <div
+                  v-for="binaryPath in selectedBinaryPaths"
+                  :key="binaryPath"
+                  class="flex items-center justify-between gap-2">
+                  <span class="truncate font-mono text-xs text-surface-300">
+                    {{ binaryPath }}
+                  </span>
+                  <Button
+                    icon="fas fa-times"
+                    severity="secondary"
+                    text
+                    size="small"
+                    @click="removeBinaryPath(binaryPath)" />
+                </div>
+              </div>
+              <p class="text-xs text-surface-400">
+                {{
+                  selectedBinaryPaths.length === 0
+                    ? "No binaries whitelisted. Binary execution will be blocked."
+                    : `${selectedBinaryPaths.length} binaries whitelisted.`
+                }}
               </p>
             </div>
           </div>

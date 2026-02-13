@@ -1,3 +1,4 @@
+import { BinaryExecRun } from "./binaries";
 import { EnvironmentCreate, EnvironmentRemove, EnvironmentUpdate } from "./environment";
 import { FindingsCreate } from "./findings";
 import { HistorySearch } from "./history";
@@ -26,6 +27,7 @@ import { TodoAdd, TodoComplete, TodoRemove } from "./todo";
 import { WorkflowConvertList, WorkflowConvertRun } from "./workflows";
 
 export const shiftAgentTools = {
+  BinaryExecRun,
   TodoAdd,
   TodoComplete,
   TodoRemove,

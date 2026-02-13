@@ -1,10 +1,12 @@
 import * as collection from "@/agent/collection";
+import { initializeBinaryExecutionStream } from "@/agent/tools/binaries";
 import { useAgentStore } from "@/stores/agent";
 import { useUIStore } from "@/stores/ui";
 import { type FrontendSDK } from "@/types";
 import { isPresent } from "@/utils/optional";
 
 export const setupAgents = (sdk: FrontendSDK) => {
+  initializeBinaryExecutionStream(sdk);
   collection.setup(sdk);
   const uiStore = useUIStore();
   const agentStore = useAgentStore();

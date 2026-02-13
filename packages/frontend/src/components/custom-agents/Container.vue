@@ -52,7 +52,7 @@ const getAvailabilitySeverity = (scope: "global" | "project") => {
           <div>
             <h2 class="text-base font-bold">Agents</h2>
             <p class="text-sm text-surface-400">
-              Create custom agents with bundled skills, workflows, and instructions.
+              Create custom agents with bundled skills, workflows, binaries, and instructions.
             </p>
           </div>
           <div class="flex items-center gap-2">
@@ -127,6 +127,15 @@ const getAvailabilitySeverity = (scope: "global" | "project") => {
             <template #body="{ data }">
               <span class="text-sm text-surface-400">
                 {{ data.allowedWorkflowIds === undefined ? "All" : data.allowedWorkflowIds.length }}
+              </span>
+            </template>
+          </Column>
+          <Column
+            header="Binaries"
+            style="width: 90px">
+            <template #body="{ data }">
+              <span class="text-sm text-surface-400">
+                {{ data.allowedBinaryPaths?.length ?? 0 }}
               </span>
             </template>
           </Column>

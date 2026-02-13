@@ -103,6 +103,15 @@ export class AgentContext {
     return this.store.allowedWorkflowIds;
   }
 
+  get allowedBinaryPaths(): string[] | undefined {
+    const agent = this.resolvedAgent;
+    if (agent !== undefined) {
+      return agent.allowedBinaryPaths;
+    }
+
+    return undefined;
+  }
+
   get selectedSkills(): AgentSkill[] {
     const agent = this.resolvedAgent;
     if (agent !== undefined) {
@@ -255,6 +264,11 @@ export class AgentContext {
     if (restrictedConvertWorkflows !== undefined) {
       const workflowList = JSON.stringify(restrictedConvertWorkflows, null, 2);
       parts.push(`<allowed_convert_workflows>\n${workflowList}\n</allowed_convert_workflows>`);
+    }
+
+    if (isPresent(this.resolvedAgent)) {
+      const binaryList = JSON.stringify(this.allowedBinaryPaths ?? [], null, 2);
+      parts.push(`<allowed_binaries>\n${binaryList}\n</allowed_binaries>`);
     }
 
     if (isPresent(this.entriesContext) && this.entriesContext.recentEntryIds.length > 0) {

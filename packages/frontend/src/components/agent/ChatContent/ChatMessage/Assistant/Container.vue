@@ -58,6 +58,7 @@ const processingText = useAnimatedDots("Processing", isWaitingForNextPart);
       <ChatMessageTool
         v-else-if="isToolUIPart(processed.part)"
         :tool-name="getToolName(processed.part)"
+        :tool-call-id="processed.part.toolCallId"
         :part-state="processed.part.state"
         :message-metadata="metadata"
         :input="processed.part.input"
