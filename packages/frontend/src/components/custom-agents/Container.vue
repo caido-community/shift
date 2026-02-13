@@ -7,7 +7,7 @@ import Tag from "primevue/tag";
 import Tooltip from "primevue/tooltip";
 import { computed } from "vue";
 
-import AgentForm from "./AgentForm.vue";
+import { AgentEditor } from "./AgentEditor";
 import { useCustomAgents } from "./useCustomAgents";
 
 const {
@@ -38,7 +38,7 @@ const getAvailabilitySeverity = (scope: "global" | "project") => {
 </script>
 
 <template>
-  <AgentForm
+  <AgentEditor
     v-if="isFormVisible"
     :agent="activeAgent"
     @save="handleAdd"
