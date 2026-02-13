@@ -57,6 +57,7 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
       originalMessages: options.messages,
       execute: async ({ writer }) => {
         context.setWriter(writer);
+        context.clearPayloadBlobs();
 
         const [contentResult] = await Promise.all([
           getSessionContent(this.sdk, context.sessionId),
@@ -101,9 +102,11 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
             sendReasoning: true,
             onFinish: () => {
               context.clearTodos();
+              context.clearPayloadBlobs();
             },
             onError: (error) => {
               context.clearTodos();
+              context.clearPayloadBlobs();
               writer.write({
                 type: "message-metadata",
                 messageMetadata: {
@@ -173,9 +176,14 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
           })
         );
 
-        await result.consumeStream();
+        try {
+          await result.consumeStream();
+        } finally {
+          context.clearPayloadBlobs();
+        }
       },
       onError: (error) => {
+        this.context.clearPayloadBlobs();
         console.error("Error: ", error);
         return (error as Error).message;
       },

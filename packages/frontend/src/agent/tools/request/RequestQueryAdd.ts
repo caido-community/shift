@@ -3,15 +3,17 @@ import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
+import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { resolveEnvironmentVariables } from "@/agent/utils/environment";
 import { truncate, withSuffix } from "@/utils";
 
 const inputSchema = z.object({
   key: z.string().describe("The query parameter key"),
   value: z
     .string()
-    .describe("The query parameter value. Supports environment variable substitution"),
+    .describe(
+      "The query parameter value. Supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§"
+    ),
 });
 
 const outputSchema = ToolResult.schema();
@@ -38,7 +40,7 @@ export const display = {
 
 export const RequestQueryAdd = tool({
   description:
-    "Append a new query parameter to the current HTTP request. Unlike RequestQuerySet which replaces existing values, this adds a duplicate - the same key can appear multiple times (e.g. ?redirect_uri=1&redirect_uri=2). Use for testing parameter pollution, OAuth redirect_uri manipulation, or APIs that accept repeated params. The value supports environment variable substitution using {{VAR_NAME}} syntax. Pass empty string for a param with no value (e.g. ?debug). This tool will fail if no HTTP request is currently loaded.",
+    "Append a new query parameter to the current HTTP request. Unlike RequestQuerySet which replaces existing values, this adds a duplicate - the same key can appear multiple times (e.g. ?redirect_uri=1&redirect_uri=2). Use for testing parameter pollution, OAuth redirect_uri manipulation, or APIs that accept repeated params. The value supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Pass empty string for a param with no value (e.g. ?debug). This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
   execute: async ({ key, value }, { experimental_context }): Promise<RequestQueryAddOutput> => {
@@ -46,7 +48,11 @@ export const RequestQueryAdd = tool({
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
-    const resolvedValue = await resolveEnvironmentVariables(context.sdk, value);
+    const resolvedValueResult = await resolveToolInputPlaceholders(context, value);
+    if (resolvedValueResult.kind === "Error") {
+      return ToolResult.err("Failed to resolve placeholders", resolvedValueResult.error);
+    }
+    const resolvedValue = resolvedValueResult.value;
     const forge = HttpForge.create(context.httpRequest).addQueryParam(key, resolvedValue);
     const after = forge.build();
     context.setHttpRequest(after);
