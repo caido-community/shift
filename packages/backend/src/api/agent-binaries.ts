@@ -247,12 +247,12 @@ export async function executeAgentBinary(
       return Result.err("Agent not found");
     }
 
-    const allowedBinaryPaths = agent.allowedBinaryPaths;
-    if (allowedBinaryPaths === undefined || allowedBinaryPaths.length === 0) {
+    const allowedPaths = agent.allowedBinaries?.map((binary) => binary.path);
+    if (allowedPaths === undefined || allowedPaths.length === 0) {
       return Result.err("No binaries are allowed for this agent");
     }
 
-    if (!allowedBinaryPaths.includes(binaryPath)) {
+    if (!allowedPaths.includes(binaryPath)) {
       return Result.err("Binary path is not allowed for this agent");
     }
 

@@ -9,6 +9,7 @@ import Textarea from "primevue/textarea";
 import type {
   CreateCustomAgentInput,
   CustomAgent,
+  CustomAgentBinary,
   SkillScope,
   UpdateCustomAgentInput,
 } from "shared";
@@ -32,9 +33,7 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const isEditing = computed(() => agent !== undefined);
-
-const scopeOptions = [
+const scopeOptions: Array<{ label: string; value: SkillScope }> = [
   { label: "Project", value: "project" },
   { label: "Global", value: "global" },
 ];
@@ -46,9 +45,14 @@ const scope = ref<SkillScope>("project");
 const selectedSkillIds = ref<string[]>([]);
 const selectedWorkflowIds = ref<string[]>([]);
 const allWorkflowsEnabled = ref(true);
-const selectedBinaryPaths = ref<string[]>([]);
+const selectedBinaries = ref<Array<{ path: string; instructions: string }>>([]);
 const binaryPathInput = ref("");
+const binaryInstructionsInput = ref("");
 const selectedCollections = ref<string[]>([]);
+
+const isEditing = computed(() => agent !== undefined);
+const formTitle = computed(() => (isEditing.value ? "Edit Agent" : "New Agent"));
+const saveButtonLabel = computed(() => (isEditing.value ? "Save" : "Create"));
 
 const skillOptions = computed(() =>
   skillsStore.definitions.map((d) => ({
@@ -65,6 +69,13 @@ const workflowOptions = computed(() =>
       label: w.name,
       value: w.id,
     }))
+);
+
+const collectionOptions = computed(() =>
+  sdk.replay.getCollections().map((c) => ({
+    label: c.name,
+    value: c.name,
+  }))
 );
 
 const occupiedCollectionOwners = computed(() => {
@@ -88,31 +99,99 @@ const conflictingCollections = computed(() =>
   )
 );
 
-const collectionOptions = computed(() =>
-  sdk.replay.getCollections().map((c) => ({
-    label: c.name,
-    value: c.name,
-  }))
+const availabilityDescription = computed(() =>
+  scope.value === "project"
+    ? "Available only in the current project"
+    : "Available across all projects"
 );
 
-const canSave = computed(() => name.value.trim() !== "");
-const canAddBinaryPath = computed(() => {
-  const value = binaryPathInput.value.trim();
-  return value !== "" && !selectedBinaryPaths.value.includes(value);
+const workflowDescription = computed(() =>
+  allWorkflowsEnabled.value
+    ? "Agent can use any available convert workflow as a tool."
+    : "Agent can only use the selected convert workflows."
+);
+
+const binarySummary = computed(() => {
+  const count = selectedBinaries.value.length;
+  return count === 0
+    ? "No binaries whitelisted. Binary execution will be blocked."
+    : `${count} binaries whitelisted.`;
 });
 
+const canSave = computed(() => name.value.trim() !== "");
+const trimmedBinaryPathInput = computed(() => binaryPathInput.value.trim());
+const canAddBinaryPath = computed(() => {
+  const value = trimmedBinaryPathInput.value;
+  return value !== "" && !selectedBinaries.value.some((binary) => binary.path === value);
+});
+
+const resetForm = () => {
+  name.value = "";
+  description.value = "";
+  instructions.value = "";
+  scope.value = "project";
+  selectedSkillIds.value = [];
+  selectedWorkflowIds.value = [];
+  allWorkflowsEnabled.value = true;
+  selectedBinaries.value = [];
+  binaryPathInput.value = "";
+  binaryInstructionsInput.value = "";
+  selectedCollections.value = [];
+};
+
+const applyAgentToForm = (agent: CustomAgent) => {
+  name.value = agent.name;
+  description.value = agent.description;
+  instructions.value = agent.instructions;
+  scope.value = agent.scope;
+  selectedSkillIds.value = [...agent.skillIds];
+  allWorkflowsEnabled.value = agent.allowedWorkflowIds === undefined;
+  selectedWorkflowIds.value = agent.allowedWorkflowIds ?? [];
+  selectedBinaries.value = (agent.allowedBinaries ?? []).map((binary) => ({
+    path: binary.path,
+    instructions: binary.instructions ?? "",
+  }));
+  binaryPathInput.value = "";
+  binaryInstructionsInput.value = "";
+  selectedCollections.value = [...agent.boundCollections];
+};
+
+watch(
+  () => agent,
+  (newAgent) => {
+    if (newAgent === undefined) {
+      resetForm();
+      return;
+    }
+
+    applyAgentToForm(newAgent);
+  },
+  { immediate: true }
+);
+
 const addBinaryPath = () => {
-  const value = binaryPathInput.value.trim();
-  if (value === "" || selectedBinaryPaths.value.includes(value)) {
+  const path = trimmedBinaryPathInput.value;
+  if (path === "" || selectedBinaries.value.some((binary) => binary.path === path)) {
     return;
   }
 
-  selectedBinaryPaths.value = [...selectedBinaryPaths.value, value];
+  const instructions = binaryInstructionsInput.value.trim();
+  selectedBinaries.value = [...selectedBinaries.value, { path, instructions }];
   binaryPathInput.value = "";
+  binaryInstructionsInput.value = "";
 };
 
 const removeBinaryPath = (binaryPath: string) => {
-  selectedBinaryPaths.value = selectedBinaryPaths.value.filter((value) => value !== binaryPath);
+  selectedBinaries.value = selectedBinaries.value.filter((binary) => binary.path !== binaryPath);
+};
+
+const showCollectionConflict = (collectionName: string) => {
+  const owner = occupiedCollectionOwners.value.get(collectionName);
+  const message =
+    owner === undefined
+      ? `Collection "${collectionName}" is already bound to another agent`
+      : `Collection "${collectionName}" is already bound to "${owner}"`;
+  sdk.window.showToast(message, { variant: "error" });
 };
 
 const handleCollectionChange = (value: string[]) => {
@@ -123,85 +202,62 @@ const handleCollectionChange = (value: string[]) => {
   );
 
   if (added !== undefined) {
-    const owner = occupiedCollectionOwners.value.get(added);
-    sdk.window.showToast(`"${added}" is already bound to "${owner}"`, {
-      variant: "error",
-    });
+    showCollectionConflict(added);
     return;
   }
 
   selectedCollections.value = value;
 };
 
-watch(
-  () => agent,
-  (newAgent) => {
-    if (newAgent !== undefined) {
-      name.value = newAgent.name;
-      description.value = newAgent.description;
-      instructions.value = newAgent.instructions;
-      scope.value = newAgent.scope;
-      selectedSkillIds.value = [...newAgent.skillIds];
-      allWorkflowsEnabled.value = newAgent.allowedWorkflowIds === undefined;
-      selectedWorkflowIds.value = newAgent.allowedWorkflowIds ?? [];
-      selectedBinaryPaths.value = newAgent.allowedBinaryPaths ?? [];
-      binaryPathInput.value = "";
-      selectedCollections.value = [...newAgent.boundCollections];
-    } else {
-      name.value = "";
-      description.value = "";
-      instructions.value = "";
-      scope.value = "project";
-      selectedSkillIds.value = [];
-      selectedWorkflowIds.value = [];
-      allWorkflowsEnabled.value = true;
-      selectedBinaryPaths.value = [];
-      binaryPathInput.value = "";
-      selectedCollections.value = [];
-    }
-  },
-  { immediate: true }
-);
+const buildBaseInput = () => ({
+  name: name.value.trim(),
+  description: description.value.trim(),
+  instructions: instructions.value.trim(),
+  scope: scope.value,
+  skillIds: [...selectedSkillIds.value],
+  boundCollections: [...selectedCollections.value],
+});
 
 const handleSave = () => {
   if (!canSave.value) return;
 
   const firstConflict = conflictingCollections.value[0];
   if (firstConflict !== undefined) {
-    console.log(occupiedCollectionOwners.value);
-    const owner = occupiedCollectionOwners.value.get(firstConflict);
-    const message =
-      owner === undefined
-        ? `Collection "${firstConflict}" is already bound to another agent`
-        : `Collection "${firstConflict}" is already bound to "${owner}"`;
-    sdk.window.showToast(message, { variant: "error" });
+    showCollectionConflict(firstConflict);
     return;
   }
 
+  const baseInput = buildBaseInput();
+  const allowedWorkflowIds = [...selectedWorkflowIds.value];
+  const allowedBinaries: CustomAgentBinary[] = selectedBinaries.value
+    .map((binary) => {
+      const path = binary.path.trim();
+      const trimmedInstructions = binary.instructions.trim();
+      return {
+        path,
+        instructions: trimmedInstructions === "" ? undefined : trimmedInstructions,
+      };
+    })
+    .filter((binary) => binary.path !== "");
+
   if (agent !== undefined) {
     emit("update", agent.id, {
-      name: name.value.trim(),
-      description: description.value.trim(),
-      instructions: instructions.value.trim(),
-      scope: scope.value,
-      skillIds: selectedSkillIds.value,
-      allowedWorkflowIds: allWorkflowsEnabled.value ? null : selectedWorkflowIds.value,
-      allowedBinaryPaths: selectedBinaryPaths.value.length === 0 ? null : selectedBinaryPaths.value,
-      boundCollections: selectedCollections.value,
+      ...baseInput,
+      allowedWorkflowIds: allWorkflowsEnabled.value ? null : allowedWorkflowIds,
+      allowedBinaries: allowedBinaries.length === 0 ? null : allowedBinaries,
     });
-  } else {
-    emit("save", {
-      name: name.value.trim(),
-      description: description.value.trim(),
-      instructions: instructions.value.trim(),
-      scope: scope.value,
-      skillIds: selectedSkillIds.value,
-      allowedWorkflowIds: allWorkflowsEnabled.value ? undefined : selectedWorkflowIds.value,
-      allowedBinaryPaths:
-        selectedBinaryPaths.value.length === 0 ? undefined : selectedBinaryPaths.value,
-      boundCollections: selectedCollections.value,
-    });
+    return;
   }
+
+  emit("save", {
+    ...baseInput,
+    allowedWorkflowIds: allWorkflowsEnabled.value ? undefined : allowedWorkflowIds,
+    allowedBinaries: allowedBinaries.length === 0 ? undefined : allowedBinaries,
+  });
+};
+
+const handleCancel = () => {
+  emit("cancel");
 };
 </script>
 
@@ -218,9 +274,9 @@ const handleSave = () => {
               severity="secondary"
               text
               size="small"
-              @click="emit('cancel')" />
+              @click="handleCancel" />
             <h2 class="text-base font-bold">
-              {{ isEditing ? "Edit Agent" : "New Agent" }}
+              {{ formTitle }}
             </h2>
           </div>
           <div class="flex items-center gap-2">
@@ -229,9 +285,9 @@ const handleSave = () => {
               severity="secondary"
               text
               size="small"
-              @click="emit('cancel')" />
+              @click="handleCancel" />
             <Button
-              :label="isEditing ? 'Save' : 'Create'"
+              :label="saveButtonLabel"
               size="small"
               :disabled="!canSave"
               @click="handleSave" />
@@ -285,11 +341,7 @@ const handleSave = () => {
                 class="w-full flex"
                 :pt="{ button: { class: 'flex-1 w-full' } }" />
               <p class="text-xs text-surface-400">
-                {{
-                  scope === "project"
-                    ? "Available only in the current project"
-                    : "Available across all projects"
-                }}
+                {{ availabilityDescription }}
               </p>
             </div>
           </div>
@@ -342,11 +394,7 @@ const handleSave = () => {
                 placeholder="Select allowed workflows..."
                 class="w-full" />
               <p class="text-xs text-surface-400">
-                {{
-                  allWorkflowsEnabled
-                    ? "Agent can use any available convert workflow as a tool."
-                    : "Agent can only use the selected convert workflows."
-                }}
+                {{ workflowDescription }}
               </p>
             </div>
 
@@ -381,30 +429,38 @@ const handleSave = () => {
                   :disabled="!canAddBinaryPath"
                   @click="addBinaryPath" />
               </div>
+              <Textarea
+                v-model="binaryInstructionsInput"
+                placeholder="Optional instructions for this binary (usage, argument patterns, output interpretation)..."
+                rows="3"
+                class="w-full font-mono text-xs" />
               <div
-                v-if="selectedBinaryPaths.length > 0"
+                v-if="selectedBinaries.length > 0"
                 class="flex flex-col gap-1 rounded-md border border-surface-700 bg-surface-800/40 p-2">
                 <div
-                  v-for="binaryPath in selectedBinaryPaths"
-                  :key="binaryPath"
-                  class="flex items-center justify-between gap-2">
-                  <span class="truncate font-mono text-xs text-surface-300">
-                    {{ binaryPath }}
-                  </span>
+                  v-for="binary in selectedBinaries"
+                  :key="binary.path"
+                  class="flex items-start justify-between gap-2">
+                  <div class="min-w-0 flex-1">
+                    <span class="block truncate font-mono text-xs text-surface-300">
+                      {{ binary.path }}
+                    </span>
+                    <Textarea
+                      v-model="binary.instructions"
+                      placeholder="Optional instructions for this binary..."
+                      rows="2"
+                      class="mt-2 w-full font-mono text-xs" />
+                  </div>
                   <Button
                     icon="fas fa-times"
                     severity="secondary"
                     text
                     size="small"
-                    @click="removeBinaryPath(binaryPath)" />
+                    @click="removeBinaryPath(binary.path)" />
                 </div>
               </div>
               <p class="text-xs text-surface-400">
-                {{
-                  selectedBinaryPaths.length === 0
-                    ? "No binaries whitelisted. Binary execution will be blocked."
-                    : `${selectedBinaryPaths.length} binaries whitelisted.`
-                }}
+                {{ binarySummary }}
               </p>
             </div>
           </div>

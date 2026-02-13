@@ -1,4 +1,4 @@
-import type { CreateCustomAgentInput, CustomAgent, UpdateCustomAgentInput } from "shared";
+import type { CreateCustomAgentInput, CustomAgent, Result, UpdateCustomAgentInput } from "shared";
 import { computed, ref } from "vue";
 
 import { useCustomAgentsStore } from "@/stores/custom-agents/store";
@@ -21,6 +21,7 @@ export const useCustomAgents = () => {
   const isLoading = computed(() => customAgentsStore.isLoading);
 
   const openAddView = () => {
+    editingAgent.value = undefined;
     view.value = "add";
   };
 
@@ -34,8 +35,7 @@ export const useCustomAgents = () => {
     editingAgent.value = undefined;
   };
 
-  const handleAdd = async (input: CreateCustomAgentInput) => {
-    const result = await addCustomAgent(sdk, dispatch, input);
+  const handleMutationResult = (result: Result<void>) => {
     if (result.kind === "Error") {
       sdk.window.showToast(result.error, { variant: "error" });
       return;
@@ -43,13 +43,12 @@ export const useCustomAgents = () => {
     closeForm();
   };
 
+  const handleAdd = async (input: CreateCustomAgentInput) => {
+    handleMutationResult(await addCustomAgent(sdk, dispatch, input));
+  };
+
   const handleUpdate = async (id: string, input: UpdateCustomAgentInput) => {
-    const result = await updateCustomAgent(sdk, dispatch, id, input);
-    if (result.kind === "Error") {
-      sdk.window.showToast(result.error, { variant: "error" });
-      return;
-    }
-    closeForm();
+    handleMutationResult(await updateCustomAgent(sdk, dispatch, id, input));
   };
 
   const handleDelete = async (id: string) => {

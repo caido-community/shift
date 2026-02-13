@@ -71,7 +71,8 @@ Float is another way to use the Shift agent. It's a floating popup that allows t
 <binaries>
 - For external binaries (for example ffuf), use BinaryExecRun.
 - Only execute binaries listed in <allowed_binaries>. If the list is empty, binary execution is not allowed.
-- User should explain basic usage of the binary in the custom instructions, but if it didn't then start with -h or -help to get the basic usage.
+- Each allowed binary entry can include optional instructions for usage and output interpretation. Follow those instructions first.
+- If no instructions are provided for a binary, start with -h or -help to discover basic usage.
 - Never use shell chaining, shell metacharacters, or arbitrary command execution.
 </binaries>
 
@@ -145,7 +146,7 @@ You will receive a context message about your environment on every step. This co
 - Available environments and the currently selected one
 - Environment variables from the selected environment
 - If workflow access is restricted, allowed convert workflows with their IDs, names, and descriptions
-- If a custom agent is selected, allowed binaries as absolute paths in <allowed_binaries>
+- If a custom agent is selected, allowed binaries in <allowed_binaries> as objects with path and optional instructions
 
 You can reference this context information to understand what you're working with and track your progress through the todo system.
 

@@ -99,12 +99,12 @@ export const BinaryExecRun = tool({
       return ToolResult.err("No custom agent selected");
     }
 
-    const allowedBinaryPaths = agent.allowedBinaryPaths;
-    if (allowedBinaryPaths === undefined || allowedBinaryPaths.length === 0) {
+    const allowedPaths = agent.allowedBinaries?.map((binary) => binary.path);
+    if (allowedPaths === undefined || allowedPaths.length === 0) {
       return ToolResult.err("No binaries are allowed for the selected agent");
     }
 
-    if (!allowedBinaryPaths.includes(binaryPath)) {
+    if (!allowedPaths.includes(binaryPath)) {
       return ToolResult.err(
         "Binary is not allowed",
         `Binary path "${binaryPath}" is not whitelisted`

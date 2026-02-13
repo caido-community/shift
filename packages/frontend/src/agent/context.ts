@@ -3,6 +3,7 @@ import type { UIMessageStreamWriter } from "ai";
 import type {
   AgentMode,
   AgentSkill,
+  CustomAgentBinary,
   Model,
   ResolvedCustomAgent,
   Result,
@@ -103,10 +104,10 @@ export class AgentContext {
     return this.store.allowedWorkflowIds;
   }
 
-  get allowedBinaryPaths(): string[] | undefined {
+  get allowedBinaries(): CustomAgentBinary[] | undefined {
     const agent = this.resolvedAgent;
     if (agent !== undefined) {
-      return agent.allowedBinaryPaths;
+      return agent.allowedBinaries;
     }
 
     return undefined;
@@ -267,7 +268,17 @@ export class AgentContext {
     }
 
     if (isPresent(this.resolvedAgent)) {
-      const binaryList = JSON.stringify(this.allowedBinaryPaths ?? [], null, 2);
+      const binaryList = JSON.stringify(
+        (this.allowedBinaries ?? []).map((binary) => ({
+          path: binary.path,
+          instructions:
+            binary.instructions !== undefined && binary.instructions.trim() !== ""
+              ? binary.instructions
+              : undefined,
+        })),
+        null,
+        2
+      );
       parts.push(`<allowed_binaries>\n${binaryList}\n</allowed_binaries>`);
     }
 

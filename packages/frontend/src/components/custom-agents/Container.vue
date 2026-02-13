@@ -5,6 +5,7 @@ import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import Tag from "primevue/tag";
 import Tooltip from "primevue/tooltip";
+import { computed } from "vue";
 
 import AgentForm from "./AgentForm.vue";
 import { useCustomAgents } from "./useCustomAgents";
@@ -23,21 +24,24 @@ const {
 } = useCustomAgents();
 
 const vTooltip = Tooltip;
+const isFormVisible = computed(() => view.value !== "list");
+const activeAgent = computed(() => (view.value === "edit" ? editingAgent.value : undefined));
+
+const availabilitySeverityByScope = {
+  global: "success",
+  project: "warn",
+} as const;
 
 const getAvailabilitySeverity = (scope: "global" | "project") => {
-  return scope === "global" ? "success" : "warn";
+  return availabilitySeverityByScope[scope];
 };
 </script>
 
 <template>
   <AgentForm
-    v-if="view === 'add'"
+    v-if="isFormVisible"
+    :agent="activeAgent"
     @save="handleAdd"
-    @cancel="closeForm" />
-
-  <AgentForm
-    v-else-if="view === 'edit'"
-    :agent="editingAgent"
     @update="handleUpdate"
     @cancel="closeForm" />
 
@@ -135,7 +139,7 @@ const getAvailabilitySeverity = (scope: "global" | "project") => {
             style="width: 90px">
             <template #body="{ data }">
               <span class="text-sm text-surface-400">
-                {{ data.allowedBinaryPaths?.length ?? 0 }}
+                {{ data.allowedBinaries?.length ?? 0 }}
               </span>
             </template>
           </Column>
