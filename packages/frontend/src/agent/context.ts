@@ -43,6 +43,8 @@ type ConvertWorkflowContext = {
 };
 
 const HTTP_REQUEST_CONTEXT_CHARS = 12_000;
+const ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS = 400;
+const ENVIRONMENT_VARIABLES_CONTEXT_CHARS = 8_000;
 const PAYLOAD_BLOB_MAX_COUNT = 20;
 const PAYLOAD_BLOB_MAX_BYTES = 1_000_000;
 const PAYLOAD_BLOB_PREVIEW_CHARS = 200;
@@ -51,6 +53,12 @@ type PayloadBlobMetadata = {
   blobId: string;
   length: number;
   preview: string;
+};
+
+type EnvironmentVariablePromptEntry = {
+  name: string;
+  value: string;
+  valueLength?: number;
 };
 
 export class AgentContext {
@@ -283,6 +291,35 @@ export class AgentContext {
       }));
   }
 
+  private getEnvironmentVariablesPrompt(): string | undefined {
+    const envVars = this.environmentVariables;
+    if (envVars.length === 0) {
+      return undefined;
+    }
+
+    const serialized = JSON.stringify(
+      envVars.map((variable): EnvironmentVariablePromptEntry => {
+        if (variable.isSecret) {
+          return { name: variable.name, value: "[SECRET]" };
+        }
+
+        if (variable.value.length <= ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS) {
+          return { name: variable.name, value: variable.value };
+        }
+
+        return {
+          name: variable.name,
+          value: truncateContextValue(variable.value, ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS),
+          valueLength: variable.value.length,
+        };
+      }),
+      null,
+      2
+    );
+
+    return truncateContextValue(serialized, ENVIRONMENT_VARIABLES_CONTEXT_CHARS);
+  }
+
   toContextPrompt(): string {
     const parts: string[] = [];
 
@@ -364,17 +401,11 @@ export class AgentContext {
       parts.push(`<environments>\n${envList}\n\n${selectedLine}\n</environments>`);
     }
 
-    const envVars = this.environmentVariables;
-    if (envVars.length > 0) {
-      const envList = JSON.stringify(
-        envVars.map((v) => ({
-          name: v.name,
-          value: v.isSecret ? "[SECRET]" : v.value,
-        })),
-        null,
-        2
+    const environmentVariablesPrompt = this.getEnvironmentVariablesPrompt();
+    if (environmentVariablesPrompt !== undefined) {
+      parts.push(
+        `<environment_variables>\n${environmentVariablesPrompt}\n</environment_variables>`
       );
-      parts.push(`<environment_variables>\n${envList}\n</environment_variables>`);
     }
 
     if (parts.length === 0) {

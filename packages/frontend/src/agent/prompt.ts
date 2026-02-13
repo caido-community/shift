@@ -174,6 +174,7 @@ Guidelines:
 <environment_variable_substitution>
 Use the pattern \`§§§Env§EnvironmentName§Variable_Name§§§\` to reference environment variables in tool inputs.
 Example: \`§§§Env§Global§api_token§§§\` will be replaced with the value of \`api_token\` from the \`Global\` environment.
+Environment variable values shown in context may be truncated to manage token usage. Placeholder substitution still uses the full stored value.
 If an environment or variable is not found, the substitution pattern is left as-is.
 
 Use the pattern \`§§§Blob§blobId§§§\` to reference payload blobs created by PayloadBlobCreate in env-enabled tool inputs.
