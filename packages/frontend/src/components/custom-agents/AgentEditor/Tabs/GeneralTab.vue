@@ -24,7 +24,7 @@ const scope = defineModel<SkillScope>("scope", { required: true });
         <InputText
           id="agent-name"
           v-model="name"
-          placeholder="e.g. SQL Injection Tester"
+          placeholder="SQL Injection Tester"
           class="w-full" />
       </div>
 
@@ -37,7 +37,7 @@ const scope = defineModel<SkillScope>("scope", { required: true });
         <InputText
           id="agent-description"
           v-model="description"
-          placeholder="Brief description of what this agent does..."
+          placeholder="Agent dedicated to finding SQL injection vulnerabilities"
           class="w-full" />
       </div>
     </div>

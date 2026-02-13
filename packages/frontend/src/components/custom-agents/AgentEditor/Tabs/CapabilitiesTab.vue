@@ -83,7 +83,6 @@ const handleAllWorkflowsChange = (value: boolean) => {
         <Textarea
           id="agent-instructions"
           v-model="instructions"
-          placeholder="Add specific instructions for this agent..."
           rows="8"
           class="w-full font-mono text-sm" />
       </div>
