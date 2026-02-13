@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useScroll } from "@vueuse/core";
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 
 import { useSession } from "../useSession";
 
@@ -20,6 +20,11 @@ const generatingText = useAnimatedDots("Generating", isSubmitted);
 
 const container = ref<HTMLElement>();
 const { arrivedState } = useScroll(container);
+
+onMounted(async () => {
+  await nextTick();
+  container.value?.scrollTo({ top: container.value.scrollHeight });
+});
 
 watch(
   messages,
