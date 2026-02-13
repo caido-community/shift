@@ -15,6 +15,7 @@ const OpenRouterModelIds = {
   GPT_4_1: "openai/gpt-4.1",
   GROK_4_1_FAST: "x-ai/grok-4.1-fast",
   MINIMAX_M2_1: "minimax/minimax-m2.1",
+  MINIMAX_M2_5: "minimax/minimax-m2.5",
   GLM_5: "z-ai/glm-5",
   KIMI_K2_5: "moonshotai/kimi-k2.5",
 } as const;
@@ -125,6 +126,14 @@ export const openrouterModels: Model[] = [
     },
   },
   {
+    id: OpenRouterModelIds.MINIMAX_M2_5,
+    name: "Minimax M2.5",
+    provider: ModelProvider.OpenRouter,
+    capabilities: {
+      reasoning: true,
+    },
+  },
+  {
     id: OpenRouterModelIds.GLM_5,
     name: "GLM 5",
     provider: ModelProvider.OpenRouter,
@@ -157,6 +166,7 @@ export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
   [OpenRouterModelIds.GEMINI_3_FLASH_PREVIEW_THINKING]: ["agent", "float"],
   [OpenRouterModelIds.GEMINI_3_PRO_PREVIEW]: ["agent", "float"],
   [OpenRouterModelIds.MINIMAX_M2_1]: ["agent", "float"],
+  [OpenRouterModelIds.MINIMAX_M2_5]: ["agent", "float"],
   [OpenRouterModelIds.GLM_5]: ["agent", "float"],
   [OpenRouterModelIds.KIMI_K2_5]: ["agent", "float"],
 };
