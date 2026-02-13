@@ -51,7 +51,7 @@ const getScopeSeverity = (scope: "global" | "project") => {
           <div>
             <h2 class="text-base font-bold">Skills</h2>
             <p class="text-sm text-surface-400">
-              Manage the capabilities available to your agents.
+              Provide specialized knowledge to your custom agents.
             </p>
           </div>
           <div class="flex items-center gap-2">

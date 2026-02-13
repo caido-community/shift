@@ -31,7 +31,9 @@ const handleAllWorkflowsChange = (value: boolean) => {
       <div class="flex flex-col gap-2">
         <div class="flex flex-col gap-0">
           <label class="text-base font-medium text-surface-200">Skills</label>
-          <p class="text-sm text-surface-400">Select reusable skill definitions.</p>
+          <p class="text-sm text-surface-400">
+            Skills provide specialized knowledge to your agent.
+          </p>
         </div>
         <MultiSelect
           v-model="selectedSkillIds"
@@ -45,7 +47,7 @@ const handleAllWorkflowsChange = (value: boolean) => {
       <div class="flex flex-col gap-2">
         <div class="flex flex-col gap-0">
           <label class="text-base font-medium text-surface-200">Convert Workflows</label>
-          <p class="text-sm text-surface-400">Limit convert tools available to this agent.</p>
+          <p class="text-sm text-surface-400">Limit convert workflows available to this agent.</p>
         </div>
         <div class="flex items-center gap-2">
           <Checkbox
