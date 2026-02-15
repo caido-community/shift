@@ -71,12 +71,17 @@ type AgentOptions = {
   context: AgentContext;
   maxIterations: number;
   reasoningEffort: ReasoningEffort;
+  openRouterPrioritizeFastProviders: boolean;
 };
 
 export const createShiftAgent = (options: AgentOptions) => {
-  const { sdk, model, context, maxIterations, reasoningEffort } = options;
+  const { sdk, model, context, maxIterations, reasoningEffort, openRouterPrioritizeFastProviders } =
+    options;
 
-  const caidoModel = createModel(sdk, model, { reasoningEffort });
+  const caidoModel = createModel(sdk, model, {
+    reasoningEffort,
+    openRouterPrioritizeFastProviders,
+  });
   const tools = getToolsForMode(context.mode);
   const agent = new ToolLoopAgent({
     model: caidoModel,

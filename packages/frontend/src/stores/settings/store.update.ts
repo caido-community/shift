@@ -54,6 +54,9 @@ function handleUpdateSuccess(model: SettingsModel, input: UpdateSettingsInput): 
     if (input.autoCreateShiftCollection !== undefined) {
       draft.config.autoCreateShiftCollection = input.autoCreateShiftCollection;
     }
+    if (input.openRouterPrioritizeFastProviders !== undefined) {
+      draft.config.openRouterPrioritizeFastProviders = input.openRouterPrioritizeFastProviders;
+    }
   });
 }
 

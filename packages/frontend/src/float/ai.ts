@@ -88,7 +88,12 @@ export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Pro
     return Result.err("No models available");
   }
 
-  const model = createModel(sdk, modelData, { reasoning: false });
+  const openRouterPrioritizeFastProviders =
+    settingsStore.openRouterPrioritizeFastProviders ?? false;
+  const model = createModel(sdk, modelData, {
+    reasoning: false,
+    openRouterPrioritizeFastProviders,
+  });
   const learnings = learningsStore.entries;
   const prompt = buildPrompt(input, learnings);
 

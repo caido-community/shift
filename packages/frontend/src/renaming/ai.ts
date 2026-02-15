@@ -82,7 +82,9 @@ export async function generateName(
       return Result.err("No models available");
     }
 
-    const model = createModel(sdk, modelData);
+    const openRouterPrioritizeFastProviders =
+      settingsStore.openRouterPrioritizeFastProviders ?? false;
+    const model = createModel(sdk, modelData, { openRouterPrioritizeFastProviders });
 
     const prompt = `
       <entry>

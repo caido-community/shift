@@ -15,6 +15,7 @@ const createTestModel = (): SettingsModel => ({
   },
   debugToolsEnabled: false,
   autoCreateShiftCollection: true,
+  openRouterPrioritizeFastProviders: false,
 });
 
 describe("settings update", () => {
@@ -62,6 +63,17 @@ describe("settings update", () => {
       });
 
       expect(result.maxIterations).toBe(50);
+    });
+
+    it("updates openRouterPrioritizeFastProviders", () => {
+      const model = createTestModel();
+
+      const result = update(model, {
+        type: "UPDATE_SETTINGS",
+        input: { openRouterPrioritizeFastProviders: true },
+      });
+
+      expect(result.openRouterPrioritizeFastProviders).toBe(true);
     });
 
     it("updates renaming config partially", () => {
@@ -178,6 +190,7 @@ describe("settings update", () => {
       expect(model.maxIterations).toBe(35);
       expect(model.renaming.enabled).toBe(false);
       expect(model.renaming.renameAfterSend).toBe(false);
+      expect(model.openRouterPrioritizeFastProviders).toBe(false);
     });
   });
 });
