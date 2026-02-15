@@ -290,6 +290,11 @@ const getHttpHistoryContext = (
 
 export const getContext = (sdk: FrontendSDK): ActionContext => {
   const globalContext = sdk.window.getContext();
+
+  if (!isPresent(globalContext)) {
+    return {};
+  }
+
   const pageContext = globalContext.page;
 
   const context: ActionContext = {};
