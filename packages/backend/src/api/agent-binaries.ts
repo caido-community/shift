@@ -289,7 +289,7 @@ export async function executeAgentBinary(
 
     return await runBinary(sdk, executionId, binaryPath, args, stdin);
   } catch (error) {
-    return Result.err((error as Error).message);
+    return Result.err(error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -311,6 +311,6 @@ export function cancelAgentBinaryExecution(
     child.kill("SIGKILL");
     return Result.ok(undefined);
   } catch (error) {
-    return Result.err((error as Error).message);
+    return Result.err(error instanceof Error ? error.message : String(error));
   }
 }
