@@ -144,6 +144,12 @@ async function runBinary(
   runningExecutions.set(executionId, child);
 
   if (child.stdin !== null) {
+    child.stdin.on("error", (err) => {
+      if (!("code" in err) || err.code !== "EPIPE") {
+        console.error("Unexpected error on child stdin:", err);
+      }
+    });
+
     if (stdin !== undefined) {
       child.stdin.write(stdin);
     }
