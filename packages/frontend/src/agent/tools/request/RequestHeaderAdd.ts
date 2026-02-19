@@ -45,8 +45,14 @@ export const RequestHeaderAdd = tool({
       return ToolResult.err("No HTTP request loaded");
     }
     const resolvedValue = await resolveEnvironmentVariables(context.sdk, value);
-    const after = HttpForge.create(context.httpRequest).addHeader(name, resolvedValue).build();
+    const forge = HttpForge.create(context.httpRequest).addHeader(name, resolvedValue);
+    const after = forge.build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Header "${name}" added` });
+    const headers = forge.getHeaders();
+    const lowerName = name.toLowerCase();
+    const values = headers?.[lowerName] ?? [];
+    return ToolResult.ok({
+      message: `Header "${name}" added\n${values.map((v) => `${name}: ${v}`).join("\n")}`,
+    });
   },
 });

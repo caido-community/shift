@@ -1,6 +1,7 @@
 import type { DefineAPI, SDK } from "caido:plugin";
 
 import {
+  addCustomAgent,
   addDynamicSkill,
   addLearning,
   addModel,
@@ -8,21 +9,25 @@ import {
   clearLearnings,
   getAgent,
   getAgents,
+  getCustomAgentDefinitions,
   getLearnings,
   getModelsConfig,
   getProjectOverride,
   getProjectOverrides,
+  getResolvedCustomAgents,
   getSettings,
   getSkillDefinitions,
   getSkills,
   refreshSkills,
   removeAgent,
+  removeCustomAgent,
   removeLearnings,
   removeModel,
   removeProjectOverride,
   removeSkill,
   setLearnings,
   setProjectOverride,
+  updateCustomAgent,
   updateDynamicSkill,
   updateLearning,
   updateModelConfig,
@@ -35,6 +40,7 @@ import {
 import { setSDK } from "./sdk";
 import {
   getAgentsStore,
+  getCustomAgentsStore,
   getLearningsStore,
   getModelsStore,
   getSettingsStore,
@@ -65,6 +71,11 @@ export type API = DefineAPI<{
   getProjectOverrides: typeof getProjectOverrides;
   setProjectOverride: typeof setProjectOverride;
   removeProjectOverride: typeof removeProjectOverride;
+  getResolvedCustomAgents: typeof getResolvedCustomAgents;
+  getCustomAgentDefinitions: typeof getCustomAgentDefinitions;
+  addCustomAgent: typeof addCustomAgent;
+  updateCustomAgent: typeof updateCustomAgent;
+  removeCustomAgent: typeof removeCustomAgent;
   getSettings: typeof getSettings;
   updateSettings: typeof updateSettings;
   updateRenaming: typeof updateRenaming;
@@ -81,12 +92,14 @@ export function init(sdk: SDK<API>) {
   const modelsStore = getModelsStore();
   const agentsStore = getAgentsStore();
   const skillsStore = getSkillsStore();
+  const customAgentsStore = getCustomAgentsStore();
   const settingsStore = getSettingsStore();
   const learningsStore = getLearningsStore();
 
   modelsStore.initialize();
   agentsStore.initialize();
   skillsStore.initialize();
+  customAgentsStore.initialize();
   settingsStore.initialize();
   learningsStore.initialize();
 
@@ -94,6 +107,7 @@ export function init(sdk: SDK<API>) {
     await agentsStore.switchProject(project?.getId());
     await learningsStore.switchProject(project?.getId());
     skillsStore.switchProject(project?.getId());
+    customAgentsStore.switchProject(project?.getId());
   });
 
   sdk.api.register("getModelsConfig", getModelsConfig);
@@ -119,6 +133,12 @@ export function init(sdk: SDK<API>) {
   sdk.api.register("getProjectOverrides", getProjectOverrides);
   sdk.api.register("setProjectOverride", setProjectOverride);
   sdk.api.register("removeProjectOverride", removeProjectOverride);
+
+  sdk.api.register("getResolvedCustomAgents", getResolvedCustomAgents);
+  sdk.api.register("getCustomAgentDefinitions", getCustomAgentDefinitions);
+  sdk.api.register("addCustomAgent", addCustomAgent);
+  sdk.api.register("updateCustomAgent", updateCustomAgent);
+  sdk.api.register("removeCustomAgent", removeCustomAgent);
 
   sdk.api.register("getSettings", getSettings);
   sdk.api.register("updateSettings", updateSettings);

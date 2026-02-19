@@ -44,8 +44,17 @@ export const RequestPathSet = tool({
       return ToolResult.err("No HTTP request loaded");
     }
     const resolvedPath = await resolveEnvironmentVariables(context.sdk, path);
-    const after = HttpForge.create(context.httpRequest).path(resolvedPath).build();
+    if (resolvedPath.includes("?")) {
+      return ToolResult.err(
+        "Path must not include query string. Use RequestQuerySet for query parameters or RequestQueryAdd when you want to add the same parameter multiple times."
+      );
+    }
+    const forge = HttpForge.create(context.httpRequest).path(resolvedPath);
+    const after = forge.build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Path set to "${resolvedPath}"` });
+    const method = forge.getMethod() ?? "GET";
+    const query = forge.getQuery();
+    const fullPath = query !== null ? `${resolvedPath}?${query}` : resolvedPath;
+    return ToolResult.ok({ message: `Path set to "${resolvedPath}"\n${method} ${fullPath}` });
   },
 });

@@ -3,6 +3,8 @@ import { type Model, ModelProvider, type ModelUsageType } from "shared";
 const OpenRouterModelIds = {
   CLAUDE_OPUS_4_5: "anthropic/claude-opus-4.5",
   CLAUDE_OPUS_4_5_THINKING: "anthropic/claude-opus-4.5:thinking",
+  CLAUDE_OPUS_4_6: "anthropic/claude-opus-4.6",
+  CLAUDE_OPUS_4_6_THINKING: "anthropic/claude-opus-4.6:thinking",
   CLAUDE_SONNET_4_5: "anthropic/claude-sonnet-4.5",
   CLAUDE_SONNET_4_5_THINKING: "anthropic/claude-sonnet-4.5:thinking",
   GEMINI_3_FLASH_PREVIEW: "google/gemini-3-flash-preview",
@@ -13,11 +15,28 @@ const OpenRouterModelIds = {
   GPT_4_1: "openai/gpt-4.1",
   GROK_4_1_FAST: "x-ai/grok-4.1-fast",
   MINIMAX_M2_1: "minimax/minimax-m2.1",
-  GLM_4_7: "z-ai/glm-4.7",
+  MINIMAX_M2_5: "minimax/minimax-m2.5",
+  GLM_5: "z-ai/glm-5",
   KIMI_K2_5: "moonshotai/kimi-k2.5",
 } as const;
 
 export const openrouterModels: Model[] = [
+  {
+    id: OpenRouterModelIds.CLAUDE_OPUS_4_6,
+    name: "Opus 4.6",
+    provider: ModelProvider.OpenRouter,
+    capabilities: {
+      reasoning: false,
+    },
+  },
+  {
+    id: OpenRouterModelIds.CLAUDE_OPUS_4_6_THINKING,
+    name: "Opus 4.6 Thinking",
+    provider: ModelProvider.OpenRouter,
+    capabilities: {
+      reasoning: true,
+    },
+  },
   {
     id: OpenRouterModelIds.CLAUDE_OPUS_4_5,
     name: "Opus 4.5",
@@ -107,8 +126,16 @@ export const openrouterModels: Model[] = [
     },
   },
   {
-    id: OpenRouterModelIds.GLM_4_7,
-    name: "GLM 4.7",
+    id: OpenRouterModelIds.MINIMAX_M2_5,
+    name: "Minimax M2.5",
+    provider: ModelProvider.OpenRouter,
+    capabilities: {
+      reasoning: true,
+    },
+  },
+  {
+    id: OpenRouterModelIds.GLM_5,
+    name: "GLM 5",
     provider: ModelProvider.OpenRouter,
     capabilities: {
       reasoning: true,
@@ -125,6 +152,8 @@ export const openrouterModels: Model[] = [
 ];
 
 export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
+  [OpenRouterModelIds.CLAUDE_OPUS_4_6]: ["agent", "float"],
+  [OpenRouterModelIds.CLAUDE_OPUS_4_6_THINKING]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_OPUS_4_5]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_OPUS_4_5_THINKING]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_SONNET_4_5]: ["agent", "float"],
@@ -137,6 +166,7 @@ export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
   [OpenRouterModelIds.GEMINI_3_FLASH_PREVIEW_THINKING]: ["agent", "float"],
   [OpenRouterModelIds.GEMINI_3_PRO_PREVIEW]: ["agent", "float"],
   [OpenRouterModelIds.MINIMAX_M2_1]: ["agent", "float"],
-  [OpenRouterModelIds.GLM_4_7]: ["agent", "float"],
+  [OpenRouterModelIds.MINIMAX_M2_5]: ["agent", "float"],
+  [OpenRouterModelIds.GLM_5]: ["agent", "float"],
   [OpenRouterModelIds.KIMI_K2_5]: ["agent", "float"],
 };

@@ -45,8 +45,12 @@ export const RequestCookieAdd = tool({
       return ToolResult.err("No HTTP request loaded");
     }
     const resolvedValue = await resolveEnvironmentVariables(context.sdk, value);
-    const after = HttpForge.create(context.httpRequest).addCookie(name, resolvedValue).build();
+    const forge = HttpForge.create(context.httpRequest).addCookie(name, resolvedValue);
+    const after = forge.build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: `Cookie "${name}" added` });
+    const cookieHeader = forge.getHeader("Cookie");
+    return ToolResult.ok({
+      message: `Cookie "${name}" added\nCookie: ${cookieHeader ?? "(empty)"}`,
+    });
   },
 });

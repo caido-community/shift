@@ -1,4 +1,9 @@
-import { type Result, type ShiftMessage, type StoredAgent } from "shared";
+import {
+  type Result,
+  type ShiftMessage,
+  type StoredAgent,
+  type StoredAgentSessionState,
+} from "shared";
 
 import { getAgentsStore } from "../stores";
 import { type BackendSDK } from "../types";
@@ -42,12 +47,13 @@ export function getAgents(_sdk: BackendSDK): Result<StoredAgent[]> {
 export function writeAgent(
   _sdk: BackendSDK,
   chatID: string,
-  messages: ShiftMessage[]
+  messages: ShiftMessage[],
+  sessionState: StoredAgentSessionState | undefined
 ): Result<void> {
   try {
     const store = getAgentsStore();
     const normalizedMessages = normalizeMessages(messages);
-    store.writeAgent(chatID, normalizedMessages);
+    store.writeAgent(chatID, normalizedMessages, sessionState);
     return { kind: "Ok", value: undefined };
   } catch (error) {
     return { kind: "Error", error: (error as Error).message };

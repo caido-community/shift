@@ -2,6 +2,7 @@
 import Button from "primevue/button";
 import Checkbox from "primevue/checkbox";
 import Popover from "primevue/popover";
+import Select from "primevue/select";
 import { ref } from "vue";
 
 import type { LaunchDialogProps } from "./types";
@@ -9,17 +10,23 @@ import { useLaunchDialog } from "./useLaunchDialog";
 
 import { ModelSelector } from "@/components/agent/ChatInput/ModelSelector";
 
-const { onConfirm, onCancel, initialSkillIds } = defineProps<LaunchDialogProps>();
+const { onConfirm, onCancel, initialSkillIds, initialCustomAgentId } =
+  defineProps<LaunchDialogProps>();
 
 const {
   entries,
   instructions,
   maxIterations,
   selectedModel,
+  selectedCustomAgentId,
+  selectedAgent,
+  hasAgent,
   availableModels,
   skillOptions,
+  agentOptions,
   isSkillSelected,
   toggleSkill,
+  selectAgent,
   addEmptyEntry,
   removeEntry,
   handleConfirm,
@@ -30,11 +37,16 @@ const {
   onConfirm,
   onCancel,
   initialSkillIds,
+  initialCustomAgentId,
 });
 
 const skillsPopoverRef = ref<InstanceType<typeof Popover>>();
 const onToggleSkillsPopover = (event: MouseEvent) => {
   skillsPopoverRef.value?.toggle(event);
+};
+
+const handleAgentChange = (value: string | undefined) => {
+  selectAgent(value === "" ? undefined : value);
 };
 </script>
 
@@ -62,6 +74,33 @@ const onToggleSkillsPopover = (event: MouseEvent) => {
     </div>
 
     <section class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-surface-200">Agent</label>
+      <Select
+        :model-value="selectedCustomAgentId ?? ''"
+        :options="[
+          { label: 'No Agent', value: '' },
+          ...agentOptions.map((a) => ({ label: a.name, value: a.id })),
+        ]"
+        option-label="label"
+        option-value="value"
+        placeholder="Select an agent..."
+        class="w-full"
+        @update:model-value="handleAgentChange" />
+      <div
+        v-if="selectedAgent !== undefined"
+        class="flex items-center gap-2 text-xs text-surface-400">
+        <span>{{ selectedAgent.skills.length }} skills</span>
+        <span>{{
+          selectedAgent.allowedWorkflowIds === undefined
+            ? "All workflows"
+            : `${selectedAgent.allowedWorkflowIds.length} workflows`
+        }}</span>
+      </div>
+    </section>
+
+    <section
+      v-if="!hasAgent"
+      class="flex flex-col gap-2">
       <div class="flex items-center justify-between">
         <label class="text-sm font-medium text-surface-200">Skills</label>
       </div>

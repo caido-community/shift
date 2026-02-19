@@ -39,6 +39,14 @@ const testModel = {
 };
 
 describe("session update", () => {
+  describe("createInitialModel", () => {
+    it("sets default reasoning effort to medium", () => {
+      const model = createInitialModel();
+
+      expect(model.reasoningEffort).toBe("medium");
+    });
+  });
+
   describe("SET_MODEL", () => {
     it("sets the model", () => {
       const model = createInitialModel();
@@ -70,6 +78,32 @@ describe("session update", () => {
 
       expect(result.draftMessage).toBe("test draft");
       expect(result.httpRequest).toBe("test request");
+    });
+  });
+
+  describe("SET_REASONING_EFFORT", () => {
+    it("sets reasoning effort", () => {
+      const model = createInitialModel();
+
+      const result = asSessionModel(
+        update(model, { type: "SET_REASONING_EFFORT", reasoningEffort: "low" })
+      );
+
+      expect(result.reasoningEffort).toBe("low");
+    });
+
+    it("does not modify other state", () => {
+      const model: SessionModel = {
+        ...createInitialModel(),
+        draftMessage: "test draft",
+      };
+
+      const result = asSessionModel(
+        update(model, { type: "SET_REASONING_EFFORT", reasoningEffort: "medium" })
+      );
+
+      expect(result.draftMessage).toBe("test draft");
+      expect(result.reasoningEffort).toBe("medium");
     });
   });
 

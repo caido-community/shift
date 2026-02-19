@@ -51,8 +51,13 @@ export const RequestBodySet = tool({
       return ToolResult.err("No HTTP request loaded");
     }
     const resolvedBody = await resolveEnvironmentVariables(context.sdk, body);
-    const after = HttpForge.create(context.httpRequest).body(resolvedBody).build();
+    const forge = HttpForge.create(context.httpRequest).body(resolvedBody);
+    const after = forge.build();
     context.setHttpRequest(after);
-    return ToolResult.ok({ message: "Request body updated" });
+    const finalBody = forge.getBody() ?? "";
+    const preview = finalBody.length === 0 ? "(empty)" : truncate(finalBody, 200);
+    return ToolResult.ok({
+      message: `Request body updated\nBody (${finalBody.length} bytes): ${preview}`,
+    });
   },
 });

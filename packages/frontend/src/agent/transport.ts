@@ -11,7 +11,11 @@ import type { FrontendSDK } from "../types";
 
 import { createShiftAgent } from "@/agent/agent";
 import type { AgentContext } from "@/agent/context";
-import { findLastUserMessageId, stripUnfinishedToolCalls } from "@/agent/utils/messages";
+import {
+  findLastUserMessageId,
+  stripReasoningParts,
+  stripUnfinishedToolCalls,
+} from "@/agent/utils/messages";
 import { type SessionStore } from "@/stores/agent/session";
 import { useSettingsStore } from "@/stores/settings/store";
 import { isProviderConfigured, ProviderNotConfiguredError } from "@/utils/ai";
@@ -71,16 +75,20 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
         }
 
         const settingsStore = useSettingsStore();
+        const maxIterations = settingsStore.maxIterations ?? 35;
         const agent = createShiftAgent({
           sdk: this.sdk,
           model: model,
           context: context,
-          maxIterations: settingsStore.maxIterations ?? 35,
+          maxIterations,
+          reasoningEffort: this.store.reasoningEffort,
         });
 
-        const sanitizedMessages = stripUnfinishedToolCalls(options.messages);
+        const sanitizedMessages = stripReasoningParts(stripUnfinishedToolCalls(options.messages));
+        const modelMessages = await convertToModelMessages(sanitizedMessages);
+
         const result = await agent.stream({
-          messages: await convertToModelMessages(sanitizedMessages),
+          messages: modelMessages,
           abortSignal: options.abortSignal,
         });
 

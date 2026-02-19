@@ -47,6 +47,19 @@ export class AgentSession {
       }
     );
 
+    watch(
+      () => [this.store.mode, this.store.selectedCustomAgentId] as const,
+      ([mode, agentId], [prevMode, prevAgentId]) => {
+        if (!this.isInitialized) {
+          return;
+        }
+        if (mode === prevMode && agentId === prevAgentId) {
+          return;
+        }
+        this.persistMessages();
+      }
+    );
+
     this.loadPersistedMessages();
   }
 
@@ -56,12 +69,25 @@ export class AgentSession {
     const result = await this.sdk.backend.getAgent(this.id);
     if (result.kind === "Ok" && result.value !== undefined) {
       this.chat.messages = result.value.messages;
+      if (result.value.sessionState?.mode !== undefined) {
+        this.store.setMode(result.value.sessionState.mode);
+      }
+      if (result.value.sessionState?.selectedCustomAgentId !== undefined) {
+        this.store.dispatch({
+          type: "SET_CUSTOM_AGENT",
+          agentId: result.value.sessionState.selectedCustomAgentId,
+          allowedWorkflowIds: undefined,
+        });
+      }
     }
     this.isInitialized = true;
   }
 
   async persistMessages(): Promise<void> {
-    const result = await this.sdk.backend.writeAgent(this.id, this.chat.messages);
+    const result = await this.sdk.backend.writeAgent(this.id, this.chat.messages, {
+      mode: this.store.mode,
+      selectedCustomAgentId: this.store.selectedCustomAgentId,
+    });
     if (result.kind === "Error") {
       console.error("Failed to persist agent messages:", result.error);
       return;

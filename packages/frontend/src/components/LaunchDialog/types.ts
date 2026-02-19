@@ -7,6 +7,7 @@ export type SelectionEntry = {
 };
 
 export type LaunchDialogResult = {
+  customAgentId: string | undefined;
   model: Model | undefined;
   selectedSkillIds: string[];
   maxIterations: number;
@@ -21,4 +22,5 @@ export type LaunchDialogProps = {
   onConfirm: (result: LaunchDialogResult) => void;
   onCancel: () => void;
   initialSkillIds?: string[];
+  initialCustomAgentId?: string;
 };

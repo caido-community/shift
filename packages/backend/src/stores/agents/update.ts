@@ -9,14 +9,24 @@ function handleWriteAgent(
   if (existingIndex !== -1) {
     return model.map((agent, index) =>
       index === existingIndex
-        ? { chatID: message.chatID, messages: message.messages, updatedAt: message.updatedAt }
+        ? {
+            chatID: message.chatID,
+            messages: message.messages,
+            updatedAt: message.updatedAt,
+            sessionState: message.sessionState,
+          }
         : agent
     );
   }
 
   return [
     ...model,
-    { chatID: message.chatID, messages: message.messages, updatedAt: message.updatedAt },
+    {
+      chatID: message.chatID,
+      messages: message.messages,
+      updatedAt: message.updatedAt,
+      sessionState: message.sessionState,
+    },
   ];
 }
 

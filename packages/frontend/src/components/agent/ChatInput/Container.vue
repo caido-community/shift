@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import Button from "primevue/button";
 
+import { AgentSelector } from "./AgentSelector";
 import { ModelSelector } from "./ModelSelector";
-import { SkillsSelector } from "./SkillsSelector";
+import { ModeSelector } from "./ModeSelector";
 import { useChatInput } from "./useChatInput";
 
 const {
@@ -13,6 +14,7 @@ const {
   agentModels,
   isGenerating,
   hasProviderConfigured,
+  reasoningEffort,
   canSend,
   handleSend,
   handleStop,
@@ -51,16 +53,19 @@ const {
         autocapitalize="off"
         @keydown="handleKeydown" />
 
-      <div class="flex gap-2 items-center min-w-0">
-        <div class="flex gap-2 shrink-0">
+      <div class="flex items-center justify-between min-w-0">
+        <div class="flex items-center gap-2 shrink-0">
           <ModelSelector
             v-model="model"
+            v-model:reasoning-effort="reasoningEffort"
             :models="agentModels"
+            reasoning-mode="variant"
             :disabled="isGenerating || !hasProviderConfigured" />
+          <ModeSelector />
+          <AgentSelector />
         </div>
 
-        <div class="flex items-center gap-2 min-w-0 flex-1 justify-end">
-          <SkillsSelector />
+        <div class="shrink-0 flex items-center gap-2">
           <Button
             v-if="!isGenerating"
             severity="tertiary"

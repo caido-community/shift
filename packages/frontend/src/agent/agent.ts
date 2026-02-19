@@ -1,12 +1,12 @@
 import { stepCountIs, ToolLoopAgent } from "ai";
-import { type Model } from "shared";
+import type { AgentMode, Model } from "shared";
 
 import type { AgentContext } from "@/agent/context";
-import { BASE_SYSTEM_PROMPT } from "@/agent/prompt";
+import { BASE_SYSTEM_PROMPT, WILDCARD_MODE_PROMPT } from "@/agent/prompt";
 import { shiftAgentTools } from "@/agent/tools";
 import { trimOldToolCalls } from "@/agent/utils/messages";
 import { type FrontendSDK } from "@/types";
-import { createModel } from "@/utils/ai";
+import { createModel, type ReasoningEffort } from "@/utils/ai";
 
 type BuildInstructionsOptions = {
   context: AgentContext;
@@ -19,9 +19,20 @@ function isGeminiModel(model: Model): boolean {
   return model.id.toLowerCase().includes("gemini");
 }
 
+function getToolsForMode(mode: AgentMode) {
+  const tools = { ...shiftAgentTools };
+  return tools;
+}
+
+const RECENT_TOOL_MESSAGES = 15;
+
 function buildInstructions(options: BuildInstructionsOptions): string {
   const { context, steps, maxSteps, model } = options;
   const parts: string[] = [BASE_SYSTEM_PROMPT];
+
+  if (context.mode === "wildcard") {
+    parts.push(WILDCARD_MODE_PROMPT);
+  }
 
   // TODO: temporary fix, seems like signatures are broken when agent returns multiple toolcalls
   if (isGeminiModel(model)) {
@@ -59,12 +70,14 @@ type AgentOptions = {
   model: Model;
   context: AgentContext;
   maxIterations: number;
+  reasoningEffort: ReasoningEffort;
 };
 
 export const createShiftAgent = (options: AgentOptions) => {
-  const { sdk, model, context, maxIterations } = options;
+  const { sdk, model, context, maxIterations, reasoningEffort } = options;
 
-  const caidoModel = createModel(sdk, model);
+  const caidoModel = createModel(sdk, model, { reasoningEffort });
+  const tools = getToolsForMode(context.mode);
   const agent = new ToolLoopAgent({
     model: caidoModel,
     instructions: buildInstructions({
@@ -73,7 +86,7 @@ export const createShiftAgent = (options: AgentOptions) => {
       maxSteps: maxIterations,
       model,
     }),
-    tools: shiftAgentTools,
+    tools,
     toolChoice: "auto",
     stopWhen: stepCountIs(maxIterations),
     maxRetries: 3,
@@ -81,7 +94,7 @@ export const createShiftAgent = (options: AgentOptions) => {
     // Trim old tool calls/results to reduce context size while preserving text content
     prepareStep: ({ messages, ...settings }) => ({
       ...settings,
-      messages: trimOldToolCalls(messages, 15),
+      messages: trimOldToolCalls(messages, RECENT_TOOL_MESSAGES),
       system: buildInstructions({
         context,
         steps: settings.steps.length,

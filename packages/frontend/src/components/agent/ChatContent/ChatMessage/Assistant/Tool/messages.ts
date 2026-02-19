@@ -16,8 +16,10 @@ import { display as requestHeaderRemoveDisplay } from "@/agent/tools/request/Req
 import { display as requestHeaderSetDisplay } from "@/agent/tools/request/RequestHeaderSet";
 import { display as requestMethodSetDisplay } from "@/agent/tools/request/RequestMethodSet";
 import { display as requestPathSetDisplay } from "@/agent/tools/request/RequestPathSet";
+import { display as requestQueryAddDisplay } from "@/agent/tools/request/RequestQueryAdd";
 import { display as requestQueryRemoveDisplay } from "@/agent/tools/request/RequestQueryRemove";
 import { display as requestQuerySetDisplay } from "@/agent/tools/request/RequestQuerySet";
+import { display as requestRangeReadDisplay } from "@/agent/tools/request/RequestRangeRead";
 import { display as requestRawEditDisplay } from "@/agent/tools/request/RequestRawEdit";
 import { display as requestRawSetDisplay } from "@/agent/tools/request/RequestRawSet";
 import { display as requestSendDisplay } from "@/agent/tools/request/RequestSend";
@@ -46,8 +48,10 @@ const configs = {
   RequestHeaderSet: requestHeaderSetDisplay,
   RequestMethodSet: requestMethodSetDisplay,
   RequestPathSet: requestPathSetDisplay,
+  RequestQueryAdd: requestQueryAddDisplay,
   RequestQueryRemove: requestQueryRemoveDisplay,
   RequestQuerySet: requestQuerySetDisplay,
+  RequestRangeRead: requestRangeReadDisplay,
   RequestRawEdit: requestRawEditDisplay,
   RequestRawSet: requestRawSetDisplay,
   RequestSend: requestSendDisplay,

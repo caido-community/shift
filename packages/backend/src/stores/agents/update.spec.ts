@@ -23,6 +23,7 @@ describe("agents update", () => {
         chatID: "chat-1",
         messages,
         updatedAt,
+        sessionState: undefined,
       });
 
       expect(result).toHaveLength(1);
@@ -42,6 +43,7 @@ describe("agents update", () => {
         chatID: "chat-1",
         messages: newMessages,
         updatedAt: newUpdatedAt,
+        sessionState: undefined,
       });
 
       expect(result).toHaveLength(1);
@@ -62,6 +64,7 @@ describe("agents update", () => {
         chatID: "chat-1",
         messages: newMessages,
         updatedAt: 2000,
+        sessionState: undefined,
       });
 
       expect(result).toHaveLength(2);
@@ -77,6 +80,7 @@ describe("agents update", () => {
         chatID: "chat-1",
         messages: [],
         updatedAt: Date.now(),
+        sessionState: undefined,
       });
 
       expect(result).not.toBe(model);

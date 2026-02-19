@@ -36,7 +36,7 @@ function handleRevertConfirm() {
 
 <template>
   <div
-    class="group relative p-3 rounded-lg bg-surface-900 border border-surface-700 transition-colors duration-100 select-text"
+    class="group relative max-h-64 overflow-y-auto p-3 rounded-lg bg-surface-900 border border-surface-700 transition-colors duration-100 select-text"
     :class="{ 'cursor-pointer hover:border-surface-500': !isGenerating }"
     @dblclick="handleDoubleClick">
     <button

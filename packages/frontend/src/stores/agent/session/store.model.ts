@@ -1,6 +1,7 @@
-import type { Model, Result } from "shared";
+import type { AgentMode, Model, Result } from "shared";
 
 import type { QueuedMessage, Todo } from "@/agent/types";
+import type { ReasoningEffort } from "@/utils/ai";
 
 export type Snapshot = {
   messageId: string;
@@ -15,6 +16,10 @@ export type SessionModel = {
   httpRequest: string;
   snapshots: Snapshot[];
   selectedSkillIds: string[];
+  selectedCustomAgentId: string | undefined;
+  mode: AgentMode;
+  allowedWorkflowIds: string[] | undefined;
+  reasoningEffort: ReasoningEffort;
 };
 
 export function createInitialModel(): SessionModel {
@@ -26,6 +31,10 @@ export function createInitialModel(): SessionModel {
     httpRequest: "",
     snapshots: [],
     selectedSkillIds: [],
+    selectedCustomAgentId: undefined,
+    mode: "focus",
+    allowedWorkflowIds: undefined,
+    reasoningEffort: "medium",
   };
 }
 
@@ -44,7 +53,15 @@ export type SessionMessage =
   | { type: "CREATE_SNAPSHOT"; messageId: string }
   | { type: "RESTORE_SNAPSHOT"; messageId: string }
   | { type: "SET_SELECTED_SKILL_IDS"; ids: string[] }
-  | { type: "TOGGLE_SKILL"; id: string };
+  | { type: "TOGGLE_SKILL"; id: string }
+  | { type: "SET_MODE"; mode: AgentMode }
+  | { type: "SET_REASONING_EFFORT"; reasoningEffort: ReasoningEffort }
+  | {
+      type: "SET_CUSTOM_AGENT";
+      agentId: string;
+      allowedWorkflowIds: string[] | undefined;
+    }
+  | { type: "CLEAR_CUSTOM_AGENT" };
 
 export type SessionUpdateResultWithValue<T> = { model: SessionModel; result: Result<T> };
 
