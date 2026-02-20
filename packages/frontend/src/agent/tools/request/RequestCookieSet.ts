@@ -3,13 +3,17 @@ import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
+import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { resolveEnvironmentVariables } from "@/agent/utils/environment";
 import { truncate, withSuffix } from "@/utils";
 
 const inputSchema = z.object({
   name: z.string().describe("The cookie name"),
-  value: z.string().describe("The cookie value. Supports environment variable substitution"),
+  value: z
+    .string()
+    .describe(
+      "The cookie value. Supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§"
+    ),
 });
 
 const outputSchema = ToolResult.schema();
@@ -41,7 +45,7 @@ export const display = {
 
 export const RequestCookieSet = tool({
   description:
-    "Set or replace a cookie value in the Cookie header of the current HTTP request. If the cookie already exists, its value is replaced; if it doesn't exist, it's added. Use this for modifying session tokens, swapping user contexts, or injecting test values into existing cookies. The value supports environment variable substitution using {{VAR_NAME}} syntax. Pass an empty string as the value to set a cookie with no value. For adding duplicate cookies (unusual but sometimes needed for testing), use RequestCookieAdd instead. This tool will fail if no HTTP request is currently loaded.",
+    "Set or replace a cookie value in the Cookie header of the current HTTP request. If the cookie already exists, its value is replaced; if it doesn't exist, it's added. Use this for modifying session tokens, swapping user contexts, or injecting test values into existing cookies. The value supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Pass an empty string as the value to set a cookie with no value. For adding duplicate cookies (unusual but sometimes needed for testing), use RequestCookieAdd instead. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
   execute: async ({ name, value }, { experimental_context }): Promise<RequestCookieSetOutput> => {
@@ -49,7 +53,11 @@ export const RequestCookieSet = tool({
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
-    const resolvedValue = await resolveEnvironmentVariables(context.sdk, value);
+    const resolvedValueResult = await resolveToolInputPlaceholders(context, value);
+    if (resolvedValueResult.kind === "Error") {
+      return ToolResult.err("Failed to resolve placeholders", resolvedValueResult.error);
+    }
+    const resolvedValue = resolvedValueResult.value;
     const forge = HttpForge.create(context.httpRequest).setCookie(name, resolvedValue);
     const after = forge.build();
     context.setHttpRequest(after);

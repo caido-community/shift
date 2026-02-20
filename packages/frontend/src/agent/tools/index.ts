@@ -3,6 +3,7 @@ import { EnvironmentCreate, EnvironmentRemove, EnvironmentUpdate } from "./envir
 import { FindingsCreate } from "./findings";
 import { HistorySearch } from "./history";
 import { LearningAdd, LearningRemove, LearningUpdate } from "./learnings";
+import { PayloadBlobCreate } from "./payload";
 import { ReplayEntryNavigate } from "./replay";
 import {
   RequestBodySet,
@@ -28,6 +29,7 @@ import { WorkflowConvertList, WorkflowConvertRun } from "./workflows";
 
 export const shiftAgentTools = {
   BinaryExecRun,
+  PayloadBlobCreate,
   TodoAdd,
   TodoComplete,
   TodoRemove,

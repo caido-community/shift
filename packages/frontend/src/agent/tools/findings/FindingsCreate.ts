@@ -2,8 +2,8 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
+import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { resolveEnvironmentVariables } from "@/agent/utils/environment";
 
 const inputSchema = z.object({
   title: z
@@ -42,15 +42,23 @@ export const display = {
 
 export const FindingsCreate = tool({
   description:
-    "Create a security finding to document a discovered vulnerability, interesting behavior, or notable observation. Findings are linked to the current request in the replay session and appear in Caido's Findings panel for the user to review. Use this when you discover something the user should know about - SQL injection, XSS, authentication bypass, information disclosure, or any security-relevant behavior. The title should be concise (e.g., 'Reflected XSS in search parameter'). The markdown description should include details about the vulnerability, how to reproduce it, and potential impact. Both title and markdown support environment variable substitution using {{VAR_NAME}} syntax. Returns the created finding's ID.",
+    "Create a security finding to document a discovered vulnerability, interesting behavior, or notable observation. Findings are linked to the current request in the replay session and appear in Caido's Findings panel for the user to review. Use this when you discover something the user should know about - SQL injection, XSS, authentication bypass, information disclosure, or any security-relevant behavior. The title should be concise (e.g., 'Reflected XSS in search parameter'). The markdown description should include details about the vulnerability, how to reproduce it, and potential impact. Both title and markdown support placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Returns the created finding's ID.",
   inputSchema,
   outputSchema,
   execute: async ({ title, markdown }, { experimental_context }): Promise<FindingsCreateOutput> => {
     const context = experimental_context as AgentContext;
     const sdk = context.sdk;
 
-    const resolvedTitle = await resolveEnvironmentVariables(sdk, title);
-    const resolvedMarkdown = await resolveEnvironmentVariables(sdk, markdown);
+    const resolvedTitleResult = await resolveToolInputPlaceholders(context, title);
+    if (resolvedTitleResult.kind === "Error") {
+      return ToolResult.err("Failed to resolve placeholders", resolvedTitleResult.error);
+    }
+    const resolvedMarkdownResult = await resolveToolInputPlaceholders(context, markdown);
+    if (resolvedMarkdownResult.kind === "Error") {
+      return ToolResult.err("Failed to resolve placeholders", resolvedMarkdownResult.error);
+    }
+    const resolvedTitle = resolvedTitleResult.value;
+    const resolvedMarkdown = resolvedMarkdownResult.value;
 
     const sessionResult = await sdk.graphql.replaySessionEntries({
       id: context.sessionId,

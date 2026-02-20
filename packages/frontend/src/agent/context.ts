@@ -19,6 +19,7 @@ import { useSkillsStore } from "@/stores/skills";
 import { type FrontendSDK } from "@/types";
 import { writeToRequestEditor } from "@/utils/caido";
 import { isPresent } from "@/utils/optional";
+import { truncate } from "@/utils/text";
 
 type EnvironmentInfo = {
   id: string;
@@ -42,11 +43,29 @@ type ConvertWorkflowContext = {
 };
 
 const HTTP_REQUEST_CONTEXT_CHARS = 12_000;
+const ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS = 400;
+const ENVIRONMENT_VARIABLES_CONTEXT_CHARS = 8_000;
+const PAYLOAD_BLOB_MAX_COUNT = 20;
+const PAYLOAD_BLOB_MAX_BYTES = 1_000_000;
+const PAYLOAD_BLOB_PREVIEW_CHARS = 200;
+
+type PayloadBlobMetadata = {
+  blobId: string;
+  length: number;
+  preview: string;
+};
+
+type EnvironmentVariablePromptEntry = {
+  name: string;
+  value: string;
+  valueLength?: number;
+};
 
 export class AgentContext {
   private readonly _sdk: FrontendSDK;
   private readonly replaySessionId: string;
   private readonly store: SessionStore;
+  private readonly payloadBlobs = new Map<string, string>();
   private streamWriter: UIMessageStreamWriter<ShiftMessage> | undefined;
   private skillsGetter: () => AgentSkill[];
   private environmentsContext: EnvironmentsContext | undefined;
@@ -176,6 +195,41 @@ export class AgentContext {
     this.streamWriter = writer;
   }
 
+  createPayloadBlob(content: string): PayloadBlobMetadata {
+    if (this.payloadBlobs.size >= PAYLOAD_BLOB_MAX_COUNT) {
+      throw new Error(
+        `Cannot create more than ${PAYLOAD_BLOB_MAX_COUNT} payload blobs in one run. Reuse an existing blobId or finish this run and start a new one.`
+      );
+    }
+
+    const bytes = new TextEncoder().encode(content).length;
+    if (bytes > PAYLOAD_BLOB_MAX_BYTES) {
+      throw new Error(
+        `Payload blob is ${bytes} bytes, exceeding the ${PAYLOAD_BLOB_MAX_BYTES}-byte limit. Generate a smaller payload or split it into multiple blobs.`
+      );
+    }
+
+    let blobId = "";
+    do {
+      blobId = `blob-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+    } while (this.payloadBlobs.has(blobId));
+
+    this.payloadBlobs.set(blobId, content);
+    return {
+      blobId,
+      length: content.length,
+      preview: truncate(content, PAYLOAD_BLOB_PREVIEW_CHARS),
+    };
+  }
+
+  getPayloadBlob(blobId: string): string | undefined {
+    return this.payloadBlobs.get(blobId);
+  }
+
+  clearPayloadBlobs(): void {
+    this.payloadBlobs.clear();
+  }
+
   get environmentVariables(): EnvironmentVariable[] {
     return this._sdk.env.getVars();
   }
@@ -237,6 +291,35 @@ export class AgentContext {
       }));
   }
 
+  private getEnvironmentVariablesPrompt(): string | undefined {
+    const envVars = this.environmentVariables;
+    if (envVars.length === 0) {
+      return undefined;
+    }
+
+    const serialized = JSON.stringify(
+      envVars.map((variable): EnvironmentVariablePromptEntry => {
+        if (variable.isSecret) {
+          return { name: variable.name, value: "[SECRET]" };
+        }
+
+        if (variable.value.length <= ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS) {
+          return { name: variable.name, value: variable.value };
+        }
+
+        return {
+          name: variable.name,
+          value: truncateContextValue(variable.value, ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS),
+          valueLength: variable.value.length,
+        };
+      }),
+      null,
+      2
+    );
+
+    return truncateContextValue(serialized, ENVIRONMENT_VARIABLES_CONTEXT_CHARS);
+  }
+
   toContextPrompt(): string {
     const parts: string[] = [];
 
@@ -245,6 +328,19 @@ export class AgentContext {
         .map((t) => `- [${t.completed ? "completed" : "pending"}] (id: ${t.id}) ${t.content}`)
         .join("\n");
       parts.push(`<todos>\n${todoList}\n</todos>`);
+    }
+
+    if (this.payloadBlobs.size > 0) {
+      const blobList = JSON.stringify(
+        [...this.payloadBlobs.entries()].map(([blobId, value]) => ({
+          blobId,
+          length: value.length,
+          preview: truncate(value, 80),
+        })),
+        null,
+        2
+      );
+      parts.push(`<payload_blobs>\n${blobList}\n</payload_blobs>`);
     }
 
     if (this.learnings.length > 0) {
@@ -305,17 +401,11 @@ export class AgentContext {
       parts.push(`<environments>\n${envList}\n\n${selectedLine}\n</environments>`);
     }
 
-    const envVars = this.environmentVariables;
-    if (envVars.length > 0) {
-      const envList = JSON.stringify(
-        envVars.map((v) => ({
-          name: v.name,
-          value: v.isSecret ? "[SECRET]" : v.value,
-        })),
-        null,
-        2
+    const environmentVariablesPrompt = this.getEnvironmentVariablesPrompt();
+    if (environmentVariablesPrompt !== undefined) {
+      parts.push(
+        `<environment_variables>\n${environmentVariablesPrompt}\n</environment_variables>`
       );
-      parts.push(`<environment_variables>\n${envList}\n</environment_variables>`);
     }
 
     if (parts.length === 0) {

@@ -52,7 +52,10 @@ export const useCustomAgents = () => {
   };
 
   const handleDelete = async (id: string) => {
-    await removeCustomAgent(sdk, dispatch, id);
+    const result = await removeCustomAgent(sdk, dispatch, id);
+    if (result.kind === "Error") {
+      sdk.window.showToast(result.error, { variant: "error" });
+    }
   };
 
   return {

@@ -3,13 +3,17 @@ import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
+import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { resolveEnvironmentVariables } from "@/agent/utils/environment";
 import { truncate, withSuffix } from "@/utils";
 
 const inputSchema = z.object({
   name: z.string().describe("The header name"),
-  value: z.string().describe("The header value. Supports environment variable substitution"),
+  value: z
+    .string()
+    .describe(
+      "The header value. Supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§"
+    ),
 });
 
 const outputSchema = ToolResult.schema();
@@ -36,7 +40,7 @@ export const display = {
 
 export const RequestHeaderAdd = tool({
   description:
-    "Add a new HTTP header to the current request without removing existing headers with the same name. Use this for headers that can legitimately appear multiple times (like Accept, Accept-Language, Cookie) or when you specifically want to add a duplicate header for testing purposes. For headers that should have only one value (Authorization, Content-Type, Host), use RequestHeaderSet instead to avoid duplicates. The value supports environment variable substitution using {{VAR_NAME}} syntax. This tool will fail if no HTTP request is currently loaded.",
+    "Add a new HTTP header to the current request without removing existing headers with the same name. Use this for headers that can legitimately appear multiple times (like Accept, Accept-Language, Cookie) or when you specifically want to add a duplicate header for testing purposes. For headers that should have only one value (Authorization, Content-Type, Host), use RequestHeaderSet instead to avoid duplicates. The value supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
   execute: async ({ name, value }, { experimental_context }): Promise<RequestHeaderAddOutput> => {
@@ -44,7 +48,11 @@ export const RequestHeaderAdd = tool({
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
-    const resolvedValue = await resolveEnvironmentVariables(context.sdk, value);
+    const resolvedValueResult = await resolveToolInputPlaceholders(context, value);
+    if (resolvedValueResult.kind === "Error") {
+      return ToolResult.err("Failed to resolve placeholders", resolvedValueResult.error);
+    }
+    const resolvedValue = resolvedValueResult.value;
     const forge = HttpForge.create(context.httpRequest).addHeader(name, resolvedValue);
     const after = forge.build();
     context.setHttpRequest(after);

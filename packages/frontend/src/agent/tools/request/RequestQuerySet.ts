@@ -3,15 +3,17 @@ import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
+import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { resolveEnvironmentVariables } from "@/agent/utils/environment";
 import { truncate, withSuffix } from "@/utils";
 
 const inputSchema = z.object({
   key: z.string().describe("The query parameter key"),
   value: z
     .string()
-    .describe("The query parameter value. Supports environment variable substitution"),
+    .describe(
+      "The query parameter value. Supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§"
+    ),
 });
 
 const outputSchema = ToolResult.schema();
@@ -43,7 +45,7 @@ export const display = {
 
 export const RequestQuerySet = tool({
   description:
-    "Add or update a URL query parameter in the current HTTP request. If the parameter already exists, its value is replaced; if it doesn't exist, it's added. Use this to modify search terms, filter values, pagination parameters, or inject test payloads into query strings. The key is the parameter name and value is its content. The value supports environment variable substitution using {{VAR_NAME}} syntax. Pass an empty string as the value to set a parameter with no value (e.g., ?debug). For parameters that can appear multiple times, each call replaces the existing value. This tool will fail if no HTTP request is currently loaded.",
+    "Add or update a URL query parameter in the current HTTP request. If the parameter already exists, its value is replaced; if it doesn't exist, it's added. Use this to modify search terms, filter values, pagination parameters, or inject test payloads into query strings. The key is the parameter name and value is its content. The value supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Pass an empty string as the value to set a parameter with no value (e.g., ?debug). For parameters that can appear multiple times, each call replaces the existing value. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
   execute: async ({ key, value }, { experimental_context }): Promise<RequestQuerySetOutput> => {
@@ -51,7 +53,11 @@ export const RequestQuerySet = tool({
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
-    const resolvedValue = await resolveEnvironmentVariables(context.sdk, value);
+    const resolvedValueResult = await resolveToolInputPlaceholders(context, value);
+    if (resolvedValueResult.kind === "Error") {
+      return ToolResult.err("Failed to resolve placeholders", resolvedValueResult.error);
+    }
+    const resolvedValue = resolvedValueResult.value;
     const forge = HttpForge.create(context.httpRequest).upsertQueryParam(key, resolvedValue);
     const after = forge.build();
     context.setHttpRequest(after);

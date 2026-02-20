@@ -3,12 +3,16 @@ import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
+import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { resolveEnvironmentVariables } from "@/agent/utils/environment";
 import { truncate } from "@/utils";
 
 const inputSchema = z.object({
-  path: z.string().describe("The new request path. Supports environment variable substitution"),
+  path: z
+    .string()
+    .describe(
+      "The new request path. Supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§"
+    ),
 });
 
 const outputSchema = ToolResult.schema();
@@ -35,7 +39,7 @@ export const display = {
 
 export const RequestPathSet = tool({
   description:
-    "Set the URL path of the current HTTP request. Use this to change which endpoint the request targets - for example, testing path traversal (../../../etc/passwd), accessing different API versions (/api/v2/users), or exploring directory structures. The path should start with a forward slash and not include the query string (use RequestQuerySet for query parameters). Supports environment variable substitution using {{VAR_NAME}} syntax. Pass an empty string to set the path to root (/). This tool will fail if no HTTP request is currently loaded.",
+    "Set the URL path of the current HTTP request. Use this to change which endpoint the request targets - for example, testing path traversal (../../../etc/passwd), accessing different API versions (/api/v2/users), or exploring directory structures. The path should start with a forward slash and not include the query string (use RequestQuerySet for query parameters). Supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Pass an empty string to set the path to root (/). This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
   execute: async ({ path }, { experimental_context }): Promise<RequestPathSetOutput> => {
@@ -43,7 +47,11 @@ export const RequestPathSet = tool({
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
-    const resolvedPath = await resolveEnvironmentVariables(context.sdk, path);
+    const resolvedPathResult = await resolveToolInputPlaceholders(context, path);
+    if (resolvedPathResult.kind === "Error") {
+      return ToolResult.err("Failed to resolve placeholders", resolvedPathResult.error);
+    }
+    const resolvedPath = resolvedPathResult.value;
     if (resolvedPath.includes("?")) {
       return ToolResult.err(
         "Path must not include query string. Use RequestQuerySet for query parameters or RequestQueryAdd when you want to add the same parameter multiple times."

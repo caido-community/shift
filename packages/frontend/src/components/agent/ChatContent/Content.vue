@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useScroll } from "@vueuse/core";
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 
 import { useSession } from "../useSession";
 
@@ -20,16 +20,28 @@ const generatingText = useAnimatedDots("Generating", isSubmitted);
 
 const container = ref<HTMLElement>();
 const { arrivedState } = useScroll(container);
+const hasAutoScrolledOnOpen = ref(false);
+
+const scrollToBottom = async (): Promise<void> => {
+  await nextTick();
+  container.value?.scrollTo({ top: container.value.scrollHeight });
+};
+
+onMounted(async () => {
+  await scrollToBottom();
+  hasAutoScrolledOnOpen.value = true;
+});
 
 watch(
   messages,
   async (curr, prev) => {
+    const shouldAutoScrollOnOpen = !hasAutoScrolledOnOpen.value;
     const isNewMessage = curr.length !== prev?.length;
-    if (!isNewMessage && !arrivedState.bottom) return;
-    await nextTick();
-    container.value?.scrollTo({ top: container.value.scrollHeight });
+    if (!shouldAutoScrollOnOpen && !isNewMessage && !arrivedState.bottom) return;
+    await scrollToBottom();
+    hasAutoScrolledOnOpen.value = true;
   },
-  { deep: true }
+  { deep: true, flush: "post" }
 );
 </script>
 

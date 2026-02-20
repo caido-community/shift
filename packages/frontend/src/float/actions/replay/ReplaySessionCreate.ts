@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { normalizeCRLF } from "@/agent/utils/http";
+import { normalizeRawHttpRequest } from "@/agent/utils/http";
 import { ActionResult, type FloatToolContext } from "@/float/types";
 
 const inputSchema = z.object({
@@ -25,7 +25,7 @@ export const replaySessionCreateTool = tool({
       input: {
         requestSource: {
           raw: {
-            raw: normalizeCRLF(rawRequest),
+            raw: normalizeRawHttpRequest(rawRequest),
             connectionInfo: {
               host,
               port,

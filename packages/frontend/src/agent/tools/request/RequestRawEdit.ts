@@ -2,9 +2,9 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
+import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { resolveEnvironmentVariables } from "@/agent/utils/environment";
-import { normalizeCRLF } from "@/agent/utils/http";
+import { normalizeCRLF, normalizeRawHttpRequest } from "@/agent/utils/http";
 import { replaceUniqueText } from "@/agent/utils/text";
 import { truncate } from "@/utils";
 
@@ -12,7 +12,9 @@ const inputSchema = z.object({
   oldText: z.string().describe("Exact text to find and replace (must match exactly)"),
   newText: z
     .string()
-    .describe("New text to replace the old text with. Supports environment variable substitution"),
+    .describe(
+      "New text to replace the old text with. Supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§"
+    ),
 });
 
 const outputSchema = ToolResult.schema();
@@ -46,7 +48,7 @@ const MAX_LENGTH = 2000;
 
 export const RequestRawEdit = tool({
   description:
-    "Perform a precise find-and-replace edit on the raw HTTP request text. Use this for surgical modifications that other tools can't handle - editing specific parts of headers, modifying request line components, or making changes that span multiple parts of the request. The oldText must match exactly one location in the request (including whitespace, line endings, and case). If oldText matches zero times or more than once, the operation fails with an error. The newText supports environment variable substitution using {{VAR_NAME}} syntax. Line endings are normalized to CRLF. For simpler modifications, prefer the specific tools (RequestHeaderSet, RequestBodySet, etc.) as they're less error-prone.",
+    "Perform a precise find-and-replace edit on the raw HTTP request text. Use this for surgical modifications that other tools can't handle - editing specific parts of headers, modifying request line components, or making changes that span multiple parts of the request. The oldText must match exactly one location in the request (including whitespace, line endings, and case). If oldText matches zero times or more than once, the operation fails with an error. The newText supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Line endings are normalized to CRLF. For simpler modifications, prefer the specific tools (RequestHeaderSet, RequestBodySet, etc.) as they're less error-prone.",
   inputSchema,
   outputSchema,
   execute: async (
@@ -58,7 +60,11 @@ export const RequestRawEdit = tool({
     const before = normalizeCRLF(context.httpRequest);
 
     const normalizedOld = normalizeCRLF(oldText);
-    const resolvedNew = await resolveEnvironmentVariables(context.sdk, newText);
+    const resolvedNewResult = await resolveToolInputPlaceholders(context, newText);
+    if (resolvedNewResult.kind === "Error") {
+      return ToolResult.err("Failed to resolve placeholders", resolvedNewResult.error);
+    }
+    const resolvedNew = resolvedNewResult.value;
     const normalizedNew = normalizeCRLF(resolvedNew);
 
     const result = replaceUniqueText(before, normalizedOld, normalizedNew);
@@ -66,10 +72,11 @@ export const RequestRawEdit = tool({
       return ToolResult.err(result.error);
     }
 
-    context.setHttpRequest(result.value.after);
+    const after = normalizeRawHttpRequest(result.value.after);
+    context.setHttpRequest(after);
 
-    const truncated = result.value.after.length > MAX_LENGTH;
-    const preview = truncated ? result.value.after.slice(0, MAX_LENGTH) : result.value.after;
+    const truncated = after.length > MAX_LENGTH;
+    const preview = truncated ? after.slice(0, MAX_LENGTH) : after;
     const truncationNote = truncated ? "\n\n[... truncated]" : "";
     return ToolResult.ok({
       message: `Replaced ${normalizedOld.length} characters with ${normalizedNew.length} characters\n\n${preview}${truncationNote}`,
