@@ -108,6 +108,9 @@ importers:
       shared:
         specifier: workspace:*
         version: link:../shared
+      strip-ansi:
+        specifier: ^7.1.2
+        version: 7.1.2
       ts-http-forge:
         specifier: 0.1.6
         version: 0.1.6
@@ -1786,6 +1789,7 @@ packages:
   glob@11.0.1:
     resolution: {integrity: sha512-zrQDm8XPnYEKawJScsnM0QzobJxlT/kHOOlRTio8IH/GrmxRE5fjllkzdaHclIuNjUQTJYH2xHNIGfdpJkDJUw==}
     engines: {node: 20 || >=22}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   globals@14.0.0:

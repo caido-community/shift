@@ -31,6 +31,9 @@ export const useSkills = () => {
   const definitions = computed(() => skillsStore.definitions);
   const skills = computed(() => skillsStore.skills);
   const isLoading = computed(() => skillsStore.isLoading);
+  const hasDynamicSkills = computed(() =>
+    definitions.value.some((definition) => definition.type === "dynamic")
+  );
 
   const openAddDialog = () => {
     isAddDialogVisible.value = true;
@@ -115,6 +118,7 @@ export const useSkills = () => {
     definitions,
     skills,
     isLoading,
+    hasDynamicSkills,
     isAddDialogVisible,
     isEditDialogVisible,
     editingSkill,

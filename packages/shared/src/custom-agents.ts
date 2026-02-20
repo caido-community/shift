@@ -5,12 +5,19 @@ import { SkillScopeSchema } from "./skills";
 export const AgentModeSchema = z.enum(["focus", "wildcard"]);
 export type AgentMode = z.infer<typeof AgentModeSchema>;
 
+export const CustomAgentBinarySchema = z.object({
+  path: z.string().min(1),
+  instructions: z.string().optional(),
+});
+export type CustomAgentBinary = z.infer<typeof CustomAgentBinarySchema>;
+
 const CustomAgentSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   description: z.string(),
   skillIds: z.array(z.string()),
   allowedWorkflowIds: z.array(z.string()).optional(),
+  allowedBinaries: z.array(CustomAgentBinarySchema).optional(),
   instructions: z.string(),
   scope: SkillScopeSchema,
   projectId: z.string().min(1).optional(),
@@ -24,6 +31,7 @@ const ResolvedCustomAgentSchema = z.object({
   description: z.string(),
   skills: z.array(z.object({ id: z.string(), title: z.string(), content: z.string() })),
   allowedWorkflowIds: z.array(z.string()).optional(),
+  allowedBinaries: z.array(CustomAgentBinarySchema).optional(),
   instructions: z.string(),
 });
 export type ResolvedCustomAgent = z.infer<typeof ResolvedCustomAgentSchema>;
@@ -33,6 +41,7 @@ export const CreateCustomAgentSchema = z.object({
   description: z.string().default(""),
   skillIds: z.array(z.string()).default([]),
   allowedWorkflowIds: z.array(z.string()).optional(),
+  allowedBinaries: z.array(CustomAgentBinarySchema).optional(),
   instructions: z.string().default(""),
   scope: SkillScopeSchema,
   boundCollections: z.array(z.string()).default([]),
@@ -44,6 +53,7 @@ export const UpdateCustomAgentSchema = z.object({
   description: z.string().optional(),
   skillIds: z.array(z.string()).optional(),
   allowedWorkflowIds: z.array(z.string()).optional().nullable(),
+  allowedBinaries: z.array(CustomAgentBinarySchema).optional().nullable(),
   instructions: z.string().optional(),
   scope: SkillScopeSchema.optional(),
   boundCollections: z.array(z.string()).optional(),

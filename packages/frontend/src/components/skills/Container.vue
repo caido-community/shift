@@ -13,6 +13,7 @@ import { useSkills } from "./useSkills";
 const {
   definitions,
   isLoading,
+  hasDynamicSkills,
   isAddDialogVisible,
   isEditDialogVisible,
   editingSkill,
@@ -51,11 +52,12 @@ const getScopeSeverity = (scope: "global" | "project") => {
           <div>
             <h2 class="text-base font-bold">Skills</h2>
             <p class="text-sm text-surface-400">
-              Manage the capabilities available to your agents.
+              Provide specialized knowledge to your custom agents.
             </p>
           </div>
           <div class="flex items-center gap-2">
             <Button
+              v-if="hasDynamicSkills"
               v-tooltip.top="'Refresh dynamic skills'"
               icon="fas fa-sync-alt"
               severity="secondary"

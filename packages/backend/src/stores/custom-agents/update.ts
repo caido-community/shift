@@ -39,6 +39,10 @@ function handleUpdateAgent(
           ? undefined
           : message.updates.allowedWorkflowIds;
     }
+    if (message.updates.allowedBinaries !== undefined) {
+      agent.allowedBinaries =
+        message.updates.allowedBinaries === null ? undefined : message.updates.allowedBinaries;
+    }
     if (message.updates.instructions !== undefined) {
       agent.instructions = message.updates.instructions;
     }

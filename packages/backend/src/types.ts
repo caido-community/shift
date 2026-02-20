@@ -1,6 +1,9 @@
 import { type DefineEvents, type SDK } from "caido:plugin";
+import { type AgentBinaryLogChunkEvent } from "shared";
 
 import { type API } from ".";
 
 export type BackendSDK = SDK<API, BackendEvents>;
-export type BackendEvents = DefineEvents<Record<string, never>>;
+export type BackendEvents = DefineEvents<{
+  "agent-binary-log-chunk": (data: AgentBinaryLogChunkEvent) => void;
+}>;

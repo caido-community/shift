@@ -95,6 +95,7 @@ const handleAgentChange = (value: string | undefined) => {
             ? "All workflows"
             : `${selectedAgent.allowedWorkflowIds.length} workflows`
         }}</span>
+        <span>{{ selectedAgent.allowedBinaries?.length ?? 0 }} binaries</span>
       </div>
     </section>
 
