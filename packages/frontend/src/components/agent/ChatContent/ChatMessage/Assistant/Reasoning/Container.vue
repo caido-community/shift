@@ -37,10 +37,9 @@ watch(
   async () => {
     if (!isStreaming.value || !hasContent.value) return;
     await nextTick();
-    streamingContainer.value?.scrollTo({
-      top: streamingContainer.value.scrollHeight,
-      behavior: "smooth",
-    });
+    const container = streamingContainer.value;
+    if (container === undefined) return;
+    container.scrollTop = container.scrollHeight;
   }
 );
 </script>
@@ -73,7 +72,7 @@ watch(
     <div
       v-if="isStreaming && hasContent && text"
       ref="streamingContainer"
-      class="max-h-48 overflow-y-auto fade-top hide-scrollbar">
+      class="max-h-48 overflow-y-auto fade-top hide-scrollbar smooth-scroll">
       <div class="text-surface-400">
         <Markdown :text="text" />
       </div>
@@ -96,6 +95,10 @@ watch(
 }
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+.smooth-scroll {
+  scroll-behavior: smooth;
 }
 
 .fade-top {

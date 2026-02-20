@@ -27,6 +27,9 @@ function handleUpdateSettings(
     if (input.autoCreateShiftCollection !== undefined) {
       draft.autoCreateShiftCollection = input.autoCreateShiftCollection;
     }
+    if (input.openRouterPrioritizeFastProviders !== undefined) {
+      draft.openRouterPrioritizeFastProviders = input.openRouterPrioritizeFastProviders;
+    }
   });
 }
 

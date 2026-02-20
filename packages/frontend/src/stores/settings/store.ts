@@ -26,6 +26,9 @@ export const useSettingsStore = defineStore("settings", () => {
   const renaming = computed(() => model.value.config?.renaming);
   const debugToolsEnabled = computed(() => model.value.config?.debugToolsEnabled);
   const autoCreateShiftCollection = computed(() => model.value.config?.autoCreateShiftCollection);
+  const openRouterPrioritizeFastProviders = computed(
+    () => model.value.config?.openRouterPrioritizeFastProviders
+  );
 
   async function initialize() {
     await fetchSettings(sdk, dispatch);
@@ -45,6 +48,7 @@ export const useSettingsStore = defineStore("settings", () => {
     renaming,
     debugToolsEnabled,
     autoCreateShiftCollection,
+    openRouterPrioritizeFastProviders,
     initialize,
   };
 });

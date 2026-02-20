@@ -104,6 +104,18 @@ describe("settings update", () => {
       expect(result.config?.maxIterations).toBe(50);
     });
 
+    it("updates openRouterPrioritizeFastProviders", () => {
+      const config = createTestConfig();
+      const modelWithConfig: SettingsModel = { ...initialModel, config };
+
+      const result = update(modelWithConfig, {
+        type: "UPDATE_SUCCESS",
+        input: { openRouterPrioritizeFastProviders: true },
+      });
+
+      expect(result.config?.openRouterPrioritizeFastProviders).toBe(true);
+    });
+
     it("updates renaming config partially", () => {
       const config = createTestConfig();
       const modelWithConfig: SettingsModel = { ...initialModel, config };
