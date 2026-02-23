@@ -36,6 +36,15 @@ const autoCreateShiftCollection = computed({
     updateSettings(sdk, dispatch, { autoCreateShiftCollection: value });
   },
 });
+
+const openRouterPrioritizeFastProviders = computed({
+  get() {
+    return settingsStore.openRouterPrioritizeFastProviders ?? false;
+  },
+  set(value: boolean) {
+    updateSettings(sdk, dispatch, { openRouterPrioritizeFastProviders: value });
+  },
+});
 </script>
 
 <template>
@@ -92,6 +101,17 @@ const autoCreateShiftCollection = computed({
             </div>
 
             <ToggleSwitch v-model="autoCreateShiftCollection" />
+          </div>
+
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex flex-col">
+              <label class="text-base font-medium">OpenRouter: Prioritize fast providers</label>
+              <p class="text-sm text-surface-400">
+                Use the Nitro routing variant (throughput-first). May increase cost.
+              </p>
+            </div>
+
+            <ToggleSwitch v-model="openRouterPrioritizeFastProviders" />
           </div>
         </div>
       </template>

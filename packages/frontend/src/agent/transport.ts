@@ -77,12 +77,15 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
 
         const settingsStore = useSettingsStore();
         const maxIterations = settingsStore.maxIterations ?? 35;
+        const openRouterPrioritizeFastProviders =
+          settingsStore.openRouterPrioritizeFastProviders ?? false;
         const agent = createShiftAgent({
           sdk: this.sdk,
           model: model,
           context: context,
           maxIterations,
           reasoningEffort: this.store.reasoningEffort,
+          openRouterPrioritizeFastProviders,
         });
 
         const sanitizedMessages = stripReasoningParts(stripUnfinishedToolCalls(options.messages));
