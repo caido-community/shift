@@ -6,7 +6,7 @@ import { update } from "./store.update";
 
 const createTestConfig = (): SettingsModel["config"] => ({
   ...defaultSettingsConfig,
-  agentsModel: "anthropic/claude-sonnet-4.5",
+  agentsModel: "anthropic/claude-sonnet-4.6",
   floatModel: "google/gemini-2.5-flash",
   renamingModel: "google/gemini-2.5-flash-lite",
   maxIterations: 35,
@@ -61,10 +61,10 @@ describe("settings update", () => {
 
       const result = update(modelWithConfig, {
         type: "UPDATE_SUCCESS",
-        input: { agentsModel: "openai/gpt-4" },
+        input: { agentsModel: "openai/gpt-5.4" },
       });
 
-      expect(result.config?.agentsModel).toBe("openai/gpt-4");
+      expect(result.config?.agentsModel).toBe("openai/gpt-5.4");
       expect(result.config?.floatModel).toBe("google/gemini-2.5-flash");
     });
 
@@ -74,10 +74,10 @@ describe("settings update", () => {
 
       const result = update(modelWithConfig, {
         type: "UPDATE_SUCCESS",
-        input: { floatModel: "openai/gpt-4" },
+        input: { floatModel: "openai/gpt-5.4" },
       });
 
-      expect(result.config?.floatModel).toBe("openai/gpt-4");
+      expect(result.config?.floatModel).toBe("openai/gpt-5.4");
     });
 
     it("updates renamingModel", () => {
@@ -86,10 +86,10 @@ describe("settings update", () => {
 
       const result = update(modelWithConfig, {
         type: "UPDATE_SUCCESS",
-        input: { renamingModel: "openai/gpt-4" },
+        input: { renamingModel: "openai/gpt-5.4" },
       });
 
-      expect(result.config?.renamingModel).toBe("openai/gpt-4");
+      expect(result.config?.renamingModel).toBe("openai/gpt-5.4");
     });
 
     it("updates maxIterations", () => {

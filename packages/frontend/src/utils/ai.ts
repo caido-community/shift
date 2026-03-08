@@ -87,17 +87,17 @@ export function createModel(sdk: FrontendSDK, model: Model, options: CreateModel
 }
 
 const PREFERRED_AGENT_MODELS = [
-  "openrouter/anthropic/claude-sonnet-4.5",
-  "openrouter/google/gemini-3-pro-preview",
-  "anthropic/claude-sonnet-4-5-20250929",
-  "google/gemini-3-pro-preview",
+  "openrouter/anthropic/claude-sonnet-4.6",
+  "openrouter/google/gemini-3.1-pro-preview-customtools",
+  "anthropic/claude-sonnet-4-6",
+  "google/gemini-3.1-pro-preview-customtools",
 ];
 
 const PREFERRED_FLOAT_MODELS = [
   "openrouter/google/gemini-3-flash-preview",
-  "openrouter/anthropic/claude-sonnet-4.5",
+  "openrouter/anthropic/claude-sonnet-4.6",
   "google/gemini-3-flash-preview",
-  "anthropic/claude-sonnet-4-5-20250929",
+  "anthropic/claude-sonnet-4-6",
 ];
 
 type ResolveModelOptions = {

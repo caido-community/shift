@@ -1,7 +1,7 @@
 import { type Model, ModelProvider, type ModelUsageType } from "shared";
 
 const GoogleModelIds = {
-  GEMINI_3_PRO_PREVIEW: "gemini-3-pro-preview",
+  GEMINI_3_1_PRO_PREVIEW_CUSTOMTOOLS: "gemini-3.1-pro-preview-customtools",
   GEMINI_3_FLASH_PREVIEW: "gemini-3-flash-preview",
   GEMINI_2_5_PRO: "gemini-2.5-pro",
   GEMINI_2_5_FLASH: "gemini-2.5-flash",
@@ -10,8 +10,8 @@ const GoogleModelIds = {
 
 export const googleModels: Model[] = [
   {
-    id: GoogleModelIds.GEMINI_3_PRO_PREVIEW,
-    name: "Gemini 3 Pro",
+    id: GoogleModelIds.GEMINI_3_1_PRO_PREVIEW_CUSTOMTOOLS,
+    name: "Gemini 3.1 Pro",
     provider: ModelProvider.Google,
     capabilities: {
       reasoning: true,
@@ -52,7 +52,7 @@ export const googleModels: Model[] = [
 ];
 
 export const defaultGoogleModelsConfig: Record<string, ModelUsageType[]> = {
-  [GoogleModelIds.GEMINI_3_PRO_PREVIEW]: ["agent", "float"],
+  [GoogleModelIds.GEMINI_3_1_PRO_PREVIEW_CUSTOMTOOLS]: ["agent", "float"],
   [GoogleModelIds.GEMINI_3_FLASH_PREVIEW]: ["agent", "float"],
   [GoogleModelIds.GEMINI_2_5_PRO]: ["agent", "float"],
   [GoogleModelIds.GEMINI_2_5_FLASH]: ["agent", "float"],
