@@ -5,8 +5,8 @@ import { update } from "./update";
 
 const createTestModel = (): SettingsModel => ({
   agentsModel: "anthropic/claude-sonnet-4.6",
-  floatModel: "google/gemini-2.5-flash",
-  renamingModel: "google/gemini-2.5-flash-lite",
+  floatModel: "google/gemini-3-flash-preview",
+  renamingModel: "google/gemini-3.1-pro-preview-customtools",
   maxIterations: 35,
   renaming: {
     enabled: false,

@@ -7,8 +7,8 @@ import { update } from "./store.update";
 const createTestConfig = (): SettingsModel["config"] => ({
   ...defaultSettingsConfig,
   agentsModel: "anthropic/claude-sonnet-4.6",
-  floatModel: "google/gemini-2.5-flash",
-  renamingModel: "google/gemini-2.5-flash-lite",
+  floatModel: "google/gemini-3-flash-preview",
+  renamingModel: "google/gemini-3.1-pro-preview-customtools",
   maxIterations: 35,
   renaming: {
     enabled: false,
@@ -65,7 +65,7 @@ describe("settings update", () => {
       });
 
       expect(result.config?.agentsModel).toBe("openai/gpt-5.4");
-      expect(result.config?.floatModel).toBe("google/gemini-2.5-flash");
+      expect(result.config?.floatModel).toBe("google/gemini-3-flash-preview");
     });
 
     it("updates floatModel", () => {
