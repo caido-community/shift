@@ -1,110 +1,44 @@
 <script setup lang="ts">
-import { useScroll } from "@vueuse/core";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { toRef } from "vue";
 
-import { TextShimmer } from "@/components/common/TextShimmer";
-import {
-  type BackgroundAgent,
-  type BackgroundAgentLog,
-  useBackgroundAgentsStore,
-} from "@/stores/backgroundAgents";
+import { type BackgroundAgent } from "@/stores/backgroundAgents";
 
-const { agent } = defineProps<{
+import { useAgentCard } from "./useAgentCard";
+import { useAgentCardLogs } from "./useAgentCardLogs";
+import { useAgentCardResize } from "./useAgentCardResize";
+
+const props = defineProps<{
   agent: BackgroundAgent;
 }>();
 
-const store = useBackgroundAgentsStore();
-const logsContainer = ref<HTMLElement | undefined>(undefined);
-const { arrivedState } = useScroll(logsContainer);
+const agent = toRef(props, "agent");
 
-const statusIconClass = computed(() => {
-  switch (agent.status) {
-    case "queued":
-      return "fas fa-clock text-surface-400";
-    case "running":
-      return "fas fa-circle-notch fa-spin text-secondary-400";
-    case "done":
-      return "fas fa-check-circle text-success-500";
-    case "error":
-      return "fas fa-times-circle text-error-500";
-    case "aborted":
-      return "fas fa-ban text-surface-500";
-    default:
-      return "fas fa-clock text-surface-400";
-  }
-});
-
-const scrollToBottom = async (force: boolean) => {
-  await nextTick();
-  if (!force && !arrivedState.bottom) {
-    return;
-  }
-  logsContainer.value?.scrollTo({
-    top: logsContainer.value.scrollHeight,
-    behavior: "smooth",
-  });
-};
-
-onMounted(async () => {
-  await scrollToBottom(true);
-});
-
-watch(
-  () => agent.logs.length,
-  async (current, previous) => {
-    if (current === previous) {
-      return;
-    }
-    await scrollToBottom(previous === 0);
-  },
-  { flush: "post" }
+const {
+  canCancel,
+  statusIconClass,
+  titleTag,
+  toggleExpanded,
+  cancelAgent,
+  removeAgent,
+  logIconClass,
+  logTextClass,
+} = useAgentCard(agent);
+const { latestLogId } = useAgentCardLogs(agent);
+const { activeHandle, cardStyle, resizeCursorClass, startResize } = useAgentCardResize(
+  () => agent.value.expanded
 );
-
-const logIconClass = (log: BackgroundAgentLog) => {
-  if (log.level === "error") {
-    return "fas fa-times-circle text-error-400";
-  }
-  if (log.level === "success") {
-    return "fas fa-check-circle text-success-400";
-  }
-  if (log.text.startsWith("Calling ")) {
-    return "fas fa-circle-notch fa-spin text-secondary-400";
-  }
-  return "fas fa-angle-right text-surface-500";
-};
-
-const logTextClass = (log: BackgroundAgentLog) => {
-  switch (log.level) {
-    case "success":
-      return "text-surface-200";
-    case "error":
-      return "text-error-300";
-    default:
-      return "text-surface-300";
-  }
-};
-
-const latestLogId = computed(() => {
-  const latest = agent.logs[agent.logs.length - 1];
-  return latest?.id;
-});
-
-const toggleExpanded = () => {
-  store.toggleExpanded(agent.id);
-};
-
-const cancelAgent = () => {
-  store.cancelAgent(agent.id);
-};
-
-const removeAgent = () => {
-  store.removeAgent(agent.id);
-};
 </script>
 
 <template>
   <div
-    class="bg-surface-800 border border-surface-700 rounded-md p-2.5 flex flex-col gap-2 animate-fade-in">
+    ref="cardElement"
+    class="relative shrink-0 w-[24rem] max-w-[calc(100vw-2rem)] overflow-hidden bg-surface-800 border border-surface-700 rounded-md p-2.5 flex flex-col gap-2 animate-fade-in"
+    :class="resizeCursorClass"
+    :style="cardStyle">
+    <div
+      class="absolute left-0 top-0 z-20 h-3 w-3 cursor-ew-resize rounded-tl-md transition-colors hover:bg-secondary-500/50"
+      :class="{ 'bg-secondary-500/50': activeHandle === 'top-left' }"
+      @mousedown="startResize('top-left', $event)" />
     <div class="flex items-start justify-between gap-2">
       <button
         class="flex-1 text-left min-w-0"
@@ -112,7 +46,7 @@ const removeAgent = () => {
         <div class="flex items-center gap-2">
           <i :class="statusIconClass" />
           <component
-            :is="agent.status === 'running' ? TextShimmer : 'span'"
+            :is="titleTag"
             class="text-sm font-medium text-surface-200 truncate">
             {{ agent.title }}
           </component>
@@ -120,7 +54,7 @@ const removeAgent = () => {
       </button>
       <div class="flex items-center gap-1">
         <button
-          v-if="agent.status === 'running' || agent.status === 'queued'"
+          v-if="canCancel"
           class="h-6 w-6 rounded text-surface-400 hover:text-surface-200 hover:bg-surface-700"
           @click="cancelAgent">
           <i class="fas fa-stop text-xs" />
@@ -136,17 +70,17 @@ const removeAgent = () => {
     <Transition name="bg-agent-expand">
       <div
         v-if="agent.expanded"
-        class="flex flex-col gap-2">
-        <div class="text-sm leading-5 text-surface-300 line-clamp-3">{{ agent.task }}</div>
+        class="flex min-h-0 flex-1 flex-col gap-2">
+        <div class="shrink-0 text-sm leading-5 text-surface-300 line-clamp-3">{{ agent.task }}</div>
         <div
           v-if="agent.error !== undefined"
-          class="text-xs font-mono leading-4 break-words rounded border border-error-700/40 bg-error-900/20 text-error-300 p-2">
+          class="shrink-0 text-xs font-mono leading-4 break-words rounded border border-error-700/40 bg-error-900/20 text-error-300 p-2">
           {{ agent.error }}
         </div>
         <div
           v-if="agent.logs.length > 0"
           ref="logsContainer"
-          class="max-h-44 overflow-y-auto custom-scrollbar rounded border border-surface-700/60 bg-surface-900/30 p-2 space-y-1"
+          class="min-h-0 flex-1 overflow-y-auto custom-scrollbar rounded border border-surface-700/60 bg-surface-900/30 p-2 space-y-1"
           style="scroll-behavior: smooth">
           <div
             v-for="log in agent.logs"
@@ -165,6 +99,16 @@ const removeAgent = () => {
         </div>
       </div>
     </Transition>
+    <template v-if="agent.expanded">
+      <div
+        class="absolute bottom-0 left-0 z-20 h-3 w-3 cursor-nesw-resize rounded-bl-md transition-colors hover:bg-secondary-500/50"
+        :class="{ 'bg-secondary-500/50': activeHandle === 'bottom-left' }"
+        @mousedown="startResize('bottom-left', $event)" />
+      <div
+        class="absolute bottom-0 right-0 z-20 h-3 w-3 cursor-ns-resize rounded-br-md transition-colors hover:bg-secondary-500/50"
+        :class="{ 'bg-secondary-500/50': activeHandle === 'bottom-right' }"
+        @mousedown="startResize('bottom-right', $event)" />
+    </template>
   </div>
 </template>
 

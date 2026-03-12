@@ -15,8 +15,7 @@ const store = useBackgroundAgentsStore();
       <AgentCard
         v-for="agent in store.agents"
         :key="agent.id"
-        :agent="agent"
-        class="w-[24rem] max-w-[calc(100vw-2rem)]" />
+        :agent="agent" />
     </div>
   </div>
 </template>
