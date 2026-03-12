@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { computed, readonly, shallowRef } from "vue";
 
 import { generateId } from "../agent/utils/id";
+import { createBackgroundAgentToolCallText } from "@/backgroundAgents/logs";
 
 export type BackgroundAgentStatus = "queued" | "running" | "done" | "error" | "aborted";
 type BackgroundAgentLogLevel = "info" | "success" | "error";
@@ -171,7 +172,7 @@ export const useBackgroundAgentsStore = defineStore("backgroundAgents", () => {
   ) => {
     const now = Date.now();
     patchAgent(agentId, (agent) => {
-      const expectedCallingText = `Calling ${toolName}`;
+      const expectedCallingText = createBackgroundAgentToolCallText(toolName);
       const index = [...agent.logs]
         .reverse()
         .findIndex((log) => log.text === expectedCallingText && log.level === "info");

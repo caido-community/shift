@@ -1,5 +1,6 @@
 import { generateText, stepCountIs } from "ai";
 
+import { createBackgroundAgentToolCallText } from "@/backgroundAgents/logs";
 import { backgroundFloatTools } from "@/float/actions";
 import { buildSystemPrompt } from "@/float/prompt";
 import { type ActionContext, type FloatToolContext } from "@/float/types";
@@ -23,6 +24,7 @@ When historyRead output includes both rowId and requestId, use rowId for row.id 
 Use the available step budget for depth and confidence; optimize for correctness and coverage, not minimum step count.
 Before final write actions, synthesize findings from gathered evidence and then apply concise, high-confidence changes.
 Use available step budget for quality and completeness, but stop early once task goals are fully satisfied.
+You also have access to HistoryRowHighlight for marking relevant history rows; it requires metadataId values from historyRead or historyRequestResponseRead, not request IDs.
 </background_execution_note>`;
 
 type SpawnBackgroundAgentInput = {
@@ -200,7 +202,7 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
             );
             continue;
           }
-          store.appendLog(input.agentId, `Calling ${toolCall.toolName}`);
+          store.appendLog(input.agentId, createBackgroundAgentToolCallText(toolCall.toolName));
         }
 
         for (const { toolName, output } of toolResults) {

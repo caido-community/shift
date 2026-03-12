@@ -643,6 +643,7 @@ View all findings. Path: "#/findings"
 - BackgroundAgent has access to more tools including:
   - historyRead - paginated compact history scan
   - historyRequestResponseRead - deep raw request/response read by request IDs or row IDs (batch)
+  - HistoryRowHighlight - apply or clear row highlights using metadataId from history tools
 - Example:
   - User request: "search through http history, filter out analytics and create scope"
   - Tool call: backgroundAgentSpawn with task set to the full user request and an optional short title.
@@ -651,7 +652,7 @@ View all findings. Path: "#/findings"
 <historyRead>
 - historyRead reads HTTP history entries with offset/limit pagination.
 - It returns compact TOON output in the toon field (format: "toon"), not verbose per-entry JSON objects.
-- Each row includes rowId and requestId. Use rowId for HTTPQL row.id filters, and requestId for deep request/response reads.
+- Each row includes rowId, requestId, and metadataId. Use rowId for HTTPQL row.id filters, requestId for deep request/response reads, and metadataId for HistoryRowHighlight.
 - Output may include a visible truncation marker; if it is truncated, continue with pagination (nextOffset) or use a smaller limit.
 - Use it when you must inspect real history rows, especially in background workflows.
 - Keep calls efficient: request only the amount needed and continue with nextOffset if more rows are required.
@@ -662,6 +663,7 @@ View all findings. Path: "#/findings"
 <historyRequestResponseRead>
 - historyRequestResponseRead reads raw request/response content for specific request IDs or row IDs.
 - Use this after historyRead when you need deeper inspection for selected rows.
+- Returned entries include metadataId when the request is resolved successfully.
 - Supports batch IDs (up to 10 per call); keep batches small (2-5) for better context efficiency.
 - Use part=request, part=response, or part=both depending on need.
 - Raw data is truncated with a visible marker and truncation metadata.

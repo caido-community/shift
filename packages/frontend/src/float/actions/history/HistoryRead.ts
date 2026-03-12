@@ -39,6 +39,7 @@ const valueSchema = z.object({
 type HistoryRow = {
   rowId: string;
   requestId: string;
+  metadataId: string;
   method: string;
   target: string;
   statusCode: number | undefined;
@@ -107,7 +108,9 @@ const encodeToonCell = (value: string | number | undefined): string => {
 
 const toToon = (rows: HistoryRow[]): string => {
   const lines = [
-    "entries[" + rows.length + "]{rowId,requestId,method,target,statusCode,roundtripTimeMs}:",
+    "entries[" +
+      rows.length +
+      "]{rowId,requestId,metadataId,method,target,statusCode,roundtripTimeMs}:",
   ];
 
   for (const row of rows) {
@@ -116,6 +119,7 @@ const toToon = (rows: HistoryRow[]): string => {
         [
           encodeToonCell(row.rowId),
           encodeToonCell(row.requestId),
+          encodeToonCell(row.metadataId),
           encodeToonCell(row.method),
           encodeToonCell(row.target),
           encodeToonCell(row.statusCode),
@@ -157,7 +161,7 @@ const truncateToon = (
 
 export const historyReadTool = tool({
   description:
-    "Read HTTP history entries with offset pagination and return a compact TOON table that includes row IDs (for row.id HTTPQL filtering), request IDs, and pagination signals.",
+    "Read HTTP history entries with offset pagination and return a compact TOON table that includes row IDs, request IDs, metadata IDs, and pagination signals.",
   inputSchema,
   outputSchema: ActionResult.schemaWithValue(valueSchema),
   execute: async (
@@ -199,6 +203,7 @@ export const historyReadTool = tool({
         rows.push({
           rowId: node.id,
           requestId: node.request.id,
+          metadataId: node.request.metadata.id,
           method: node.request.method,
           target: truncateTarget(`${targetHost}${pathWithQuery}`),
           statusCode: response?.statusCode,

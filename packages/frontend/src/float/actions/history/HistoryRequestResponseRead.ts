@@ -56,6 +56,7 @@ const inputSchema = z
 const entrySchema = z.object({
   rowId: z.string().optional(),
   requestId: z.string(),
+  metadataId: z.string().optional(),
   responseId: z.string().optional(),
   statusCode: z.number().optional(),
   responseAvailable: z.boolean(),
@@ -198,6 +199,7 @@ export const historyRequestResponseReadTool = tool({
         const entry: z.infer<typeof entrySchema> = {
           rowId: rowId === "" ? undefined : rowId,
           requestId,
+          metadataId: requestNode.metadata.id,
           responseAvailable: isPresent(requestNode.response),
         };
 
