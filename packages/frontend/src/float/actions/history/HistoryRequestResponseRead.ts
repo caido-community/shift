@@ -1,6 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { truncateMiddle } from "./utils";
+
 import { ActionResult, type FloatToolContext } from "@/float/types";
 import { isPresent } from "@/utils";
 
@@ -79,36 +81,11 @@ const valueSchema = z.object({
 });
 
 type HistoryReadPart = (typeof READ_PART)[number];
+type HistoryRequestResponseReadEntry = z.infer<typeof entrySchema>;
 type TruncatedValue = {
   value: string;
   truncated: boolean;
   truncatedCharacters: number | undefined;
-};
-
-const truncateMiddle = (
-  value: string,
-  maxLength: number,
-  marker: string
-): { value: string; omittedCharacters: number } => {
-  if (value.length <= maxLength) {
-    return { value, omittedCharacters: 0 };
-  }
-
-  if (maxLength <= marker.length + 2) {
-    return {
-      value: value.slice(0, maxLength),
-      omittedCharacters: value.length - maxLength,
-    };
-  }
-
-  const remaining = maxLength - marker.length;
-  const headLength = Math.ceil(remaining / 2);
-  const tailLength = Math.max(0, remaining - headLength);
-
-  return {
-    value: `${value.slice(0, headLength)}${marker}${value.slice(value.length - tailLength)}`,
-    omittedCharacters: value.length - headLength - tailLength,
-  };
 };
 
 const truncateRaw = (
@@ -159,7 +136,7 @@ export const historyRequestResponseReadTool = tool({
     const { sdk } = experimental_context as FloatToolContext;
     const uniqueRequestIds = [...new Set(requestIds ?? [])];
     const uniqueRowIds = [...new Set(rowIds ?? [])];
-    const entries: Array<z.infer<typeof entrySchema>> = [];
+    const entries: HistoryRequestResponseReadEntry[] = [];
     const requestToRowId = new Map<string, string>();
     const missingRowIds: string[] = [];
     const failedRowIds: string[] = [];
@@ -196,7 +173,7 @@ export const historyRequestResponseReadTool = tool({
           continue;
         }
 
-        const entry: z.infer<typeof entrySchema> = {
+        const entry: HistoryRequestResponseReadEntry = {
           rowId: rowId === "" ? undefined : rowId,
           requestId,
           metadataId: requestNode.metadata.id,
