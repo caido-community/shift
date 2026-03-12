@@ -18,9 +18,11 @@ export function useAgentCardLogs(agentSource: MaybeRefOrGetter<BackgroundAgent>)
       return;
     }
 
+    const shouldStickToBottom = force || arrivedState.bottom;
+
     await nextTick();
 
-    if (!force && !arrivedState.bottom) {
+    if (!shouldStickToBottom) {
       return;
     }
 

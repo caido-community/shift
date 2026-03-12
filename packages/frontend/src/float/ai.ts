@@ -136,7 +136,7 @@ export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Pro
     return Result.ok(undefined);
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      return Result.err("USER_ABORTED");
+      return Result.err("Request aborted");
     }
 
     const message = error instanceof Error ? error.message : String(error);

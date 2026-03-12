@@ -1,4 +1,4 @@
-import { type Result } from "shared";
+import { Result } from "shared";
 import { z } from "zod";
 
 import { type FrontendSDK } from "@/types";
@@ -63,6 +63,41 @@ export const ActionResult = {
         error: frontendErrorSchema,
       }),
     ]),
+  isOk: <TValue = undefined>(
+    value: unknown
+  ): value is {
+    kind: "Ok";
+    value: TValue extends undefined ? MessageOnly : WithMessage<TValue>;
+  } => {
+    if (!Result.isResult(value) || !Result.isOk(value)) {
+      return false;
+    }
+
+    if (typeof value.value !== "object" || value.value === null) {
+      return false;
+    }
+
+    return "message" in value.value && typeof value.value.message === "string";
+  },
+  isErr: (value: unknown): value is { kind: "Error"; error: FrontendError } => {
+    if (!Result.isResult(value) || !Result.isErr(value)) {
+      return false;
+    }
+
+    if (typeof value.error !== "object" || value.error === null) {
+      return false;
+    }
+
+    if (!("message" in value.error) || typeof value.error.message !== "string") {
+      return false;
+    }
+
+    return (
+      !("detail" in value.error) ||
+      value.error.detail === undefined ||
+      typeof value.error.detail === "string"
+    );
+  },
   ok: (message: string): ActionResult => ({ kind: "Ok", value: { message } }),
   okWithValue: <TValue>(value: WithMessage<TValue>): ActionResult<TValue> => ({
     kind: "Ok",

@@ -141,7 +141,7 @@ export const useBackgroundAgentsStore = defineStore("backgroundAgents", () => {
   const removeAgent = (agentId: string) => {
     const controller = controllers.get(agentId);
     if (controller !== undefined) {
-      controller.abort("USER_ABORTED");
+      controller.abort();
       controllers.delete(agentId);
     }
     agents.value = agents.value.filter((agent) => agent.id !== agentId);
@@ -160,7 +160,7 @@ export const useBackgroundAgentsStore = defineStore("backgroundAgents", () => {
   const cancelAgent = (agentId: string) => {
     const controller = controllers.get(agentId);
     if (controller !== undefined) {
-      controller.abort("USER_ABORTED");
+      controller.abort();
     }
   };
 

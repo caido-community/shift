@@ -435,6 +435,8 @@ const HARDCODED_EXAMPLES = [
   },
 ];
 
+const EXAMPLES_PLACEHOLDER = "__HARDCODED_EXAMPLES__";
+
 export const HTTPQL_SPEC_FILE = `
 # HTTPQL Query Language
 
@@ -708,16 +710,7 @@ Tool calling efficiency, example: If the user asks you to search for something a
 <examples>
 Here are a few examples of how you can use the tools. Actual context schema will also be slightly different than the one in the examples.
 
-${HARDCODED_EXAMPLES.map(
-  (example) => `
-<example>
-<query>${example.query}</query>
-<context>${JSON.stringify(example.context)}</context>
-<assistant>${JSON.stringify(example.assistant)}</assistant>
-${example.note !== undefined ? `<note>${example.note}</note>` : ""}
-</example>
-`
-).join("")}
+${EXAMPLES_PLACEHOLDER}
 </examples>
 
 <httpql_spec>
@@ -744,12 +737,35 @@ type BuildSystemPromptOptions = {
 
 const BACKGROUND_AGENT_SPAWN_SECTION = /<backgroundAgentSpawn>[\s\S]*?<\/backgroundAgentSpawn>\n?/g;
 
+const getExamplesPrompt = (backgroundAgents: boolean): string => {
+  const examples = backgroundAgents
+    ? HARDCODED_EXAMPLES
+    : HARDCODED_EXAMPLES.filter((example) =>
+        example.assistant.actions.every((action) => action.name !== "backgroundAgentSpawn")
+      );
+
+  return examples
+    .map(
+      (example) => `
+<example>
+<query>${example.query}</query>
+<context>${JSON.stringify(example.context)}</context>
+<assistant>${JSON.stringify(example.assistant)}</assistant>
+${example.note !== undefined ? `<note>${example.note}</note>` : ""}
+</example>
+`
+    )
+    .join("");
+};
+
 export const buildSystemPrompt = ({
   backgroundAgents = true,
 }: BuildSystemPromptOptions = {}): string => {
+  const prompt = SYSTEM_PROMPT.replace(EXAMPLES_PLACEHOLDER, getExamplesPrompt(backgroundAgents));
+
   if (backgroundAgents) {
-    return SYSTEM_PROMPT;
+    return prompt;
   }
 
-  return SYSTEM_PROMPT.replace(BACKGROUND_AGENT_SPAWN_SECTION, "");
+  return prompt.replace(BACKGROUND_AGENT_SPAWN_SECTION, "");
 };

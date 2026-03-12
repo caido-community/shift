@@ -105,7 +105,6 @@ export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
   [OpenRouterModelIds.CLAUDE_SONNET_4_6]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_SONNET_4_6_THINKING]: ["agent", "float"],
   [OpenRouterModelIds.GEMINI_3_FLASH_PREVIEW]: ["agent", "float"],
-  [OpenRouterModelIds.GEMINI_3_FLASH_PREVIEW_THINKING]: ["agent", "float"],
   [OpenRouterModelIds.GEMINI_3_1_PRO_PREVIEW_CUSTOMTOOLS]: ["agent", "float"],
   [OpenRouterModelIds.GROK_4_1_FAST]: ["agent", "float"],
   [OpenRouterModelIds.MERCURY_2]: ["agent", "float"],

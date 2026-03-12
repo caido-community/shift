@@ -108,7 +108,7 @@ export const useFloatStore = defineStore("float", () => {
   const stopQuery = () => {
     const controller = abortController.value;
     if (isPresent(controller)) {
-      controller.abort("USER_ABORTED");
+      controller.abort();
       abortController.value = undefined;
     }
   };
@@ -138,7 +138,7 @@ export const useFloatStore = defineStore("float", () => {
           closeFloat();
           break;
         case "Error":
-          if (result.error === "USER_ABORTED") {
+          if (controller.signal.aborted) {
             return;
           }
 
@@ -149,11 +149,11 @@ export const useFloatStore = defineStore("float", () => {
           break;
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      if (message === "USER_ABORTED") {
+      if (controller.signal.aborted) {
         return;
       }
 
+      const message = error instanceof Error ? error.message : "Unknown error";
       sdk.window.showToast(message, {
         variant: "error",
       });

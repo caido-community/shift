@@ -1,8 +1,14 @@
 import { generateText, stepCountIs } from "ai";
 
 import { plainParts } from "@/backgroundAgents/logs";
-import { fallbackToolParts, getToolDisplayParts } from "@/backgroundAgents/toolDisplay";
 import { backgroundFloatTools } from "@/float/actions";
+import { BACKGROUND_EXECUTION_NOTE, buildBackgroundPrompt } from "@/float/background/prompt";
+import {
+  getInvalidToolCallMessage,
+  isInvalidToolCall,
+  isValidToolCall,
+} from "@/float/background/toolCalls";
+import { getToolErrorMessage, getToolResultLogParts } from "@/float/background/toolResults";
 import { buildSystemPrompt } from "@/float/prompt";
 import { repairToolCall } from "@/float/toolCallRepair";
 import { type ActionContext, type FloatToolContext } from "@/float/types";
@@ -14,88 +20,11 @@ import { type FrontendSDK } from "@/types";
 import { createModel, resolveModel } from "@/utils";
 
 const DEFAULT_BACKGROUND_MAX_STEPS = 100;
-const BACKGROUND_EXECUTION_NOTE = `<background_execution_note>
-You are a long-running background agent with a larger time/step budget than normal Float runs.
-For multi-step tasks, prefer iterative execution over one-shot decisions.
-When tools return partial data, continue reading/searching/paginating until you have enough coverage to make a reliable decision.
-If a tool response indicates more data exists (for example hasNextPage, nextOffset, or cursor-based continuation), keep iterating before final write actions.
-For HTTP history investigation tasks (analyze, identify, find flow, auth, login, oauth, reset, token, session), do not finalize after a single historyRead page when more data may exist.
-For these history tasks, first paginate historyRead to build candidate sets, then perform focused deep inspection with historyRequestResponseRead before deciding final row IDs.
-Do not call final write actions like httpqlQuerySet/filter/scope updates until at least one deep inspection pass is completed when request/response semantics matter.
-When historyRead output includes both rowId and requestId, use rowId for row.id HTTPQL filtering and requestId for historyRequestResponseRead.
-Use the available step budget for depth and confidence; optimize for correctness and coverage, not minimum step count.
-Before final write actions, synthesize findings from gathered evidence and then apply concise, high-confidence changes.
-Use available step budget for quality and completeness, but stop early once task goals are fully satisfied.
-You also have access to HistoryRowHighlight for marking relevant history rows; it accepts metadataId or metadataIds from historyRead or historyRequestResponseRead, not request IDs.
-</background_execution_note>`;
-
 type SpawnBackgroundAgentInput = {
   sdk: FrontendSDK;
   task: string;
   title: string;
   context: ActionContext;
-};
-
-type ToolErrorOutput = {
-  kind?: string;
-  error?: {
-    message?: string;
-  };
-};
-
-type ToolOkOutput = {
-  kind?: string;
-  value?: {
-    message?: string;
-  };
-};
-
-const buildPrompt = (
-  input: { content: string; context: ActionContext },
-  learnings: string[]
-): string => {
-  return `
-<context>
-${JSON.stringify(input.context)}
-</context>
-
-<learnings>
-${learnings.map((learning, index) => `- ${index}: ${learning}`).join("\n")}
-</learnings>
-
-<user>
-${input.content}
-</user>
-`.trim();
-};
-
-const getToolErrorMessage = (output: unknown): string | undefined => {
-  if (typeof output !== "object" || output === null) {
-    return undefined;
-  }
-
-  const candidate = output as ToolErrorOutput;
-  if (candidate.kind === "Error") {
-    return candidate.error?.message ?? "Tool execution failed";
-  }
-
-  return undefined;
-};
-
-const getToolSuccessMessage = (output: unknown): string | undefined => {
-  if (typeof output !== "object" || output === null) {
-    return undefined;
-  }
-
-  const candidate = output as ToolOkOutput;
-  if (candidate.kind === "Ok") {
-    const message = candidate.value?.message;
-    if (typeof message === "string" && message.trim() !== "") {
-      return message;
-    }
-  }
-
-  return undefined;
 };
 
 export const spawnBackgroundAgent = (input: SpawnBackgroundAgentInput): string => {
@@ -157,11 +86,8 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
 
   const tools = backgroundFloatTools;
   const configuredMaxIterations = settingsStore.maxIterations;
-  const maxSteps =
-    configuredMaxIterations === undefined
-      ? DEFAULT_BACKGROUND_MAX_STEPS
-      : Math.max(DEFAULT_BACKGROUND_MAX_STEPS, configuredMaxIterations);
-  const prompt = buildPrompt(
+  const maxSteps = configuredMaxIterations ?? DEFAULT_BACKGROUND_MAX_STEPS;
+  const prompt = buildBackgroundPrompt(
     {
       content: input.task,
       context: input.context,
@@ -171,7 +97,6 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
 
   let executionError: string | undefined;
   let hasToolCall = false;
-  let hasSuccessfulToolResult = false;
 
   let system = buildSystemPrompt({
     backgroundAgents: false,
@@ -193,39 +118,32 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
       experimental_repairToolCall: async ({ toolCall, inputSchema, error }) =>
         (await repairToolCall(toolCall, inputSchema, error)) ?? null,
       onStepFinish: ({ toolCalls, toolResults }) => {
-        if (toolCalls.length > 0) {
+        if (toolCalls.some(isValidToolCall)) {
           hasToolCall = true;
         }
 
         for (const toolCall of toolCalls) {
-          if (toolCall.toolName === "backgroundAgentSpawn") {
-            store.appendLog(
-              input.agentId,
-              plainParts("Ignored invalid tool call: backgroundAgentSpawn"),
-              "error"
-            );
+          if (isInvalidToolCall(toolCall)) {
+            executionError = getInvalidToolCallMessage(toolCall);
+            store.appendLog(input.agentId, plainParts(executionError), "error");
+            throw new Error(executionError);
           }
         }
 
         for (const toolResult of toolResults) {
-          const { toolName, output, input: toolInput } = toolResult;
-          const args = (toolInput ?? {}) as Record<string, unknown>;
-
+          const { toolName, output } = toolResult;
           const errorMessage = getToolErrorMessage(output);
           if (errorMessage !== undefined) {
             executionError = `${toolName}: ${errorMessage}`;
             store.appendLog(input.agentId, plainParts(executionError), "error");
-            continue;
+            throw new Error(executionError);
           }
 
-          hasSuccessfulToolResult = true;
-          const displayParts = getToolDisplayParts(toolName, args, output);
-          if (displayParts !== undefined) {
-            store.appendLog(input.agentId, displayParts, "success");
-          } else {
-            const successMessage = getToolSuccessMessage(output);
-            store.appendLog(input.agentId, fallbackToolParts(toolName, successMessage), "success");
-          }
+          store.appendLog(
+            input.agentId,
+            getToolResultLogParts(toolName, toolResult.input, output),
+            "success"
+          );
         }
       },
     });
@@ -235,27 +153,28 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
       return;
     }
 
-    const hasAnyToolExecution = hasToolCall || result.toolCalls.length > 0;
+    const hasAnyToolExecution = hasToolCall || result.toolCalls.some(isValidToolCall);
     if (!hasAnyToolExecution) {
       store.setError(input.agentId, "No tool calls were made");
       return;
     }
 
     if (result.finishReason === "error") {
-      if (!hasSuccessfulToolResult) {
-        store.setError(input.agentId, "Background agent failed before completing any tool");
-        return;
-      }
-      store.setDone(input.agentId);
+      store.setError(input.agentId, "Background agent failed before completing the task");
       return;
     }
 
     store.setDone(input.agentId);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message === "USER_ABORTED" || message === "Request cancelled") {
+    if (error instanceof Error && error.name === "AbortError") {
       store.appendLog(input.agentId, plainParts("Background agent was cancelled"));
       store.setAborted(input.agentId);
+      return;
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    if (executionError === message) {
+      store.setError(input.agentId, message);
       return;
     }
 
