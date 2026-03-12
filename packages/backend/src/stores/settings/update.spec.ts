@@ -1,3 +1,4 @@
+import { defaultFeatureFlags } from "shared";
 import { describe, expect, it } from "vitest";
 
 import { createInitialModel, type SettingsModel } from "./model";
@@ -16,6 +17,7 @@ const createTestModel = (): SettingsModel => ({
   debugToolsEnabled: false,
   autoCreateShiftCollection: true,
   openRouterPrioritizeFastProviders: false,
+  featureFlags: defaultFeatureFlags,
 });
 
 describe("settings update", () => {
@@ -74,6 +76,21 @@ describe("settings update", () => {
       });
 
       expect(result.openRouterPrioritizeFastProviders).toBe(true);
+    });
+
+    it("updates feature flags partially", () => {
+      const model = createTestModel();
+
+      const result = update(model, {
+        type: "UPDATE_SETTINGS",
+        input: {
+          featureFlags: {
+            backgroundAgents: true,
+          },
+        },
+      });
+
+      expect(result.featureFlags.backgroundAgents).toBe(true);
     });
 
     it("updates renaming config partially", () => {
@@ -191,6 +208,7 @@ describe("settings update", () => {
       expect(model.renaming.enabled).toBe(false);
       expect(model.renaming.renameAfterSend).toBe(false);
       expect(model.openRouterPrioritizeFastProviders).toBe(false);
+      expect(model.featureFlags.backgroundAgents).toBe(false);
     });
   });
 });

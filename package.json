@@ -25,5 +25,8 @@
     "tailwindcss-primeui": "0.3.4",
     "typescript": "5.5.4",
     "vitest": "4.0.18"
-  }
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }

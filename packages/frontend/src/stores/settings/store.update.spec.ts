@@ -116,6 +116,22 @@ describe("settings update", () => {
       expect(result.config?.openRouterPrioritizeFastProviders).toBe(true);
     });
 
+    it("updates feature flags partially", () => {
+      const config = createTestConfig();
+      const modelWithConfig: SettingsModel = { ...initialModel, config };
+
+      const result = update(modelWithConfig, {
+        type: "UPDATE_SUCCESS",
+        input: {
+          featureFlags: {
+            backgroundAgents: true,
+          },
+        },
+      });
+
+      expect(result.config?.featureFlags.backgroundAgents).toBe(true);
+    });
+
     it("updates renaming config partially", () => {
       const config = createTestConfig();
       const modelWithConfig: SettingsModel = { ...initialModel, config };
@@ -225,6 +241,14 @@ describe("settings update", () => {
       });
 
       expect(result).toBe(initialModel);
+    });
+  });
+
+  describe("feature flag defaults", () => {
+    it("keeps default feature flags in the initial config", () => {
+      const config = createTestConfig();
+
+      expect(config?.featureFlags.backgroundAgents).toBe(false);
     });
   });
 });

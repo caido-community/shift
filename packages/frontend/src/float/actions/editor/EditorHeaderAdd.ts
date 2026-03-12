@@ -31,7 +31,7 @@ export const editorHeaderAddTool = tool({
       const currentText = view.state.doc.toString();
       let modifiedRequest: string;
 
-      if (replace) {
+      if (replace === true) {
         modifiedRequest = HttpForge.create(currentText).setHeader(headerName, headerValue).build();
       } else {
         modifiedRequest = HttpForge.create(currentText).addHeader(headerName, headerValue).build();
@@ -39,7 +39,9 @@ export const editorHeaderAddTool = tool({
 
       update(modifiedRequest);
 
-      return ActionResult.ok(`Header ${headerName} ${replace ? "set" : "added"} in active editor`);
+      return ActionResult.ok(
+        `Header ${headerName} ${replace === true ? "set" : "added"} in active editor`
+      );
     });
   },
 });

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { defaultFeatureFlags, FeatureFlagsConfigSchema } from "./feature-flags";
+
 const RenamingConfigSchema = z.object({
   enabled: z.boolean(),
   renameAfterSend: z.boolean(),
@@ -16,6 +18,7 @@ const SettingsConfigSchema = z.object({
   debugToolsEnabled: z.boolean(),
   autoCreateShiftCollection: z.boolean(),
   openRouterPrioritizeFastProviders: z.boolean(),
+  featureFlags: FeatureFlagsConfigSchema,
 });
 export type SettingsConfig = z.infer<typeof SettingsConfigSchema>;
 
@@ -35,6 +38,7 @@ export const defaultSettingsConfig: SettingsConfig = {
   debugToolsEnabled: false,
   autoCreateShiftCollection: true,
   openRouterPrioritizeFastProviders: false,
+  featureFlags: defaultFeatureFlags,
 };
 
 export const UpdateSettingsSchema = z.object({
@@ -46,5 +50,6 @@ export const UpdateSettingsSchema = z.object({
   debugToolsEnabled: z.boolean().optional(),
   autoCreateShiftCollection: z.boolean().optional(),
   openRouterPrioritizeFastProviders: z.boolean().optional(),
+  featureFlags: FeatureFlagsConfigSchema.partial().optional(),
 });
 export type UpdateSettingsInput = z.infer<typeof UpdateSettingsSchema>;

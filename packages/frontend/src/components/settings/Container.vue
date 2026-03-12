@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import Card from "primevue/card";
+import Checkbox from "primevue/checkbox";
 import InputNumber from "primevue/inputnumber";
 import ToggleSwitch from "primevue/toggleswitch";
+import { defaultFeatureFlags, type FeatureFlagKey } from "shared";
 import { computed } from "vue";
 
+import { featureFlagEntries } from "@/features";
 import { useSettingsStore } from "@/stores/settings";
 import { updateSettings } from "@/stores/settings/store.effects";
 
@@ -45,6 +48,20 @@ const openRouterPrioritizeFastProviders = computed({
     updateSettings(sdk, dispatch, { openRouterPrioritizeFastProviders: value });
   },
 });
+
+const experimentalFeatureFlags = featureFlagEntries.filter(
+  (flag) => flag.category === "experimental"
+);
+
+const getFeatureFlagValue = (flag: FeatureFlagKey): boolean => {
+  return settingsStore.featureFlags?.[flag] ?? defaultFeatureFlags[flag];
+};
+
+const updateFeatureFlag = (flag: FeatureFlagKey, value: boolean) => {
+  updateSettings(sdk, dispatch, {
+    featureFlags: { [flag]: value },
+  });
+};
 </script>
 
 <template>
@@ -112,6 +129,31 @@ const openRouterPrioritizeFastProviders = computed({
             </div>
 
             <ToggleSwitch v-model="openRouterPrioritizeFastProviders" />
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <div class="flex flex-col">
+              <label class="text-base font-medium">Feature Flags</label>
+              <p class="text-sm text-surface-400">
+                Enable optional and experimental capabilities for Shift.
+              </p>
+            </div>
+
+            <div
+              v-for="flag in experimentalFeatureFlags"
+              :key="flag.key"
+              class="flex items-start gap-3 rounded-lg border border-surface-700/60 p-3">
+              <Checkbox
+                :model-value="getFeatureFlagValue(flag.key)"
+                binary
+                class="mt-0.5"
+                @update:model-value="updateFeatureFlag(flag.key, $event)" />
+
+              <div class="flex flex-col">
+                <label class="text-sm font-medium">{{ flag.label }}</label>
+                <p class="text-sm text-surface-400">{{ flag.description }}</p>
+              </div>
+            </div>
           </div>
         </div>
       </template>

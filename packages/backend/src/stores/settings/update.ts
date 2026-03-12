@@ -30,6 +30,9 @@ function handleUpdateSettings(
     if (input.openRouterPrioritizeFastProviders !== undefined) {
       draft.openRouterPrioritizeFastProviders = input.openRouterPrioritizeFastProviders;
     }
+    if (input.featureFlags !== undefined) {
+      draft.featureFlags = { ...draft.featureFlags, ...input.featureFlags };
+    }
   });
 }
 

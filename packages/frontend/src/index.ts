@@ -79,7 +79,8 @@ export const init = (sdk: FrontendSDK) => {
     setupRenaming(sdk);
   });
 
-  const { drawer, indicators } = createDOMManager(sdk);
+  const { drawer, indicators, backgroundAgentsPanel } = createDOMManager(sdk);
   drawer.start();
   indicators.start();
+  backgroundAgentsPanel.start();
 };

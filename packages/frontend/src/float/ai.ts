@@ -3,8 +3,9 @@ import { generateText, InvalidToolInputError, stepCountIs } from "ai";
 import Ajv from "ajv";
 import { Result } from "shared";
 
-import { floatTools } from "@/float/actions";
-import { SYSTEM_PROMPT } from "@/float/prompt";
+import { isFeatureEnabled } from "@/features";
+import { getCoreFloatTools } from "@/float/actions";
+import { buildSystemPrompt } from "@/float/prompt";
 import { type ActionQueryInput, type ActionResult, type FloatToolContext } from "@/float/types";
 import { useLearningsStore } from "@/stores/learnings";
 import { useModelsStore } from "@/stores/models";
@@ -103,15 +104,18 @@ export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Pro
   };
 
   let executionError: string | undefined;
+  const backgroundAgentsEnabled = isFeatureEnabled("backgroundAgents");
 
   try {
     const result = await generateText({
       model,
       temperature: 0,
-      tools: floatTools,
+      tools: getCoreFloatTools(),
       toolChoice: "required",
       stopWhen: stepCountIs(1),
-      system: SYSTEM_PROMPT,
+      system: buildSystemPrompt({
+        backgroundAgents: backgroundAgentsEnabled,
+      }),
       prompt,
       abortSignal: input.abortSignal,
       experimental_context: toolContext,

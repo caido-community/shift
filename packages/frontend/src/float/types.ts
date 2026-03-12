@@ -31,20 +31,44 @@ const frontendErrorSchema = z.object({
   detail: z.string().optional(),
 });
 
-export type ActionResult = Result<{ message: string }, FrontendError>;
+type MessageOnly = { message: string };
+type WithMessage<T> = T & MessageOnly;
+
+export type ActionResult<TValue = undefined> = Result<
+  TValue extends undefined ? MessageOnly : WithMessage<TValue>,
+  FrontendError
+>;
+
+const defaultSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("Ok"),
+    value: z.object({ message: z.string() }),
+  }),
+  z.object({
+    kind: z.literal("Error"),
+    error: frontendErrorSchema,
+  }),
+]);
+
 export const ActionResult = {
-  schema: z.discriminatedUnion("kind", [
-    z.object({
-      kind: z.literal("Ok"),
-      value: z.object({ message: z.string() }),
-    }),
-    z.object({
-      kind: z.literal("Error"),
-      error: frontendErrorSchema,
-    }),
-  ]),
+  schema: defaultSchema,
+  schemaWithValue: <T extends z.ZodTypeAny>(valueSchema: T) =>
+    z.discriminatedUnion("kind", [
+      z.object({
+        kind: z.literal("Ok"),
+        value: valueSchema.and(z.object({ message: z.string() })),
+      }),
+      z.object({
+        kind: z.literal("Error"),
+        error: frontendErrorSchema,
+      }),
+    ]),
   ok: (message: string): ActionResult => ({ kind: "Ok", value: { message } }),
-  err: (message: string, detail?: string): ActionResult => ({
+  okWithValue: <TValue>(value: WithMessage<TValue>): ActionResult<TValue> => ({
+    kind: "Ok",
+    value: value as TValue extends undefined ? MessageOnly : WithMessage<TValue>,
+  }),
+  err: <TValue = never>(message: string, detail?: string): ActionResult<TValue> => ({
     kind: "Error",
     error: { message, detail },
   }),
