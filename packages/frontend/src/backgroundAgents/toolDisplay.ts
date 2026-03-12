@@ -1,16 +1,10 @@
 import { type BackgroundAgentLogPart, getCompletedToolDisplayName, plainParts } from "./logs";
 
+import { type ActionResult } from "@/float/types";
+
 type Args = Record<string, unknown>;
 
 type ToolDisplayFn = (input: Args, output: unknown) => BackgroundAgentLogPart[];
-
-type ActionOkOutput = {
-  kind?: string;
-  value?: {
-    message?: string;
-    totalReturned?: number;
-  };
-};
 
 const str = (val: unknown): string => {
   if (typeof val === "string") {
@@ -25,10 +19,28 @@ const str = (val: unknown): string => {
 const truncate = (val: string, max: number): string =>
   val.length > max ? `${val.slice(0, max)}…` : val;
 
+const getActionValue = <TValue extends Record<string, unknown>>(
+  output: unknown
+): ({ message: string } & TValue) | undefined => {
+  if (typeof output !== "object" || output === null) {
+    return undefined;
+  }
+
+  const result = output as ActionResult<TValue>;
+  if (result.kind !== "Ok") {
+    return undefined;
+  }
+
+  return result.value as { message: string } & TValue;
+};
+
+const getStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+
 const displays: Record<string, ToolDisplayFn> = {
   historyRead: (_input, output) => {
-    const result = output as ActionOkOutput;
-    const count = result.value?.totalReturned;
+    const value = getActionValue<{ totalReturned?: number }>(output);
+    const count = value?.totalReturned;
     if (typeof count === "number") {
       return [
         { text: "Read ", muted: false },
@@ -36,7 +48,7 @@ const displays: Record<string, ToolDisplayFn> = {
         { text: " history entries", muted: false },
       ];
     }
-    return plainParts(result.value?.message ?? "Read history");
+    return plainParts(value?.message ?? "Read history");
   },
 
   historyRequestResponseRead: (input) => {
@@ -54,11 +66,14 @@ const displays: Record<string, ToolDisplayFn> = {
 
   HistoryRowHighlight: (input) => {
     const color = str(input.color);
-    const ids = Array.isArray(input.metadataIds)
-      ? input.metadataIds.filter((value): value is string => typeof value === "string")
-      : [];
+    const ids = getStringArray(input.metadataIds);
     const label = typeof input.metadataId === "string" ? input.metadataId : ids[0];
-    const count = label === undefined ? 0 : Math.max(ids.length, 1);
+    const count = ids.length > 0 ? ids.length : label === undefined ? 0 : 1;
+
+    if (count === 0) {
+      return plainParts(color === "none" ? "Cleared highlight" : `Set ${color} highlight`);
+    }
+
     if (color === "none") {
       if (count > 1) {
         return [
