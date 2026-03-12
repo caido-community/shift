@@ -21,7 +21,7 @@ export const useBackgroundAgentsPanelManager = (sdk: FrontendSDK) => {
 
     container = document.createElement("div");
     container.className = "shift-background-agents-panel-injection";
-    container.id = "plugin--shift-background-agents";
+    container.id = "plugin--shift";
     document.body.appendChild(container);
 
     app = createApp(BackgroundAgentsPanel);

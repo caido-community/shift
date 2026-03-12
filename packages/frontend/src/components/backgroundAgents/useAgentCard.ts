@@ -1,12 +1,10 @@
 import { computed, type MaybeRefOrGetter, toValue } from "vue";
 
-import { isBackgroundAgentToolCallLog } from "@/backgroundAgents/logs";
-import { TextShimmer } from "@/components/common/TextShimmer";
 import {
-    type BackgroundAgent,
-    type BackgroundAgentLog,
-    type BackgroundAgentStatus,
-    useBackgroundAgentsStore,
+  type BackgroundAgent,
+  type BackgroundAgentLog,
+  type BackgroundAgentStatus,
+  useBackgroundAgentsStore,
 } from "@/stores/backgroundAgents";
 
 const STATUS_ICON_CLASS: Record<BackgroundAgentStatus, string> = {
@@ -19,7 +17,7 @@ const STATUS_ICON_CLASS: Record<BackgroundAgentStatus, string> = {
 
 const LOG_TEXT_CLASS: Record<BackgroundAgentLog["level"], string> = {
   info: "text-surface-300",
-  success: "text-surface-200",
+  success: "text-surface-300",
   error: "text-error-300",
 };
 
@@ -28,7 +26,7 @@ export function useAgentCard(agentSource: MaybeRefOrGetter<BackgroundAgent>) {
   const agent = computed(() => toValue(agentSource));
 
   const statusIconClass = computed(() => STATUS_ICON_CLASS[agent.value.status]);
-  const titleTag = computed(() => (agent.value.status === "running" ? TextShimmer : "span"));
+  const isRunning = computed(() => agent.value.status === "running");
   const canCancel = computed(
     () => agent.value.status === "queued" || agent.value.status === "running"
   );
@@ -45,29 +43,15 @@ export function useAgentCard(agentSource: MaybeRefOrGetter<BackgroundAgent>) {
     store.removeAgent(agent.value.id);
   };
 
-  const logIconClass = (log: BackgroundAgentLog) => {
-    if (log.level === "error") {
-      return "fas fa-times-circle text-error-400";
-    }
-    if (log.level === "success") {
-      return "fas fa-check-circle text-success-400";
-    }
-    if (isBackgroundAgentToolCallLog(log.text)) {
-      return "fas fa-circle-notch fa-spin text-secondary-400";
-    }
-    return "fas fa-angle-right text-surface-500";
-  };
-
   const logTextClass = (log: BackgroundAgentLog) => LOG_TEXT_CLASS[log.level];
 
   return {
     canCancel,
+    isRunning,
     statusIconClass,
-    titleTag,
     toggleExpanded,
     cancelAgent,
     removeAgent,
-    logIconClass,
     logTextClass,
   };
 }

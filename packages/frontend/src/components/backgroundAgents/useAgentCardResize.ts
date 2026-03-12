@@ -1,16 +1,18 @@
 import { useEventListener } from "@vueuse/core";
 import {
-    computed,
-    nextTick,
-    onUnmounted,
-    ref,
-    toValue,
-    useTemplateRef,
-    watch,
-    type MaybeRefOrGetter,
+  computed,
+  type MaybeRefOrGetter,
+  nextTick,
+  onUnmounted,
+  ref,
+  toValue,
+  useTemplateRef,
+  watch,
 } from "vue";
 
 const VIEWPORT_GUTTER = 32;
+const EXPANDED_MAX_HEIGHT_RATIO = 0.55;
+const EXPANDED_MAX_HEIGHT_PX = 250;
 
 type ResizeHandle = "top-left" | "bottom-left" | "bottom-right";
 
@@ -41,27 +43,57 @@ export function useAgentCardResize(expanded: MaybeRefOrGetter<boolean>) {
   let stopMove: (() => void) | undefined;
   let stopUp: (() => void) | undefined;
 
+  const getExpandedMaxHeight = (rect?: DOMRect) => {
+    const viewportCap = Math.min(
+      window.innerHeight * EXPANDED_MAX_HEIGHT_RATIO,
+      EXPANDED_MAX_HEIGHT_PX
+    );
+    const availableHeight =
+      rect === undefined
+        ? viewportCap
+        : Math.max(0, window.innerHeight - rect.top - VIEWPORT_GUTTER);
+
+    return Math.min(viewportCap, availableHeight);
+  };
+
   const cardStyle = computed(() => ({
     width: width.value === undefined ? undefined : `${width.value}px`,
     height: toValue(expanded) && height.value !== undefined ? `${height.value}px` : undefined,
+    maxHeight: toValue(expanded) && maxHeight.value > 0 ? `${maxHeight.value}px` : undefined,
   }));
 
   const resizeCursorClass = computed(() =>
     activeHandle.value === undefined ? undefined : HANDLE_CURSOR_CLASS[activeHandle.value]
   );
 
+  const getCardRect = () => {
+    const element = cardElement.value;
+    if (element === null) {
+      return undefined;
+    }
+
+    const rect = element.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) {
+      return undefined;
+    }
+
+    return rect;
+  };
+
   const updateResizeBounds = () => {
+    const rect = getCardRect();
+
     maxWidth.value = Math.max(
       minWidth.value,
       Math.min(minWidth.value * 2, window.innerWidth - VIEWPORT_GUTTER)
     );
-    maxHeight.value = Math.max(minHeight.value, minHeight.value * 2);
+    maxHeight.value = getExpandedMaxHeight(rect);
 
     if (width.value !== undefined) {
       width.value = clamp(width.value, minWidth.value, maxWidth.value);
     }
 
-    if (height.value !== undefined) {
+    if (height.value !== undefined && maxHeight.value > 0) {
       height.value = clamp(height.value, minHeight.value, maxHeight.value);
     }
   };
@@ -69,13 +101,8 @@ export function useAgentCardResize(expanded: MaybeRefOrGetter<boolean>) {
   const measureCardSize = async () => {
     await nextTick();
 
-    const element = cardElement.value;
-    if (element === null) {
-      return;
-    }
-
-    const rect = element.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) {
+    const rect = getCardRect();
+    if (rect === undefined) {
       return;
     }
 
@@ -84,9 +111,17 @@ export function useAgentCardResize(expanded: MaybeRefOrGetter<boolean>) {
       width.value = rect.width;
     }
 
-    if (toValue(expanded) && rect.height > minHeight.value) {
-      minHeight.value = rect.height;
-      height.value = Math.max(height.value ?? 0, rect.height);
+    if (toValue(expanded)) {
+      const measuredMaxHeight = getExpandedMaxHeight(rect);
+      maxHeight.value = measuredMaxHeight;
+
+      if (minHeight.value === 0) {
+        minHeight.value = Math.min(rect.height, measuredMaxHeight);
+      }
+
+      if (height.value !== undefined && measuredMaxHeight > 0) {
+        height.value = clamp(height.value, minHeight.value, measuredMaxHeight);
+      }
     }
 
     updateResizeBounds();
@@ -106,8 +141,21 @@ export function useAgentCardResize(expanded: MaybeRefOrGetter<boolean>) {
     event.preventDefault();
     event.stopPropagation();
 
-    if (width.value === undefined || height.value === undefined) {
+    const rect = getCardRect();
+    if (rect === undefined) {
       return;
+    }
+
+    minWidth.value = Math.max(minWidth.value, rect.width);
+    width.value ??= rect.width;
+
+    if (toValue(expanded)) {
+      if (minHeight.value === 0) {
+        minHeight.value = Math.min(rect.height, getExpandedMaxHeight(rect));
+      }
+      if (handle !== "top-left") {
+        height.value ??= Math.min(rect.height, getExpandedMaxHeight(rect));
+      }
     }
 
     updateResizeBounds();
@@ -116,7 +164,7 @@ export function useAgentCardResize(expanded: MaybeRefOrGetter<boolean>) {
     const startX = event.clientX;
     const startY = event.clientY;
     const startWidth = width.value;
-    const startHeight = height.value;
+    const startHeight = height.value ?? rect.height;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       if (handle === "top-left" || handle === "bottom-left") {

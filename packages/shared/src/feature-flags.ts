@@ -10,13 +10,12 @@ type FeatureFlagDefinition = {
 const defineFeatureFlags = <const T extends Record<string, FeatureFlagDefinition>>(
   definitions: T
 ) => {
-  const entries = Object.entries(definitions) as Array<
-    [key: keyof T, definition: T[keyof T]]
-  >;
+  const entries = Object.entries(definitions) as Array<[key: keyof T, definition: T[keyof T]]>;
 
-  const schemaShape = Object.fromEntries(
-    entries.map(([key]) => [key, z.boolean()])
-  ) as Record<keyof T, z.ZodBoolean>;
+  const schemaShape = Object.fromEntries(entries.map(([key]) => [key, z.boolean()])) as Record<
+    keyof T,
+    z.ZodBoolean
+  >;
 
   const defaults = Object.fromEntries(
     entries.map(([key, definition]) => [key, definition.defaultValue])

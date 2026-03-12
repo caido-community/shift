@@ -1,6 +1,7 @@
 import { generateText, stepCountIs } from "ai";
 
-import { createBackgroundAgentToolCallText } from "@/backgroundAgents/logs";
+import { plainParts } from "@/backgroundAgents/logs";
+import { fallbackToolParts, getToolDisplayParts } from "@/backgroundAgents/toolDisplay";
 import { backgroundFloatTools } from "@/float/actions";
 import { buildSystemPrompt } from "@/float/prompt";
 import { type ActionContext, type FloatToolContext } from "@/float/types";
@@ -24,7 +25,7 @@ When historyRead output includes both rowId and requestId, use rowId for row.id 
 Use the available step budget for depth and confidence; optimize for correctness and coverage, not minimum step count.
 Before final write actions, synthesize findings from gathered evidence and then apply concise, high-confidence changes.
 Use available step budget for quality and completeness, but stop early once task goals are fully satisfied.
-You also have access to HistoryRowHighlight for marking relevant history rows; it requires metadataId values from historyRead or historyRequestResponseRead, not request IDs.
+You also have access to HistoryRowHighlight for marking relevant history rows; it accepts metadataId or metadataIds from historyRead or historyRequestResponseRead, not request IDs.
 </background_execution_note>`;
 
 type SpawnBackgroundAgentInput = {
@@ -138,7 +139,7 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
   });
 
   if (modelData === undefined) {
-    store.appendLog(input.agentId, "No models available", "error");
+    store.appendLog(input.agentId, plainParts("No models available"), "error");
     store.setError(input.agentId, "No models available");
     return;
   }
@@ -197,29 +198,30 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
           if (toolCall.toolName === "backgroundAgentSpawn") {
             store.appendLog(
               input.agentId,
-              "Ignored invalid tool call: backgroundAgentSpawn",
+              plainParts("Ignored invalid tool call: backgroundAgentSpawn"),
               "error"
             );
-            continue;
           }
-          store.appendLog(input.agentId, createBackgroundAgentToolCallText(toolCall.toolName));
         }
 
-        for (const { toolName, output } of toolResults) {
+        for (const toolResult of toolResults) {
+          const { toolName, output, input: toolInput } = toolResult;
+          const args = (toolInput ?? {}) as Record<string, unknown>;
+
           const errorMessage = getToolErrorMessage(output);
           if (errorMessage !== undefined) {
             executionError = `${toolName}: ${errorMessage}`;
-            store.completeToolLog(input.agentId, toolName, executionError, "error");
+            store.appendLog(input.agentId, plainParts(executionError), "error");
             continue;
           }
 
-          const successMessage = getToolSuccessMessage(output);
-          if (successMessage !== undefined) {
-            hasSuccessfulToolResult = true;
-            store.completeToolLog(input.agentId, toolName, successMessage, "success");
+          hasSuccessfulToolResult = true;
+          const displayParts = getToolDisplayParts(toolName, args, output);
+          if (displayParts !== undefined) {
+            store.appendLog(input.agentId, displayParts, "success");
           } else {
-            hasSuccessfulToolResult = true;
-            store.completeToolLog(input.agentId, toolName, `${toolName} completed`, "success");
+            const successMessage = getToolSuccessMessage(output);
+            store.appendLog(input.agentId, fallbackToolParts(toolName, successMessage), "success");
           }
         }
       },
@@ -249,12 +251,12 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message === "USER_ABORTED" || message === "Request cancelled") {
-      store.appendLog(input.agentId, "Background agent was cancelled");
+      store.appendLog(input.agentId, plainParts("Background agent was cancelled"));
       store.setAborted(input.agentId);
       return;
     }
 
-    store.appendLog(input.agentId, message, "error");
+    store.appendLog(input.agentId, plainParts(message), "error");
     store.setError(input.agentId, message);
   }
 };

@@ -2,14 +2,14 @@ import { defineStore } from "pinia";
 import { computed, readonly, shallowRef } from "vue";
 
 import { generateId } from "../agent/utils/id";
-import { createBackgroundAgentToolCallText } from "@/backgroundAgents/logs";
+import { type BackgroundAgentLogPart } from "../backgroundAgents/logs";
 
 export type BackgroundAgentStatus = "queued" | "running" | "done" | "error" | "aborted";
 type BackgroundAgentLogLevel = "info" | "success" | "error";
 
 export type BackgroundAgentLog = {
   id: string;
-  text: string;
+  parts: BackgroundAgentLogPart[];
   level: BackgroundAgentLogLevel;
   createdAt: number;
 };
@@ -61,7 +61,11 @@ export const useBackgroundAgentsStore = defineStore("backgroundAgents", () => {
     return id;
   };
 
-  const appendLog = (agentId: string, text: string, level: BackgroundAgentLogLevel = "info") => {
+  const appendLog = (
+    agentId: string,
+    parts: BackgroundAgentLogPart[],
+    level: BackgroundAgentLogLevel = "info"
+  ) => {
     const now = Date.now();
     patchAgent(agentId, (agent) => ({
       ...agent,
@@ -70,7 +74,7 @@ export const useBackgroundAgentsStore = defineStore("backgroundAgents", () => {
         ...agent.logs,
         {
           id: `${now}-${generateId(6)}`,
-          text,
+          parts,
           level,
           createdAt: now,
         },
@@ -164,59 +168,6 @@ export const useBackgroundAgentsStore = defineStore("backgroundAgents", () => {
     controllers.delete(agentId);
   };
 
-  const completeToolLog = (
-    agentId: string,
-    toolName: string,
-    text: string,
-    level: BackgroundAgentLogLevel
-  ) => {
-    const now = Date.now();
-    patchAgent(agentId, (agent) => {
-      const expectedCallingText = createBackgroundAgentToolCallText(toolName);
-      const index = [...agent.logs]
-        .reverse()
-        .findIndex((log) => log.text === expectedCallingText && log.level === "info");
-
-      if (index === -1) {
-        return {
-          ...agent,
-          updatedAt: now,
-          logs: [
-            ...agent.logs,
-            {
-              id: `${now}-${generateId(6)}`,
-              text,
-              level,
-              createdAt: now,
-            },
-          ],
-        };
-      }
-
-      const logs = [...agent.logs];
-      const targetIndex = logs.length - 1 - index;
-      const current = logs[targetIndex];
-      if (current === undefined) {
-        return {
-          ...agent,
-          updatedAt: now,
-        };
-      }
-
-      logs[targetIndex] = {
-        ...current,
-        text,
-        level,
-      };
-
-      return {
-        ...agent,
-        updatedAt: now,
-        logs,
-      };
-    });
-  };
-
   return {
     state: readonly(agents),
     agents: computed(() => agents.value),
@@ -233,6 +184,5 @@ export const useBackgroundAgentsStore = defineStore("backgroundAgents", () => {
     registerController,
     cancelAgent,
     clearController,
-    completeToolLog,
   };
 });

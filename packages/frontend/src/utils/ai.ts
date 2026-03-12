@@ -10,7 +10,7 @@ import {
 import type { FrontendSDK } from "@/types";
 import { isPresent } from "@/utils/optional";
 
-export type ProviderStatus = {
+type ProviderStatus = {
   id: AIUpstreamProviderId;
   isConfigured: boolean;
 };

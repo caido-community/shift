@@ -1,5 +1,5 @@
 import { useScroll } from "@vueuse/core";
-import { computed, nextTick, toValue, useTemplateRef, watch, type MaybeRefOrGetter } from "vue";
+import { computed, type MaybeRefOrGetter, nextTick, toValue, useTemplateRef, watch } from "vue";
 
 import type { BackgroundAgent } from "@/stores/backgroundAgents";
 

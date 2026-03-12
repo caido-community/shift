@@ -1,6 +1,8 @@
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { plainParts } from "../backgroundAgents/logs";
+
 import { useBackgroundAgentsStore } from "./backgroundAgents";
 
 describe("background agents store", () => {
@@ -48,13 +50,13 @@ describe("background agents store", () => {
       title: "Title",
     });
 
-    store.appendLog(id, "first");
-    store.appendLog(id, "second", "success");
+    store.appendLog(id, plainParts("first"));
+    store.appendLog(id, plainParts("second"), "success");
 
     const agent = store.agents.find((entry) => entry.id === id);
     expect(agent?.logs).toHaveLength(2);
-    expect(agent?.logs[0]?.text).toBe("first");
-    expect(agent?.logs[1]?.text).toBe("second");
+    expect(agent?.logs[0]?.parts).toEqual([{ text: "first", muted: false }]);
+    expect(agent?.logs[1]?.parts).toEqual([{ text: "second", muted: false }]);
     expect(agent?.logs[1]?.level).toBe("success");
   });
 

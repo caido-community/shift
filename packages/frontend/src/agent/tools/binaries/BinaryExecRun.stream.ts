@@ -3,7 +3,7 @@ import { shallowRef } from "vue";
 
 import { type FrontendSDK } from "@/types";
 
-export type StreamedBinaryOutput = {
+type StreamedBinaryOutput = {
   stdout: string;
   stderr: string;
   stdoutBytes: number;

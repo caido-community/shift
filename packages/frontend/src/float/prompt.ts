@@ -508,7 +508,7 @@ HTTPQL is used to filter requests and responses in Caido.
 - \`source:intercept\`, \`source:replay\`, \`source:automate\`, \`source:workflow\`
 `;
 
-export const SYSTEM_PROMPT = `You are a part of Caido Shift plugin, an assistant that modifies HTTP requests and performs actions in a web proxy application based on user instructions. You should respond with one or more tool calls that achieve the user's goal.
+const SYSTEM_PROMPT = `You are a part of Caido Shift plugin, an assistant that modifies HTTP requests and performs actions in a web proxy application based on user instructions. You should respond with one or more tool calls that achieve the user's goal.
 
 IMPORTANT: Never respond with text. Only use tool calls. Be efficient - only call tools necessary to complete the request.
 
@@ -643,7 +643,7 @@ View all findings. Path: "#/findings"
 - BackgroundAgent has access to more tools including:
   - historyRead - paginated compact history scan
   - historyRequestResponseRead - deep raw request/response read by request IDs or row IDs (batch)
-  - HistoryRowHighlight - apply or clear row highlights using metadataId from history tools
+- HistoryRowHighlight - apply or clear row highlights using metadataId or metadataIds from history tools
 - Example:
   - User request: "search through http history, filter out analytics and create scope"
   - Tool call: backgroundAgentSpawn with task set to the full user request and an optional short title.

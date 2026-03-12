@@ -1,31 +1,27 @@
 <script setup lang="ts">
-import { toRef } from "vue";
-
-import { type BackgroundAgent } from "@/stores/backgroundAgents";
-
 import { useAgentCard } from "./useAgentCard";
 import { useAgentCardLogs } from "./useAgentCardLogs";
 import { useAgentCardResize } from "./useAgentCardResize";
 
-const props = defineProps<{
+import { TextShimmer } from "@/components/common/TextShimmer";
+import { type BackgroundAgent } from "@/stores/backgroundAgents";
+
+const { agent } = defineProps<{
   agent: BackgroundAgent;
 }>();
 
-const agent = toRef(props, "agent");
-
 const {
   canCancel,
+  isRunning,
   statusIconClass,
-  titleTag,
   toggleExpanded,
   cancelAgent,
   removeAgent,
-  logIconClass,
   logTextClass,
-} = useAgentCard(agent);
-const { latestLogId } = useAgentCardLogs(agent);
+} = useAgentCard(() => agent);
+useAgentCardLogs(() => agent);
 const { activeHandle, cardStyle, resizeCursorClass, startResize } = useAgentCardResize(
-  () => agent.value.expanded
+  () => agent.expanded
 );
 </script>
 
@@ -45,11 +41,16 @@ const { activeHandle, cardStyle, resizeCursorClass, startResize } = useAgentCard
         @click="toggleExpanded">
         <div class="flex items-center gap-2">
           <i :class="statusIconClass" />
-          <component
-            :is="titleTag"
+          <TextShimmer
+            v-if="isRunning"
+            class="text-sm font-medium truncate">
+            {{ agent.title }}
+          </TextShimmer>
+          <span
+            v-else
             class="text-sm font-medium text-surface-200 truncate">
             {{ agent.title }}
-          </component>
+          </span>
         </div>
       </button>
       <div class="flex items-center gap-1">
@@ -80,21 +81,18 @@ const { activeHandle, cardStyle, resizeCursorClass, startResize } = useAgentCard
         <div
           v-if="agent.logs.length > 0"
           ref="logsContainer"
-          class="min-h-0 flex-1 overflow-y-auto custom-scrollbar rounded border border-surface-700/60 bg-surface-900/30 p-2 space-y-1"
+          class="min-h-0 flex-1 overflow-y-auto custom-scrollbar rounded border border-surface-700/60 bg-surface-900/30 px-2.5 py-1.5"
           style="scroll-behavior: smooth">
           <div
             v-for="log in agent.logs"
             :key="log.id"
-            class="flex items-start gap-2 px-2 py-1.5 rounded-md border border-surface-700/40 bg-surface-800/40 transition-all duration-150"
-            :class="{ 'animate-fade-in': log.id === latestLogId }">
-            <i
-              :class="logIconClass(log)"
-              class="mt-0.5 text-[10px] shrink-0" />
-            <span
-              class="text-xs font-mono leading-4 break-words"
-              :class="logTextClass(log)"
-              >{{ log.text }}</span
-            >
+            class="bg-agent-log-enter min-w-0 truncate text-sm leading-6"
+            :class="logTextClass(log)">
+            <template
+              v-for="(part, index) in log.parts"
+              :key="index">
+              <span :class="{ 'text-surface-500': part.muted }">{{ part.text }}</span>
+            </template>
           </div>
         </div>
       </div>
@@ -121,5 +119,20 @@ const { activeHandle, cardStyle, resizeCursorClass, startResize } = useAgentCard
 .bg-agent-expand-enter-from,
 .bg-agent-expand-leave-to {
   opacity: 0;
+}
+
+.bg-agent-log-enter {
+  animation: bg-agent-log-slide-in 200ms ease-out both;
+}
+
+@keyframes bg-agent-log-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
