@@ -13,7 +13,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
 import { createModel, resolveModel } from "@/utils";
 
-const DEFAULT_BACKGROUND_MAX_STEPS = 40;
+const DEFAULT_BACKGROUND_MAX_STEPS = 100;
 const BACKGROUND_EXECUTION_NOTE = `<background_execution_note>
 You are a long-running background agent with a larger time/step budget than normal Float runs.
 For multi-step tasks, prefer iterative execution over one-shot decisions.

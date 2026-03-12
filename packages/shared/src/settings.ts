@@ -29,11 +29,13 @@ export const defaultRenamingConfig: RenamingConfig = {
     "Include the HTTP Verb, and a concise version of the path in the tab name. Focus on the end of the path. Include only the first 4 characters of IDs.\nExample: GET /api/v1/users/{id}/profile\nUNLESS, the current request is a graphql request, then use the operationName if present.",
 };
 
+export const DEFAULT_MAX_ITERATIONS = 100;
+
 export const defaultSettingsConfig: SettingsConfig = {
   agentsModel: "",
   floatModel: "",
   renamingModel: "",
-  maxIterations: 35,
+  maxIterations: DEFAULT_MAX_ITERATIONS,
   renaming: defaultRenamingConfig,
   debugToolsEnabled: false,
   autoCreateShiftCollection: true,

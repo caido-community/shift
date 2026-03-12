@@ -1,4 +1,4 @@
-import { defaultSettingsConfig } from "shared";
+import { DEFAULT_MAX_ITERATIONS, defaultSettingsConfig } from "shared";
 import { describe, expect, it } from "vitest";
 
 import { initialModel, type SettingsModel } from "./store.model";
@@ -9,7 +9,7 @@ const createTestConfig = (): SettingsModel["config"] => ({
   agentsModel: "anthropic/claude-sonnet-4.6",
   floatModel: "google/gemini-3-flash-preview",
   renamingModel: "google/gemini-3.1-pro-preview-customtools",
-  maxIterations: 35,
+  maxIterations: DEFAULT_MAX_ITERATIONS,
   renaming: {
     enabled: false,
     renameAfterSend: false,

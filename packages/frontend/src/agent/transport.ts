@@ -5,7 +5,7 @@ import {
   createUIMessageStream,
   type UIMessageChunk,
 } from "ai";
-import { type ReasoningTime, type ShiftMessage } from "shared";
+import { DEFAULT_MAX_ITERATIONS, type ReasoningTime, type ShiftMessage } from "shared";
 
 import type { FrontendSDK } from "../types";
 
@@ -76,7 +76,7 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
         }
 
         const settingsStore = useSettingsStore();
-        const maxIterations = settingsStore.maxIterations ?? 35;
+        const maxIterations = settingsStore.maxIterations ?? DEFAULT_MAX_ITERATIONS;
         const openRouterPrioritizeFastProviders =
           settingsStore.openRouterPrioritizeFastProviders ?? false;
         const agent = createShiftAgent({

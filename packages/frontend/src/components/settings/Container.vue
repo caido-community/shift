@@ -3,7 +3,7 @@ import Card from "primevue/card";
 import Checkbox from "primevue/checkbox";
 import InputNumber from "primevue/inputnumber";
 import ToggleSwitch from "primevue/toggleswitch";
-import { defaultFeatureFlags, type FeatureFlagKey } from "shared";
+import { DEFAULT_MAX_ITERATIONS, defaultFeatureFlags, type FeatureFlagKey } from "shared";
 import { computed } from "vue";
 
 import { featureFlagEntries } from "@/features";
@@ -15,7 +15,7 @@ const { sdk, dispatch } = settingsStore;
 
 const maxIterations = computed({
   get() {
-    return settingsStore.maxIterations ?? 35;
+    return settingsStore.maxIterations ?? DEFAULT_MAX_ITERATIONS;
   },
   set(value: number) {
     updateSettings(sdk, dispatch, { maxIterations: value });

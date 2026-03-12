@@ -1,4 +1,4 @@
-import { defaultFeatureFlags } from "shared";
+import { DEFAULT_MAX_ITERATIONS, defaultFeatureFlags } from "shared";
 import { describe, expect, it } from "vitest";
 
 import { createInitialModel, type SettingsModel } from "./model";
@@ -8,7 +8,7 @@ const createTestModel = (): SettingsModel => ({
   agentsModel: "anthropic/claude-sonnet-4.6",
   floatModel: "google/gemini-3-flash-preview",
   renamingModel: "google/gemini-3.1-pro-preview-customtools",
-  maxIterations: 35,
+  maxIterations: DEFAULT_MAX_ITERATIONS,
   renaming: {
     enabled: false,
     renameAfterSend: false,
@@ -204,7 +204,7 @@ describe("settings update", () => {
       expect(model.agentsModel).toBe("");
       expect(model.floatModel).toBe("");
       expect(model.renamingModel).toBe("");
-      expect(model.maxIterations).toBe(35);
+      expect(model.maxIterations).toBe(DEFAULT_MAX_ITERATIONS);
       expect(model.renaming.enabled).toBe(false);
       expect(model.renaming.renameAfterSend).toBe(false);
       expect(model.openRouterPrioritizeFastProviders).toBe(false);
