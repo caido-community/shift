@@ -51,6 +51,9 @@ const { activeHandle, cardStyle, resizeCursorClass, startResize } = useAgentCard
             class="text-sm font-medium text-surface-200 truncate">
             {{ agent.title }}
           </span>
+          <i
+            class="fas fa-chevron-down text-[10px] text-surface-400 transition-transform duration-150"
+            :class="{ 'rotate-180': agent.expanded }" />
         </div>
       </button>
       <div class="flex items-center gap-1">

@@ -53,7 +53,7 @@ export const useBackgroundAgentsStore = defineStore("backgroundAgents", () => {
       updatedAt: now,
       startedAt: undefined,
       finishedAt: undefined,
-      expanded: true,
+      expanded: false,
       error: undefined,
       logs: [],
     };
