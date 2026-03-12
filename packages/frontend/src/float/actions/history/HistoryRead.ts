@@ -20,7 +20,12 @@ const inputSchema = z.object({
     .describe("Maximum entries to return (default: 40, max: 100)."),
   offset: z.number().int().nonnegative().optional().describe("Pagination offset (default: 0)."),
   ordering: z.enum(ORDER_DIRECTION).optional().describe("Sort direction by ID (default: DESC)."),
-  scopeId: z.string().optional().describe("Optional scope ID to constrain the query."),
+  scopeId: z
+    .string()
+    .trim()
+    .min(1)
+    .optional()
+    .describe("Optional scope ID to constrain the query."),
 });
 
 const valueSchema = z.object({
@@ -169,7 +174,11 @@ export const historyReadTool = tool({
     { experimental_context }
   ) => {
     const { sdk } = experimental_context as FloatToolContext;
-    const effectiveScopeId = scopeId ?? sdk.httpHistory.getScopeId() ?? undefined;
+    const normalizedScopeId = scopeId?.trim();
+    const effectiveScopeId =
+      normalizedScopeId !== undefined && normalizedScopeId !== ""
+        ? normalizedScopeId
+        : (sdk.httpHistory.getScopeId() ?? undefined);
 
     try {
       const result = await sdk.graphql.interceptEntriesByOffset({
@@ -184,6 +193,13 @@ export const historyReadTool = tool({
       });
 
       const connection = result.interceptEntriesByOffset;
+      if (!isPresent(connection)) {
+        return ActionResult.err(
+          "Failed to read HTTP history",
+          "No history entries connection returned"
+        );
+      }
+
       const edges = connection.edges ?? [];
       const rows: HistoryRow[] = [];
 

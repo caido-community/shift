@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { normalizeRawHttpRequest } from "@/agent/utils/http";
 import { ActionResult, type FloatToolContext } from "@/float/types";
+import { isPresent } from "@/utils";
 
 const MARKER = "§§§";
 
@@ -156,7 +157,10 @@ export const automateSessionCreateTool = tool({
       },
     });
 
-    const session = createResult.createAutomateSession.session!;
+    const session = createResult.createAutomateSession.session;
+    if (!isPresent(session)) {
+      return ActionResult.err("Failed to create Automate session");
+    }
 
     const graphPayloads = attachDefaultPreprocessors((payloads ?? []).map(toGraphQLPayload));
 

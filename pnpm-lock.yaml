@@ -84,15 +84,15 @@ importers:
       ai:
         specifier: 6.0.116
         version: 6.0.116(zod@4.3.6)
-      ajv:
-        specifier: 8.18.0
-        version: 8.18.0
       backend:
         specifier: workspace:*
         version: link:../backend
       dompurify:
         specifier: 3.3.3
         version: 3.3.3
+      jsonrepair:
+        specifier: ^3.13.3
+        version: 3.13.3
       markdown-it:
         specifier: 14.1.1
         version: 14.1.1
@@ -2030,6 +2030,10 @@ packages:
 
   json5@1.0.2:
     resolution: {integrity: sha512-g1MWMLBiz8FKi1e4w0UyVL3w+iJceWAFBAaBnnGKOpNa5f8TLktkbre1+s6oICydWAm+HRUGTmI+//xv2hvXYA==}
+    hasBin: true
+
+  jsonrepair@3.13.3:
+    resolution: {integrity: sha512-BTznj0owIt2CBAH/LTo7+1I5pMvl1e1033LRl/HUowlZmJOIhzC0zbX5bxMngLkfT4WnzPP26QnW5wMr2g9tsQ==}
     hasBin: true
 
   jszip@3.10.1:
@@ -5000,6 +5004,8 @@ snapshots:
   json5@1.0.2:
     dependencies:
       minimist: 1.2.8
+
+  jsonrepair@3.13.3: {}
 
   jszip@3.10.1:
     dependencies:

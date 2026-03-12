@@ -5,6 +5,7 @@ import type { AgentContext } from "@/agent/context";
 import { BASE_SYSTEM_PROMPT, WILDCARD_MODE_PROMPT } from "@/agent/prompt";
 import { shiftAgentTools } from "@/agent/tools";
 import { trimOldToolCalls } from "@/agent/utils/messages";
+import { repairToolCall } from "@/float/toolCallRepair";
 import { type FrontendSDK } from "@/types";
 import { createModel, type ReasoningEffort } from "@/utils/ai";
 
@@ -96,6 +97,8 @@ export const createShiftAgent = (options: AgentOptions) => {
     stopWhen: stepCountIs(maxIterations),
     maxRetries: 3,
     experimental_context: context,
+    experimental_repairToolCall: async ({ toolCall, inputSchema, error }) =>
+      (await repairToolCall(toolCall, inputSchema, error)) ?? null,
     // Trim old tool calls/results to reduce context size while preserving text content
     prepareStep: ({ messages, ...settings }) => ({
       ...settings,

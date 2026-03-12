@@ -4,6 +4,7 @@ import { plainParts } from "@/backgroundAgents/logs";
 import { fallbackToolParts, getToolDisplayParts } from "@/backgroundAgents/toolDisplay";
 import { backgroundFloatTools } from "@/float/actions";
 import { buildSystemPrompt } from "@/float/prompt";
+import { repairToolCall } from "@/float/toolCallRepair";
 import { type ActionContext, type FloatToolContext } from "@/float/types";
 import { useBackgroundAgentsStore } from "@/stores/backgroundAgents";
 import { useLearningsStore } from "@/stores/learnings";
@@ -189,6 +190,8 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
       prompt,
       abortSignal: input.abortSignal,
       experimental_context: toolContext,
+      experimental_repairToolCall: async ({ toolCall, inputSchema, error }) =>
+        (await repairToolCall(toolCall, inputSchema, error)) ?? null,
       onStepFinish: ({ toolCalls, toolResults }) => {
         if (toolCalls.length > 0) {
           hasToolCall = true;

@@ -1,19 +1,16 @@
-import { type LanguageModelV3ToolCall } from "@ai-sdk/provider";
-import { generateText, InvalidToolInputError, stepCountIs } from "ai";
-import Ajv from "ajv";
+import { generateText, stepCountIs } from "ai";
 import { Result } from "shared";
 
 import { isFeatureEnabled } from "@/features";
 import { getCoreFloatTools } from "@/float/actions";
 import { buildSystemPrompt } from "@/float/prompt";
+import { repairToolCall } from "@/float/toolCallRepair";
 import { type ActionQueryInput, type ActionResult, type FloatToolContext } from "@/float/types";
 import { useLearningsStore } from "@/stores/learnings";
 import { useModelsStore } from "@/stores/models";
 import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
 import { createModel, resolveModel } from "@/utils";
-
-const ajv = new Ajv({ coerceTypes: true });
 
 function buildPrompt(input: ActionQueryInput, learnings: string[]): string {
   return `
@@ -53,25 +50,6 @@ function processToolResult(
       return undefined;
     }
   }
-}
-
-function repairToolCall(
-  toolCall: LanguageModelV3ToolCall,
-  inputSchema: (options: { toolName: string }) => object,
-  error: unknown
-): LanguageModelV3ToolCall | undefined {
-  if (!(error instanceof InvalidToolInputError)) {
-    return undefined;
-  }
-
-  const schema = inputSchema({ toolName: toolCall.toolName });
-  const data = JSON.parse(toolCall.input);
-  ajv.validate(schema, data);
-
-  return {
-    ...toolCall,
-    input: JSON.stringify(data),
-  };
 }
 
 export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Promise<Result> {
@@ -119,8 +97,8 @@ export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Pro
       prompt,
       abortSignal: input.abortSignal,
       experimental_context: toolContext,
-      experimental_repairToolCall: ({ toolCall, inputSchema, error }) =>
-        Promise.resolve(repairToolCall(toolCall, inputSchema, error) ?? null),
+      experimental_repairToolCall: async ({ toolCall, inputSchema, error }) =>
+        (await repairToolCall(toolCall, inputSchema, error)) ?? null,
       onStepFinish: ({ toolResults }) => {
         for (const { toolName, output } of toolResults) {
           const error = processToolResult(sdk, toolName, output as ActionResult);

@@ -22,7 +22,10 @@ export const workflowRunTool = tool({
         input: input,
       });
 
-      const output = result.runConvertWorkflow.output ?? "";
+      const output = result.runConvertWorkflow?.output;
+      if (output === undefined || output === null) {
+        return ActionResult.err("Failed to run workflow");
+      }
 
       const currentText = view.state.doc.toString();
       const updatedText = currentText.replace(input, output);
