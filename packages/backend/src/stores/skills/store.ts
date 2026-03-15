@@ -74,10 +74,15 @@ class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
   }
 
   getLegacyCollectionAutoRunMigrationSummary(): LegacyCollectionAutoRunMigrationSummary {
-    return summarizeLegacyCollectionAutoRunMigration(
+    const summary = summarizeLegacyCollectionAutoRunMigration(
       this.legacyCollectionAutoRunEntries,
       this.currentProjectId
     );
+
+    // The notice should be shown only once for the migration event that happened on load.
+    this.legacyCollectionAutoRunEntries = [];
+
+    return summary;
   }
 
   private isSkillVisibleInCurrentProject(skill: AgentSkillDefinition): boolean {
