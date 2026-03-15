@@ -1,19 +1,38 @@
 <script setup lang="ts">
 import Button from "primevue/button";
 import MenuBar from "primevue/menubar";
-import { computed, ref } from "vue";
+import { type LegacyCollectionAutoRunMigrationSummary } from "shared";
+import { computed, ref, watch } from "vue";
 
 import { CustomAgentsContainer } from "@/components/custom-agents";
 import { LearningsContainer } from "@/components/learnings";
+import { LegacyCollectionAutoRunDialog } from "@/components/migration";
 import { ModelsContainer } from "@/components/models";
 import { RenamingContainer } from "@/components/renaming";
 import { SettingsContainer } from "@/components/settings";
 import { SkillsContainer } from "@/components/skills";
 import { TutorialContainer } from "@/components/tutorial";
+import { useSDK } from "@/plugins/sdk";
+import { useSettingsStore } from "@/stores/settings";
+import { useSkillsStore } from "@/stores/skills";
 
-const page = ref<
-  "Agents" | "Skills" | "Models" | "Learnings" | "Session Renaming" | "Settings" | "Tutorial"
->("Agents");
+type Page =
+  | "Agents"
+  | "Skills"
+  | "Models"
+  | "Learnings"
+  | "Session Renaming"
+  | "Settings"
+  | "Tutorial";
+
+const sdk = useSDK();
+const settingsStore = useSettingsStore();
+const skillsStore = useSkillsStore();
+
+const page = ref<Page>("Agents");
+const isMigrationDialogVisible = ref(false);
+const hasRequestedMigrationSummary = ref(false);
+const migrationSummary = ref<LegacyCollectionAutoRunMigrationSummary | undefined>(undefined);
 
 const items = [
   {
@@ -96,6 +115,43 @@ const handleLabel = (label: string | ((...args: unknown[]) => string) | undefine
 
   return label;
 };
+
+watch(
+  () => [settingsStore.isLoading, skillsStore.isLoading, settingsStore.config] as const,
+  async ([settingsLoading, skillsLoading, config]) => {
+    if (
+      hasRequestedMigrationSummary.value ||
+      settingsLoading ||
+      skillsLoading ||
+      config === undefined
+    ) {
+      return;
+    }
+
+    hasRequestedMigrationSummary.value = true;
+
+    const result = await sdk.backend.getLegacyCollectionAutoRunMigrationSummary();
+    if (result.kind === "Error") {
+      sdk.window.showToast(result.error, { variant: "error" });
+      return;
+    }
+
+    migrationSummary.value = result.value;
+    if (result.value.affected) {
+      isMigrationDialogVisible.value = true;
+    }
+  },
+  { immediate: true }
+);
+
+function dismissMigrationNotice() {
+  isMigrationDialogVisible.value = false;
+}
+
+function openAgentsFromMigrationNotice() {
+  page.value = "Agents";
+  dismissMigrationNotice();
+}
 </script>
 
 <template>
@@ -121,5 +177,12 @@ const handleLabel = (label: string | ((...args: unknown[]) => string) | undefine
     <component
       :is="component"
       class="h-full min-h-0" />
+
+    <LegacyCollectionAutoRunDialog
+      v-if="migrationSummary !== undefined"
+      v-model:visible="isMigrationDialogVisible"
+      :summary="migrationSummary"
+      @dismiss="dismissMigrationNotice"
+      @open-agents="openAgentsFromMigrationNotice" />
   </div>
 </template>
