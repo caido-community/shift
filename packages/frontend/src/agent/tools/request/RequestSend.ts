@@ -104,19 +104,6 @@ export const RequestSend = tool({
 
     const replaySession = replaySessionResult.value;
 
-    console.log({
-      id: replaySession.id,
-      data: {
-        connectionInfo: {
-          host: replaySession.request.host,
-          isTLS: replaySession.request.isTLS,
-          port: replaySession.request.port,
-        },
-        raw: context.httpRequest,
-        background: true,
-      },
-    });
-
     await sdk.replay.sendRequest(replaySession.id, {
       connectionInfo: {
         host: replaySession.request.host,
