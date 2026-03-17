@@ -52,33 +52,49 @@ export const historyRowHighlightTool = tool({
     const ids = [
       ...new Set([metadataId, ...(metadataIds ?? [])].filter((value) => value !== undefined)),
     ];
+    const results = await Promise.allSettled(
+      ids.map(async (id) => {
+        await sdk.graphql.updateRequestMetadata({
+          id,
+          input: {
+            color: colorMap[color],
+          },
+        });
 
-    try {
-      await Promise.all(
-        ids.map((id) =>
-          sdk.graphql.updateRequestMetadata({
-            id,
-            input: {
-              color: colorMap[color],
-            },
-          })
-        )
-      );
+        return id;
+      })
+    );
 
-      const count = ids.length;
-      const metadataLabel =
-        count === 1 ? `history row metadata ${ids[0]}` : `${count} history row metadata IDs`;
+    const updatedIds = results.flatMap((result) =>
+      result.status === "fulfilled" ? [result.value] : []
+    );
+    const failedIds = results.flatMap((result, index) => {
+      if (result.status === "fulfilled") {
+        return [];
+      }
 
-      return ActionResult.ok(
-        color === "none"
-          ? `Cleared highlight for ${metadataLabel}`
-          : `Set ${color} highlight for ${metadataLabel}`
-      );
-    } catch (error) {
+      const id = ids[index];
+      console.error(`Failed to update history row highlight for metadata ${id}:`, result.reason);
+      return [id];
+    });
+
+    if (updatedIds.length === 0) {
       return ActionResult.err(
         "Failed to update history row highlight",
-        error instanceof Error ? error.message : undefined
+        failedIds.length > 0 ? `Failed metadata IDs: ${failedIds.join(", ")}` : undefined
       );
     }
+
+    const describeIds = (values: string[]): string =>
+      values.length === 1
+        ? `history row metadata ${values[0]}`
+        : `${values.length} history row metadata IDs`;
+    const action = color === "none" ? "Cleared highlight for" : `Set ${color} highlight for`;
+
+    return ActionResult.ok(
+      failedIds.length === 0
+        ? `${action} ${describeIds(updatedIds)}`
+        : `${action} ${describeIds(updatedIds)}. Failed to update ${describeIds(failedIds)}.`
+    );
   },
 });
