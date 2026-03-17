@@ -74,6 +74,10 @@ export const historyRowHighlightTool = tool({
       }
 
       const id = ids[index];
+      if (id === undefined) {
+        return [];
+      }
+
       console.error(`Failed to update history row highlight for metadata ${id}:`, result.reason);
       return [id];
     });
