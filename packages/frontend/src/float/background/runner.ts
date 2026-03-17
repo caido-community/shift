@@ -118,11 +118,12 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
       experimental_repairToolCall: async ({ toolCall, inputSchema, error }) =>
         (await repairToolCall(toolCall, inputSchema, error)) ?? null,
       onStepFinish: ({ toolCalls, toolResults }) => {
-        if (toolCalls.some(isValidToolCall)) {
-          hasToolCall = true;
-        }
+        hasToolCall = toolCalls.some(isValidToolCall);
 
         for (const toolCall of toolCalls) {
+          // Tool failures should normally be returned as ActionResult so the agent can
+          // see the feedback and continue. This handles malformed tool calls that still
+          // throw errors, logs the failure, and stops the run.
           if (isInvalidToolCall(toolCall)) {
             executionError = getInvalidToolCallMessage(toolCall);
             store.appendLog(input.agentId, plainParts(executionError), "error");
