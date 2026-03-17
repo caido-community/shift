@@ -70,18 +70,24 @@ const entrySchema = z.object({
   responseTruncatedCharacters: z.number().optional(),
 });
 
+const failureSchema = z.object({
+  id: z.string(),
+  error: z.string(),
+});
+
 const valueSchema = z.object({
   entries: z.array(entrySchema),
   totalRequested: z.number(),
   totalReturned: z.number(),
   missingRowIds: z.array(z.string()),
-  failedRowIds: z.array(z.string()),
+  failedRows: z.array(failureSchema),
   missingRequestIds: z.array(z.string()),
-  failedRequestIds: z.array(z.string()),
+  failedRequests: z.array(failureSchema),
 });
 
 type HistoryReadPart = (typeof READ_PART)[number];
 type HistoryRequestResponseReadEntry = z.infer<typeof entrySchema>;
+type HistoryRequestResponseReadFailure = z.infer<typeof failureSchema>;
 type TruncatedValue = {
   value: string;
   truncated: boolean;
@@ -118,6 +124,14 @@ const shouldReadRequest = (part: HistoryReadPart): boolean => part === "request"
 const shouldReadResponse = (part: HistoryReadPart): boolean =>
   part === "response" || part === "both";
 
+const toFailure = (
+  id: string,
+  error: unknown
+): HistoryRequestResponseReadFailure => ({
+  id,
+  error: error instanceof Error ? error.message : String(error),
+});
+
 export const historyRequestResponseReadTool = tool({
   description:
     "Read raw request/response content for specific request IDs or history row IDs (batch supported) with explicit truncation metadata for deep HTTP history inspection.",
@@ -139,9 +153,9 @@ export const historyRequestResponseReadTool = tool({
     const entries: HistoryRequestResponseReadEntry[] = [];
     const requestToRowId = new Map<string, string>();
     const missingRowIds: string[] = [];
-    const failedRowIds: string[] = [];
+    const failedRows: HistoryRequestResponseReadFailure[] = [];
     const missingRequestIds: string[] = [];
-    const failedRequestIds: string[] = [];
+    const failedRequests: HistoryRequestResponseReadFailure[] = [];
 
     for (const rowId of uniqueRowIds) {
       try {
@@ -153,8 +167,9 @@ export const historyRequestResponseReadTool = tool({
         }
 
         requestToRowId.set(interceptEntry.request.id, rowId);
-      } catch {
-        failedRowIds.push(rowId);
+      } catch (error) {
+        console.error(`Failed to read history row ${rowId}:`, error);
+        failedRows.push(toFailure(rowId, error));
       }
     }
 
@@ -204,8 +219,9 @@ export const historyRequestResponseReadTool = tool({
         }
 
         entries.push(entry);
-      } catch {
-        failedRequestIds.push(requestId);
+      } catch (error) {
+        console.error(`Failed to read request ${requestId}:`, error);
+        failedRequests.push(toFailure(requestId, error));
       }
     }
 
@@ -220,9 +236,9 @@ export const historyRequestResponseReadTool = tool({
       totalRequested: requestToRowId.size,
       totalReturned,
       missingRowIds,
-      failedRowIds,
+      failedRows,
       missingRequestIds,
-      failedRequestIds,
+      failedRequests,
     });
   },
 });
