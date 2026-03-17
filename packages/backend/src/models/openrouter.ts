@@ -8,7 +8,6 @@ const OpenRouterModelIds = {
   CLAUDE_SONNET_4_6: "anthropic/claude-sonnet-4.6",
   CLAUDE_SONNET_4_6_THINKING: "anthropic/claude-sonnet-4.6:thinking",
   GEMINI_3_FLASH_PREVIEW: "google/gemini-3-flash-preview",
-  GEMINI_3_FLASH_PREVIEW_THINKING: "google/gemini-3-flash-preview:thinking",
   GEMINI_3_1_PRO_PREVIEW_CUSTOMTOOLS: "google/gemini-3.1-pro-preview-customtools",
   GROK_4_1_FAST: "x-ai/grok-4.1-fast",
   MERCURY_2: "inception/mercury-2",
