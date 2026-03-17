@@ -1,4 +1,6 @@
+import { isFeatureEnabled } from "@/features";
 import { automateSessionCreateTool } from "@/float/actions/automate/AutomateSessionCreate";
+import { backgroundAgentSpawnTool } from "@/float/actions/background/BackgroundAgentSpawn";
 import { editorBodyReplaceTool } from "@/float/actions/editor/EditorBodyReplace";
 import { editorHeaderAddTool } from "@/float/actions/editor/EditorHeaderAdd";
 import { editorHeaderRemoveTool } from "@/float/actions/editor/EditorHeaderRemove";
@@ -20,6 +22,9 @@ import { filterDeleteTool } from "@/float/actions/filters/FilterDelete";
 import { filterQueryAppendTool } from "@/float/actions/filters/FilterQueryAppend";
 import { filterUpdateTool } from "@/float/actions/filters/FilterUpdate";
 import { findingCreateTool } from "@/float/actions/findings/FindingCreate";
+import { historyReadTool } from "@/float/actions/history/HistoryRead";
+import { historyRequestResponseReadTool } from "@/float/actions/history/HistoryRequestResponseRead";
+import { historyRowHighlightTool } from "@/float/actions/history/HistoryRowHighlight";
 import { hostedFileCreateTool } from "@/float/actions/hostedFiles/HostedFileCreate";
 import { hostedFileCreateAdvancedTool } from "@/float/actions/hostedFiles/HostedFileCreateAdvanced";
 import { hostedFileRemoveTool } from "@/float/actions/hostedFiles/HostedFileRemove";
@@ -40,7 +45,7 @@ import { toastTool } from "@/float/actions/ui/Toast";
 import { workflowConvertRunTool } from "@/float/actions/workflows/WorkflowConvertRun";
 import { workflowRunTool } from "@/float/actions/workflows/WorkflowRun";
 
-export const floatTools = {
+const sharedFloatTools = {
   httpqlQuerySet: httpqlQuerySetTool,
   uiToast: toastTool,
   learningAdd: learningAddTool,
@@ -82,4 +87,22 @@ export const floatTools = {
   environmentDelete: environmentDeleteTool,
   environmentVariableUpdate: environmentVariableUpdateTool,
   environmentVariableDelete: environmentVariableDeleteTool,
+};
+
+export const getCoreFloatTools = () => {
+  if (isFeatureEnabled("backgroundAgents")) {
+    return {
+      backgroundAgentSpawn: backgroundAgentSpawnTool,
+      ...sharedFloatTools,
+    };
+  }
+
+  return sharedFloatTools;
+};
+
+export const backgroundFloatTools = {
+  ...sharedFloatTools,
+  historyRead: historyReadTool,
+  historyRequestResponseRead: historyRequestResponseReadTool,
+  HistoryRowHighlight: historyRowHighlightTool,
 };

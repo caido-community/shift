@@ -24,7 +24,7 @@ export async function safeGraphQL<T>(
   return Result.ok(result);
 }
 
-export type ReplaySession = {
+type ReplaySession = {
   id: string;
   activeEntryId: string;
   request: {

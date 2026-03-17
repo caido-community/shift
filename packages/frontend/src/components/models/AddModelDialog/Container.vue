@@ -92,7 +92,7 @@ const handleCancel = () => {
         <InputText
           id="name"
           v-model="name"
-          placeholder="Sonnet 4.5"
+          placeholder="Sonnet 4.6"
           class="w-full" />
       </div>
       <div class="flex flex-col gap-2">
@@ -104,7 +104,7 @@ const handleCancel = () => {
         <InputText
           id="id"
           v-model="id"
-          placeholder="anthropic/claude-sonnet-4.5"
+          placeholder="anthropic/claude-sonnet-4.6"
           class="w-full" />
       </div>
       <div class="flex items-center gap-2">

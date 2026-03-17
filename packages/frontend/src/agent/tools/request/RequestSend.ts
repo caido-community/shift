@@ -128,7 +128,7 @@ export const RequestSend = tool({
         if (currentSession?.id === replaySession.id) {
           document.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')?.click();
         }
-        reject(new Error("Request cancelled"));
+        reject(new DOMException("Request aborted", "AbortError"));
       });
     });
 
@@ -145,6 +145,9 @@ export const RequestSend = tool({
     try {
       await Promise.race([responsePromise, timeout, abortPromise]);
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw error;
+      }
       return ToolResult.err((error as Error).message);
     }
 

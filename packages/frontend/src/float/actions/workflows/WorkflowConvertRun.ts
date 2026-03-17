@@ -18,9 +18,11 @@ export const workflowConvertRunTool = tool({
       id: id,
       input: input,
     });
+    const output = result.runConvertWorkflow?.output;
+    if (output === undefined || output === null) {
+      return ActionResult.err("Failed to run workflow");
+    }
 
-    return ActionResult.ok(
-      `Convert workflow executed successfully. Output: ${result.runConvertWorkflow.output}`
-    );
+    return ActionResult.ok(`Convert workflow executed successfully. Output: ${output}`);
   },
 });

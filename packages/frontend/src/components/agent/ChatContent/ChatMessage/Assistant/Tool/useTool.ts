@@ -4,15 +4,15 @@ import { computed, type ComputedRef, type MaybeRefOrGetter, toValue } from "vue"
 
 import { type FrontendError } from "@/agent/types";
 
-export type ToolState = "streaming" | "pending" | "success" | "error";
+type ToolState = "streaming" | "pending" | "success" | "error";
 
-export type UseToolOptions = {
+type UseToolOptions = {
   partState: MaybeRefOrGetter<PartState>;
   messageMetadata: MaybeRefOrGetter<MessageMetadata | undefined>;
   output: MaybeRefOrGetter<unknown>;
 };
 
-export type UseTool = {
+type UseTool = {
   toolState: ComputedRef<ToolState>;
   isLoading: ComputedRef<boolean>;
   isError: ComputedRef<boolean>;

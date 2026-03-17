@@ -10,6 +10,7 @@ const ORDER_DIRECTION = ["ASC", "DESC"] as const;
 
 const requestSchema = z.object({
   id: z.string(),
+  metadataId: z.string(),
   host: z.string(),
   port: z.number(),
   path: z.string(),
@@ -144,6 +145,7 @@ Returns request metadata (id, host, port, path, query, method, isTls, createdAt,
       const node = edge.node;
       requests.push({
         id: node.id,
+        metadataId: node.metadata.id,
         host: node.host,
         port: node.port,
         path: node.path,

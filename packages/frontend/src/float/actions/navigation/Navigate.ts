@@ -13,9 +13,10 @@ export const navigateTool = tool({
   outputSchema: ActionResult.schema,
   execute: ({ path }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
-    let finalPath = path;
-    if (path.startsWith("#")) {
-      finalPath = path.slice(1);
+    const resolvedPath = typeof path === "string" ? path : String(path);
+    let finalPath = resolvedPath;
+    if (resolvedPath.startsWith("#") === true) {
+      finalPath = resolvedPath.slice(1);
     }
 
     sdk.navigation.goTo(finalPath);

@@ -1,4 +1,4 @@
-import { defaultSettingsConfig } from "shared";
+import { DEFAULT_MAX_ITERATIONS, defaultSettingsConfig } from "shared";
 import { describe, expect, it } from "vitest";
 
 import { initialModel, type SettingsModel } from "./store.model";
@@ -6,10 +6,10 @@ import { update } from "./store.update";
 
 const createTestConfig = (): SettingsModel["config"] => ({
   ...defaultSettingsConfig,
-  agentsModel: "anthropic/claude-sonnet-4.5",
-  floatModel: "google/gemini-2.5-flash",
-  renamingModel: "google/gemini-2.5-flash-lite",
-  maxIterations: 35,
+  agentsModel: "anthropic/claude-sonnet-4.6",
+  floatModel: "google/gemini-3-flash-preview",
+  renamingModel: "google/gemini-3.1-pro-preview-customtools",
+  maxIterations: DEFAULT_MAX_ITERATIONS,
   renaming: {
     enabled: false,
     renameAfterSend: false,
@@ -61,11 +61,11 @@ describe("settings update", () => {
 
       const result = update(modelWithConfig, {
         type: "UPDATE_SUCCESS",
-        input: { agentsModel: "openai/gpt-4" },
+        input: { agentsModel: "openai/gpt-5.4" },
       });
 
-      expect(result.config?.agentsModel).toBe("openai/gpt-4");
-      expect(result.config?.floatModel).toBe("google/gemini-2.5-flash");
+      expect(result.config?.agentsModel).toBe("openai/gpt-5.4");
+      expect(result.config?.floatModel).toBe("google/gemini-3-flash-preview");
     });
 
     it("updates floatModel", () => {
@@ -74,10 +74,10 @@ describe("settings update", () => {
 
       const result = update(modelWithConfig, {
         type: "UPDATE_SUCCESS",
-        input: { floatModel: "openai/gpt-4" },
+        input: { floatModel: "openai/gpt-5.4" },
       });
 
-      expect(result.config?.floatModel).toBe("openai/gpt-4");
+      expect(result.config?.floatModel).toBe("openai/gpt-5.4");
     });
 
     it("updates renamingModel", () => {
@@ -86,10 +86,10 @@ describe("settings update", () => {
 
       const result = update(modelWithConfig, {
         type: "UPDATE_SUCCESS",
-        input: { renamingModel: "openai/gpt-4" },
+        input: { renamingModel: "openai/gpt-5.4" },
       });
 
-      expect(result.config?.renamingModel).toBe("openai/gpt-4");
+      expect(result.config?.renamingModel).toBe("openai/gpt-5.4");
     });
 
     it("updates maxIterations", () => {
@@ -114,6 +114,22 @@ describe("settings update", () => {
       });
 
       expect(result.config?.openRouterPrioritizeFastProviders).toBe(true);
+    });
+
+    it("updates feature flags partially", () => {
+      const config = createTestConfig();
+      const modelWithConfig: SettingsModel = { ...initialModel, config };
+
+      const result = update(modelWithConfig, {
+        type: "UPDATE_SUCCESS",
+        input: {
+          featureFlags: {
+            backgroundAgents: true,
+          },
+        },
+      });
+
+      expect(result.config?.featureFlags.backgroundAgents).toBe(true);
     });
 
     it("updates renaming config partially", () => {
@@ -225,6 +241,14 @@ describe("settings update", () => {
       });
 
       expect(result).toBe(initialModel);
+    });
+  });
+
+  describe("feature flag defaults", () => {
+    it("keeps default feature flags in the initial config", () => {
+      const config = createTestConfig();
+
+      expect(config?.featureFlags.backgroundAgents).toBe(false);
     });
   });
 });

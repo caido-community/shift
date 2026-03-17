@@ -282,6 +282,7 @@ const getHttpHistoryContext = (
       description: "The current state of the HTTP History page",
       value: {
         query: sdk.httpHistory.getQuery(),
+        selectedScopeId: sdk.httpHistory.getScopeId(),
         ...getSelection(),
       },
     },

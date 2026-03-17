@@ -57,6 +57,12 @@ function handleUpdateSuccess(model: SettingsModel, input: UpdateSettingsInput): 
     if (input.openRouterPrioritizeFastProviders !== undefined) {
       draft.config.openRouterPrioritizeFastProviders = input.openRouterPrioritizeFastProviders;
     }
+    if (input.featureFlags !== undefined) {
+      draft.config.featureFlags = {
+        ...draft.config.featureFlags,
+        ...input.featureFlags,
+      };
+    }
   });
 }
 

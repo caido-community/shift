@@ -156,7 +156,7 @@ export const matchReplaceAddTool = tool({
       }
     }
     if (operationFields.includes("replacer")) {
-      if (replacerType) {
+      if (replacerType !== undefined && replacerType !== null) {
         tempOperation.replacer = crReplacer!;
       } else {
         return ActionResult.err(`Replacer is required for operation: ${operation}`);
@@ -172,8 +172,8 @@ export const matchReplaceAddTool = tool({
       name: ruleName,
       section: crSection,
       collectionId: "1",
-      query: query || "",
-      sources: [],
+      query,
+      sources: ["INTERCEPT"],
     });
 
     if (res !== undefined && !res.isEnabled) {

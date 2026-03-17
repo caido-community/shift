@@ -1,5 +1,10 @@
 import { useEventListener } from "@vueuse/core";
-import type { AgentSkill, Model, ResolvedCustomAgent } from "shared";
+import {
+  type AgentSkill,
+  DEFAULT_MAX_ITERATIONS,
+  type Model,
+  type ResolvedCustomAgent,
+} from "shared";
 import { computed, ref, watch } from "vue";
 
 import type { LaunchDialogResult, SelectionEntry } from "./types";
@@ -28,7 +33,7 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
   let nextEntryId = 1;
   const entries = ref<SelectionEntry[]>([{ id: 0, selection: "", comment: "" }]);
   const instructions = ref("");
-  const maxIterations = ref(settingsStore.maxIterations ?? 35);
+  const maxIterations = ref(settingsStore.maxIterations ?? DEFAULT_MAX_ITERATIONS);
   const selectedSkillIds = ref<string[]>(options.initialSkillIds ?? []);
   const selectedCustomAgentId = ref<string | undefined>(options.initialCustomAgentId);
 

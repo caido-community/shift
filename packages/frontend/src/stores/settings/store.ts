@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { type FeatureFlagKey, isFeatureFlagEnabled } from "shared";
 import { computed, readonly, ref } from "vue";
 
 import { fetchSettings } from "./store.effects";
@@ -29,9 +30,17 @@ export const useSettingsStore = defineStore("settings", () => {
   const openRouterPrioritizeFastProviders = computed(
     () => model.value.config?.openRouterPrioritizeFastProviders
   );
+  const featureFlags = computed(() => model.value.config?.featureFlags);
+  const backgroundAgentsEnabled = computed(() =>
+    isFeatureFlagEnabled(model.value.config?.featureFlags, "backgroundAgents")
+  );
 
   async function initialize() {
     await fetchSettings(sdk, dispatch);
+  }
+
+  function isFeatureEnabled(flag: FeatureFlagKey): boolean {
+    return isFeatureFlagEnabled(model.value.config?.featureFlags, flag);
   }
 
   return {
@@ -49,6 +58,9 @@ export const useSettingsStore = defineStore("settings", () => {
     debugToolsEnabled,
     autoCreateShiftCollection,
     openRouterPrioritizeFastProviders,
+    featureFlags,
+    backgroundAgentsEnabled,
+    isFeatureEnabled,
     initialize,
   };
 });

@@ -382,7 +382,60 @@ const HARDCODED_EXAMPLES = [
       ],
     },
   },
+  {
+    query: "search for request that handles auth",
+    context: {
+      page: "#/http-history",
+    },
+    assistant: {
+      actions: [
+        {
+          name: "backgroundAgentSpawn",
+          parameters: {
+            title: "Find auth requests",
+            task: "Search HTTP history for authentication handling requests (login, signin, token, session, oauth, authorization). Use rowId values from historyRead when building the final HTTPQL filter (row.id.eq with OR). If deeper inspection is needed, use requestId with historyRequestResponseRead.",
+          },
+        },
+      ],
+    },
+  },
+  {
+    query: "find password reset requests and show just those",
+    context: {
+      page: "#/http-history",
+    },
+    assistant: {
+      actions: [
+        {
+          name: "backgroundAgentSpawn",
+          parameters: {
+            title: "Find reset flow",
+            task: "Inspect HTTP history to find password reset flow requests (forgot password, reset token, reset confirmation). Use rowId values from historyRead to set final HTTPQL row.id.eq clauses with OR; use requestId only for deep content reads.",
+          },
+        },
+      ],
+    },
+  },
+  {
+    query: "locate oauth login requests and filter history to them",
+    context: {
+      page: "#/http-history",
+    },
+    assistant: {
+      actions: [
+        {
+          name: "backgroundAgentSpawn",
+          parameters: {
+            title: "Find oauth flow",
+            task: "Analyze HTTP history for OAuth/OIDC authentication flow (authorize, callback, token exchange, refresh). Build the final filter with rowId values (row.id.eq joined with OR) and use requestId for detailed request/response inspection when necessary.",
+          },
+        },
+      ],
+    },
+  },
 ];
+
+const EXAMPLES_PLACEHOLDER = "__HARDCODED_EXAMPLES__";
 
 export const HTTPQL_SPEC_FILE = `
 # HTTPQL Query Language
@@ -457,7 +510,7 @@ HTTPQL is used to filter requests and responses in Caido.
 - \`source:intercept\`, \`source:replay\`, \`source:automate\`, \`source:workflow\`
 `;
 
-export const SYSTEM_PROMPT = `You are a part of Caido Shift plugin, an assistant that modifies HTTP requests and performs actions in a web proxy application based on user instructions. You should respond with one or more tool calls that achieve the user's goal.
+const SYSTEM_PROMPT = `You are a part of Caido Shift plugin, an assistant that modifies HTTP requests and performs actions in a web proxy application based on user instructions. You should respond with one or more tool calls that achieve the user's goal.
 
 IMPORTANT: Never respond with text. Only use tool calls. Be efficient - only call tools necessary to complete the request.
 
@@ -490,6 +543,7 @@ View all proxied requests. Path: "#/http-history"
 
 <caido:filters>
 - Filters is the tab where you can create custom filters for requests
+- When creating filters, ensure there's no false positives. If possible, prefer to use equals operator instead of contains or regex.
 - Filter takes input: name, alias and query. Query is a HTTPQL query, refer to the HTTPQL spec file for more details.
 - Example filter:
   - name: No Styling
@@ -583,6 +637,41 @@ View all findings. Path: "#/findings"
 
 </hostedFileCreateAdvanced>
 
+<backgroundAgentSpawn>
+- Use this when the user request is clearly multi-step and would benefit from iterative reasoning, pagination, or long-running work.
+- Prefer this for tasks that require exploring substantial data, evaluating intermediate outputs, and then creating or updating multiple artifacts.
+- When spawning a background task, include clear completion criteria and encourage iterative tool usage until evidence is sufficient.
+- Do not use this for simple one-shot actions.
+- BackgroundAgent has access to more tools including:
+  - historyRead - paginated compact history scan
+  - historyRequestResponseRead - deep raw request/response read by request IDs or row IDs (batch)
+- HistoryRowHighlight - apply or clear row highlights using metadataId or metadataIds from history tools
+- Example:
+  - User request: "search through http history, filter out analytics and create scope"
+  - Tool call: backgroundAgentSpawn with task set to the full user request and an optional short title.
+</backgroundAgentSpawn>
+
+<historyRead>
+- historyRead reads HTTP history entries with offset/limit pagination.
+- It returns compact TOON output in the toon field (format: "toon"), not verbose per-entry JSON objects.
+- Each row includes rowId, requestId, and metadataId. Use rowId for HTTPQL row.id filters, requestId for deep request/response reads, and metadataId for HistoryRowHighlight.
+- Output may include a visible truncation marker; if it is truncated, continue with pagination (nextOffset) or use a smaller limit.
+- Use it when you must inspect real history rows, especially in background workflows.
+- Keep calls efficient: request only the amount needed and continue with nextOffset if more rows are required.
+- For flow analysis (auth/login/oauth/reset/session/token), do not conclude from historyRead metadata alone; shortlist candidates and inspect them deeply first.
+- For analytical tasks, prefer multi-page sampling until you have enough coverage to make a reliable decision.
+</historyRead>
+
+<historyRequestResponseRead>
+- historyRequestResponseRead reads raw request/response content for specific request IDs or row IDs.
+- Use this after historyRead when you need deeper inspection for selected rows.
+- Returned entries include metadataId when the request is resolved successfully.
+- Supports batch IDs (up to 10 per call); keep batches small (2-5) for better context efficiency.
+- Use part=request, part=response, or part=both depending on need.
+- Raw data is truncated with a visible marker and truncation metadata.
+- For auth flow identification, always use this tool on shortlisted candidates before finalizing row.id HTTPQL filters.
+</historyRequestResponseRead>
+
 </tools_additional_info>
 
 <more_details>
@@ -621,21 +710,13 @@ Tool calling efficiency, example: If the user asks you to search for something a
 <examples>
 Here are a few examples of how you can use the tools. Actual context schema will also be slightly different than the one in the examples.
 
-${HARDCODED_EXAMPLES.map(
-  (example) => `
-<example>
-<query>${example.query}</query>
-<context>${JSON.stringify(example.context)}</context>
-<assistant>${JSON.stringify(example.assistant)}</assistant>
-${example.note !== undefined ? `<note>${example.note}</note>` : ""}
-</example>
-`
-).join("")}
+${EXAMPLES_PLACEHOLDER}
 </examples>
 
 <httpql_spec>
 ${HTTPQL_SPEC_FILE}
 </httpql_spec>
+
 Important guidelines:
 - Never respond with text, only use tool calls
 - Chain multiple tool calls when needed to fulfill the user's request
@@ -649,3 +730,42 @@ Important guidelines:
 - When modifying query parameters, always remember about URL encoding and make sure to encode the value properly.
 - Make sure to call tools efficiently. The user can see every action being made, so avoid redundant tool calls.
 `;
+
+type BuildSystemPromptOptions = {
+  backgroundAgents?: boolean;
+};
+
+const BACKGROUND_AGENT_SPAWN_SECTION = /<backgroundAgentSpawn>[\s\S]*?<\/backgroundAgentSpawn>\n?/g;
+
+const getExamplesPrompt = (backgroundAgents: boolean): string => {
+  const examples = backgroundAgents
+    ? HARDCODED_EXAMPLES
+    : HARDCODED_EXAMPLES.filter((example) =>
+        example.assistant.actions.every((action) => action.name !== "backgroundAgentSpawn")
+      );
+
+  return examples
+    .map(
+      (example) => `
+<example>
+<query>${example.query}</query>
+<context>${JSON.stringify(example.context)}</context>
+<assistant>${JSON.stringify(example.assistant)}</assistant>
+${example.note !== undefined ? `<note>${example.note}</note>` : ""}
+</example>
+`
+    )
+    .join("");
+};
+
+export const buildSystemPrompt = ({
+  backgroundAgents = true,
+}: BuildSystemPromptOptions = {}): string => {
+  const prompt = SYSTEM_PROMPT.replace(EXAMPLES_PLACEHOLDER, getExamplesPrompt(backgroundAgents));
+
+  if (backgroundAgents) {
+    return prompt;
+  }
+
+  return prompt.replace(BACKGROUND_AGENT_SPAWN_SECTION, "");
+};
