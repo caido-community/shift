@@ -4,7 +4,6 @@ import Tooltip from "primevue/tooltip";
 import { type App, createApp, watch, type WatchStopHandle } from "vue";
 
 import { BackgroundAgentsPanel } from "@/components/backgroundAgents";
-import { isFeatureEnabled } from "@/features";
 import { SDKPlugin } from "@/plugins/sdk";
 import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
@@ -52,9 +51,9 @@ export const useBackgroundAgentsPanelManager = (sdk: FrontendSDK) => {
 
     const settingsStore = useSettingsStore();
     stopWatching = watch(
-      () => settingsStore.featureFlags,
-      (flags) => {
-        if (isFeatureEnabled("backgroundAgents")) {
+      () => settingsStore.backgroundAgentsEnabled,
+      (enabled) => {
+        if (enabled) {
           mount();
           return;
         }
@@ -63,7 +62,6 @@ export const useBackgroundAgentsPanelManager = (sdk: FrontendSDK) => {
       },
       {
         immediate: true,
-        deep: true,
       }
     );
   };
