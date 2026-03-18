@@ -15,6 +15,11 @@ export abstract class GlobalStore<TModel, TMessage> {
 
   protected abstract createInitialModel(): TModel;
   protected abstract update(model: TModel, message: TMessage): TModel;
+  protected mergeLoadedModel(current: TModel, loaded: unknown): TModel {
+    return defaultMergeStrategy(current, loaded);
+  }
+
+  protected async afterInitialize(_loaded: unknown): Promise<void> {}
 
   dispatch(message: TMessage): void {
     this.model = this.update(this.model, message);
@@ -23,11 +28,13 @@ export abstract class GlobalStore<TModel, TMessage> {
   async initialize(): Promise<void> {
     const loaded = await this.persistence.load();
     if (loaded !== undefined) {
-      this.model = defaultMergeStrategy(this.model, loaded);
+      this.model = this.mergeLoadedModel(this.model, loaded);
       this.notify();
     } else {
       await this.persist();
     }
+
+    await this.afterInitialize(loaded);
   }
 
   protected async persist(): Promise<void> {

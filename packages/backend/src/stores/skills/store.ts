@@ -4,6 +4,8 @@ import {
   type CreateDynamicSkillInput,
   type CreateStaticSkillInput,
   type DynamicSkillDefinition,
+  type LegacyCollectionAutoRunMigrationEntry,
+  type LegacyCollectionAutoRunMigrationSummary,
   type ProjectSkillOverride,
   Result,
   type SetProjectOverrideInput,
@@ -15,13 +17,20 @@ import { requireSDK } from "../../sdk";
 import { fetchSkillContent, validateSkillUrl } from "../../skills";
 import { generateID } from "../../utils";
 import { GlobalStore } from "../global-store";
+import { defaultMergeStrategy } from "../persistence";
 
+import {
+  extractLegacyCollectionAutoRunMigration,
+  summarizeLegacyCollectionAutoRunMigration,
+} from "./legacy-migration";
 import { createInitialModel, type SkillsMessage, type SkillsModel } from "./model";
 import { update } from "./update";
 
 class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
   private resolvedCache: Map<string, AgentSkill> = new Map();
   private currentProjectId: string | undefined;
+  private legacyCollectionAutoRunEntries: LegacyCollectionAutoRunMigrationEntry[] = [];
+  private shouldPersistLegacyCollectionCleanup = false;
 
   constructor() {
     super("skills");
@@ -35,6 +44,22 @@ class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
     return update(model, message);
   }
 
+  protected mergeLoadedModel(current: SkillsModel, loaded: unknown): SkillsModel {
+    const migration = extractLegacyCollectionAutoRunMigration(loaded);
+    this.legacyCollectionAutoRunEntries = migration.entries;
+    this.shouldPersistLegacyCollectionCleanup = migration.mutated;
+    return defaultMergeStrategy(current, migration.cleaned);
+  }
+
+  protected async afterInitialize(): Promise<void> {
+    if (!this.shouldPersistLegacyCollectionCleanup) {
+      return;
+    }
+
+    this.shouldPersistLegacyCollectionCleanup = false;
+    await this.persist();
+  }
+
   async initialize(): Promise<void> {
     await super.initialize();
     const sdk = requireSDK();
@@ -46,6 +71,18 @@ class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
   switchProject(projectId: string | undefined): void {
     this.currentProjectId = projectId;
     this.notify();
+  }
+
+  getLegacyCollectionAutoRunMigrationSummary(): LegacyCollectionAutoRunMigrationSummary {
+    const summary = summarizeLegacyCollectionAutoRunMigration(
+      this.legacyCollectionAutoRunEntries,
+      this.currentProjectId
+    );
+
+    // The notice should be shown only once for the migration event that happened on load.
+    this.legacyCollectionAutoRunEntries = [];
+
+    return summary;
   }
 
   private isSkillVisibleInCurrentProject(skill: AgentSkillDefinition): boolean {

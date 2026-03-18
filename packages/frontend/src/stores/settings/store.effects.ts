@@ -1,4 +1,4 @@
-import type { RenamingConfig, UpdateSettingsInput } from "shared";
+import { type RenamingConfig, Result, type UpdateSettingsInput } from "shared";
 
 import type { SettingsMessage } from "./store.model";
 
@@ -28,10 +28,11 @@ export async function updateSettings(
   const result = await sdk.backend.updateSettings(input);
   if (result.kind === "Error") {
     dispatch({ type: "UPDATE_FAILURE", error: result.error });
-    return;
+    return Result.err(result.error);
   }
 
   dispatch({ type: "UPDATE_SUCCESS", input });
+  return Result.ok(undefined);
 }
 
 export async function updateRenaming(

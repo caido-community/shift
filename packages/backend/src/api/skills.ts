@@ -5,6 +5,7 @@ import {
   CreateDynamicSkillSchema,
   type CreateStaticSkillInput,
   CreateStaticSkillSchema,
+  type LegacyCollectionAutoRunMigrationSummary,
   type ProjectSkillOverride,
   type Result,
   type SetProjectOverrideInput,
@@ -33,6 +34,18 @@ export function getSkillDefinitions(_sdk: BackendSDK): Result<AgentSkillDefiniti
     const store = getSkillsStore();
     const definitions = store.getSkillDefinitions();
     return { kind: "Ok", value: definitions };
+  } catch (error) {
+    return { kind: "Error", error: (error as Error).message };
+  }
+}
+
+export function getLegacyCollectionAutoRunMigrationSummary(
+  _sdk: BackendSDK
+): Result<LegacyCollectionAutoRunMigrationSummary> {
+  try {
+    const store = getSkillsStore();
+    const summary = store.getLegacyCollectionAutoRunMigrationSummary();
+    return { kind: "Ok", value: summary };
   } catch (error) {
     return { kind: "Error", error: (error as Error).message };
   }

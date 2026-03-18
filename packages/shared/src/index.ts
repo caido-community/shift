@@ -3,6 +3,7 @@ export * from "./agents";
 export * from "./custom-agents";
 export * from "./feature-flags";
 export * from "./learnings";
+export * from "./migrations";
 export * from "./models";
 export * from "./result";
 export * from "./settings";

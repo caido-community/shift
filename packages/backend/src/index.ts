@@ -13,6 +13,7 @@ import {
   getAgents,
   getCustomAgentDefinitions,
   getLearnings,
+  getLegacyCollectionAutoRunMigrationSummary,
   getModelsConfig,
   getProjectOverride,
   getProjectOverrides,
@@ -64,6 +65,7 @@ export type API = DefineAPI<{
   removeAgent: typeof removeAgent;
   getSkills: typeof getSkills;
   getSkillDefinitions: typeof getSkillDefinitions;
+  getLegacyCollectionAutoRunMigrationSummary: typeof getLegacyCollectionAutoRunMigrationSummary;
   addStaticSkill: typeof addStaticSkill;
   addDynamicSkill: typeof addDynamicSkill;
   updateStaticSkill: typeof updateStaticSkill;
@@ -128,6 +130,10 @@ export function init(sdk: SDK<API, BackendEvents>) {
 
   sdk.api.register("getSkills", getSkills);
   sdk.api.register("getSkillDefinitions", getSkillDefinitions);
+  sdk.api.register(
+    "getLegacyCollectionAutoRunMigrationSummary",
+    getLegacyCollectionAutoRunMigrationSummary
+  );
   sdk.api.register("addStaticSkill", addStaticSkill);
   sdk.api.register("addDynamicSkill", addDynamicSkill);
   sdk.api.register("updateStaticSkill", updateStaticSkill);
