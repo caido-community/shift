@@ -124,10 +124,7 @@ const shouldReadRequest = (part: HistoryReadPart): boolean => part === "request"
 const shouldReadResponse = (part: HistoryReadPart): boolean =>
   part === "response" || part === "both";
 
-const toFailure = (
-  id: string,
-  error: unknown
-): HistoryRequestResponseReadFailure => ({
+const toFailure = (id: string, error: unknown): HistoryRequestResponseReadFailure => ({
   id,
   error: error instanceof Error ? error.message : String(error),
 });
