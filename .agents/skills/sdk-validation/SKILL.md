@@ -1,7 +1,6 @@
 ---
+name: sdk-validation
 description: Caido SDK API Validation
-globs:
-alwaysApply: true
 ---
 
 # Caido SDK API Validation

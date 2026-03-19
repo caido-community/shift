@@ -1,6 +1,5 @@
 ---
-globs:
-alwaysApply: true
+name: caido
 description: Caido HTTP Proxy Overview
 ---
 

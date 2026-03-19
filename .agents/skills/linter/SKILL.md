@@ -1,6 +1,5 @@
 ---
-globs:
-alwaysApply: true
+name: linter
 description: Linter Guidelines
 ---
 

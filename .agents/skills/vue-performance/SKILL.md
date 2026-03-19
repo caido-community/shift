@@ -1,6 +1,5 @@
 ---
-globs: **/**.vue, **/**.ts
-alwaysApply: false
+name: vue-performance
 description: Vue Best Practices
 ---
 

@@ -1,7 +1,8 @@
 ---
-globs: **/**.vue
-alwaysApply: false
+name: style
+description: PrimeVue and Caido plugin UI style, layout, DataTable, and icons
 ---
+
 ## UI Style Guidelines
 
 ### PrimeVue

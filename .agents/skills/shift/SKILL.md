@@ -1,6 +1,5 @@
 ---
-globs:
-alwaysApply: true
+name: shift
 description: Agent Tools and Float Actions Best Practices
 ---
 
