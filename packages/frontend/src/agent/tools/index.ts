@@ -24,6 +24,7 @@ import {
   RequestSend,
 } from "./request";
 import { ResponseRangeRead, ResponseSearch } from "./response";
+import { ReadSkill } from "./skills";
 import { TodoAdd, TodoComplete, TodoRemove } from "./todo";
 import { WorkflowConvertList, WorkflowConvertRun } from "./workflows";
 
@@ -55,6 +56,7 @@ export const shiftAgentTools = {
   RequestSend,
   ResponseRangeRead,
   ResponseSearch,
+  ReadSkill,
   EnvironmentCreate,
   EnvironmentUpdate,
   EnvironmentRemove,

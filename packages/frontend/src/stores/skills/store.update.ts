@@ -69,6 +69,8 @@ function handleUpdateStaticSuccess(
       if (def !== undefined && def.type === "static") {
         if (input.title !== undefined) def.title = input.title;
         if (input.content !== undefined) def.content = input.content;
+        if (input.description !== undefined) def.description = input.description;
+        if (input.attachMode !== undefined) def.attachMode = input.attachMode;
       }
     }
 
@@ -78,6 +80,8 @@ function handleUpdateStaticSuccess(
       if (skill !== undefined) {
         if (input.title !== undefined) skill.title = input.title;
         if (input.content !== undefined) skill.content = input.content;
+        if (input.description !== undefined) skill.description = input.description;
+        if (input.attachMode !== undefined) skill.attachMode = input.attachMode;
       }
     }
   });
@@ -95,14 +99,18 @@ function handleUpdateDynamicSuccess(
       if (def !== undefined && def.type === "dynamic") {
         if (input.title !== undefined) def.title = input.title;
         if (input.url !== undefined) def.url = input.url;
+        if (input.description !== undefined) def.description = input.description;
+        if (input.attachMode !== undefined) def.attachMode = input.attachMode;
       }
     }
 
     const skillIndex = draft.skills.findIndex((s) => s.id === id);
     if (skillIndex !== -1) {
       const skill = draft.skills[skillIndex];
-      if (skill !== undefined && input.title !== undefined) {
-        skill.title = input.title;
+      if (skill !== undefined) {
+        if (input.title !== undefined) skill.title = input.title;
+        if (input.description !== undefined) skill.description = input.description;
+        if (input.attachMode !== undefined) skill.attachMode = input.attachMode;
       }
     }
   });

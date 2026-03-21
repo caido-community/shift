@@ -2,6 +2,7 @@
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
+import SelectButton from "primevue/selectbutton";
 import Textarea from "primevue/textarea";
 import type { AgentSkillDefinition, UpdateDynamicSkillInput, UpdateStaticSkillInput } from "shared";
 import { computed, ref, watch } from "vue";
@@ -27,6 +28,8 @@ const emit = defineEmits<{
 const title = ref("");
 const content = ref("");
 const url = ref("");
+const description = ref("");
+const attachMode = ref<"always" | "on-demand">("on-demand");
 const projectSpecificContent = ref("");
 const originalProjectSpecificContent = ref("");
 
@@ -37,6 +40,8 @@ watch(
   async (newSkill) => {
     if (newSkill !== undefined) {
       title.value = newSkill.title;
+      description.value = newSkill.description ?? "";
+      attachMode.value = newSkill.attachMode ?? "on-demand";
       if (newSkill.type === "static") {
         content.value = newSkill.content;
         url.value = "";
@@ -85,15 +90,21 @@ const hasUrlError = computed(() => url.value.trim() !== "" && !isValidUrl(url.va
 const handleSave = () => {
   if (skill === undefined || !canSave()) return;
 
+  const baseUpdates = {
+    description: description.value.trim() || undefined,
+    attachMode: attachMode.value,
+  };
   if (skill.type === "static") {
     emit("updateStatic", skill.id, {
       title: title.value.trim(),
       content: content.value.trim(),
+      ...baseUpdates,
     });
   } else {
     emit("updateDynamic", skill.id, {
       title: title.value.trim(),
       url: url.value.trim(),
+      ...baseUpdates,
     });
   }
 
@@ -131,6 +142,33 @@ const handleCancel = () => {
           id="edit-title"
           v-model="title"
           class="w-full" />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label
+          for="edit-description"
+          class="font-medium text-surface-200">
+          Description
+        </label>
+        <InputText
+          id="edit-description"
+          v-model="description"
+          placeholder="Short guidance on when to use this skill (optional)"
+          class="w-full" />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="font-medium text-surface-200">Load mode</label>
+        <SelectButton
+          v-model="attachMode"
+          :options="[
+            { label: 'On-demand', value: 'on-demand' },
+            { label: 'Always', value: 'always' },
+          ]"
+          option-label="label"
+          option-value="value"
+          class="w-full flex"
+          :pt="{ button: { class: 'flex-1 w-full' } }" />
       </div>
 
       <template v-if="skill.type === 'static'">

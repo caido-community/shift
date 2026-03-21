@@ -146,11 +146,15 @@ export class AgentContext {
 
     const selectedIds = this.store.selectedSkillIds;
     if (selectedIds.length === 0) {
-      return [];
+      return this.skillsGetter();
     }
 
     const selectedSet = new Set(selectedIds);
     return this.skillsGetter().filter((skill) => selectedSet.has(skill.id));
+  }
+
+  getSkillById(skillId: string): AgentSkill | undefined {
+    return this.selectedSkills.find((s) => s.id === skillId);
   }
 
   get learnings(): string[] {
@@ -414,7 +418,18 @@ export class AgentContext {
       snapshot.agentInstructions = agentInstructions;
     }
     if (skills.length > 0) {
-      snapshot.skills = skills.map((s) => ({ title: s.title, content: s.content }));
+      snapshot.skills = skills.map((s) => {
+        const isAlwaysAttached = s.attachMode === "always";
+        if (isAlwaysAttached) {
+          return { kind: "always-attached" as const, id: s.id, title: s.title, content: s.content };
+        }
+        return {
+          kind: "on-demand" as const,
+          id: s.id,
+          title: s.title,
+          description: s.description,
+        };
+      });
     }
     return snapshot;
   }

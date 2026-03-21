@@ -1,5 +1,10 @@
 import { truncateContextValue } from "@/agent/context.truncation";
-import type { ContextPromptSnapshot, SkillsPromptSnapshot } from "@/agent/context.prompt.types";
+import type {
+  ContextPromptSnapshot,
+  SkillSnapshot,
+  SkillsPromptSnapshot,
+} from "@/agent/context.prompt.types";
+import { isPresent } from "@/utils";
 import { truncate } from "@/utils/text";
 
 export {
@@ -10,15 +15,18 @@ export {
 export const HTTP_REQUEST_CONTEXT_CHARS = 12_000;
 export const ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS = 400;
 export const ENVIRONMENT_VARIABLES_CONTEXT_CHARS = 8_000;
+
 export const PAYLOAD_BLOB_PREVIEW_CHARS = 80;
 export const TODO_CONTENT_CHARS = 500;
 export const LEARNING_VALUE_CHARS = 1_000;
 export const LEARNINGS_TOTAL_CHARS = 12_000;
+
 export const SKILL_CONTENT_CHARS = 8_000;
 export const AGENT_INSTRUCTIONS_CHARS = 16_000;
 export const WORKFLOW_NAME_CHARS = 200;
 export const WORKFLOW_DESCRIPTION_CHARS = 500;
 export const WORKFLOWS_TOTAL_CHARS = 6_000;
+
 export const BINARY_PATH_CHARS = 256;
 export const BINARY_INSTRUCTIONS_CHARS = 1_000;
 export const BINARIES_TOTAL_CHARS = 4_000;
@@ -29,7 +37,7 @@ export const PAYLOAD_BLOBS_TOTAL_CHARS = 6_000;
 export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
   const parts: string[] = [];
 
-  if (snapshot.todos !== undefined && snapshot.todos.length > 0) {
+  if (isPresent(snapshot.todos) && snapshot.todos.length > 0) {
     const todoList = snapshot.todos
       .map((t) => {
         const content = truncateContextValue(t.content, TODO_CONTENT_CHARS);
@@ -39,7 +47,7 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
     parts.push(`<todos>\n${todoList}\n</todos>`);
   }
 
-  if (snapshot.payloadBlobs !== undefined && snapshot.payloadBlobs.length > 0) {
+  if (isPresent(snapshot.payloadBlobs) && snapshot.payloadBlobs.length > 0) {
     const truncatedBlobs = snapshot.payloadBlobs.map((b) => ({
       blobId: b.blobId,
       reason: b.reason,
@@ -51,7 +59,7 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
     parts.push(`<payload_blobs>\n${blobList}\n</payload_blobs>`);
   }
 
-  if (snapshot.learnings !== undefined && snapshot.learnings.length > 0) {
+  if (isPresent(snapshot.learnings) && snapshot.learnings.length > 0) {
     const truncatedLearnings = snapshot.learnings.map((value, index) => ({
       index,
       value: truncateContextValue(value, LEARNING_VALUE_CHARS),
@@ -61,7 +69,7 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
     parts.push(`<learnings>\n${serialized}\n</learnings>`);
   }
 
-  if (snapshot.httpRequest !== undefined && snapshot.httpRequest !== "") {
+  if (isPresent(snapshot.httpRequest) && snapshot.httpRequest !== "") {
     const requestForPrompt = truncateContextValue(
       snapshot.httpRequest,
       HTTP_REQUEST_CONTEXT_CHARS
@@ -70,7 +78,7 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
   }
 
   if (
-    snapshot.allowedConvertWorkflows !== undefined &&
+    isPresent(snapshot.allowedConvertWorkflows) &&
     snapshot.allowedConvertWorkflows.length > 0
   ) {
     const truncatedWorkflows = snapshot.allowedConvertWorkflows.map((w) => ({
@@ -83,11 +91,11 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
     parts.push(`<allowed_convert_workflows>\n${workflowList}\n</allowed_convert_workflows>`);
   }
 
-  if (snapshot.allowedBinaries !== undefined) {
+  if (isPresent(snapshot.allowedBinaries)) {
     const truncatedBinaries = snapshot.allowedBinaries.map((b) => ({
       path: truncateContextValue(b.path, BINARY_PATH_CHARS),
       instructions:
-        b.instructions !== undefined && b.instructions.trim() !== ""
+        isPresent(b.instructions) && b.instructions.trim() !== ""
           ? truncateContextValue(b.instructions, BINARY_INSTRUCTIONS_CHARS)
           : undefined,
     }));
@@ -97,19 +105,19 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
   }
 
   if (
-    snapshot.entriesContext !== undefined &&
+    isPresent(snapshot.entriesContext) &&
     snapshot.entriesContext.recentEntryIds.length > 0
   ) {
     const { activeEntryId, recentEntryIds } = snapshot.entriesContext;
     const entryList = recentEntryIds.map((id) => `- ${id}`).join("\n");
     const activeLine =
-      activeEntryId !== undefined && activeEntryId !== ""
+      isPresent(activeEntryId) && activeEntryId !== ""
         ? `Active entry: ${activeEntryId}`
         : "No active entry";
     parts.push(`<replay_entries>\n${entryList}\n\n${activeLine}\n</replay_entries>`);
   }
 
-  if (snapshot.environmentsContext !== undefined) {
+  if (isPresent(snapshot.environmentsContext)) {
     const { all, selectedId, selectedName } = snapshot.environmentsContext;
     const truncatedAll = all.map((e) => ({
       id: e.id,
@@ -118,17 +126,17 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
     const envList = truncatedAll.map((e) => `- ${e.name} (id: ${e.id})`).join("\n");
     const truncatedEnvList = truncateContextValue(envList, ENVIRONMENTS_TOTAL_CHARS);
     const truncatedSelectedName =
-      selectedName !== undefined && selectedName !== ""
+      isPresent(selectedName) && selectedName !== ""
         ? truncateContextValue(selectedName, ENVIRONMENT_NAME_CHARS)
         : undefined;
     const selectedLine =
-      truncatedSelectedName !== undefined
+      isPresent(truncatedSelectedName)
         ? `Currently selected: ${truncatedSelectedName} (id: ${selectedId})`
         : "No environment selected";
     parts.push(`<environments>\n${truncatedEnvList}\n\n${selectedLine}\n</environments>`);
   }
 
-  if (snapshot.environmentVariablesJson !== undefined) {
+  if (isPresent(snapshot.environmentVariablesJson)) {
     const envJson = truncateContextValue(
       snapshot.environmentVariablesJson,
       ENVIRONMENT_VARIABLES_CONTEXT_CHARS
@@ -158,14 +166,37 @@ export function buildSkillsPrompt(snapshot: SkillsPromptSnapshot): string {
     parts.push(`<agent_instructions>\n${truncated}\n</agent_instructions>`);
   }
 
+  console.log("skills", skills);
   if (skills.length > 0) {
-    const skillEntries = skills
-      .map((skill) => {
-        const content = truncateContextValue(skill.content, SKILL_CONTENT_CHARS);
-        return `<skill title="${skill.title}">\n${content}\n</skill>`;
-      })
-      .join("\n");
-    parts.push(skillEntries);
+    const alwaysAttached: Extract<SkillSnapshot, { kind: "always-attached" }>[] = [];
+    const onDemand: Extract<SkillSnapshot, { kind: "on-demand" }>[] = [];
+
+    for (const s of skills) {
+      if (s.kind === "always-attached") alwaysAttached.push(s);
+      else onDemand.push(s);
+    }
+
+    const skillParts: string[] = [];
+
+    for (const skill of alwaysAttached) {
+      const content = truncateContextValue(skill.content, SKILL_CONTENT_CHARS);
+      skillParts.push(`<skill id="${skill.id}" title="${skill.title}">\n${content}\n</skill>`);
+    }
+
+    if (onDemand.length > 0) {
+      const catalogLines = onDemand.map((s) => {
+        const desc = s.description?.trim();
+        return desc !== ""
+          ? `- ${s.title} (id: ${s.id}): ${truncate(desc, 200)}`
+          : `- ${s.title} (id: ${s.id})`;
+      });
+      skillParts.push(
+        `<skills_available_on_demand>\n${catalogLines.join("\n")}\n</skills_available_on_demand>\n\n` +
+          `When you need detailed instructions from an on-demand skill above, use the ReadSkill tool with its id to load the full content.`
+      );
+    }
+
+    parts.push(skillParts.join("\n"));
   }
 
   return `<additional_instructions>\n${parts.join("\n")}\n</additional_instructions>`;

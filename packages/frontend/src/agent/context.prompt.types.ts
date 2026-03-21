@@ -46,10 +46,9 @@ export type ContextPromptSnapshot = {
   environmentVariablesJson?: string;
 };
 
-export type SkillSnapshot = {
-  title: string;
-  content: string;
-};
+export type SkillSnapshot =
+  | { kind: "always-attached"; id: string; title: string; content: string }
+  | { kind: "on-demand"; id: string; title: string; description?: string };
 
 export type SkillsPromptSnapshot = {
   agentInstructions?: string;

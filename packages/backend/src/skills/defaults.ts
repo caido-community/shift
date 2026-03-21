@@ -88,6 +88,8 @@ export const DEFAULT_SKILLS: StaticSkillDefinition[] = [
     id: "skill-default-xss",
     title: "XSS",
     scope: "global",
+    description: "Use when testing for cross-site scripting vulnerabilities",
+    attachMode: "on-demand",
     content: `
 ## XSS-Specific Testing Guidance
 - Test primarily reflected xss due to the nature of this running inside replay which doesnt have a headless browser and the simplicity of not using multiple requests
@@ -141,6 +143,8 @@ whoa, no sanitization on the src attribute? that’s a red flag. let me have the
     id: "skill-default-ssrf",
     title: "SSRF",
     scope: "global",
+    description: "Use when testing for server-side request forgery",
+    attachMode: "on-demand",
     content: `
 ## SSRF-Specific Testing Guidance
 - Test URL parameters that fetch external resources
@@ -228,6 +232,8 @@ ${urlBypassTechniques}
     id: "skill-default-path-traversal",
     title: "Path Traversal",
     scope: "global",
+    description: "Use when testing for directory traversal or file inclusion",
+    attachMode: "on-demand",
     content: `
 ## Path Traversal-Specific Testing Guidance
 - Test file path parameters with ../ sequences
@@ -325,6 +331,8 @@ HOLY SHIT! The .env file is readable! They're not blocking hidden files! Full da
     id: "skill-default-sqli",
     title: "SQL Injection",
     scope: "global",
+    description: "Use when testing for SQL injection vulnerabilities",
+    attachMode: "on-demand",
     content: `
 ## SQL Injection-Specific Testing Guidance
 - Test input parameters that interact with databases
@@ -367,6 +375,8 @@ There it is. The database executed the pg_sleep(5) function, causing a 5-second 
     id: "skill-default-url-bypass",
     title: "URL Bypass Techniques",
     scope: "global",
+    description: "Use when bypassing URL parsers or validating URL handling",
+    attachMode: "on-demand",
     content: urlBypassTechniques.trim(),
   },
 ];

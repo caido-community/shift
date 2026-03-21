@@ -133,13 +133,19 @@ class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
           id: definition.id,
           title: definition.title,
           content: definition.content,
+          description: definition.description,
+          attachMode: definition.attachMode,
         };
       } else {
         const cached = this.resolvedCache.get(definition.id);
         if (cached === undefined) {
           continue;
         }
-        skill = cached;
+        skill = {
+          ...cached,
+          description: definition.description,
+          attachMode: definition.attachMode,
+        };
       }
 
       result.push(this.applyProjectOverride(skill));
@@ -175,6 +181,8 @@ class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
         content: input.content,
         scope: input.scope,
         projectId: input.scope === "project" ? this.currentProjectId : undefined,
+        description: input.description,
+        attachMode: input.attachMode,
       },
     });
 
@@ -202,6 +210,8 @@ class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
       url: input.url,
       scope: input.scope,
       projectId: input.scope === "project" ? this.currentProjectId : undefined,
+      description: input.description,
+      attachMode: input.attachMode,
     };
 
     const resolved = await fetchSkillContent(definition);

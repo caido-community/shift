@@ -40,6 +40,10 @@ const getTypeSeverity = (type: "static" | "dynamic") => {
 const getScopeSeverity = (scope: "global" | "project") => {
   return scope === "global" ? "success" : "warn";
 };
+
+const getAttachModeLabel = (attachMode: "always" | "on-demand" | undefined) => {
+  return attachMode === "always" ? "Always" : "On-demand";
+};
 </script>
 
 <template>
@@ -52,7 +56,9 @@ const getScopeSeverity = (scope: "global" | "project") => {
           <div>
             <h2 class="text-base font-bold">Skills</h2>
             <p class="text-sm text-surface-400">
-              Provide specialized knowledge to your custom agents.
+              Provide specialized knowledge to your custom agents. When no custom agent is
+              selected, all skills are used by default. Custom agents let you choose which skills
+              to include.
             </p>
           </div>
           <div class="flex items-center gap-2">
@@ -134,6 +140,15 @@ const getScopeSeverity = (scope: "global" | "project") => {
               <Tag
                 :value="data.scope === 'global' ? 'Global' : 'Project'"
                 :severity="getScopeSeverity(data.scope)" />
+            </template>
+          </Column>
+          <Column
+            header="Load"
+            style="width: 100px">
+            <template #body="{ data }">
+              <span class="text-sm text-surface-400">
+                {{ getAttachModeLabel(data.attachMode) }}
+              </span>
             </template>
           </Column>
           <Column header="Source">

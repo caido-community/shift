@@ -119,7 +119,9 @@ describe("buildSkillsPrompt - leak prevention", () => {
   it("truncates long skill content and adds truncation marker", () => {
     const longContent = "s".repeat(SKILL_CONTENT_CHARS + 300);
     const result = buildSkillsPrompt({
-      skills: [{ title: "My Skill", content: longContent }],
+      skills: [
+        { kind: "always-attached", id: "skill-1", title: "My Skill", content: longContent },
+      ],
     });
 
     expect(result).toContain("...[truncated]...");
@@ -235,12 +237,44 @@ describe("buildSkillsPrompt - full coverage", () => {
     expect(result).toContain("Be helpful.");
   });
 
-  it("includes skills when provided", () => {
+  it("includes always-attached skills with full content", () => {
     const result = buildSkillsPrompt({
-      skills: [{ title: "XSS Guide", content: "Watch for reflected input." }],
+      skills: [
+        {
+          kind: "always-attached",
+          id: "skill-xss",
+          title: "XSS Guide",
+          content: "Watch for reflected input.",
+        },
+      ],
     });
-    expect(result).toContain("<skill title=\"XSS Guide\">");
+    expect(result).toContain('<skill id="skill-xss" title="XSS Guide">');
     expect(result).toContain("Watch for reflected input.");
+  });
+
+  it("includes on-demand skills as catalog with ReadSkill guidance", () => {
+    const result = buildSkillsPrompt({
+      skills: [
+        {
+          kind: "on-demand",
+          id: "skill-sqli",
+          title: "SQL Injection",
+          description: "Use when testing database inputs",
+        },
+      ],
+    });
+    expect(result).toContain("<skills_available_on_demand>");
+    expect(result).toContain("skill-sqli");
+    expect(result).toContain("SQL Injection");
+    expect(result).toContain("Use when testing database inputs");
+    expect(result).toContain("ReadSkill");
+  });
+
+  it("includes on-demand skill without description", () => {
+    const result = buildSkillsPrompt({
+      skills: [{ kind: "on-demand", id: "skill-1", title: "Generic" }],
+    });
+    expect(result).toContain("- Generic (id: skill-1)");
   });
 
   it("wraps output in additional_instructions tags", () => {

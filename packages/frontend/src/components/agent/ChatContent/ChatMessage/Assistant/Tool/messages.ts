@@ -28,6 +28,7 @@ import { display as requestRawSetDisplay } from "@/agent/tools/request/RequestRa
 import { display as requestSendDisplay } from "@/agent/tools/request/RequestSend";
 import { display as responseRangeReadDisplay } from "@/agent/tools/response/ResponseRangeRead";
 import { display as responseSearchDisplay } from "@/agent/tools/response/ResponseSearch";
+import { display as readSkillDisplay } from "@/agent/tools/skills/ReadSkill";
 import { display as todoAddDisplay } from "@/agent/tools/todo/TodoAdd";
 import { display as todoCompleteDisplay } from "@/agent/tools/todo/TodoComplete";
 import { display as todoRemoveDisplay } from "@/agent/tools/todo/TodoRemove";
@@ -63,6 +64,7 @@ const configs = {
   RequestSend: requestSendDisplay,
   ResponseRangeRead: responseRangeReadDisplay,
   ResponseSearch: responseSearchDisplay,
+  ReadSkill: readSkillDisplay,
   EnvironmentCreate: environmentCreateDisplay,
   EnvironmentUpdate: environmentUpdateDisplay,
   EnvironmentRemove: environmentRemoveDisplay,
