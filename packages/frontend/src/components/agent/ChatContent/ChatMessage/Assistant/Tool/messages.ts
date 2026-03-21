@@ -8,6 +8,7 @@ import { display as learningAddDisplay } from "@/agent/tools/learnings/LearningA
 import { display as learningRemoveDisplay } from "@/agent/tools/learnings/LearningRemove";
 import { display as learningUpdateDisplay } from "@/agent/tools/learnings/LearningUpdate";
 import { display as payloadBlobCreateDisplay } from "@/agent/tools/payload/PayloadBlobCreate";
+import { display as payloadBlobRangeReadDisplay } from "@/agent/tools/payload/PayloadBlobRangeRead";
 import { display as replayEntryNavigateDisplay } from "@/agent/tools/replay/ReplayEntryNavigate";
 import { display as requestBodySetDisplay } from "@/agent/tools/request/RequestBodySet";
 import { display as requestCookieAddDisplay } from "@/agent/tools/request/RequestCookieAdd";
@@ -43,6 +44,7 @@ const configs = {
   LearningUpdate: learningUpdateDisplay,
   LearningRemove: learningRemoveDisplay,
   PayloadBlobCreate: payloadBlobCreateDisplay,
+  PayloadBlobRangeRead: payloadBlobRangeReadDisplay,
   RequestBodySet: requestBodySetDisplay,
   RequestCookieAdd: requestCookieAddDisplay,
   RequestCookieRemove: requestCookieRemoveDisplay,

@@ -1,4 +1,4 @@
-import type { ShiftMessage } from "shared";
+import { Result, type ShiftMessage } from "shared";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,6 +7,8 @@ import {
   findLastUserMessageIndex,
   hasToolPartsSinceIndex,
   hasToolPartsSinceLastUserMessage,
+  replaceHistoricalToolOutputsWithBlobRefs,
+  serializeToolOutput,
   stripReasoningParts,
   stripUnfinishedToolCalls,
 } from "./messages";
@@ -56,6 +58,28 @@ function createAssistantMessageWithToolState(state: string, id = "a1"): ShiftMes
         toolName: "TestTool",
         args: {},
         state,
+      },
+    ],
+  } as ShiftMessage;
+}
+
+function createAssistantMessageWithToolOutput(
+  output: unknown,
+  state: "output-available" | "result" | "error" = "result",
+  id = "a1"
+): ShiftMessage {
+  return {
+    id,
+    role: "assistant",
+    parts: [
+      { type: "text", text: "Using tool" },
+      {
+        type: "tool-invocation",
+        toolCallId: "tc1",
+        toolName: "TestTool",
+        args: {},
+        state,
+        output,
       },
     ],
   } as ShiftMessage;
@@ -324,6 +348,144 @@ describe("stripUnfinishedToolCalls", () => {
 
     const result = stripUnfinishedToolCalls(messages);
     expect(result).toBe(messages);
+  });
+});
+
+describe("serializeToolOutput", () => {
+  it("returns empty string for undefined", () => {
+    expect(serializeToolOutput(undefined)).toBe("");
+  });
+
+  it("returns empty string for null", () => {
+    expect(serializeToolOutput(null)).toBe("");
+  });
+
+  it("returns string as-is", () => {
+    expect(serializeToolOutput("hello")).toBe("hello");
+  });
+
+  it("serializes plain objects to JSON", () => {
+    expect(serializeToolOutput({ a: 1, b: "x" })).toBe('{"a":1,"b":"x"}');
+  });
+
+  it("serializes Result.Ok to JSON", () => {
+    expect(serializeToolOutput(Result.ok({ message: "done" }))).toContain('"kind":"Ok"');
+  });
+
+  it("serializes Result.Error to JSON", () => {
+    expect(serializeToolOutput(Result.err("failed"))).toContain('"kind":"Error"');
+  });
+});
+
+describe("replaceHistoricalToolOutputsWithBlobRefs", () => {
+  it("returns messages unchanged when no last user message", () => {
+    const messages = [createAssistantMessage()];
+    const createBlob = () => ({ blobId: "blob-1" });
+    expect(replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob)).toBe(messages);
+  });
+
+  it("returns messages unchanged when last user message has no prior assistant with tool output", () => {
+    const messages = [createUserMessage("Hi"), createAssistantMessage()];
+    const createBlob = () => ({ blobId: "blob-1" });
+    expect(replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob)).toEqual(messages);
+  });
+
+  it("does not replace tool outputs in the current turn", () => {
+    const largeOutput = "x".repeat(600);
+    const messages = [
+      createUserMessage("First"),
+      createAssistantMessageWithToolOutput("small"),
+      createUserMessage("Second"),
+      createAssistantMessageWithToolOutput(largeOutput),
+    ];
+    const blobs: string[] = [];
+    const createBlob = (content: string) => {
+      blobs.push(content);
+      return { blobId: `blob-${blobs.length}` };
+    };
+    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob);
+    expect(blobs).toHaveLength(0);
+    const currentTurnAssistant = result[3]!;
+    const toolPart = currentTurnAssistant.parts.find((p) => p.type === "tool-invocation");
+    expect((toolPart as { output?: string })?.output).toBe(largeOutput);
+  });
+
+  it("replaces large tool outputs in previous turns with blob placeholder", () => {
+    const largeOutput = "x".repeat(600);
+    const messages = [
+      createUserMessage("First"),
+      createAssistantMessageWithToolOutput(largeOutput),
+      createUserMessage("Second"),
+      createAssistantMessage("a2"),
+    ];
+    const blobs: string[] = [];
+    const createBlob = (content: string) => {
+      blobs.push(content);
+      return { blobId: `blob-${blobs.length}` };
+    };
+    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob);
+    expect(blobs).toHaveLength(1);
+    expect(blobs[0]).toBe(largeOutput);
+    const oldAssistant = result[1]!;
+    const toolPart = oldAssistant.parts.find((p) => p.type === "tool-invocation");
+    expect((toolPart as { output?: string })?.output).toContain("Read output from blob ID blob-1");
+    expect((toolPart as { output?: string })?.output).toContain("PayloadBlobRangeRead");
+  });
+
+  it("preserves assistant text content", () => {
+    const largeOutput = "x".repeat(600);
+    const messages = [
+      createUserMessage("First"),
+      createAssistantMessageWithToolOutput(largeOutput),
+      createUserMessage("Second"),
+    ];
+    const createBlob = () => ({ blobId: "blob-1" });
+    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob);
+    const assistant = result[1]!;
+    const textPart = assistant.parts.find((p) => p.type === "text");
+    expect((textPart as { text?: string })?.text).toBe("Using tool");
+  });
+
+  it("does not replace outputs below threshold", () => {
+    const smallOutput = "ok";
+    const messages = [
+      createUserMessage("First"),
+      createAssistantMessageWithToolOutput(smallOutput),
+      createUserMessage("Second"),
+    ];
+    const createBlob = () => ({ blobId: "blob-1" });
+    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob);
+    const assistant = result[1]!;
+    const toolPart = assistant.parts.find((p) => p.type === "tool-invocation");
+    expect((toolPart as { output?: string })?.output).toBe(smallOutput);
+  });
+
+  it("respects custom minOutputLengthToReplace threshold", () => {
+    const output = "x".repeat(100);
+    const messages = [
+      createUserMessage("First"),
+      createAssistantMessageWithToolOutput(output),
+      createUserMessage("Second"),
+    ];
+    const createBlob = () => ({ blobId: "blob-1" });
+    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob, {
+      minOutputLengthToReplace: 50,
+    });
+    const assistant = result[1]!;
+    const toolPart = assistant.parts.find((p) => p.type === "tool-invocation");
+    expect((toolPart as { output?: string })?.output).toContain("Read output from blob ID");
+  });
+
+  it("does not mutate input messages", () => {
+    const largeOutput = "x".repeat(600);
+    const messages = [
+      createUserMessage("First"),
+      createAssistantMessageWithToolOutput(largeOutput),
+      createUserMessage("Second"),
+    ];
+    const original = JSON.stringify(messages);
+    replaceHistoricalToolOutputsWithBlobRefs(messages, () => ({ blobId: "blob-1" }));
+    expect(JSON.stringify(messages)).toBe(original);
   });
 });
 

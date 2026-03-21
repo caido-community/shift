@@ -45,7 +45,7 @@ type ConvertWorkflowContext = {
 const HTTP_REQUEST_CONTEXT_CHARS = 12_000;
 const ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS = 400;
 const ENVIRONMENT_VARIABLES_CONTEXT_CHARS = 8_000;
-const PAYLOAD_BLOB_MAX_COUNT = 20;
+const PAYLOAD_BLOB_MAX_COUNT = 40;
 const PAYLOAD_BLOB_MAX_BYTES = 1_000_000;
 const PAYLOAD_BLOB_PREVIEW_CHARS = 200;
 
@@ -198,9 +198,10 @@ export class AgentContext {
 
   createPayloadBlob(content: string, reason: string): PayloadBlobMetadata {
     if (this.payloadBlobs.size >= PAYLOAD_BLOB_MAX_COUNT) {
-      throw new Error(
-        `Cannot create more than ${PAYLOAD_BLOB_MAX_COUNT} payload blobs in one run. Reuse an existing blobId or finish this run and start a new one.`
-      );
+      const oldest = this.payloadBlobs.keys().next().value;
+      if (oldest !== undefined) {
+        this.payloadBlobs.delete(oldest);
+      }
     }
 
     const bytes = new TextEncoder().encode(content).length;
@@ -226,10 +227,6 @@ export class AgentContext {
 
   getPayloadBlob(blobId: string): string | undefined {
     return this.payloadBlobs.get(blobId)?.content;
-  }
-
-  clearPayloadBlobs(): void {
-    this.payloadBlobs.clear();
   }
 
   get environmentVariables(): EnvironmentVariable[] {

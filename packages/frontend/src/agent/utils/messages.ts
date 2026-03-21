@@ -1,7 +1,8 @@
 import { isToolUIPart } from "ai";
+import { Result } from "shared";
 import type { ShiftMessage } from "shared";
 
-type ToolUIState = { state?: string };
+type ToolUIState = { state?: string; output?: unknown };
 type ReasoningPart = { type: "reasoning" };
 
 function isReasoningPart(part: { type: string }): part is ReasoningPart {
@@ -125,6 +126,92 @@ export function hasToolPartsSinceLastUserMessage(messages: ShiftMessage[]): bool
   if (lastUserIndex === -1) return false;
 
   return hasToolPartsSinceIndex(messages, lastUserIndex);
+}
+
+/**
+ * Serialize tool output to a string for storage in a blob.
+ * Handles Result wrapper, plain objects, and primitives.
+ */
+export function serializeToolOutput(output: unknown): string {
+  if (output === undefined || output === null) {
+    return "";
+  }
+  if (Result.isResult(output)) {
+    return JSON.stringify(output);
+  }
+  if (typeof output === "string") {
+    return output;
+  }
+  if (typeof output === "object") {
+    try {
+      return JSON.stringify(output);
+    } catch {
+      return String(output);
+    }
+  }
+  return String(output);
+}
+
+export type CreateBlobForHistory = (content: string, reason: string) => { blobId: string };
+
+const DEFAULT_MIN_OUTPUT_LENGTH_TO_REPLACE = 500;
+
+/**
+ * Replace large tool outputs in previous turns with blob-backed placeholders.
+ * Only affects assistant tool-invocation parts before the last user message.
+ */
+export function replaceHistoricalToolOutputsWithBlobRefs(
+  messages: ShiftMessage[],
+  createBlob: CreateBlobForHistory,
+  options?: { minOutputLengthToReplace?: number }
+): ShiftMessage[] {
+  const lastUserIndex = findLastUserMessageIndex(messages);
+  if (lastUserIndex < 0) {
+    return messages;
+  }
+
+  const threshold = options?.minOutputLengthToReplace ?? DEFAULT_MIN_OUTPUT_LENGTH_TO_REPLACE;
+  let didChange = false;
+  const updated: ShiftMessage[] = [];
+
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i]!;
+    if (message.role !== "assistant" || i >= lastUserIndex) {
+      updated.push(message);
+      continue;
+    }
+
+    const newParts = message.parts.map((part) => {
+      if (!isToolUIPart(part)) {
+        return part;
+      }
+      const toolPart = part as ToolUIState;
+      if (!isFinishedToolState(toolPart.state) || toolPart.output === undefined) {
+        return part;
+      }
+
+      const serialized = serializeToolOutput(toolPart.output);
+      if (serialized.length < threshold) {
+        return part;
+      }
+
+      didChange = true;
+      const { blobId } = createBlob(serialized, `Historical tool output (${serialized.length} chars)`);
+      const placeholder = `Read output from blob ID ${blobId} with PayloadBlobRangeRead.`;
+      return {
+        ...part,
+        output: placeholder,
+      } as typeof part;
+    });
+
+    if (!didChange) {
+      updated.push(message);
+      continue;
+    }
+    updated.push({ ...message, parts: newParts } as ShiftMessage);
+  }
+
+  return didChange ? updated : messages;
 }
 
 type ExtractResult = {

@@ -13,6 +13,7 @@ import { createShiftAgent } from "@/agent/agent";
 import type { AgentContext } from "@/agent/context";
 import {
   findLastUserMessageId,
+  replaceHistoricalToolOutputsWithBlobRefs,
   stripReasoningParts,
   stripUnfinishedToolCalls,
 } from "@/agent/utils/messages";
@@ -57,7 +58,6 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
       originalMessages: options.messages,
       execute: async ({ writer }) => {
         context.setWriter(writer);
-        context.clearPayloadBlobs();
 
         const [contentResult] = await Promise.all([
           getSessionContent(this.sdk, context.sessionId),
@@ -88,8 +88,18 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
           openRouterPrioritizeFastProviders,
         });
 
-        const sanitizedMessages = stripReasoningParts(stripUnfinishedToolCalls(options.messages));
-        const modelMessages = await convertToModelMessages(sanitizedMessages);
+        const stripped = stripReasoningParts(stripUnfinishedToolCalls(options.messages));
+        const createBlobForHistory = (content: string, reason: string) => {
+          const meta = context.createPayloadBlob(content, reason);
+          return { blobId: meta.blobId };
+        };
+        let messagesForModel = stripped;
+        try {
+          messagesForModel = replaceHistoricalToolOutputsWithBlobRefs(stripped, createBlobForHistory);
+        } catch (err) {
+          console.warn("Historical tool output blob replacement failed, using full messages:", err);
+        }
+        const modelMessages = await convertToModelMessages(messagesForModel);
 
         const result = await agent.stream({
           messages: modelMessages,
@@ -105,11 +115,9 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
             sendReasoning: true,
             onFinish: () => {
               context.clearTodos();
-              context.clearPayloadBlobs();
             },
             onError: (error) => {
               context.clearTodos();
-              context.clearPayloadBlobs();
               writer.write({
                 type: "message-metadata",
                 messageMetadata: {
@@ -179,14 +187,9 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
           })
         );
 
-        try {
-          await result.consumeStream();
-        } finally {
-          context.clearPayloadBlobs();
-        }
+        await result.consumeStream();
       },
       onError: (error) => {
-        this.context.clearPayloadBlobs();
         console.error("Error: ", error);
         return (error as Error).message;
       },
