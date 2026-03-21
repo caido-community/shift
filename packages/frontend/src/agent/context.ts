@@ -10,6 +10,14 @@ import type {
   ShiftMessage,
 } from "shared";
 
+import {
+  buildContextPrompt,
+  buildSkillsPrompt,
+  ENVIRONMENT_VARIABLES_CONTEXT_CHARS,
+  ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS,
+  type ContextPromptSnapshot,
+  type SkillsPromptSnapshot,
+} from "@/agent/context.prompt";
 import { truncateContextValue } from "@/agent/context.truncation";
 import type { Todo } from "@/agent/types";
 import { type SessionStore } from "@/stores/agent/session";
@@ -42,9 +50,6 @@ type ConvertWorkflowContext = {
   description: string;
 };
 
-const HTTP_REQUEST_CONTEXT_CHARS = 12_000;
-const ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS = 400;
-const ENVIRONMENT_VARIABLES_CONTEXT_CHARS = 8_000;
 const PAYLOAD_BLOB_MAX_COUNT = 40;
 const PAYLOAD_BLOB_MAX_BYTES = 1_000_000;
 const PAYLOAD_BLOB_PREVIEW_CHARS = 200;
@@ -320,120 +325,97 @@ export class AgentContext {
   }
 
   toContextPrompt(): string {
-    const parts: string[] = [];
+    const snapshot = this.buildContextSnapshot();
+    return buildContextPrompt(snapshot);
+  }
+
+  private buildContextSnapshot(): ContextPromptSnapshot {
+    const snapshot: ContextPromptSnapshot = {};
 
     if (this.todos.length > 0) {
-      const todoList = this.todos
-        .map((t) => `- [${t.completed ? "completed" : "pending"}] (id: ${t.id}) ${t.content}`)
-        .join("\n");
-      parts.push(`<todos>\n${todoList}\n</todos>`);
+      snapshot.todos = this.todos.map((t) => ({
+        id: t.id,
+        content: t.content,
+        completed: t.completed,
+      }));
     }
 
     if (this.payloadBlobs.size > 0) {
-      const blobList = JSON.stringify(
-        [...this.payloadBlobs.entries()].map(([blobId, blob]) => ({
-          blobId,
-          reason: blob.reason,
-          length: blob.content.length,
-          preview: truncate(blob.content, 80),
-        })),
-        null,
-        2
-      );
-      parts.push(`<payload_blobs>\n${blobList}\n</payload_blobs>`);
+      snapshot.payloadBlobs = [...this.payloadBlobs.entries()].map(([blobId, blob]) => ({
+        blobId,
+        reason: blob.reason,
+        length: blob.content.length,
+        preview: truncate(blob.content, 80),
+      }));
     }
 
     if (this.learnings.length > 0) {
-      const serializedLearnings = JSON.stringify(
-        this.learnings.map((value, index) => ({ index, value })),
-        null,
-        2
-      );
-      parts.push(`<learnings>\n${serializedLearnings}\n</learnings>`);
+      snapshot.learnings = [...this.learnings];
     }
 
     if (this.httpRequest !== "") {
-      const requestForPrompt = truncateContextValue(this.httpRequest, HTTP_REQUEST_CONTEXT_CHARS);
-      parts.push(`<current_http_request>\n${requestForPrompt}\n</current_http_request>`);
+      snapshot.httpRequest = this.httpRequest;
     }
 
     const restrictedConvertWorkflows = this.getRestrictedConvertWorkflows();
     if (restrictedConvertWorkflows !== undefined) {
-      const workflowList = JSON.stringify(restrictedConvertWorkflows, null, 2);
-      parts.push(`<allowed_convert_workflows>\n${workflowList}\n</allowed_convert_workflows>`);
+      snapshot.allowedConvertWorkflows = restrictedConvertWorkflows;
     }
 
     if (isPresent(this.resolvedAgent)) {
-      const binaryList = JSON.stringify(
-        (this.allowedBinaries ?? []).map((binary) => ({
-          path: binary.path,
-          instructions:
-            binary.instructions !== undefined && binary.instructions.trim() !== ""
-              ? binary.instructions
-              : undefined,
-        })),
-        null,
-        2
-      );
-      parts.push(`<allowed_binaries>\n${binaryList}\n</allowed_binaries>`);
+      snapshot.allowedBinaries = (this.allowedBinaries ?? []).map((binary) => ({
+        path: binary.path,
+        instructions:
+          binary.instructions !== undefined && binary.instructions.trim() !== ""
+            ? binary.instructions
+            : undefined,
+      }));
     }
 
     if (isPresent(this.entriesContext) && this.entriesContext.recentEntryIds.length > 0) {
-      const { activeEntryId, recentEntryIds } = this.entriesContext;
-      const entryList = recentEntryIds.map((id) => `- ${id}`).join("\n");
-      const activeLine = isPresent(activeEntryId)
-        ? `Active entry: ${activeEntryId}`
-        : "No active entry";
-      parts.push(`<replay_entries>\n${entryList}\n\n${activeLine}\n</replay_entries>`);
+      snapshot.entriesContext = this.entriesContext;
     }
 
-    if (this.environmentsContext) {
+    if (this.environmentsContext !== undefined) {
       const { all, selectedId } = this.environmentsContext;
       const selectedName = isPresent(selectedId)
         ? (all.find((e) => e.id === selectedId)?.name ?? "Unknown")
         : undefined;
-
-      const envList = all.map((e) => `- ${e.name} (id: ${e.id})`).join("\n");
-      const selectedLine = isPresent(selectedName)
-        ? `Currently selected: ${selectedName} (id: ${selectedId})`
-        : "No environment selected";
-
-      parts.push(`<environments>\n${envList}\n\n${selectedLine}\n</environments>`);
+      snapshot.environmentsContext = {
+        all,
+        selectedId,
+        selectedName,
+      };
     }
 
-    const environmentVariablesPrompt = this.getEnvironmentVariablesPrompt();
-    if (environmentVariablesPrompt !== undefined) {
-      parts.push(
-        `<environment_variables>\n${environmentVariablesPrompt}\n</environment_variables>`
-      );
+    const environmentVariablesJson = this.getEnvironmentVariablesPrompt();
+    if (environmentVariablesJson !== undefined) {
+      snapshot.environmentVariablesJson = environmentVariablesJson;
     }
 
-    if (parts.length === 0) {
-      return "";
-    }
-
-    return `<context>\n${parts.join("\n\n")}\n</context>`;
+    return snapshot;
   }
 
   toSkillsPrompt(): string {
-    const skills = this.selectedSkills;
+    const snapshot = this.buildSkillsSnapshot();
+    return buildSkillsPrompt(snapshot);
+  }
+
+  private buildSkillsSnapshot(): SkillsPromptSnapshot {
     const agentInstructions = this.getAgentInstructions();
+    const skills = this.selectedSkills;
+
     if (skills.length === 0 && agentInstructions === "") {
-      return "";
+      return {};
     }
 
-    const parts: string[] = [];
+    const snapshot: SkillsPromptSnapshot = {};
     if (agentInstructions !== "") {
-      parts.push(`<agent_instructions>\n${agentInstructions}\n</agent_instructions>`);
+      snapshot.agentInstructions = agentInstructions;
     }
-
     if (skills.length > 0) {
-      const skillEntries = skills
-        .map((skill) => `<skill title="${skill.title}">\n${skill.content}\n</skill>`)
-        .join("\n");
-      parts.push(skillEntries);
+      snapshot.skills = skills.map((s) => ({ title: s.title, content: s.content }));
     }
-
-    return `<additional_instructions>\n${parts.join("\n")}\n</additional_instructions>`;
+    return snapshot;
   }
 }
