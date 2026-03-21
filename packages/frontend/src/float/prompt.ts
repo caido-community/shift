@@ -438,76 +438,32 @@ const HARDCODED_EXAMPLES = [
 const EXAMPLES_PLACEHOLDER = "__HARDCODED_EXAMPLES__";
 
 export const HTTPQL_SPEC_FILE = `
-# HTTPQL Query Language
+HTTPQL: filter HTTP requests/responses in Caido.
 
-HTTPQL is used to filter requests and responses in Caido.
+Syntax: namespace.field.operator:"value"
 
-## Syntax: namespace.field.operator:"value"
+Namespaces: req, resp, preset, row, source
 
-### Namespaces
-- \`req\`: HTTP requests
-- \`resp\`: HTTP responses
-- \`preset\`: Filter presets
-- \`row\`: Table rows
-- \`source\`: Feature source
+Fields:
+- req: ext (file extension), host, method, path, port, raw, created_at
+- resp: code, raw, roundtrip
+- row: id
 
-### Fields
+Operators:
+- Numbers (port, code, roundtrip, id): eq, gt, gte, lt, lte, ne
+- Text/bytes (ext, host, method, path, raw): cont (contains, case-insensitive), eq, like (SQL LIKE), ncont, ne, nlike, regex, nregex
+- Dates (created_at): gt (after), lt (before)
 
-**req fields:**
-- \`ext\`: File extension (includes leading dot, e.g. \`.js\`)
-- \`host\`: Target hostname
-- \`method\`: HTTP method (uppercase)
-- \`path\`: Request path including extension
-- \`port\`: Target port
-- \`raw\`: Full raw request data
-- \`created_at\`: Request timestamp
+Logic: AND (both true, higher priority), OR (either true)
 
-**resp fields:**
-- \`code\`: Status code
-- \`raw\`: Full raw response data
-- \`roundtrip\`: Response time in milliseconds
+Examples:
+req.method.eq:"GET"
+resp.code.eq:200
+req.path.cont:"/api/"
+req.host.eq:"example.com" AND resp.code.gt:400
+"search term" (searches req.raw & resp.raw)
 
-**row fields:**
-- \`id\`: Numerical row ID
-
-### Operators
-
-**For numbers (port, code, roundtrip, id):**
-- \`eq\`: Equal to
-- \`gt\`: Greater than
-- \`gte\`: Greater than or equal
-- \`lt\`: Less than
-- \`lte\`: Less than or equal
-- \`ne\`: Not equal
-
-**For text/bytes (ext, host, method, path, raw):**
-- \`cont\`: Contains (case insensitive)
-- \`eq\`: Equal to
-- \`like\`: SQLite LIKE pattern (\`%\` = any chars, \`_\` = one char)
-- \`ncont\`: Does not contain
-- \`ne\`: Not equal
-- \`nlike\`: SQLite NOT LIKE
-- \`regex\`: Matches regex
-- \`nregex\`: Doesn't match regex
-
-**For dates (created_at):**
-- \`gt\`: After date
-- \`lt\`: Before date
-
-### Logical Operators
-- \`AND\`: Both conditions true (higher priority)
-- \`OR\`: Either condition true
-
-### Examples
-- \`req.method.eq:"GET"\`
-- \`resp.code.eq:200\`
-- \`req.path.cont:"/api/"\`
-- \`req.host.eq:"example.com" AND resp.code.gt:400\`
-- \`"search term"\` (searches both req.raw and resp.raw)
-
-### Special Values
-- \`preset:"name"\` or \`preset:alias\`
-- \`source:intercept\`, \`source:replay\`, \`source:automate\`, \`source:workflow\`
+Special: preset:"name"/alias, source:intercept, replay, automate, workflow
 `;
 
 const SYSTEM_PROMPT = `You are a part of Caido Shift plugin, an assistant that modifies HTTP requests and performs actions in a web proxy application based on user instructions. You should respond with one or more tool calls that achieve the user's goal.
