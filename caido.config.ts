@@ -6,13 +6,14 @@ import tailwindPrimeui from "tailwindcss-primeui";
 import tailwindCaido from "@caido/tailwindcss";
 import path from "path";
 import prefixwrap from "postcss-prefixwrap";
+import type { UserConfig } from "vite";
 
 const id = "shift";
 export default defineConfig({
   id,
   name: "Shift",
   description: "Delegate your work to Shift",
-  version: "2.2.2",
+  version: "2.3.0",
   author: {
     name: "Caido Labs Inc.",
     email: "dev@caido.io",
@@ -63,6 +64,7 @@ export default defineConfig({
         },
         css: {
           postcss: {
+            // @ts-expect-error Tailwind and Caido resolve different PostCSS type trees here.
             plugins: [
               // This plugin wraps the root element in a unique ID
               // This is necessary to prevent styling conflicts between plugins
@@ -91,7 +93,7 @@ export default defineConfig({
             ]
           }
         }
-      }
+      } as UserConfig
     }
   ]
 });
