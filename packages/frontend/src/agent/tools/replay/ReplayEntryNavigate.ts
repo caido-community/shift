@@ -71,6 +71,7 @@ export const ReplayEntryNavigate = tool({
       message: `Navigated to entry ${entryId}`,
       entryId,
       requestId: entry.requestId,
+      requestRaw: replayEntry?.raw,
     });
   },
 });
