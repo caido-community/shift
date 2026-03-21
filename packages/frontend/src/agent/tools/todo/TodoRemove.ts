@@ -13,7 +13,7 @@ import {
 import { isPresent, pluralize, truncate } from "@/utils";
 
 const inputSchema = z.object({
-  ids: z.array(z.string()).describe("The IDs of the todo items to remove"),
+  ids: z.array(z.number().int().positive()).describe("The IDs of the todo items to remove"),
 });
 
 const valueSchema = z.object({
@@ -26,10 +26,10 @@ type TodoRemoveInput = z.infer<typeof inputSchema>;
 type TodoRemoveValue = z.infer<typeof valueSchema>;
 type TodoRemoveOutput = ToolResultType<TodoRemoveValue>;
 
-const formatRemovedPreview = (todos: Todo[] | undefined, ids: string[] | undefined): string => {
+const formatRemovedPreview = (todos: Todo[] | undefined, ids: number[] | undefined): string => {
   const first = todos?.[0];
   if (isPresent(first) && todos?.length === 1) {
-    return truncate(first.content, 32);
+    return truncate(first.content, 52);
   }
   if (isPresent(ids)) {
     return `${ids.length} ${pluralize(ids.length, "todo")}`;

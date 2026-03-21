@@ -14,22 +14,23 @@ function handleSetModel(model: SessionModel, newModel: Model | undefined): Sessi
 
 function handleAddTodo(
   model: SessionModel,
-  id: string,
   content: string
 ): { model: SessionModel; result: Result<Todo> } {
-  const todo: Todo = { id, content, completed: false };
+  const id = model.nextTodoId;
+  const todo: Todo = { id, content, status: "pending" };
   return {
     model: {
       ...model,
       todos: [...model.todos, todo],
+      nextTodoId: id + 1,
     },
     result: { kind: "Ok", value: todo },
   };
 }
 
-function handleCompleteTodo(
+function handleStartTodo(
   model: SessionModel,
-  id: string
+  id: number
 ): { model: SessionModel; result: Result<Todo> } {
   const todo = model.todos.find((t) => t.id === id);
   if (!todo) {
@@ -38,13 +39,51 @@ function handleCompleteTodo(
       result: { kind: "Error", error: `Todo with id "${id}" not found` },
     };
   }
-  if (todo.completed) {
+  if (todo.status === "completed") {
     return {
       model,
       result: { kind: "Error", error: `Todo "${id}" is already completed` },
     };
   }
-  const updatedTodo = { ...todo, completed: true };
+
+  const updatedTodo = { ...todo, status: "in_progress" as const };
+  const nextTodos = model.todos.map((current) => {
+    if (current.id === id) {
+      return updatedTodo;
+    }
+    if (current.status === "in_progress") {
+      return { ...current, status: "pending" as const };
+    }
+    return current;
+  });
+
+  return {
+    model: {
+      ...model,
+      todos: nextTodos,
+    },
+    result: { kind: "Ok", value: updatedTodo },
+  };
+}
+
+function handleCompleteTodo(
+  model: SessionModel,
+  id: number
+): { model: SessionModel; result: Result<Todo> } {
+  const todo = model.todos.find((t) => t.id === id);
+  if (!todo) {
+    return {
+      model,
+      result: { kind: "Error", error: `Todo with id "${id}" not found` },
+    };
+  }
+  if (todo.status === "completed") {
+    return {
+      model,
+      result: { kind: "Error", error: `Todo "${id}" is already completed` },
+    };
+  }
+  const updatedTodo = { ...todo, status: "completed" as const };
   return {
     model: {
       ...model,
@@ -56,7 +95,7 @@ function handleCompleteTodo(
 
 function handleRemoveTodo(
   model: SessionModel,
-  id: string
+  id: number
 ): { model: SessionModel; result: Result<Todo> } {
   const todo = model.todos.find((t) => t.id === id);
   if (!todo) {
@@ -229,7 +268,10 @@ export function update(model: SessionModel, message: SessionMessage): SessionUpd
       return handleSetModel(model, message.model);
 
     case "ADD_TODO":
-      return handleAddTodo(model, message.id, message.content);
+      return handleAddTodo(model, message.content);
+
+    case "START_TODO":
+      return handleStartTodo(model, message.id);
 
     case "COMPLETE_TODO":
       return handleCompleteTodo(model, message.id);

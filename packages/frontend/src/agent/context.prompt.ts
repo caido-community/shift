@@ -1,5 +1,7 @@
 import type {
   ContextPromptSnapshot,
+  EnvironmentVariablePreviewSnapshot,
+  LearningPreviewSnapshot,
   SkillSnapshot,
   SkillsPromptSnapshot,
 } from "@/agent/context.prompt.types";
@@ -9,6 +11,8 @@ import { truncate } from "@/utils/text";
 
 export {
   type ContextPromptSnapshot,
+  type EnvironmentVariablePreviewSnapshot,
+  type LearningPreviewSnapshot,
   type SkillsPromptSnapshot,
 } from "@/agent/context.prompt.types";
 
@@ -39,24 +43,29 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
     const todoList = snapshot.todos
       .map((t) => {
         const content = truncateContextValue(t.content, TODO_CONTENT_CHARS);
-        return `- [${t.completed ? "completed" : "pending"}] (id: ${t.id}) ${content}`;
+        return `- [${t.status}] (id: ${t.id}) ${content}`;
       })
       .join("\n");
     parts.push(`<todos>\n${todoList}\n</todos>`);
   }
 
   if (isPresent(snapshot.learnings) && snapshot.learnings.length > 0) {
-    const truncatedLearnings = snapshot.learnings.map((value, index) => ({
-      index,
-      value: truncateContextValue(value, LEARNING_VALUE_CHARS),
-    }));
+    const truncatedLearnings = snapshot.learnings.map((learning) =>
+      toLearningPreviewEntry(learning)
+    );
     let serialized = JSON.stringify(truncatedLearnings, null, 2);
     serialized = truncateContextValue(serialized, LEARNINGS_TOTAL_CHARS);
     parts.push(`<learnings>\n${serialized}\n</learnings>`);
   }
 
   if (isPresent(snapshot.httpRequest) && snapshot.httpRequest !== "") {
-    const requestForPrompt = truncateContextValue(snapshot.httpRequest, HTTP_REQUEST_CONTEXT_CHARS);
+    const requestForPrompt = truncateContextValue(
+      snapshot.httpRequest,
+      HTTP_REQUEST_CONTEXT_CHARS,
+      {
+        retrievalHint: "Use RequestRangeRead for more.",
+      }
+    );
     parts.push(`<current_http_request>\n${requestForPrompt}\n</current_http_request>`);
   }
 
@@ -86,12 +95,12 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
 
   if (isPresent(snapshot.entriesContext) && snapshot.entriesContext.recentEntryIds.length > 0) {
     const { activeEntryId, recentEntryIds } = snapshot.entriesContext;
-    const entryList = recentEntryIds.map((id) => `- ${id}`).join("\n");
+    const entryList = recentEntryIds.join(", ");
     const activeLine =
       isPresent(activeEntryId) && activeEntryId !== ""
         ? `Active entry: ${activeEntryId}`
         : "No active entry";
-    parts.push(`<replay_entries>\n${entryList}\n\n${activeLine}\n</replay_entries>`);
+    parts.push(`<replay_entries>${entryList}. ${activeLine}</replay_entries>`);
   }
 
   if (isPresent(snapshot.environmentsContext)) {
@@ -112,11 +121,12 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
     parts.push(`<environments>\n${truncatedEnvList}\n\n${selectedLine}\n</environments>`);
   }
 
-  if (isPresent(snapshot.environmentVariablesJson)) {
-    const envJson = truncateContextValue(
-      snapshot.environmentVariablesJson,
-      ENVIRONMENT_VARIABLES_CONTEXT_CHARS
+  if (isPresent(snapshot.environmentVariables) && snapshot.environmentVariables.length > 0) {
+    const previewEntries = snapshot.environmentVariables.map((variable) =>
+      toEnvironmentVariablePreviewEntry(variable)
     );
+    let envJson = JSON.stringify(previewEntries, null, 2);
+    envJson = truncateContextValue(envJson, ENVIRONMENT_VARIABLES_CONTEXT_CHARS);
     parts.push(`<environment_variables>\n${envJson}\n</environment_variables>`);
   }
 
@@ -142,7 +152,6 @@ export function buildSkillsPrompt(snapshot: SkillsPromptSnapshot): string {
     parts.push(`<agent_instructions>\n${truncated}\n</agent_instructions>`);
   }
 
-  console.log("skills", skills);
   if (skills.length > 0) {
     const alwaysAttached: Extract<SkillSnapshot, { kind: "always-attached" }>[] = [];
     const onDemand: Extract<SkillSnapshot, { kind: "on-demand" }>[] = [];
@@ -155,7 +164,9 @@ export function buildSkillsPrompt(snapshot: SkillsPromptSnapshot): string {
     const skillParts: string[] = [];
 
     for (const skill of alwaysAttached) {
-      const content = truncateContextValue(skill.content, SKILL_CONTENT_CHARS);
+      const content = truncateContextValue(skill.content, SKILL_CONTENT_CHARS, {
+        retrievalHint: "Use ReadSkill with this skill id for the full instructions.",
+      });
       skillParts.push(`<skill id="${skill.id}" title="${skill.title}">\n${content}\n</skill>`);
     }
 
@@ -176,4 +187,28 @@ export function buildSkillsPrompt(snapshot: SkillsPromptSnapshot): string {
   }
 
   return `<additional_instructions>\n${parts.join("\n")}\n</additional_instructions>`;
+}
+
+function toLearningPreviewEntry(learning: LearningPreviewSnapshot) {
+  return {
+    index: learning.index,
+    preview: truncateContextValue(learning.preview, LEARNING_VALUE_CHARS, {
+      retrievalHint: `Use LearningRead with index ${learning.index} for the full entry.`,
+    }),
+    length: learning.length,
+  };
+}
+
+function toEnvironmentVariablePreviewEntry(variable: EnvironmentVariablePreviewSnapshot) {
+  return {
+    name: variable.name,
+    kind: variable.kind,
+    valueLength: variable.valueLength,
+    preview:
+      variable.preview !== undefined
+        ? truncateContextValue(variable.preview, ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS, {
+            retrievalHint: `Use EnvironmentRead to inspect ${variable.name}.`,
+          })
+        : undefined,
+  };
 }

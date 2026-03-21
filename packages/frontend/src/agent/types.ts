@@ -1,13 +1,23 @@
 import { type Result } from "shared";
 import { z } from "zod";
 
+const todoStatusSchema = z.enum(["pending", "in_progress", "completed"]);
+
 export const todoSchema = z.object({
-  id: z.string(),
+  id: z.number().int().positive(),
   content: z.string(),
-  completed: z.boolean(),
+  status: todoStatusSchema,
 });
 
 export type Todo = z.infer<typeof todoSchema>;
+
+export function isTodoCompleted(todo: Pick<Todo, "status">): boolean {
+  return todo.status === "completed";
+}
+
+export function isTodoInProgress(todo: Pick<Todo, "status">): boolean {
+  return todo.status === "in_progress";
+}
 
 export type QueuedMessage = {
   id: string;

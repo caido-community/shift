@@ -20,35 +20,36 @@ describe("buildContextPrompt - leak prevention", () => {
   it("truncates long todo content and adds truncation marker", () => {
     const longContent = "x".repeat(TODO_CONTENT_CHARS + 500);
     const result = buildContextPrompt({
-      todos: [{ id: "t1", content: longContent, completed: false }],
+      todos: [{ id: 1, content: longContent, status: "pending" }],
     });
 
-    expect(result).toContain("...[truncated]...");
+    expect(result).toContain("[...truncated.");
     expect(result).not.toContain(longContent);
     expect(result.length).toBeLessThan(longContent.length + 500);
   });
 
-  it("truncates long learning values and adds truncation marker", () => {
+  it("truncates long learning previews and adds retrieval guidance", () => {
     const longLearning = "y".repeat(LEARNING_VALUE_CHARS + 300);
     const result = buildContextPrompt({
-      learnings: [longLearning],
+      learnings: [{ index: 0, preview: longLearning, length: longLearning.length }],
     });
 
-    expect(result).toContain("...[truncated]...");
+    expect(result).toContain("[...truncated.");
+    expect(result).toContain("LearningRead");
     expect(result).not.toContain(longLearning);
   });
 
   it("truncates long learnings block when total exceeds limit", () => {
     const learning = "z".repeat(500);
-    const manyLearnings = Array.from({ length: 50 }, (_, i) => `${learning}-${i}`);
+    const manyLearnings = Array.from({ length: 50 }, (_, i) => ({
+      index: i,
+      preview: `${learning}-${i}`,
+      length: learning.length + `${i}`.length + 1,
+    }));
     const result = buildContextPrompt({ learnings: manyLearnings });
 
-    expect(result).toContain("...[truncated]...");
-    const fullSerialized = JSON.stringify(
-      manyLearnings.map((v, i) => ({ index: i, value: v })),
-      null,
-      2
-    );
+    expect(result).toContain("[...truncated.");
+    const fullSerialized = JSON.stringify(manyLearnings, null, 2);
     expect(result).not.toContain(fullSerialized);
     expect(result.length).toBeLessThan(LEARNINGS_TOTAL_CHARS + 500);
   });
@@ -57,16 +58,21 @@ describe("buildContextPrompt - leak prevention", () => {
     const longRequest = "GET / HTTP/1.1\r\n" + "a".repeat(HTTP_REQUEST_CONTEXT_CHARS + 1000);
     const result = buildContextPrompt({ httpRequest: longRequest });
 
-    expect(result).toContain("...[truncated]...");
+    expect(result).toContain("[...truncated.");
+    expect(result).toContain("RequestRangeRead");
     expect(result).not.toContain(longRequest);
   });
 
-  it("truncates long environment variables JSON", () => {
+  it("truncates long environment variable previews", () => {
     const longValue = "v".repeat(ENVIRONMENT_VARIABLES_CONTEXT_CHARS + 500);
-    const envJson = JSON.stringify([{ name: "key", value: longValue }], null, 2);
-    const result = buildContextPrompt({ environmentVariablesJson: envJson });
+    const result = buildContextPrompt({
+      environmentVariables: [
+        { name: "key", kind: "PLAIN", preview: longValue, valueLength: longValue.length },
+      ],
+    });
 
-    expect(result).toContain("...[truncated]...");
+    expect(result).toContain("[...truncated.");
+    expect(result).toContain("EnvironmentRead");
     expect(result).not.toContain(longValue);
   });
 
@@ -77,7 +83,7 @@ describe("buildContextPrompt - leak prevention", () => {
       allowedConvertWorkflows: [{ id: "w1", name: longName, description: longDesc }],
     });
 
-    expect(result).toContain("...[truncated]...");
+    expect(result).toContain("[...truncated.");
     expect(result).not.toContain(longName);
     expect(result).not.toContain(longDesc);
   });
@@ -88,7 +94,7 @@ describe("buildContextPrompt - leak prevention", () => {
       allowedBinaries: [{ path: "/usr/bin/ffuf", instructions: longInstructions }],
     });
 
-    expect(result).toContain("...[truncated]...");
+    expect(result).toContain("[...truncated.");
     expect(result).not.toContain(longInstructions);
   });
 
@@ -102,7 +108,7 @@ describe("buildContextPrompt - leak prevention", () => {
       },
     });
 
-    expect(result).toContain("...[truncated]...");
+    expect(result).toContain("[...truncated.");
     expect(result).not.toContain(longName);
   });
 });
@@ -112,7 +118,7 @@ describe("buildSkillsPrompt - leak prevention", () => {
     const longInstructions = "a".repeat(AGENT_INSTRUCTIONS_CHARS + 500);
     const result = buildSkillsPrompt({ agentInstructions: longInstructions });
 
-    expect(result).toContain("...[truncated]...");
+    expect(result).toContain("[...truncated.");
     expect(result).not.toContain(longInstructions);
   });
 
@@ -122,7 +128,8 @@ describe("buildSkillsPrompt - leak prevention", () => {
       skills: [{ kind: "always-attached", id: "skill-1", title: "My Skill", content: longContent }],
     });
 
-    expect(result).toContain("...[truncated]...");
+    expect(result).toContain("[...truncated.");
+    expect(result).toContain("ReadSkill");
     expect(result).not.toContain(longContent);
   });
 });
@@ -130,17 +137,21 @@ describe("buildSkillsPrompt - leak prevention", () => {
 describe("buildContextPrompt - full coverage", () => {
   it("includes todos section when provided", () => {
     const result = buildContextPrompt({
-      todos: [{ id: "t1", content: "Do something", completed: false }],
+      todos: [{ id: 1, content: "Do something", status: "in_progress" }],
     });
     expect(result).toContain("<todos>");
     expect(result).toContain("</todos>");
     expect(result).toContain("Do something");
-    expect(result).toContain("id: t1");
+    expect(result).toContain("id: 1");
+    expect(result).toContain("[in_progress]");
   });
 
   it("includes learnings section when provided", () => {
     const result = buildContextPrompt({
-      learnings: ["learning one", "learning two"],
+      learnings: [
+        { index: 0, preview: "learning one", length: "learning one".length },
+        { index: 1, preview: "learning two", length: "learning two".length },
+      ],
     });
     expect(result).toContain("<learnings>");
     expect(result).toContain("</learnings>");
@@ -182,6 +193,7 @@ describe("buildContextPrompt - full coverage", () => {
     });
     expect(result).toContain("<replay_entries>");
     expect(result).toContain("</replay_entries>");
+    expect(result).toContain("entry-1, entry-2");
     expect(result).toContain("Active entry: entry-2");
   });
 
@@ -199,10 +211,12 @@ describe("buildContextPrompt - full coverage", () => {
   });
 
   it("includes environment_variables section when provided", () => {
-    const envJson = JSON.stringify([{ name: "API_KEY", value: "secret" }], null, 2);
-    const result = buildContextPrompt({ environmentVariablesJson: envJson });
+    const result = buildContextPrompt({
+      environmentVariables: [{ name: "API_KEY", kind: "PLAIN", preview: "secret", valueLength: 6 }],
+    });
     expect(result).toContain("<environment_variables>");
     expect(result).toContain("</environment_variables>");
+    expect(result).toContain("API_KEY");
   });
 
   it("wraps output in context tags when any section exists", () => {

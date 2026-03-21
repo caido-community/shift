@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useTodos } from "./useTodos";
 
-const { hasTodos, pendingTodos, completedTodos, isExpanded, summary, toggle } = useTodos();
+const { hasTodos, workingTodo, pendingTodos, completedTodos, isExpanded, summary, toggle } =
+  useTodos();
 </script>
 
 <template>
@@ -26,6 +27,18 @@ const { hasTodos, pendingTodos, completedTodos, isExpanded, summary, toggle } = 
     <div
       v-show="isExpanded"
       class="px-4 pb-4 space-y-2 max-h-40 overflow-y-auto">
+      <div
+        v-if="workingTodo"
+        class="flex items-start gap-2 animate-fade-in">
+        <div
+          class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border border-amber-400/40 bg-amber-500/10">
+          <div class="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" />
+        </div>
+        <span class="block text-sm font-mono leading-5 break-words text-amber-100">
+          {{ workingTodo.content }}
+        </span>
+      </div>
+
       <div
         v-for="todo in pendingTodos"
         :key="todo.id"

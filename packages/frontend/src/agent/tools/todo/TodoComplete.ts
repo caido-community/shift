@@ -13,7 +13,7 @@ import {
 import { isPresent, pluralize, truncate } from "@/utils";
 
 const inputSchema = z.object({
-  ids: z.array(z.string()).describe("The IDs of the todo items to complete"),
+  ids: z.array(z.number().int().positive()).describe("The IDs of the todo items to complete"),
 });
 
 const valueSchema = z.object({
@@ -26,10 +26,10 @@ type TodoCompleteInput = z.infer<typeof inputSchema>;
 type TodoCompleteValue = z.infer<typeof valueSchema>;
 type TodoCompleteOutput = ToolResultType<TodoCompleteValue>;
 
-const formatCompletedPreview = (todos: Todo[] | undefined, ids: string[] | undefined): string => {
+const formatCompletedPreview = (todos: Todo[] | undefined, ids: number[] | undefined): string => {
   const first = todos?.[0];
   if (isPresent(first) && todos?.length === 1) {
-    return truncate(first.content, 90);
+    return truncate(first.content, 52);
   }
   if (isPresent(ids)) {
     return `${ids.length} ${pluralize(ids.length, "todo")}`;
@@ -56,7 +56,7 @@ export const display = {
 
 export const TodoComplete = tool({
   description:
-    "Mark one or more todo items as completed by their IDs. Use this to track progress through a testing workflow and indicate which steps have been finished. Completed todos remain visible but are marked as done. The ids array accepts multiple todo IDs to complete several items at once. If any ID is invalid or already completed, an error is returned for that specific item. Returns the list of todos that were successfully completed.",
+    "Mark one or more todo items as completed by their IDs. Use this to track progress through a testing workflow and indicate which steps have been finished. Completed todos remain visible but are marked as done. The ids array accepts multiple todo IDs to complete several items at once. If any ID is invalid or already completed, an error is returned for that specific item. Todos that were in progress can be completed directly. Returns the list of todos that were successfully completed.",
   inputSchema,
   outputSchema,
   execute: ({ ids }, { experimental_context }): TodoCompleteOutput => {

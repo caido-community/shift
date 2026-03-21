@@ -15,7 +15,9 @@ import {
   buildSkillsPrompt,
   type ContextPromptSnapshot,
   ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS,
-  ENVIRONMENT_VARIABLES_CONTEXT_CHARS,
+  type EnvironmentVariablePreviewSnapshot,
+  LEARNING_VALUE_CHARS,
+  type LearningPreviewSnapshot,
   type SkillsPromptSnapshot,
 } from "@/agent/context.prompt";
 import { truncateContextValue } from "@/agent/context.truncation";
@@ -63,8 +65,9 @@ type PayloadBlobMetadata = {
 
 type EnvironmentVariablePromptEntry = {
   name: string;
-  value: string;
-  valueLength?: number;
+  kind: "PLAIN" | "SECRET";
+  preview?: string;
+  valueLength: number;
 };
 
 export class AgentContext {
@@ -161,15 +164,23 @@ export class AgentContext {
     return useLearningsStore().entries;
   }
 
+  get selectedEnvironmentId(): string | undefined {
+    return this.environmentsContext?.selectedId;
+  }
+
   addTodo(content: string): Result<Todo> {
     return this.store.addTodo(content);
   }
 
-  completeTodo(id: string): Result<Todo> {
+  startTodo(id: number): Result<Todo> {
+    return this.store.startTodo(id);
+  }
+
+  completeTodo(id: number): Result<Todo> {
     return this.store.completeTodo(id);
   }
 
-  removeTodo(id: string): Result<Todo> {
+  removeTodo(id: number): Result<Todo> {
     return this.store.removeTodo(id);
   }
 
@@ -249,6 +260,7 @@ export class AgentContext {
       id: env.id,
       name: env.name,
     }));
+    all.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 
     const selectedElement = document.querySelector<HTMLElement>("[data-environment-id]");
     const selectedId = selectedElement?.dataset.environmentId;
@@ -292,6 +304,7 @@ export class AgentContext {
     return this.sdk.workflows
       .getWorkflows()
       .filter((workflow) => workflow.kind === "Convert" && allowedSet.has(workflow.id))
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
       .map((workflow) => ({
         id: workflow.id,
         name: workflow.name,
@@ -299,33 +312,54 @@ export class AgentContext {
       }));
   }
 
-  private getEnvironmentVariablesPrompt(): string | undefined {
+  private getEnvironmentVariablesSnapshot(): EnvironmentVariablePreviewSnapshot[] | undefined {
     const envVars = this.environmentVariables;
     if (envVars.length === 0) {
       return undefined;
     }
 
-    const serialized = JSON.stringify(
-      envVars.map((variable): EnvironmentVariablePromptEntry => {
+    return [...envVars]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((variable): EnvironmentVariablePromptEntry => {
         if (variable.isSecret) {
-          return { name: variable.name, value: "[SECRET]" };
+          return {
+            name: variable.name,
+            kind: "SECRET",
+            valueLength: variable.value.length,
+          };
         }
 
-        if (variable.value.length <= ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS) {
-          return { name: variable.name, value: variable.value };
-        }
+        const preview =
+          variable.value.length <= ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS
+            ? variable.value
+            : truncateContextValue(variable.value, ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS, {
+                retrievalHint: `Use EnvironmentRead to inspect ${variable.name}.`,
+              });
 
         return {
           name: variable.name,
-          value: truncateContextValue(variable.value, ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS),
+          kind: "PLAIN",
+          preview,
           valueLength: variable.value.length,
         };
-      }),
-      null,
-      2
-    );
+      });
+  }
 
-    return truncateContextValue(serialized, ENVIRONMENT_VARIABLES_CONTEXT_CHARS);
+  private getLearningsSnapshot(): LearningPreviewSnapshot[] | undefined {
+    if (this.learnings.length === 0) {
+      return undefined;
+    }
+
+    return this.learnings.map((value, index) => ({
+      index,
+      preview:
+        value.length <= LEARNING_VALUE_CHARS
+          ? value
+          : truncateContextValue(value, LEARNING_VALUE_CHARS, {
+              retrievalHint: `Use LearningRead with index ${index} for the full entry.`,
+            }),
+      length: value.length,
+    }));
   }
 
   toContextPrompt(): string {
@@ -340,12 +374,13 @@ export class AgentContext {
       snapshot.todos = this.todos.map((t) => ({
         id: t.id,
         content: t.content,
-        completed: t.completed,
+        status: t.status,
       }));
     }
 
-    if (this.learnings.length > 0) {
-      snapshot.learnings = [...this.learnings];
+    const learningsSnapshot = this.getLearningsSnapshot();
+    if (learningsSnapshot !== undefined) {
+      snapshot.learnings = learningsSnapshot;
     }
 
     if (this.httpRequest !== "") {
@@ -383,9 +418,9 @@ export class AgentContext {
       };
     }
 
-    const environmentVariablesJson = this.getEnvironmentVariablesPrompt();
-    if (environmentVariablesJson !== undefined) {
-      snapshot.environmentVariablesJson = environmentVariablesJson;
+    const environmentVariables = this.getEnvironmentVariablesSnapshot();
+    if (environmentVariables !== undefined) {
+      snapshot.environmentVariables = environmentVariables;
     }
 
     return snapshot;

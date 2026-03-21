@@ -1,7 +1,13 @@
 export type ContextTodoSnapshot = {
-  id: string;
+  id: number;
   content: string;
-  completed: boolean;
+  status: "pending" | "in_progress" | "completed";
+};
+
+export type LearningPreviewSnapshot = {
+  index: number;
+  preview: string;
+  length: number;
 };
 
 export type ConvertWorkflowSnapshot = {
@@ -20,9 +26,16 @@ export type EnvironmentInfoSnapshot = {
   name: string;
 };
 
+export type EnvironmentVariablePreviewSnapshot = {
+  name: string;
+  kind: "PLAIN" | "SECRET";
+  preview?: string;
+  valueLength: number;
+};
+
 export type ContextPromptSnapshot = {
   todos?: ContextTodoSnapshot[];
-  learnings?: string[];
+  learnings?: LearningPreviewSnapshot[];
   httpRequest?: string;
   allowedConvertWorkflows?: ConvertWorkflowSnapshot[];
   allowedBinaries?: AllowedBinarySnapshot[];
@@ -35,7 +48,7 @@ export type ContextPromptSnapshot = {
     selectedId: string | undefined;
     selectedName?: string;
   };
-  environmentVariablesJson?: string;
+  environmentVariables?: EnvironmentVariablePreviewSnapshot[];
 };
 
 export type SkillSnapshot =

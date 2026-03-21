@@ -29,14 +29,14 @@ type TodoAddOutput = ToolResultType<TodoAddValue>;
 const formatTodoPreview = (content: string[] | undefined): string => {
   if (!isPresent(content) || content.length === 0) return "todos";
   const first = content[0];
-  if (content.length === 1 && isPresent(first)) return truncate(first, 32);
+  if (content.length === 1 && isPresent(first)) return truncate(first, 52);
   return `${content.length} ${pluralize(content.length, "todo")}`;
 };
 
 const formatTodoOutput = (todos: Todo[] | undefined): string => {
   if (!isPresent(todos) || todos.length === 0) return "todos";
   if (todos.length === 1 && isPresent(todos[0])) {
-    return truncate(todos[0].content, 32);
+    return truncate(todos[0].content, 52);
   }
   return `${todos.length} ${pluralize(todos.length, "todo")}`;
 };
@@ -58,7 +58,7 @@ export const display = {
 
 export const TodoAdd = tool({
   description:
-    "Add one or more todo items to track tasks during the current session. Use this to break down complex security testing workflows into trackable steps, plan multi-stage attacks, or keep track of findings to investigate. Each todo item gets a unique ID that can be used with TodoComplete or TodoRemove. The content array accepts multiple items to create several todos at once. Todos persist for the duration of the agent session and help maintain focus on the testing objective.",
+    "Add one or more todo items to track tasks during the current session. Use this to break down complex security testing workflows into trackable steps, plan multi-stage attacks, or keep track of findings to investigate. Each todo item gets an incrementing numeric ID that can be used with TodoStart, TodoComplete, or TodoRemove. The content array accepts multiple items to create several todos at once. Todos persist for the duration of the agent session and help maintain focus on the testing objective.",
   inputSchema,
   outputSchema,
   execute: ({ content }, { experimental_context }): TodoAddOutput => {
