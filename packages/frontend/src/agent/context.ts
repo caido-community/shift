@@ -344,15 +344,6 @@ export class AgentContext {
       }));
     }
 
-    if (this.payloadBlobs.size > 0) {
-      snapshot.payloadBlobs = [...this.payloadBlobs.entries()].map(([blobId, blob]) => ({
-        blobId,
-        reason: blob.reason,
-        length: blob.content.length,
-        preview: truncate(blob.content, 80),
-      }));
-    }
-
     if (this.learnings.length > 0) {
       snapshot.learnings = [...this.learnings];
     }

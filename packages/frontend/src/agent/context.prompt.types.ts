@@ -4,13 +4,6 @@ export type ContextTodoSnapshot = {
   completed: boolean;
 };
 
-export type PayloadBlobSummarySnapshot = {
-  blobId: string;
-  reason: string;
-  length: number;
-  preview: string;
-};
-
 export type ConvertWorkflowSnapshot = {
   id: string;
   name: string;
@@ -29,7 +22,6 @@ export type EnvironmentInfoSnapshot = {
 
 export type ContextPromptSnapshot = {
   todos?: ContextTodoSnapshot[];
-  payloadBlobs?: PayloadBlobSummarySnapshot[];
   learnings?: string[];
   httpRequest?: string;
   allowedConvertWorkflows?: ConvertWorkflowSnapshot[];

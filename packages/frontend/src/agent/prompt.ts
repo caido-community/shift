@@ -154,7 +154,6 @@ You will receive a context message about your environment on every step. This co
 - Recent replay entry IDs (last 10) and the active entry ID for navigating session history
 - Available environments and the currently selected one
 - Environment variables from the selected environment
-- Available payload blobs for this run (blobId, reason, length, preview)
 - If workflow access is restricted, allowed convert workflows with their IDs, names, and descriptions
 - If a custom agent is selected, allowed binaries in <allowed_binaries> as objects with path and optional instructions
 

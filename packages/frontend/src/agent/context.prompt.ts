@@ -16,7 +16,6 @@ export const HTTP_REQUEST_CONTEXT_CHARS = 12_000;
 export const ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS = 400;
 export const ENVIRONMENT_VARIABLES_CONTEXT_CHARS = 8_000;
 
-const PAYLOAD_BLOB_PREVIEW_CHARS = 80;
 export const TODO_CONTENT_CHARS = 500;
 export const LEARNING_VALUE_CHARS = 1_000;
 export const LEARNINGS_TOTAL_CHARS = 12_000;
@@ -32,7 +31,6 @@ export const BINARY_INSTRUCTIONS_CHARS = 1_000;
 const BINARIES_TOTAL_CHARS = 4_000;
 export const ENVIRONMENT_NAME_CHARS = 100;
 const ENVIRONMENTS_TOTAL_CHARS = 2_000;
-const PAYLOAD_BLOBS_TOTAL_CHARS = 6_000;
 
 export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
   const parts: string[] = [];
@@ -45,18 +43,6 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
       })
       .join("\n");
     parts.push(`<todos>\n${todoList}\n</todos>`);
-  }
-
-  if (isPresent(snapshot.payloadBlobs) && snapshot.payloadBlobs.length > 0) {
-    const truncatedBlobs = snapshot.payloadBlobs.map((b) => ({
-      blobId: b.blobId,
-      reason: b.reason,
-      length: b.length,
-      preview: truncate(b.preview, PAYLOAD_BLOB_PREVIEW_CHARS),
-    }));
-    let blobList = JSON.stringify(truncatedBlobs, null, 2);
-    blobList = truncateContextValue(blobList, PAYLOAD_BLOBS_TOTAL_CHARS);
-    parts.push(`<payload_blobs>\n${blobList}\n</payload_blobs>`);
   }
 
   if (isPresent(snapshot.learnings) && snapshot.learnings.length > 0) {

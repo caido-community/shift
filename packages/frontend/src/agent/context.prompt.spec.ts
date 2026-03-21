@@ -138,15 +138,6 @@ describe("buildContextPrompt - full coverage", () => {
     expect(result).toContain("id: t1");
   });
 
-  it("includes payload_blobs section when provided", () => {
-    const result = buildContextPrompt({
-      payloadBlobs: [{ blobId: "blob-1", reason: "test", length: 10, preview: "hello..." }],
-    });
-    expect(result).toContain("<payload_blobs>");
-    expect(result).toContain("</payload_blobs>");
-    expect(result).toContain("blob-1");
-  });
-
   it("includes learnings section when provided", () => {
     const result = buildContextPrompt({
       learnings: ["learning one", "learning two"],
