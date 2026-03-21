@@ -4,6 +4,7 @@ import { toRef } from "vue";
 
 import { useBinaryOutput } from "./useBinaryOutput";
 
+import { formatToolDisplayText } from "@/agent/utils/formatting";
 import { TextShimmer } from "@/components/common/TextShimmer";
 
 const { toolCallId, partState, messageMetadata, input, output, errorText } = defineProps<{
@@ -49,7 +50,9 @@ const {
         <template
           v-for="(part, index) in streamingResult"
           :key="index">
-          <span :class="{ 'text-surface-500': part.muted }">{{ part.text }}</span>
+          <span :class="{ 'text-surface-500': part.muted }">
+            {{ formatToolDisplayText(part.text) }}
+          </span>
         </template>
       </TextShimmer>
     </div>
@@ -110,7 +113,9 @@ const {
           <template
             v-for="(part, index) in successResult"
             :key="index">
-            <span :class="{ 'text-surface-500': part.muted }">{{ part.text }}</span>
+            <span :class="{ 'text-surface-500': part.muted }">
+              {{ formatToolDisplayText(part.text) }}
+            </span>
           </template>
         </span>
         <i

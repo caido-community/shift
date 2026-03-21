@@ -1,7 +1,7 @@
 import type { ReasoningTime } from "shared";
 import { describe, expect, it } from "vitest";
 
-import { formatReasoningTime } from "./formatting";
+import { formatReasoningTime, formatToolDisplayText } from "./formatting";
 
 describe("formatReasoningTime", () => {
   it("returns undefined when times array is undefined", () => {
@@ -62,5 +62,23 @@ describe("formatReasoningTime", () => {
     expect(formatReasoningTime(times, 0)).toBe("100ms");
     expect(formatReasoningTime(times, 1)).toBe("3s");
     expect(formatReasoningTime(times, 2)).toBe("200ms");
+  });
+});
+
+describe("formatToolDisplayText", () => {
+  it("leaves plain text unchanged", () => {
+    expect(formatToolDisplayText("Set body to hello")).toBe("Set body to hello");
+  });
+
+  it("replaces blob placeholders with readable labels", () => {
+    expect(formatToolDisplayText("Set body to §§§Blob§blob-123§§§")).toBe(
+      "Set body to [payload blob: blob-123]"
+    );
+  });
+
+  it("replaces multiple blob placeholders", () => {
+    expect(formatToolDisplayText("A=§§§Blob§blob-1§§§&B=§§§Blob§blob-2§§§")).toBe(
+      "A=[payload blob: blob-1]&B=[payload blob: blob-2]"
+    );
   });
 });

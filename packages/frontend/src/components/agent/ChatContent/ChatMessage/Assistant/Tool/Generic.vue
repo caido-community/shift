@@ -5,6 +5,7 @@ import { computed, toRef } from "vue";
 import { getToolMessages } from "./messages";
 import { useTool } from "./useTool";
 
+import { formatToolDisplayText } from "@/agent/utils/formatting";
 import { type MessageResult } from "@/agent/types";
 import { TextShimmer } from "@/components/common/TextShimmer";
 
@@ -53,7 +54,9 @@ const successResult = computed(
           <template
             v-for="(part, index) in streamingResult"
             :key="index">
-            <span :class="{ 'text-surface-500': part.muted }">{{ part.text }}</span>
+            <span :class="{ 'text-surface-500': part.muted }">
+              {{ formatToolDisplayText(part.text) }}
+            </span>
           </template>
         </TextShimmer>
       </span>
@@ -65,7 +68,9 @@ const successResult = computed(
           <template
             v-for="(part, index) in pendingResult"
             :key="index">
-            <span :class="{ 'text-surface-500': part.muted }">{{ part.text }}</span>
+            <span :class="{ 'text-surface-500': part.muted }">
+              {{ formatToolDisplayText(part.text) }}
+            </span>
           </template>
         </TextShimmer>
       </span>
@@ -76,7 +81,9 @@ const successResult = computed(
         <template
           v-for="(part, index) in successResult"
           :key="index">
-          <span :class="{ 'text-surface-500': part.muted }">{{ part.text }}</span>
+          <span :class="{ 'text-surface-500': part.muted }">
+            {{ formatToolDisplayText(part.text) }}
+          </span>
         </template>
       </span>
     </template>
