@@ -3,7 +3,7 @@ import { type Model, type ShiftMessage } from "shared";
 import { nextTick, ref, watch } from "vue";
 
 import { AgentContext } from "@/agent/context";
-import { buildAgentInstructions } from "@/agent/instructions";
+import { buildAgentInstructions, buildRuntimeContextMessage } from "@/agent/instructions";
 import { LocalChatTransport } from "@/agent/transport";
 import { getEstimatedContextUsage } from "@/agent/utils/contextUsage";
 import {
@@ -148,15 +148,29 @@ export class AgentSession {
 
     const systemPrompt = buildAgentInstructions({
       context: this.context,
-      steps,
-      maxSteps,
       model,
     });
+    const runtimeContextMessage = buildRuntimeContextMessage({
+      context: this.context,
+      steps,
+      maxSteps,
+    });
+    const messagesWithRuntimeContext =
+      runtimeContextMessage !== undefined
+        ? [
+            ...messages,
+            {
+              id: "__runtime-context__",
+              role: "user",
+              parts: [{ type: "text", text: runtimeContextMessage.content as string }],
+            } as ShiftMessage,
+          ]
+        : messages;
 
     return getEstimatedContextUsage({
       model,
       systemPrompt,
-      messages,
+      messages: messagesWithRuntimeContext,
     });
   }
 

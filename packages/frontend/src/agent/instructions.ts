@@ -1,3 +1,4 @@
+import type { ModelMessage } from "ai";
 import type { Model } from "shared";
 
 import type { AgentContext } from "./context";
@@ -9,17 +10,78 @@ const GEMINI_PARALLEL_TOOLS_WARNING =
 
 type BuildInstructionsOptions = {
   context: AgentContext;
-  steps: number;
-  maxSteps: number;
   model: Model | undefined;
 };
+
+type BuildRuntimeContextMessageOptions = {
+  context: AgentContext;
+  steps: number;
+  maxSteps: number;
+};
+
+const RUNTIME_CONTEXT_MESSAGE_PREFIX = "<runtime_context>";
+
+function buildIterationStatus(steps: number, maxSteps: number): string {
+  if (steps === 0) {
+    return `You are about to start iteration 1 out of a maximum of ${maxSteps}.`;
+  }
+
+  return (
+    `You have already completed ${steps} iterations out of a maximum of ${maxSteps}. ` +
+    (steps >= maxSteps * 0.8
+      ? "You are approaching the iteration limit, so start wrapping up your work. "
+      : "") +
+    `The agent will automatically pause when it reaches ${maxSteps} iterations, but you can stop at any time once your task is complete.`
+  );
+}
+
+export function buildRuntimeContextMessage(
+  options: BuildRuntimeContextMessageOptions
+): ModelMessage | undefined {
+  const { context, steps, maxSteps } = options;
+  const parts: string[] = [];
+
+  const contextPrompt = context.toContextPrompt();
+  if (contextPrompt !== "") {
+    parts.push(contextPrompt);
+  }
+
+  parts.push(buildIterationStatus(steps, maxSteps));
+
+  if (parts.length === 0) {
+    return undefined;
+  }
+
+  return {
+    role: "user",
+    content: `${RUNTIME_CONTEXT_MESSAGE_PREFIX}\n${parts.join("\n\n")}\n</runtime_context>`,
+  };
+}
+
+export function withRuntimeContextMessage(
+  messages: ModelMessage[],
+  runtimeContextMessage: ModelMessage | undefined
+): ModelMessage[] {
+  const withoutExisting = messages.filter(
+    (message) =>
+      !(
+        message.role === "user" &&
+        typeof message.content === "string" &&
+        message.content.startsWith(RUNTIME_CONTEXT_MESSAGE_PREFIX)
+      )
+  );
+
+  return runtimeContextMessage !== undefined
+    ? [...withoutExisting, runtimeContextMessage]
+    : withoutExisting;
+}
 
 function isGeminiModel(model: Model | undefined): boolean {
   return model?.id.toLowerCase().includes("gemini") ?? false;
 }
 
 export function buildAgentInstructions(options: BuildInstructionsOptions): string {
-  const { context, steps, maxSteps, model } = options;
+  const { context, model } = options;
   const parts: string[] = [BASE_SYSTEM_PROMPT];
 
   if (context.mode === "wildcard") {
@@ -34,21 +96,6 @@ export function buildAgentInstructions(options: BuildInstructionsOptions): strin
   const skillsPrompt = context.toSkillsPrompt();
   if (skillsPrompt !== "") {
     parts.push(skillsPrompt);
-  }
-
-  const contextPrompt = context.toContextPrompt();
-  if (contextPrompt !== "") {
-    parts.push(contextPrompt);
-  }
-
-  if (steps > 0) {
-    parts.push(
-      `You have already completed ${steps} iterations out of a maximum of ${maxSteps}. ` +
-        (steps >= maxSteps * 0.8
-          ? `You are approaching the iteration limit, so start wrapping up your work. `
-          : "") +
-        `The agent will automatically pause when it reaches ${maxSteps} iterations, but you can stop at any time once your task is complete.`
-    );
   }
 
   return parts.join("\n\n");

@@ -85,10 +85,10 @@ export const display = {
   },
   success: ({ output }) => {
     if (!isPresent(output)) {
-      return [{ text: "Read " }, { text: "payload blob", muted: true }];
+      return [{ text: "Read  " }, { text: "payload blob", muted: true }];
     }
     return [
-      { text: "Read " },
+      { text: "Read blob " },
       { text: `${output.endOffset - output.offset} chars`, muted: true },
       ...(output.hasMore ? [{ text: " (more available)" }] : []),
     ];

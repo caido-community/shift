@@ -2,7 +2,11 @@ import { stepCountIs, ToolLoopAgent } from "ai";
 import type { AgentMode, Model } from "shared";
 
 import type { AgentContext } from "@/agent/context";
-import { buildAgentInstructions } from "@/agent/instructions";
+import {
+  buildAgentInstructions,
+  buildRuntimeContextMessage,
+  withRuntimeContextMessage,
+} from "@/agent/instructions";
 import { shiftAgentTools } from "@/agent/tools";
 import { repairToolCall } from "@/float/toolCallRepair";
 import { type FrontendSDK } from "@/types";
@@ -35,8 +39,6 @@ export const createShiftAgent = (options: AgentOptions) => {
     model: caidoModel,
     instructions: buildAgentInstructions({
       context,
-      steps: 0,
-      maxSteps: maxIterations,
       model,
     }),
     tools,
@@ -49,13 +51,17 @@ export const createShiftAgent = (options: AgentOptions) => {
     prepareStep: async ({ messages, ...settings }) => {
       await context.fetchEntriesInfo();
 
+      const runtimeContextMessage = buildRuntimeContextMessage({
+        context,
+        steps: settings.steps.length,
+        maxSteps: maxIterations,
+      });
+
       return {
         ...settings,
-        messages,
+        messages: withRuntimeContextMessage(messages, runtimeContextMessage),
         system: buildAgentInstructions({
           context,
-          steps: settings.steps.length,
-          maxSteps: maxIterations,
           model,
         }),
       };

@@ -1,8 +1,13 @@
 import { BinaryExecRun } from "./binaries";
-import { EnvironmentCreate, EnvironmentRemove, EnvironmentUpdate } from "./environment";
+import {
+  EnvironmentCreate,
+  EnvironmentRead,
+  EnvironmentRemove,
+  EnvironmentUpdate,
+} from "./environment";
 import { FindingsCreate } from "./findings";
 import { HistorySearch } from "./history";
-import { LearningAdd, LearningRemove, LearningUpdate } from "./learnings";
+import { LearningAdd, LearningRead, LearningRemove, LearningUpdate } from "./learnings";
 import { PayloadBlobCreate, PayloadBlobRangeRead } from "./payload";
 import { ReplayEntryNavigate } from "./replay";
 import {
@@ -25,7 +30,7 @@ import {
 } from "./request";
 import { ResponseRangeRead, ResponseSearch } from "./response";
 import { ReadSkill } from "./skills";
-import { TodoAdd, TodoComplete, TodoRemove } from "./todo";
+import { TodoAdd, TodoComplete, TodoRemove, TodoStart } from "./todo";
 import { WorkflowConvertList, WorkflowConvertRun } from "./workflows";
 
 export const shiftAgentTools = {
@@ -33,9 +38,11 @@ export const shiftAgentTools = {
   PayloadBlobCreate,
   PayloadBlobRangeRead,
   TodoAdd,
+  TodoStart,
   TodoComplete,
   TodoRemove,
   LearningAdd,
+  LearningRead,
   LearningUpdate,
   LearningRemove,
   RequestBodySet,
@@ -58,6 +65,7 @@ export const shiftAgentTools = {
   ResponseSearch,
   ReadSkill,
   EnvironmentCreate,
+  EnvironmentRead,
   EnvironmentUpdate,
   EnvironmentRemove,
   HistorySearch,

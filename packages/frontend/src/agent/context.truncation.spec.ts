@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { truncateContextValue } from "./context.truncation";
 
-const TRUNCATION_MARKER = "\n...[truncated]...\n";
+function buildExpectedMarker(remainingChars: number): string {
+  return `\n[...truncated. ${remainingChars} chars remaining.]\n`;
+}
 
 describe("truncateContextValue", () => {
   it("returns value unchanged when within maxLength", () => {
@@ -17,12 +19,13 @@ describe("truncateContextValue", () => {
 
   it("uses head+tail truncation with marker when value exceeds maxLength", () => {
     const value = "a".repeat(50);
-    const maxLength = 40; // must be > TRUNCATION_MARKER.length + 2 to use head+tail
+    const maxLength = 40;
     const result = truncateContextValue(value, maxLength);
+    const truncationMarker = buildExpectedMarker(value.length - maxLength);
 
-    expect(result).toContain(TRUNCATION_MARKER);
+    expect(result).toContain(truncationMarker);
     expect(result.length).toBe(maxLength);
-    const remaining = maxLength - TRUNCATION_MARKER.length;
+    const remaining = maxLength - truncationMarker.length;
     const headLen = Math.ceil(remaining / 2);
     const tailLen = remaining - headLen;
     expect(result.startsWith("a".repeat(headLen)));
@@ -32,13 +35,13 @@ describe("truncateContextValue", () => {
   it("includes truncation marker in output", () => {
     const value = "x".repeat(100);
     const result = truncateContextValue(value, 50);
-    expect(result).toContain("...[truncated]...");
+    expect(result).toContain("[...truncated. 50 chars remaining.]");
   });
 
   it("returns head-only when maxLength is too small for head+tail", () => {
     const value = "abcdefghijklmnop";
     const result = truncateContextValue(value, 10);
-    expect(result).not.toContain(TRUNCATION_MARKER);
+    expect(result).not.toContain("[...truncated.");
     expect(result).toBe(value.slice(0, 10));
   });
 
@@ -46,8 +49,9 @@ describe("truncateContextValue", () => {
     const value = "a".repeat(100);
     const maxLength = 40;
     const result = truncateContextValue(value, maxLength);
+    const marker = buildExpectedMarker(value.length - maxLength);
 
-    const markerLen = TRUNCATION_MARKER.length;
+    const markerLen = marker.length;
     const remaining = maxLength - markerLen;
     const expectedHeadLen = Math.ceil(remaining / 2);
     const expectedTailLen = remaining - expectedHeadLen;

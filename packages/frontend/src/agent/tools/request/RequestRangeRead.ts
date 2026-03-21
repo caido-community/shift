@@ -57,7 +57,7 @@ export const display = {
       return [{ text: "Read " }, { text: "request", muted: true }];
     }
     return [
-      { text: "Read " },
+      { text: "Read request " },
       { text: `${output.endOffset - output.offset} chars`, muted: true },
       ...(output.hasMore ? [{ text: " (more available)" }] : []),
     ];
