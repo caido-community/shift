@@ -22,6 +22,7 @@ const ModelSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   provider: ModelProviderSchema,
+  contextWindow: z.number().int().positive().optional(),
   capabilities: ModelCapabilitiesSchema,
 });
 export type Model = z.infer<typeof ModelSchema>;

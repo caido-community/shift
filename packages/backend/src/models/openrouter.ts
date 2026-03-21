@@ -2,6 +2,8 @@ import { type Model, ModelProvider, type ModelUsageType } from "shared";
 
 const OpenRouterModelIds = {
   GPT_5_4: "openai/gpt-5.4",
+  GPT_5_4_MINI: "openai/gpt-5.4-mini",
+  GPT_5_4_NANO: "openai/gpt-5.4-nano",
   GPT_5_3_CODEX: "openai/gpt-5.3-codex",
   CLAUDE_OPUS_4_6: "anthropic/claude-opus-4.6",
   CLAUDE_OPUS_4_6_THINKING: "anthropic/claude-opus-4.6:thinking",
@@ -18,6 +20,25 @@ export const openrouterModels: Model[] = [
     id: OpenRouterModelIds.GPT_5_4,
     name: "GPT 5.4",
     provider: ModelProvider.OpenRouter,
+    contextWindow: 1_000_000,
+    capabilities: {
+      reasoning: true,
+    },
+  },
+  {
+    id: OpenRouterModelIds.GPT_5_4_MINI,
+    name: "GPT 5.4 Mini",
+    provider: ModelProvider.OpenRouter,
+    contextWindow: 400_000,
+    capabilities: {
+      reasoning: true,
+    },
+  },
+  {
+    id: OpenRouterModelIds.GPT_5_4_NANO,
+    name: "GPT 5.4 Nano",
+    provider: ModelProvider.OpenRouter,
+    contextWindow: 400_000,
     capabilities: {
       reasoning: true,
     },
@@ -34,6 +55,7 @@ export const openrouterModels: Model[] = [
     id: OpenRouterModelIds.CLAUDE_OPUS_4_6,
     name: "Opus 4.6",
     provider: ModelProvider.OpenRouter,
+    contextWindow: 1_000_000,
     capabilities: {
       reasoning: false,
     },
@@ -42,6 +64,7 @@ export const openrouterModels: Model[] = [
     id: OpenRouterModelIds.CLAUDE_OPUS_4_6_THINKING,
     name: "Opus 4.6 Thinking",
     provider: ModelProvider.OpenRouter,
+    contextWindow: 1_000_000,
     capabilities: {
       reasoning: true,
     },
@@ -50,6 +73,7 @@ export const openrouterModels: Model[] = [
     id: OpenRouterModelIds.CLAUDE_SONNET_4_6,
     name: "Sonnet 4.6",
     provider: ModelProvider.OpenRouter,
+    contextWindow: 1_000_000,
     capabilities: {
       reasoning: false,
     },
@@ -58,6 +82,7 @@ export const openrouterModels: Model[] = [
     id: OpenRouterModelIds.CLAUDE_SONNET_4_6_THINKING,
     name: "Sonnet 4.6 Thinking",
     provider: ModelProvider.OpenRouter,
+    contextWindow: 1_000_000,
     capabilities: {
       reasoning: true,
     },
@@ -82,6 +107,7 @@ export const openrouterModels: Model[] = [
     id: OpenRouterModelIds.GROK_4_1_FAST,
     name: "Grok 4.1 Fast",
     provider: ModelProvider.OpenRouter,
+    contextWindow: 2_000_000,
     capabilities: {
       reasoning: true,
     },
@@ -90,6 +116,7 @@ export const openrouterModels: Model[] = [
     id: OpenRouterModelIds.MERCURY_2,
     name: "Mercury 2",
     provider: ModelProvider.OpenRouter,
+    contextWindow: 128_000,
     capabilities: {
       reasoning: true,
     },
@@ -98,6 +125,8 @@ export const openrouterModels: Model[] = [
 
 export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
   [OpenRouterModelIds.GPT_5_4]: ["agent", "float"],
+  [OpenRouterModelIds.GPT_5_4_MINI]: ["agent", "float"],
+  [OpenRouterModelIds.GPT_5_4_NANO]: ["agent", "float"],
   [OpenRouterModelIds.GPT_5_3_CODEX]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_OPUS_4_6]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_OPUS_4_6_THINKING]: ["agent", "float"],

@@ -1,9 +1,11 @@
 import { Chat } from "@ai-sdk/vue";
 import { type Model, type ShiftMessage } from "shared";
-import { nextTick, watch } from "vue";
+import { nextTick, ref, watch } from "vue";
 
 import { AgentContext } from "@/agent/context";
+import { buildAgentInstructions } from "@/agent/instructions";
 import { LocalChatTransport } from "@/agent/transport";
+import { getEstimatedContextUsage } from "@/agent/utils/contextUsage";
 import {
   extractLastUserMessageText,
   hasToolPartsSinceLastUserMessage,
@@ -16,9 +18,11 @@ export class AgentSession {
   readonly id: string;
   readonly store: SessionStore;
   readonly chat: Chat<ShiftMessage>;
+  readonly context: AgentContext;
   private sdk: FrontendSDK;
   private isStopInProgress = false;
   private isInitialized = false;
+  private contextMetadataVersion = ref(0);
 
   constructor(sdk: FrontendSDK, replaySessionId: string, model: Model) {
     this.id = replaySessionId;
@@ -27,6 +31,7 @@ export class AgentSession {
     this.store.setModel(model);
 
     const context = new AgentContext(sdk, replaySessionId, this.store);
+    this.context = context;
     this.chat = new Chat<ShiftMessage>({
       id: replaySessionId,
       transport: new LocalChatTransport(sdk, this.store, context),
@@ -123,6 +128,37 @@ export class AgentSession {
 
   set draftMessage(value: string) {
     this.store.setDraftMessage(value);
+  }
+
+  async refreshContextMetadata(): Promise<void> {
+    await Promise.allSettled([this.context.fetchEnvironmentInfo(), this.context.fetchEntriesInfo()]);
+    this.contextMetadataVersion.value++;
+  }
+
+  estimateContextUsage(options?: {
+    messages?: ShiftMessage[];
+    steps?: number;
+    maxSteps?: number;
+  }) {
+    this.contextMetadataVersion.value;
+
+    const messages = options?.messages ?? this.chat.messages;
+    const steps = options?.steps ?? 0;
+    const maxSteps = options?.maxSteps ?? 1;
+    const model = this.model;
+
+    const systemPrompt = buildAgentInstructions({
+      context: this.context,
+      steps,
+      maxSteps,
+      model,
+    });
+
+    return getEstimatedContextUsage({
+      model,
+      systemPrompt,
+      messages,
+    });
   }
 
   addToQueue(text: string): void {

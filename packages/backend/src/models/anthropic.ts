@@ -10,6 +10,7 @@ export const anthropicModels: Model[] = [
     id: AnthropicModelIds.CLAUDE_OPUS_4_6,
     name: "Opus 4.6",
     provider: ModelProvider.Anthropic,
+    contextWindow: 1_000_000,
     capabilities: {
       reasoning: true,
     },
@@ -18,6 +19,7 @@ export const anthropicModels: Model[] = [
     id: AnthropicModelIds.CLAUDE_SONNET_4_6,
     name: "Sonnet 4.6",
     provider: ModelProvider.Anthropic,
+    contextWindow: 1_000_000,
     capabilities: {
       reasoning: true,
     },
