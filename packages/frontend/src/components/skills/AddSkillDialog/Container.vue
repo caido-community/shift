@@ -145,8 +145,8 @@ const canSave = () => {
         <p class="text-xs text-surface-400">
           {{
             attachMode === "always"
-              ? "Full content is always in the prompt (higher context usage)"
-              : "Agent loads content on demand via ReadSkill when needed (smaller context)"
+              ? "Full content is always in the prompt (higher context usage, higher cost)"
+              : "Agent loads content on demand when needed"
           }}
         </p>
       </div>
