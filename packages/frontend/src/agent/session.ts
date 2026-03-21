@@ -53,6 +53,22 @@ export class AgentSession {
     );
 
     watch(
+      () => [this.chat.messages.length > 0, this.chat.status] as const,
+      ([hasMessages, status]) => {
+        const agentStore = useAgentStore();
+        agentStore.dispatch({
+          type: "SET_SESSION_INDICATOR_STATE",
+          sessionId: this.id,
+          state: {
+            hasMessages,
+            status,
+          },
+        });
+      },
+      { immediate: true }
+    );
+
+    watch(
       () => [this.store.mode, this.store.selectedCustomAgentId] as const,
       ([mode, agentId], [prevMode, prevAgentId]) => {
         if (!this.isInitialized) {

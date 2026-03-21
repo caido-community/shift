@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type AgentModel, createInitialModel } from "./store.model";
+import { type AgentIndicatorState, type AgentModel, createInitialModel } from "./store.model";
 import { update } from "./store.update";
 
 const createMockSession = (id: string) =>
@@ -141,12 +141,79 @@ describe("agent update", () => {
     });
   });
 
+  describe("indicator state", () => {
+    it("creates idle indicator state for persisted sessions", () => {
+      const model = createInitialModel();
+
+      const result = update(model, {
+        type: "SET_PERSISTED_SESSION_IDS",
+        sessionIds: ["session-1"],
+      });
+
+      expect(result.persistedSessionIds.has("session-1")).toBe(true);
+      expect(result.indicatorStates.get("session-1")).toEqual({
+        hasMessages: true,
+        status: "ready",
+      });
+    });
+
+    it("stores explicit session indicator state", () => {
+      const model = createInitialModel();
+
+      const result = update(model, {
+        type: "SET_SESSION_INDICATOR_STATE",
+        sessionId: "session-1",
+        state: {
+          hasMessages: true,
+          status: "streaming",
+        },
+      });
+
+      expect(result.indicatorStates.get("session-1")).toEqual({
+        hasMessages: true,
+        status: "streaming",
+      });
+    });
+
+    it("returns the same model when indicator state does not change", () => {
+      const model = update(createInitialModel(), {
+        type: "SET_SESSION_INDICATOR_STATE",
+        sessionId: "session-1",
+        state: {
+          hasMessages: true,
+          status: "ready",
+        },
+      });
+
+      const result = update(model, {
+        type: "SET_SESSION_INDICATOR_STATE",
+        sessionId: "session-1",
+        state: {
+          hasMessages: true,
+          status: "ready",
+        },
+      });
+
+      expect(result).toBe(model);
+    });
+  });
+
   describe("REMOVE_SESSION", () => {
     it("removes an existing session from the map", () => {
       const session = createMockSession("session-1");
       const sessions = new Map([["session-1", session]]);
+      const indicatorStates = new Map<string, AgentIndicatorState>([
+        [
+          "session-1",
+          {
+            hasMessages: true,
+            status: "ready",
+          },
+        ],
+      ]);
       const model: AgentModel = {
         ...createInitialModel(),
+        indicatorStates,
         sessions,
       };
 
@@ -154,6 +221,7 @@ describe("agent update", () => {
 
       expect(result.sessions.size).toBe(0);
       expect(result.sessions.has("session-1")).toBe(false);
+      expect(result.indicatorStates.has("session-1")).toBe(false);
     });
 
     it("does nothing when session does not exist", () => {

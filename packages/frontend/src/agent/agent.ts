@@ -66,9 +66,6 @@ export const createShiftAgent = (options: AgentOptions) => {
         }),
       };
     },
-    onStepFinish: (data) => {
-      console.log(data);
-    },
   });
 
   return agent;

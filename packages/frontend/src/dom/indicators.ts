@@ -7,6 +7,11 @@ import { type FrontendSDK } from "@/types";
 
 type IndicatorStatus = "streaming" | "error" | "idle";
 type IndicatorType = "tab";
+type SessionIndicatorEntry = {
+  indicator: Indicator;
+  icon: string;
+  description: string;
+};
 
 const BASE_INDICATOR_CLASS = "internal-shift-indicator";
 const TOOLTIP = "This {{ type }} is controlled by Shift AI";
@@ -64,18 +69,25 @@ const createIndicator = (
 ): HTMLElement => {
   const id = `${BASE_INDICATOR_CLASS}-${type}-${sessionId}`;
   const tooltip = TOOLTIP.replace("{{ type }}", type);
+  const statusClass = getStatusClass(status);
 
   const existing = container.querySelector<HTMLElement>(`#${id}`);
   if (existing) {
-    existing.classList.remove("text-success-500", "text-error-500");
+    if (
+      existing.dataset.shiftAiIndicatorStatus === status &&
+      existing.dataset.shiftAiIndicatorTooltip === tooltip
+    ) {
+      return existing;
+    }
 
-    const statusClass = getStatusClass(status);
+    existing.classList.remove("text-success-500", "text-error-500");
     if (statusClass !== undefined) {
       existing.classList.add(statusClass);
     }
 
     existing.title = tooltip;
     existing.setAttribute("aria-label", tooltip);
+    existing.dataset.shiftAiIndicatorStatus = status;
     existing.dataset.shiftAiIndicatorTooltip = tooltip;
     return existing;
   }
@@ -87,7 +99,6 @@ const createIndicator = (
   indicator.id = id;
   indicator.classList.add("fa-solid", "fa-wand-magic-sparkles", "inline", BASE_INDICATOR_CLASS);
 
-  const statusClass = getStatusClass(status);
   if (statusClass !== undefined) {
     indicator.classList.add(statusClass);
   }
@@ -95,6 +106,7 @@ const createIndicator = (
   indicator.title = tooltip;
   indicator.setAttribute("aria-label", tooltip);
   indicator.setAttribute("role", "img");
+  indicator.dataset.shiftAiIndicatorStatus = status;
   indicator.dataset.shiftAiIndicatorTooltip = tooltip;
 
   container.insertBefore(indicator, container.children.item(0));
@@ -127,8 +139,21 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
   let sessionChangeUnsubscribe: ListenerHandle | undefined = undefined;
   let storeWatchUnsubscribe: WatchStopHandle | undefined = undefined;
   let tableObserver: MutationObserver | undefined = undefined;
+  let drawIndicatorsQueued = false;
 
-  const sessionIndicators = new Map<string, Indicator>();
+  const sessionIndicators = new Map<string, SessionIndicatorEntry>();
+
+  const scheduleDrawIndicators = () => {
+    if (drawIndicatorsQueued) {
+      return;
+    }
+
+    drawIndicatorsQueued = true;
+    requestAnimationFrame(() => {
+      drawIndicatorsQueued = false;
+      drawIndicators();
+    });
+  };
 
   const start = () => {
     if (location.hash === "#/replay") {
@@ -150,19 +175,23 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
     const agentStore = useAgentStore();
 
     storeWatchUnsubscribe = watch(
-      () => [agentStore.state.sessions, agentStore.state.persistedSessionIds],
       () => {
-        requestAnimationFrame(() => {
-          drawIndicators();
-        });
+        return Array.from(agentStore.state.indicatorStates.entries())
+          .map(
+            ([sessionId, state]) =>
+              `${sessionId}:${state.status}:${state.hasMessages ? 1 : 0}`
+          )
+          .sort()
+          .join("|");
       },
-      { immediate: true, deep: true }
+      () => {
+        scheduleDrawIndicators();
+      },
+      { immediate: true }
     );
 
     sessionChangeUnsubscribe = sdk.replay.onCurrentSessionChange(() => {
-      requestAnimationFrame(() => {
-        drawIndicators();
-      });
+      scheduleDrawIndicators();
     });
 
     requestAnimationFrame(() => {
@@ -212,15 +241,8 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
         return;
       }
 
-      const hasPersistedData = agentStore.state.persistedSessionIds.has(sessionId);
-      const hasActiveSession = agentStore.state.sessions.has(sessionId);
-
-      if (!hasPersistedData && !hasActiveSession) {
-        return;
-      }
-
-      const session = agentStore.getSession(sessionId);
-      if (session === undefined || session.chat.messages.length === 0) {
+      const indicatorState = agentStore.state.indicatorStates.get(sessionId);
+      if (indicatorState === undefined || !indicatorState.hasMessages) {
         const existingIndicator = button.querySelector(`.${BASE_INDICATOR_CLASS}`);
         if (existingIndicator) {
           existingIndicator.remove();
@@ -228,7 +250,7 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
         return;
       }
 
-      const status = getIndicatorStatusFromChatStatus(session.chat.status);
+      const status = getIndicatorStatusFromChatStatus(indicatorState.status);
       createIndicator(button, "tab", sessionId, status);
     });
   };
@@ -241,18 +263,10 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
 
     for (const replaySession of sessions) {
       const sessionId = replaySession.id;
-
-      const hasPersistedData = agentStore.state.persistedSessionIds.has(sessionId);
-      const hasActiveSession = agentStore.state.sessions.has(sessionId);
-
-      if (!hasPersistedData && !hasActiveSession) {
-        continue;
-      }
-
-      const session = agentStore.getSession(sessionId);
-      if (session === undefined || session.chat.messages.length === 0) {
+      const indicatorState = agentStore.state.indicatorStates.get(sessionId);
+      if (indicatorState === undefined || !indicatorState.hasMessages) {
         if (sessionIndicators.has(sessionId)) {
-          sessionIndicators.get(sessionId)?.remove();
+          sessionIndicators.get(sessionId)?.indicator.remove();
           sessionIndicators.delete(sessionId);
         }
         continue;
@@ -260,23 +274,32 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
 
       activeSessionIds.add(sessionId);
 
-      const icon = getIconFromChatStatus(session.chat.status);
-      const description = getDescriptionFromChatStatus(session.chat.status);
+      const icon = getIconFromChatStatus(indicatorState.status);
+      const description = getDescriptionFromChatStatus(indicatorState.status);
 
-      if (sessionIndicators.has(sessionId)) {
-        sessionIndicators.get(sessionId)?.remove();
+      const existing = sessionIndicators.get(sessionId);
+      if (existing !== undefined && existing.icon === icon && existing.description === description) {
+        continue;
+      }
+
+      if (existing !== undefined) {
+        existing.indicator.remove();
       }
 
       const indicator = sdk.replay.addSessionIndicator(sessionId, {
         icon,
         description,
       });
-      sessionIndicators.set(sessionId, indicator);
+      sessionIndicators.set(sessionId, {
+        indicator,
+        icon,
+        description,
+      });
     }
 
     for (const [sessionId, indicator] of sessionIndicators) {
       if (!activeSessionIds.has(sessionId)) {
-        indicator.remove();
+        indicator.indicator.remove();
         sessionIndicators.delete(sessionId);
       }
     }
@@ -302,9 +325,7 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
     }
 
     tableObserver = new MutationObserver(() => {
-      requestAnimationFrame(() => {
-        drawShiftCollectionIndicator();
-      });
+      scheduleDrawIndicators();
     });
 
     tableObserver.observe(table, {
@@ -343,7 +364,7 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
 
   const removeIndicators = () => {
     for (const indicator of sessionIndicators.values()) {
-      indicator.remove();
+      indicator.indicator.remove();
     }
     sessionIndicators.clear();
 
