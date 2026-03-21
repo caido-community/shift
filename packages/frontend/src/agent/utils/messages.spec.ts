@@ -487,6 +487,22 @@ describe("replaceHistoricalToolOutputsWithBlobRefs", () => {
     replaceHistoricalToolOutputsWithBlobRefs(messages, () => ({ blobId: "blob-1" }));
     expect(JSON.stringify(messages)).toBe(original);
   });
+
+  it("preserves identity for unchanged assistant messages after an earlier replacement", () => {
+    const largeOutput = "x".repeat(600);
+    const unchangedAssistant = createAssistantMessage("a2");
+    const messages = [
+      createUserMessage("First"),
+      createAssistantMessageWithToolOutput(largeOutput),
+      unchangedAssistant,
+      createUserMessage("Second"),
+    ];
+
+    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, () => ({ blobId: "blob-1" }));
+
+    expect(result[1]).not.toBe(messages[1]);
+    expect(result[2]).toBe(unchangedAssistant);
+  });
 });
 
 describe("stripReasoningParts", () => {

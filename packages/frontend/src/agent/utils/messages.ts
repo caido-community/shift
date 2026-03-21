@@ -190,6 +190,7 @@ export function replaceHistoricalToolOutputsWithBlobRefs(
       continue;
     }
 
+    let didMessageChange = false;
     const newParts = message.parts.map((part) => {
       if (!isToolUIPart(part)) {
         return part;
@@ -205,6 +206,7 @@ export function replaceHistoricalToolOutputsWithBlobRefs(
       }
 
       didChange = true;
+      didMessageChange = true;
       const { blobId } = createBlob(
         serialized,
         `Historical tool output (${serialized.length} chars)`
@@ -216,7 +218,7 @@ export function replaceHistoricalToolOutputsWithBlobRefs(
       } as typeof part;
     });
 
-    if (!didChange) {
+    if (!didMessageChange) {
       updated.push(message);
       continue;
     }
