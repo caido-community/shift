@@ -13,9 +13,9 @@ import type {
 import {
   buildContextPrompt,
   buildSkillsPrompt,
-  ENVIRONMENT_VARIABLES_CONTEXT_CHARS,
-  ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS,
   type ContextPromptSnapshot,
+  ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS,
+  ENVIRONMENT_VARIABLES_CONTEXT_CHARS,
   type SkillsPromptSnapshot,
 } from "@/agent/context.prompt";
 import { truncateContextValue } from "@/agent/context.truncation";

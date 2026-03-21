@@ -2,7 +2,10 @@ import { tool } from "ai";
 import { Result, type Result as ResultType } from "shared";
 import { z } from "zod";
 
-import { getPayloadBlobCreateStreamingMessage, getPayloadBlobCreateSuccessMessage } from "./display";
+import {
+  getPayloadBlobCreateStreamingMessage,
+  getPayloadBlobCreateSuccessMessage,
+} from "./display";
 
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";

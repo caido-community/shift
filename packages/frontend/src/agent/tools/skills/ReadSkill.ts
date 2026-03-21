@@ -8,7 +8,7 @@ import { isPresent } from "@/utils";
 const DEFAULT_LIMIT = 8000;
 const MAX_LIMIT = 20000;
 
-export type ReadSkillRangeResult = {
+type ReadSkillRangeResult = {
   skillId: string;
   title: string;
   content: string;

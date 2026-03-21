@@ -95,7 +95,10 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
         };
         let messagesForModel = stripped;
         try {
-          messagesForModel = replaceHistoricalToolOutputsWithBlobRefs(stripped, createBlobForHistory);
+          messagesForModel = replaceHistoricalToolOutputsWithBlobRefs(
+            stripped,
+            createBlobForHistory
+          );
         } catch (err) {
           console.warn("Historical tool output blob replacement failed, using full messages:", err);
         }

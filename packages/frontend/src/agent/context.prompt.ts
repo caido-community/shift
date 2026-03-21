@@ -1,9 +1,9 @@
-import { truncateContextValue } from "@/agent/context.truncation";
 import type {
   ContextPromptSnapshot,
   SkillSnapshot,
   SkillsPromptSnapshot,
 } from "@/agent/context.prompt.types";
+import { truncateContextValue } from "@/agent/context.truncation";
 import { isPresent } from "@/utils";
 import { truncate } from "@/utils/text";
 
@@ -16,7 +16,7 @@ export const HTTP_REQUEST_CONTEXT_CHARS = 12_000;
 export const ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS = 400;
 export const ENVIRONMENT_VARIABLES_CONTEXT_CHARS = 8_000;
 
-export const PAYLOAD_BLOB_PREVIEW_CHARS = 80;
+const PAYLOAD_BLOB_PREVIEW_CHARS = 80;
 export const TODO_CONTENT_CHARS = 500;
 export const LEARNING_VALUE_CHARS = 1_000;
 export const LEARNINGS_TOTAL_CHARS = 12_000;
@@ -25,14 +25,14 @@ export const SKILL_CONTENT_CHARS = 8_000;
 export const AGENT_INSTRUCTIONS_CHARS = 16_000;
 export const WORKFLOW_NAME_CHARS = 200;
 export const WORKFLOW_DESCRIPTION_CHARS = 500;
-export const WORKFLOWS_TOTAL_CHARS = 6_000;
+const WORKFLOWS_TOTAL_CHARS = 6_000;
 
-export const BINARY_PATH_CHARS = 256;
+const BINARY_PATH_CHARS = 256;
 export const BINARY_INSTRUCTIONS_CHARS = 1_000;
-export const BINARIES_TOTAL_CHARS = 4_000;
+const BINARIES_TOTAL_CHARS = 4_000;
 export const ENVIRONMENT_NAME_CHARS = 100;
-export const ENVIRONMENTS_TOTAL_CHARS = 2_000;
-export const PAYLOAD_BLOBS_TOTAL_CHARS = 6_000;
+const ENVIRONMENTS_TOTAL_CHARS = 2_000;
+const PAYLOAD_BLOBS_TOTAL_CHARS = 6_000;
 
 export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
   const parts: string[] = [];
@@ -70,17 +70,11 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
   }
 
   if (isPresent(snapshot.httpRequest) && snapshot.httpRequest !== "") {
-    const requestForPrompt = truncateContextValue(
-      snapshot.httpRequest,
-      HTTP_REQUEST_CONTEXT_CHARS
-    );
+    const requestForPrompt = truncateContextValue(snapshot.httpRequest, HTTP_REQUEST_CONTEXT_CHARS);
     parts.push(`<current_http_request>\n${requestForPrompt}\n</current_http_request>`);
   }
 
-  if (
-    isPresent(snapshot.allowedConvertWorkflows) &&
-    snapshot.allowedConvertWorkflows.length > 0
-  ) {
+  if (isPresent(snapshot.allowedConvertWorkflows) && snapshot.allowedConvertWorkflows.length > 0) {
     const truncatedWorkflows = snapshot.allowedConvertWorkflows.map((w) => ({
       id: w.id,
       name: truncateContextValue(w.name, WORKFLOW_NAME_CHARS),
@@ -104,10 +98,7 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
     parts.push(`<allowed_binaries>\n${binaryList}\n</allowed_binaries>`);
   }
 
-  if (
-    isPresent(snapshot.entriesContext) &&
-    snapshot.entriesContext.recentEntryIds.length > 0
-  ) {
+  if (isPresent(snapshot.entriesContext) && snapshot.entriesContext.recentEntryIds.length > 0) {
     const { activeEntryId, recentEntryIds } = snapshot.entriesContext;
     const entryList = recentEntryIds.map((id) => `- ${id}`).join("\n");
     const activeLine =
@@ -129,10 +120,9 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
       isPresent(selectedName) && selectedName !== ""
         ? truncateContextValue(selectedName, ENVIRONMENT_NAME_CHARS)
         : undefined;
-    const selectedLine =
-      isPresent(truncatedSelectedName)
-        ? `Currently selected: ${truncatedSelectedName} (id: ${selectedId})`
-        : "No environment selected";
+    const selectedLine = isPresent(truncatedSelectedName)
+      ? `Currently selected: ${truncatedSelectedName} (id: ${selectedId})`
+      : "No environment selected";
     parts.push(`<environments>\n${truncatedEnvList}\n\n${selectedLine}\n</environments>`);
   }
 
@@ -192,7 +182,7 @@ export function buildSkillsPrompt(snapshot: SkillsPromptSnapshot): string {
       });
       skillParts.push(
         `<skills_available_on_demand>\n${catalogLines.join("\n")}\n</skills_available_on_demand>\n\n` +
-          `When you need detailed instructions from an on-demand skill above, use the ReadSkill tool with its id to load the full content.`
+          `These on-demand skills are knowledge books that contain instructions, testing guidance, and reusable context for particular tasks, workflows, or areas of expertise. When a skill looks relevant to what you are about to do, use the ReadSkill tool with its id to load and follow that skill's instructions. Prefer reading the relevant skill early rather than guessing from memory.`
       );
     }
 

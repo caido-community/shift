@@ -131,15 +131,14 @@ export class AgentSession {
   }
 
   async refreshContextMetadata(): Promise<void> {
-    await Promise.allSettled([this.context.fetchEnvironmentInfo(), this.context.fetchEntriesInfo()]);
+    await Promise.allSettled([
+      this.context.fetchEnvironmentInfo(),
+      this.context.fetchEntriesInfo(),
+    ]);
     this.contextMetadataVersion.value++;
   }
 
-  estimateContextUsage(options?: {
-    messages?: ShiftMessage[];
-    steps?: number;
-    maxSteps?: number;
-  }) {
+  estimateContextUsage(options?: { messages?: ShiftMessage[]; steps?: number; maxSteps?: number }) {
     this.contextMetadataVersion.value;
 
     const messages = options?.messages ?? this.chat.messages;

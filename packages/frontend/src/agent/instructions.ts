@@ -3,7 +3,7 @@ import type { Model } from "shared";
 import type { AgentContext } from "./context";
 import { BASE_SYSTEM_PROMPT, WILDCARD_MODE_PROMPT } from "./prompt";
 
-export const GEMINI_PARALLEL_TOOLS_WARNING =
+const GEMINI_PARALLEL_TOOLS_WARNING =
   "IMPORTANT: You must NEVER call multiple tools in parallel. Only call ONE tool per response. " +
   "Wait for each tool result before making the next tool call.";
 

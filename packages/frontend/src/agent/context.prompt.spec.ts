@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  AGENT_INSTRUCTIONS_CHARS,
+  BINARY_INSTRUCTIONS_CHARS,
   buildContextPrompt,
   buildSkillsPrompt,
+  ENVIRONMENT_NAME_CHARS,
   ENVIRONMENT_VARIABLES_CONTEXT_CHARS,
+  HTTP_REQUEST_CONTEXT_CHARS,
   LEARNING_VALUE_CHARS,
   LEARNINGS_TOTAL_CHARS,
-  TODO_CONTENT_CHARS,
-  HTTP_REQUEST_CONTEXT_CHARS,
   SKILL_CONTENT_CHARS,
-  AGENT_INSTRUCTIONS_CHARS,
-  WORKFLOW_NAME_CHARS,
+  TODO_CONTENT_CHARS,
   WORKFLOW_DESCRIPTION_CHARS,
-  BINARY_INSTRUCTIONS_CHARS,
-  ENVIRONMENT_NAME_CHARS,
+  WORKFLOW_NAME_CHARS,
 } from "./context.prompt";
 
 describe("buildContextPrompt - leak prevention", () => {
@@ -119,9 +119,7 @@ describe("buildSkillsPrompt - leak prevention", () => {
   it("truncates long skill content and adds truncation marker", () => {
     const longContent = "s".repeat(SKILL_CONTENT_CHARS + 300);
     const result = buildSkillsPrompt({
-      skills: [
-        { kind: "always-attached", id: "skill-1", title: "My Skill", content: longContent },
-      ],
+      skills: [{ kind: "always-attached", id: "skill-1", title: "My Skill", content: longContent }],
     });
 
     expect(result).toContain("...[truncated]...");
@@ -142,9 +140,7 @@ describe("buildContextPrompt - full coverage", () => {
 
   it("includes payload_blobs section when provided", () => {
     const result = buildContextPrompt({
-      payloadBlobs: [
-        { blobId: "blob-1", reason: "test", length: 10, preview: "hello..." },
-      ],
+      payloadBlobs: [{ blobId: "blob-1", reason: "test", length: 10, preview: "hello..." }],
     });
     expect(result).toContain("<payload_blobs>");
     expect(result).toContain("</payload_blobs>");

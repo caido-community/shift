@@ -1,8 +1,8 @@
 import type { Model, ShiftMessage } from "shared";
 
-export const CHARS_PER_TOKEN = 4;
-export const DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000;
-export const CONTEXT_WINDOW_SAFETY_BUFFER_TOKENS = 20_000;
+const CHARS_PER_TOKEN = 4;
+const DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000;
+const CONTEXT_WINDOW_SAFETY_BUFFER_TOKENS = 20_000;
 
 function getSafeContextWindowTokens(model: Pick<Model, "contextWindow"> | undefined): number {
   const contextWindow = model?.contextWindow ?? DEFAULT_CONTEXT_WINDOW_TOKENS;
@@ -19,18 +19,22 @@ function estimateSerializableCharacters(value: unknown): number {
     return value.length;
   }
 
-  if (
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    typeof value === "bigint"
-  ) {
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
     return String(value).length;
   }
 
   try {
     return JSON.stringify(value)?.length ?? 0;
   } catch {
-    return String(value).length;
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean" ||
+      typeof value === "bigint"
+    ) {
+      return String(value).length;
+    }
+    return "[unserializable]".length;
   }
 }
 

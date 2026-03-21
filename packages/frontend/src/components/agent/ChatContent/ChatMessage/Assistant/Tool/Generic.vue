@@ -5,8 +5,8 @@ import { computed, toRef } from "vue";
 import { getToolMessages } from "./messages";
 import { useTool } from "./useTool";
 
-import { formatToolDisplayText } from "@/agent/utils/formatting";
 import { type MessageResult } from "@/agent/types";
+import { formatToolDisplayText } from "@/agent/utils/formatting";
 import { TextShimmer } from "@/components/common/TextShimmer";
 
 const { toolName, input, partState, messageMetadata, output, errorText } = defineProps<{

@@ -146,13 +146,22 @@ export function serializeToolOutput(output: unknown): string {
     try {
       return JSON.stringify(output);
     } catch {
-      return String(output);
+      return "[unserializable tool output]";
     }
   }
-  return String(output);
+  if (typeof output === "number" || typeof output === "boolean" || typeof output === "bigint") {
+    return String(output);
+  }
+  if (typeof output === "symbol") {
+    return output.toString();
+  }
+  if (typeof output === "function") {
+    return String(output);
+  }
+  return "";
 }
 
-export type CreateBlobForHistory = (content: string, reason: string) => { blobId: string };
+type CreateBlobForHistory = (content: string, reason: string) => { blobId: string };
 
 const DEFAULT_MIN_OUTPUT_LENGTH_TO_REPLACE = 500;
 
@@ -196,7 +205,10 @@ export function replaceHistoricalToolOutputsWithBlobRefs(
       }
 
       didChange = true;
-      const { blobId } = createBlob(serialized, `Historical tool output (${serialized.length} chars)`);
+      const { blobId } = createBlob(
+        serialized,
+        `Historical tool output (${serialized.length} chars)`
+      );
       const placeholder = `Read output from blob ID ${blobId} with PayloadBlobRangeRead.`;
       return {
         ...part,

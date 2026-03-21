@@ -8,7 +8,7 @@ import { isPresent } from "@/utils";
 const DEFAULT_LIMIT = 5000;
 const MAX_LIMIT = 20000;
 
-export type ReadBlobRangeResult = {
+type ReadBlobRangeResult = {
   content: string;
   offset: number;
   endOffset: number;
@@ -19,11 +19,7 @@ export type ReadBlobRangeResult = {
 /**
  * Pure helper: read a character range from blob content. Testable without context.
  */
-export function readBlobRange(
-  content: string,
-  offset: number,
-  limit: number
-): ReadBlobRangeResult {
+function readBlobRange(content: string, offset: number, limit: number): ReadBlobRangeResult {
   const safeOffset = Math.max(0, offset);
   const safeLimit = Math.max(1, Math.min(limit, MAX_LIMIT));
   const endOffset = Math.min(content.length, safeOffset + safeLimit);
@@ -37,7 +33,10 @@ export function readBlobRange(
 }
 
 const inputSchema = z.object({
-  blobId: z.string().min(1).describe("The blob ID (e.g. from a trimmed tool output or PayloadBlobCreate)."),
+  blobId: z
+    .string()
+    .min(1)
+    .describe("The blob ID (e.g. from a trimmed tool output or PayloadBlobCreate)."),
   offset: z
     .number()
     .int()
@@ -50,7 +49,9 @@ const inputSchema = z.object({
     .positive()
     .max(MAX_LIMIT)
     .optional()
-    .describe(`Maximum number of characters to return (default: ${DEFAULT_LIMIT}, max: ${MAX_LIMIT}).`),
+    .describe(
+      `Maximum number of characters to return (default: ${DEFAULT_LIMIT}, max: ${MAX_LIMIT}).`
+    ),
 });
 
 const valueSchema = z.object({
