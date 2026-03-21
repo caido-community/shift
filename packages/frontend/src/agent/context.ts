@@ -51,6 +51,7 @@ const PAYLOAD_BLOB_PREVIEW_CHARS = 200;
 
 type PayloadBlobMetadata = {
   blobId: string;
+  reason: string;
   length: number;
   preview: string;
 };
@@ -65,7 +66,7 @@ export class AgentContext {
   private readonly _sdk: FrontendSDK;
   private readonly replaySessionId: string;
   private readonly store: SessionStore;
-  private readonly payloadBlobs = new Map<string, string>();
+  private readonly payloadBlobs = new Map<string, { content: string; reason: string }>();
   private streamWriter: UIMessageStreamWriter<ShiftMessage> | undefined;
   private skillsGetter: () => AgentSkill[];
   private environmentsContext: EnvironmentsContext | undefined;
@@ -195,7 +196,7 @@ export class AgentContext {
     this.streamWriter = writer;
   }
 
-  createPayloadBlob(content: string): PayloadBlobMetadata {
+  createPayloadBlob(content: string, reason: string): PayloadBlobMetadata {
     if (this.payloadBlobs.size >= PAYLOAD_BLOB_MAX_COUNT) {
       throw new Error(
         `Cannot create more than ${PAYLOAD_BLOB_MAX_COUNT} payload blobs in one run. Reuse an existing blobId or finish this run and start a new one.`
@@ -214,16 +215,17 @@ export class AgentContext {
       blobId = `blob-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
     } while (this.payloadBlobs.has(blobId));
 
-    this.payloadBlobs.set(blobId, content);
+    this.payloadBlobs.set(blobId, { content, reason });
     return {
       blobId,
+      reason,
       length: content.length,
       preview: truncate(content, PAYLOAD_BLOB_PREVIEW_CHARS),
     };
   }
 
   getPayloadBlob(blobId: string): string | undefined {
-    return this.payloadBlobs.get(blobId);
+    return this.payloadBlobs.get(blobId)?.content;
   }
 
   clearPayloadBlobs(): void {
@@ -332,10 +334,11 @@ export class AgentContext {
 
     if (this.payloadBlobs.size > 0) {
       const blobList = JSON.stringify(
-        [...this.payloadBlobs.entries()].map(([blobId, value]) => ({
+        [...this.payloadBlobs.entries()].map(([blobId, blob]) => ({
           blobId,
-          length: value.length,
-          preview: truncate(value, 80),
+          reason: blob.reason,
+          length: blob.content.length,
+          preview: truncate(blob.content, 80),
         })),
         null,
         2

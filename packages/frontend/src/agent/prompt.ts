@@ -79,6 +79,7 @@ Float is another way to use the Shift agent. It's a floating popup that allows t
 
 <payload_blobs>
 - Use PayloadBlobCreate when you need to generate long or complex payload content, such as repeated strings, large computed lists, or encoded text.
+- The payload blob reason should be a brief user-readable outcome in past tense, for example \`Generated current timestamp\`, not \`Generate current timestamp\`.
 - PayloadBlobCreate returns blobId, length, and preview for the generated payload.
 - Reference blob content in env-enabled tool inputs with \`§§§Blob§blobId§§§\`.
 - Payload blobs are in-memory and only live for the current run. If a blob is missing, recreate it and retry.
@@ -153,7 +154,7 @@ You will receive a context message about your environment on every step. This co
 - Recent replay entry IDs (last 10) and the active entry ID for navigating session history
 - Available environments and the currently selected one
 - Environment variables from the selected environment
-- Available payload blobs for this run (blobId, length, preview)
+- Available payload blobs for this run (blobId, reason, length, preview)
 - If workflow access is restricted, allowed convert workflows with their IDs, names, and descriptions
 - If a custom agent is selected, allowed binaries in <allowed_binaries> as objects with path and optional instructions
 
