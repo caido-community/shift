@@ -128,7 +128,7 @@ const handleCancel = () => {
     v-model:visible="visible"
     modal
     header="Edit Skill"
-    :style="{ width: '35rem' }">
+    :style="{ width: '55rem' }">
     <div
       v-if="skill !== undefined"
       class="flex flex-col gap-4">
@@ -181,8 +181,8 @@ const handleCancel = () => {
           <Textarea
             id="edit-content"
             v-model="content"
-            rows="10"
-            class="w-full font-mono text-sm" />
+            rows="20"
+            class="w-full min-h-[28rem] font-mono text-sm" />
         </div>
       </template>
 

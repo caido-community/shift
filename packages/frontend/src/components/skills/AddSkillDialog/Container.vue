@@ -108,7 +108,7 @@ const canSave = () => {
     v-model:visible="visible"
     modal
     header="Add Skill"
-    :style="{ width: '35rem' }">
+    :style="{ width: '55rem' }">
     <div class="flex flex-col gap-4">
       <SelectButton
         v-model="activeTab"
@@ -119,6 +119,19 @@ const canSave = () => {
         :pt="{
           button: { class: 'flex-1 w-full' },
         }" />
+
+      <div class="flex flex-col gap-2">
+        <label
+          for="add-skill-title"
+          class="font-medium text-surface-200">
+          Title
+        </label>
+        <InputText
+          id="add-skill-title"
+          v-model="title"
+          placeholder="XSS Testing"
+          class="w-full" />
+      </div>
 
       <div class="flex flex-col gap-2">
         <label class="font-medium text-surface-200">Description</label>
@@ -171,22 +184,10 @@ const canSave = () => {
         </p>
       </div>
 
-      <div class="h-[250px]">
+      <div :class="activeTab === 'static' ? 'min-h-[32rem]' : 'min-h-[8rem]'">
         <div
           v-if="activeTab === 'static'"
           class="flex flex-col gap-4">
-          <div class="flex flex-col gap-2">
-            <label
-              for="static-title"
-              class="font-medium text-surface-200">
-              Title
-            </label>
-            <InputText
-              id="static-title"
-              v-model="title"
-              placeholder="XSS Testing"
-              class="w-full" />
-          </div>
           <div class="flex flex-col gap-2">
             <label
               for="static-content"
@@ -197,26 +198,14 @@ const canSave = () => {
               id="static-content"
               v-model="content"
               placeholder="Instructions for the agent..."
-              rows="10"
-              class="w-full font-mono text-sm" />
+              rows="20"
+              class="w-full min-h-[28rem] font-mono text-sm" />
           </div>
         </div>
 
         <div
           v-else
           class="flex flex-col gap-4">
-          <div class="flex flex-col gap-2">
-            <label
-              for="dynamic-title"
-              class="font-medium text-surface-200">
-              Title
-            </label>
-            <InputText
-              id="dynamic-title"
-              v-model="title"
-              placeholder="XSS Testing"
-              class="w-full" />
-          </div>
           <div class="flex flex-col gap-2">
             <label
               for="dynamic-url"
