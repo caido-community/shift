@@ -458,6 +458,7 @@ Logic: AND (both true, higher priority), OR (either true)
 
 Examples:
 req.method.eq:"GET"
+req.raw.cont:"Authorization: Bearer"
 resp.code.eq:200
 req.path.cont:"/api/"
 req.host.eq:"example.com" AND resp.code.gt:400
