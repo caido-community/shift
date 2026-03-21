@@ -5,8 +5,8 @@ import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import { isPresent } from "@/utils";
 
-const DEFAULT_LIMIT = 8000;
-const MAX_LIMIT = 20000;
+const DEFAULT_LIMIT = 15000;
+const MAX_LIMIT = 30000;
 
 type ReadSkillRangeResult = {
   skillId: string;
