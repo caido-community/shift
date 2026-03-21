@@ -4,7 +4,6 @@ import type { AgentMode, Model } from "shared";
 import type { AgentContext } from "@/agent/context";
 import { BASE_SYSTEM_PROMPT, WILDCARD_MODE_PROMPT } from "@/agent/prompt";
 import { shiftAgentTools } from "@/agent/tools";
-import { trimOldToolCalls } from "@/agent/utils/messages";
 import { repairToolCall } from "@/float/toolCallRepair";
 import { type FrontendSDK } from "@/types";
 import { createModel, type ReasoningEffort } from "@/utils/ai";
@@ -24,8 +23,6 @@ function getToolsForMode(mode: AgentMode) {
   const tools = { ...shiftAgentTools };
   return tools;
 }
-
-const RECENT_TOOL_MESSAGES = 15;
 
 function buildInstructions(options: BuildInstructionsOptions): string {
   const { context, steps, maxSteps, model } = options;
@@ -99,17 +96,20 @@ export const createShiftAgent = (options: AgentOptions) => {
     experimental_context: context,
     experimental_repairToolCall: async ({ toolCall, inputSchema, error }) =>
       (await repairToolCall(toolCall, inputSchema, error)) ?? null,
-    // Trim old tool calls/results to reduce context size while preserving text content
-    prepareStep: ({ messages, ...settings }) => ({
-      ...settings,
-      messages: trimOldToolCalls(messages, RECENT_TOOL_MESSAGES),
-      system: buildInstructions({
-        context,
-        steps: settings.steps.length,
-        maxSteps: maxIterations,
-        model,
-      }),
-    }),
+    prepareStep: async ({ messages, ...settings }) => {
+      await context.fetchEntriesInfo();
+
+      return {
+        ...settings,
+        messages,
+        system: buildInstructions({
+          context,
+          steps: settings.steps.length,
+          maxSteps: maxIterations,
+          model,
+        }),
+      };
+    },
   });
 
   return agent;
