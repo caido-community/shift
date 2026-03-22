@@ -225,8 +225,10 @@ describe("buildContextPrompt - full coverage", () => {
     expect(result).toMatch(/\n<\/context>$/);
   });
 
-  it("returns empty string when snapshot has no sections", () => {
-    expect(buildContextPrompt({})).toBe("");
+  it("includes empty todos section when snapshot has no other sections", () => {
+    expect(buildContextPrompt({})).toBe(
+      "<context>\n<todos>\nThere's no todos yet.\n</todos>\n</context>"
+    );
   });
 });
 
