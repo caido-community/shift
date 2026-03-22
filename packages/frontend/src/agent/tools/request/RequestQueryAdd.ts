@@ -32,9 +32,7 @@ export const display = {
     input
       ? [
           { text: "Added query param " },
-          { text: truncate(input.key, 40), muted: true },
-          { text: " = " },
-          { text: truncate(input.value, 90), muted: true },
+          { text: truncate(input.key, 40) + " = " + truncate(input.value, 90), muted: true }
         ]
       : [{ text: "Added " }, { text: "query param", muted: true }],
   error: ({ input }) => `Failed to add query param${withSuffix(input?.key)}`,
