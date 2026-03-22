@@ -40,7 +40,7 @@ describe("readSkillRange", () => {
   it("respects MAX_LIMIT", () => {
     const content = "x".repeat(50000);
     const result = readSkillRange(content, 0, 50000);
-    expect(result.content.length).toBe(20000);
+    expect(result.content.length).toBe(30000);
     expect(result.hasMore).toBe(true);
   });
 });

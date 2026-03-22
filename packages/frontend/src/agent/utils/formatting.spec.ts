@@ -70,6 +70,10 @@ describe("formatToolDisplayText", () => {
     expect(formatToolDisplayText("Set body to hello")).toBe("Set body to hello");
   });
 
+  it("returns an empty string for missing text", () => {
+    expect(formatToolDisplayText(undefined)).toBe("");
+  });
+
   it("replaces blob placeholders with readable labels", () => {
     expect(formatToolDisplayText("Set body to §§§Blob§blob-123§§§")).toBe(
       "Set body to [payload blob: blob-123]"

@@ -196,7 +196,9 @@ export const RequestSend = tool({
       case "Ok":
         return {
           type: "text",
-          value: formatRequestSendModelOutput(output.value as RequestSendValue & { message: string }),
+          value: formatRequestSendModelOutput(
+            output.value as RequestSendValue & { message: string }
+          ),
         };
       case "Error":
         return {

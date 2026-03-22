@@ -6,7 +6,7 @@ const statusLabel: Record<Todo["status"], string> = {
   completed: "completed",
 };
 
-export function formatTodosAsReadableText(todos: Todo[]): string {
+function formatTodosAsReadableText(todos: Todo[]): string {
   if (todos.length === 0) return "";
   return todos.map((t) => `#${t.id} [${statusLabel[t.status]}] ${t.content}`).join("\n");
 }

@@ -177,10 +177,7 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
     storeWatchUnsubscribe = watch(
       () => {
         return Array.from(agentStore.state.indicatorStates.entries())
-          .map(
-            ([sessionId, state]) =>
-              `${sessionId}:${state.status}:${state.hasMessages ? 1 : 0}`
-          )
+          .map(([sessionId, state]) => `${sessionId}:${state.status}:${state.hasMessages ? 1 : 0}`)
           .sort()
           .join("|");
       },
@@ -278,7 +275,11 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
       const description = getDescriptionFromChatStatus(indicatorState.status);
 
       const existing = sessionIndicators.get(sessionId);
-      if (existing !== undefined && existing.icon === icon && existing.description === description) {
+      if (
+        existing !== undefined &&
+        existing.icon === icon &&
+        existing.description === description
+      ) {
         continue;
       }
 
