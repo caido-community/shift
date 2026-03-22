@@ -102,7 +102,9 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
         } catch (err) {
           console.warn("Historical tool output blob replacement failed, using full messages:", err);
         }
-        const modelMessages = await convertToModelMessages(messagesForModel);
+        const modelMessages = await convertToModelMessages(messagesForModel, {
+          ignoreIncompleteToolCalls: true,
+        });
 
         const result = await agent.stream({
           messages: modelMessages,

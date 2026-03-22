@@ -42,36 +42,40 @@ export const ReplayEntryNavigate = tool({
   inputSchema,
   outputSchema,
   execute: async ({ entryId }, { experimental_context }): Promise<ReplayEntryNavigateOutput> => {
-    const context = experimental_context as AgentContext;
-    const sdk = context.sdk;
+    try {
+      const context = experimental_context as AgentContext;
+      const sdk = context.sdk;
 
-    const entry = sdk.replay.getEntry(entryId);
-    if (!isPresent(entry)) {
-      return ToolResult.err("Entry not found");
+      const entry = sdk.replay.getEntry(entryId);
+      if (!isPresent(entry)) {
+        return ToolResult.err("Entry not found");
+      }
+
+      if (entry.sessionId !== context.sessionId) {
+        return ToolResult.err("Entry does not belong to the current session");
+      }
+
+      await sdk.replay.showEntry(context.sessionId, entryId, {
+        overwriteDraft: true,
+      });
+
+      const entryResult = await sdk.graphql.replayEntry({
+        id: entryId,
+      });
+      const replayEntry = entryResult.replayEntry;
+
+      if (isPresent(replayEntry)) {
+        context.setHttpRequest(replayEntry.raw);
+      }
+
+      return ToolResult.ok({
+        message: `Navigated to entry ${entryId}`,
+        entryId,
+        requestId: entry.requestId,
+        requestRaw: replayEntry?.raw,
+      });
+    } catch (error) {
+      return ToolResult.err("Failed to navigate to entry", (error as Error).message);
     }
-
-    if (entry.sessionId !== context.sessionId) {
-      return ToolResult.err("Entry does not belong to the current session");
-    }
-
-    await sdk.replay.showEntry(context.sessionId, entryId, {
-      overwriteDraft: true,
-    });
-
-    const entryResult = await sdk.graphql.replayEntry({
-      id: entryId,
-    });
-    const replayEntry = entryResult.replayEntry;
-
-    if (isPresent(replayEntry)) {
-      context.setHttpRequest(replayEntry.raw);
-    }
-
-    return ToolResult.ok({
-      message: `Navigated to entry ${entryId}`,
-      entryId,
-      requestId: entry.requestId,
-      requestRaw: replayEntry?.raw,
-    });
   },
 });

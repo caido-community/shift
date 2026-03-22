@@ -343,11 +343,36 @@ describe("stripUnfinishedToolCalls", () => {
     expect(assistant.parts[1]!.type).toBe("tool-invocation");
   });
 
-  it("returns original array when no changes are needed", () => {
+  it("preserves tool parts with output-error state", () => {
+    const messages = [
+      createUserMessage("Hello"),
+      createAssistantMessageWithToolState("output-error"),
+    ];
+    const result = stripUnfinishedToolCalls(messages);
+    const assistant = result[1]!;
+
+    expect(assistant.parts).toHaveLength(2);
+    expect(assistant.parts[1]!.type).toBe("tool-invocation");
+  });
+
+  it("normalizes legacy result state to output-available", () => {
     const messages = [createUserMessage("Hello"), createAssistantMessageWithToolState("result")];
 
     const result = stripUnfinishedToolCalls(messages);
-    expect(result).toBe(messages);
+    const assistant = result[1]!;
+
+    expect(result).not.toBe(messages);
+    expect((assistant.parts[1] as { state?: string }).state).toBe("output-available");
+  });
+
+  it("normalizes legacy error state to output-error", () => {
+    const messages = [createUserMessage("Hello"), createAssistantMessageWithToolState("error")];
+
+    const result = stripUnfinishedToolCalls(messages);
+    const assistant = result[1]!;
+
+    expect(result).not.toBe(messages);
+    expect((assistant.parts[1] as { state?: string }).state).toBe("output-error");
   });
 });
 

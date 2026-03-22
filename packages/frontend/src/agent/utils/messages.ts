@@ -47,8 +47,24 @@ export function stripReasoningParts(messages: ShiftMessage[]): ShiftMessage[] {
   return didChange ? updated : messages;
 }
 
+function normalizeToolState(state: string | undefined): string | undefined {
+  switch (state) {
+    case "result":
+      return "output-available";
+    case "error":
+      return "output-error";
+    default:
+      return state;
+  }
+}
+
+function isIncompleteToolState(state: string | undefined): boolean {
+  return state === "input-streaming" || state === "input-available";
+}
+
 function isFinishedToolState(state: string | undefined): boolean {
-  return state === "output-available" || state === "result" || state === "error";
+  const normalizedState = normalizeToolState(state);
+  return normalizedState !== undefined && !isIncompleteToolState(normalizedState);
 }
 
 export function stripUnfinishedToolCalls(messages: ShiftMessage[]): ShiftMessage[] {
@@ -59,24 +75,37 @@ export function stripUnfinishedToolCalls(messages: ShiftMessage[]): ShiftMessage
       return message;
     }
 
-    const filteredParts = message.parts.filter((part) => {
+    let didMessageChange = false;
+    const filteredParts = message.parts.reduce<ShiftMessage["parts"]>((parts, part) => {
       if (!isToolUIPart(part)) {
-        return true;
+        parts.push(part);
+        return parts;
       }
 
-      if (isFinishedToolState((part as ToolUIState).state)) {
-        return true;
+      const toolPart = part as ToolUIState;
+      const normalizedState = normalizeToolState(toolPart.state);
+
+      if (isIncompleteToolState(normalizedState)) {
+        didChange = true;
+        didMessageChange = true;
+        return parts;
       }
 
-      didChange = true;
-      return false;
-    });
+      if (normalizedState !== toolPart.state) {
+        didChange = true;
+        didMessageChange = true;
+        parts.push({ ...part, state: normalizedState } as typeof part);
+        return parts;
+      }
 
-    if (filteredParts.length === message.parts.length) {
+      parts.push(part);
+      return parts;
+    }, []);
+
+    if (!didMessageChange) {
       return message;
     }
 
-    didChange = true;
     return {
       ...message,
       parts: filteredParts,
