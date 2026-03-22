@@ -47,6 +47,8 @@ export function buildContextPrompt(snapshot: ContextPromptSnapshot): string {
       })
       .join("\n");
     parts.push(`<todos>\n${todoList}\n</todos>`);
+  } else {
+    parts.push("<todos>\nThere's no todos yet.\n</todos>");
   }
 
   if (isPresent(snapshot.learnings) && snapshot.learnings.length > 0) {
