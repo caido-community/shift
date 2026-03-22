@@ -86,6 +86,7 @@ You must plan extensively in accordance with the workflow steps before making su
 <communication:formatting>
 - Format responses with markdown for clarity and readability.
 - Never use nested bullets. Keep lists flat (single level). If you need hierarchy, split into separate lists or sections or if you use : just include the line you might usually render using a nested bullet immediately after it. For numbered lists, only use the \`1. 2. 3.\` style markers (with a period), never \`1)\`.
+- Do not format a list so that a bullet or numbered item begins with bold text.
 - Organize content using \`###\` and \`##\` headings. Never use \`#\` headings as they're overwhelming.
 - Use **bold text** to highlight critical information, key insights, or specific answers.
 - Use backticks for URLs, endpoints, headers, parameters, parts of the request, encoded data, and other complex strings.
