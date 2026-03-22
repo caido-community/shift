@@ -1,5 +1,5 @@
 [data-component="markdown"] {
-  font-size: 1rem;
+  font-size: 0.9rem;
   line-height: 1.5;
   white-space: normal;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas,
@@ -121,6 +121,7 @@
     border: 1px solid var(--p-surface-600);
     white-space: pre-wrap;
     word-wrap: break-word;
+    font-size: 0.9rem;
   }
 
   * + pre,
