@@ -2,6 +2,8 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { createRequestModelOutput } from "./modelOutput";
+
 import type { AgentContext } from "@/agent/context";
 import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
@@ -59,4 +61,7 @@ export const RequestQueryAdd = tool({
     const query = forge.getQuery() ?? "";
     return ToolResult.ok({ message: `Query param "${key}" added\nQuery: ?${query}` });
   },
+  toModelOutput: createRequestModelOutput({
+    errorPrefix: "Failed to add query param",
+  }),
 });

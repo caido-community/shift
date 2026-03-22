@@ -2,6 +2,8 @@ import { tool } from "ai";
 import { type Result } from "shared";
 import { z } from "zod";
 
+import { withReadableTodosText } from "./utils";
+
 import type { AgentContext } from "@/agent/context";
 import {
   type Todo,
@@ -75,5 +77,26 @@ export const TodoRemove = tool({
       message: `Removed ${todos.length} ${pluralize(todos.length, "todo")}`,
       todos,
     });
+  },
+  toModelOutput: ({ output }) => {
+    switch (output.kind) {
+      case "Ok": {
+        const value = output.value as TodoRemoveValue & { message: string };
+        return {
+          type: "text",
+          value: withReadableTodosText(value.message, value.todos),
+        };
+      }
+      case "Error":
+        return {
+          type: "text",
+          value: `Failed to remove todos: ${output.error.message}`,
+        };
+      default:
+        return {
+          type: "text",
+          value: "Unknown error",
+        };
+    }
   },
 });

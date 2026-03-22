@@ -1,6 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { formatRequestRangeReadModelOutput } from "./modelOutput";
+
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import { isPresent } from "@/utils";
@@ -96,5 +98,29 @@ export const RequestRangeRead = tool({
       requestLength: request.length,
       hasMore: endOffset < request.length,
     });
+  },
+  toModelOutput: ({ output }) => {
+    switch (output.kind) {
+      case "Ok":
+        return {
+          type: "text",
+          value: formatRequestRangeReadModelOutput(
+            output.value as RequestRangeReadValue & { message: string }
+          ),
+        };
+      case "Error":
+        return {
+          type: "text",
+          value:
+            output.error.detail !== undefined && output.error.detail !== ""
+              ? `Failed to read request: ${output.error.message}\n${output.error.detail}`
+              : `Failed to read request: ${output.error.message}`,
+        };
+      default:
+        return {
+          type: "text",
+          value: "Unknown error",
+        };
+    }
   },
 });

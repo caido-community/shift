@@ -21,6 +21,15 @@ type RequestSendInput = z.infer<typeof inputSchema>;
 type RequestSendValue = z.infer<typeof valueSchema>;
 type RequestSendOutput = ToolResultType<RequestSendValue>;
 
+export const formatRequestSendModelOutput = (value: {
+  message: string;
+  rawResponse: string;
+  roundtripTime: number;
+  responseId: string;
+  statusLine: string;
+}): string =>
+  `${value.message}\nStatus line: ${value.statusLine}\nRoundtrip time: ${value.roundtripTime}ms\nResponse ID: ${value.responseId}\n\n${value.rawResponse}`;
+
 const extractStatusLine = (rawResponse: string): string => {
   const firstLine = rawResponse.split("\n")[0]?.trim() ?? "";
   const match = firstLine.match(/^HTTP\/[\d.]+ (\d+ .+)$/);
@@ -181,5 +190,27 @@ export const RequestSend = tool({
       responseId,
       statusLine,
     });
+  },
+  toModelOutput: ({ output }) => {
+    switch (output.kind) {
+      case "Ok":
+        return {
+          type: "text",
+          value: formatRequestSendModelOutput(output.value as RequestSendValue & { message: string }),
+        };
+      case "Error":
+        return {
+          type: "text",
+          value:
+            output.error.detail !== undefined && output.error.detail !== ""
+              ? `Failed to send request: ${output.error.message}\n${output.error.detail}`
+              : `Failed to send request: ${output.error.message}`,
+        };
+      default:
+        return {
+          type: "text",
+          value: "Unknown error",
+        };
+    }
   },
 });

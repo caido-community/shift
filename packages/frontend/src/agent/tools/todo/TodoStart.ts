@@ -1,6 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { withReadableTodosText } from "./utils";
+
 import type { AgentContext } from "@/agent/context";
 import {
   type Todo,
@@ -68,5 +70,26 @@ export const TodoStart = tool({
       message: `Started todo ${result.value.id}`,
       todo: result.value,
     });
+  },
+  toModelOutput: ({ output }) => {
+    switch (output.kind) {
+      case "Ok": {
+        const value = output.value as TodoStartValue & { message: string };
+        return {
+          type: "text",
+          value: withReadableTodosText(value.message, [value.todo]),
+        };
+      }
+      case "Error":
+        return {
+          type: "text",
+          value: `Failed to start todo: ${output.error.message}`,
+        };
+      default:
+        return {
+          type: "text",
+          value: "Unknown error",
+        };
+    }
   },
 });
