@@ -3,6 +3,7 @@ import { useAgentCard } from "./useAgentCard";
 import { useAgentCardLogs } from "./useAgentCardLogs";
 import { useAgentCardResize } from "./useAgentCardResize";
 
+import { formatToolDisplayText } from "@/agent/utils/formatting";
 import { TextShimmer } from "@/components/common/TextShimmer";
 import { type BackgroundAgent } from "@/stores/backgroundAgents";
 
@@ -94,7 +95,9 @@ const { activeHandle, cardStyle, resizeCursorClass, startResize } = useAgentCard
             <template
               v-for="(part, index) in log.parts"
               :key="index">
-              <span :class="{ 'text-surface-500': part.muted }">{{ part.text }}</span>
+              <span :class="{ 'text-surface-500': part.muted }">
+                {{ formatToolDisplayText(part.text) }}
+              </span>
             </template>
           </div>
         </div>

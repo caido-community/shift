@@ -2,6 +2,8 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { createRequestModelOutput } from "./modelOutput";
+
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import { truncate, withSuffix } from "@/utils";
@@ -45,4 +47,7 @@ export const RequestCookieRemove = tool({
       message: `Cookie "${name}" removed\nCookie: ${cookieHeader ?? "(none)"}`,
     });
   },
+  toModelOutput: createRequestModelOutput({
+    errorPrefix: "Failed to remove cookie",
+  }),
 });

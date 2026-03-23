@@ -1,7 +1,5 @@
 ---
-globs:
-  - "**/packages/backend/**"
-alwaysApply: true
+name: caido-backend
 description: Caido Backend SDK Rules and Patterns
 ---
 

@@ -7,8 +7,9 @@ import {
   type ModelProvider as ModelProviderId,
 } from "shared";
 
-import type { FrontendSDK } from "@/types";
-import { isPresent } from "@/utils/optional";
+import type { FrontendSDK } from "../types";
+
+import { isPresent } from "./optional";
 
 type ProviderStatus = {
   id: AIUpstreamProviderId;

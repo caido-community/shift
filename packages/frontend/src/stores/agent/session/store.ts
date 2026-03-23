@@ -46,15 +46,22 @@ function createSessionStore(sessionId: string) {
     const reasoningEffort = computed(() => model.value.reasoningEffort);
 
     function addTodo(content: string): Result<Todo> {
-      const id = generateId();
-      const result = dispatch({ type: "ADD_TODO", id, content });
+      const result = dispatch({ type: "ADD_TODO", content });
       if (isResultUpdate<Todo>(result)) {
         return result.result;
       }
       return { kind: "Error", error: "Unexpected dispatch result" };
     }
 
-    function completeTodo(id: string): Result<Todo> {
+    function startTodo(id: number): Result<Todo> {
+      const result = dispatch({ type: "START_TODO", id });
+      if (isResultUpdate<Todo>(result)) {
+        return result.result;
+      }
+      return { kind: "Error", error: "Unexpected dispatch result" };
+    }
+
+    function completeTodo(id: number): Result<Todo> {
       const result = dispatch({ type: "COMPLETE_TODO", id });
       if (isResultUpdate<Todo>(result)) {
         return result.result;
@@ -62,7 +69,7 @@ function createSessionStore(sessionId: string) {
       return { kind: "Error", error: "Unexpected dispatch result" };
     }
 
-    function removeTodo(id: string): Result<Todo> {
+    function removeTodo(id: number): Result<Todo> {
       const result = dispatch({ type: "REMOVE_TODO", id });
       if (isResultUpdate<Todo>(result)) {
         return result.result;
@@ -160,6 +167,7 @@ function createSessionStore(sessionId: string) {
       snapshots,
       dispatch,
       addTodo,
+      startTodo,
       completeTodo,
       removeTodo,
       clearTodos,

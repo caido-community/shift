@@ -1,80 +1,12 @@
-import {
-  type AssistantModelMessage,
-  isToolUIPart,
-  type ModelMessage,
-  type ToolModelMessage,
-} from "ai";
+import { isToolUIPart } from "ai";
+import { Result } from "shared";
 import type { ShiftMessage } from "shared";
 
-type ToolCallPart = { type: "tool-call"; toolCallId: string };
-type ToolResultPart = { type: "tool-result"; toolCallId: string };
-type ToolUIState = { state?: string };
+type ToolUIState = { state?: string; output?: unknown };
 type ReasoningPart = { type: "reasoning" };
-
-function isToolCallPart(part: { type: string }): part is ToolCallPart {
-  return part.type === "tool-call";
-}
-
-function isToolResultPart(part: { type: string }): part is ToolResultPart {
-  return part.type === "tool-result";
-}
 
 function isReasoningPart(part: { type: string }): part is ReasoningPart {
   return part.type === "reasoning";
-}
-
-export function trimOldToolCalls(
-  messages: ModelMessage[],
-  keepRecentCount: number
-): ModelMessage[] {
-  if (messages.length <= keepRecentCount) {
-    return messages;
-  }
-
-  const cutoffIndex = messages.length - keepRecentCount;
-  const removedToolCallIds = new Set<string>();
-
-  for (let i = 0; i < cutoffIndex; i++) {
-    const msg = messages[i];
-    if (msg?.role === "assistant" && typeof msg.content !== "string") {
-      for (const part of msg.content) {
-        if (isToolCallPart(part)) {
-          removedToolCallIds.add(part.toolCallId);
-        }
-      }
-    }
-  }
-
-  return messages.map((msg, index): ModelMessage => {
-    if (msg.role === "tool") {
-      const filteredContent = msg.content.filter(
-        (part) => !isToolResultPart(part) || !removedToolCallIds.has(part.toolCallId)
-      );
-      if (filteredContent.length === msg.content.length) {
-        return msg;
-      }
-      return {
-        ...msg,
-        content: filteredContent,
-      } as ToolModelMessage;
-    }
-
-    if (index >= cutoffIndex) {
-      return msg;
-    }
-
-    if (msg.role === "assistant") {
-      if (typeof msg.content === "string") {
-        return msg;
-      }
-      return {
-        ...msg,
-        content: msg.content.filter((part) => !isToolCallPart(part)),
-      } as AssistantModelMessage;
-    }
-
-    return msg;
-  });
 }
 
 export function stripReasoningParts(messages: ShiftMessage[]): ShiftMessage[] {
@@ -115,8 +47,24 @@ export function stripReasoningParts(messages: ShiftMessage[]): ShiftMessage[] {
   return didChange ? updated : messages;
 }
 
+function normalizeToolState(state: string | undefined): string | undefined {
+  switch (state) {
+    case "result":
+      return "output-available";
+    case "error":
+      return "output-error";
+    default:
+      return state;
+  }
+}
+
+function isIncompleteToolState(state: string | undefined): boolean {
+  return state === "input-streaming" || state === "input-available";
+}
+
 function isFinishedToolState(state: string | undefined): boolean {
-  return state === "output-available" || state === "result" || state === "error";
+  const normalizedState = normalizeToolState(state);
+  return normalizedState !== undefined && !isIncompleteToolState(normalizedState);
 }
 
 export function stripUnfinishedToolCalls(messages: ShiftMessage[]): ShiftMessage[] {
@@ -127,24 +75,37 @@ export function stripUnfinishedToolCalls(messages: ShiftMessage[]): ShiftMessage
       return message;
     }
 
-    const filteredParts = message.parts.filter((part) => {
+    let didMessageChange = false;
+    const filteredParts = message.parts.reduce<ShiftMessage["parts"]>((parts, part) => {
       if (!isToolUIPart(part)) {
-        return true;
+        parts.push(part);
+        return parts;
       }
 
-      if (isFinishedToolState((part as ToolUIState).state)) {
-        return true;
+      const toolPart = part as ToolUIState;
+      const normalizedState = normalizeToolState(toolPart.state);
+
+      if (isIncompleteToolState(normalizedState)) {
+        didChange = true;
+        didMessageChange = true;
+        return parts;
       }
 
-      didChange = true;
-      return false;
-    });
+      if (normalizedState !== toolPart.state) {
+        didChange = true;
+        didMessageChange = true;
+        parts.push({ ...part, state: normalizedState } as typeof part);
+        return parts;
+      }
 
-    if (filteredParts.length === message.parts.length) {
+      parts.push(part);
+      return parts;
+    }, []);
+
+    if (!didMessageChange) {
       return message;
     }
 
-    didChange = true;
     return {
       ...message,
       parts: filteredParts,
@@ -194,6 +155,106 @@ export function hasToolPartsSinceLastUserMessage(messages: ShiftMessage[]): bool
   if (lastUserIndex === -1) return false;
 
   return hasToolPartsSinceIndex(messages, lastUserIndex);
+}
+
+/**
+ * Serialize tool output to a string for storage in a blob.
+ * Handles Result wrapper, plain objects, and primitives.
+ */
+export function serializeToolOutput(output: unknown): string {
+  if (output === undefined || output === null) {
+    return "";
+  }
+  if (Result.isResult(output)) {
+    return JSON.stringify(output);
+  }
+  if (typeof output === "string") {
+    return output;
+  }
+  if (typeof output === "object") {
+    try {
+      return JSON.stringify(output);
+    } catch {
+      return "[unserializable tool output]";
+    }
+  }
+  if (typeof output === "number" || typeof output === "boolean" || typeof output === "bigint") {
+    return String(output);
+  }
+  if (typeof output === "symbol") {
+    return output.toString();
+  }
+  if (typeof output === "function") {
+    return String(output);
+  }
+  return "";
+}
+
+type CreateBlobForHistory = (content: string, reason: string) => { blobId: string };
+
+const DEFAULT_MIN_OUTPUT_LENGTH_TO_REPLACE = 500;
+
+/**
+ * Replace large tool outputs in previous turns with blob-backed placeholders.
+ * Only affects assistant tool-invocation parts before the last user message.
+ */
+export function replaceHistoricalToolOutputsWithBlobRefs(
+  messages: ShiftMessage[],
+  createBlob: CreateBlobForHistory,
+  options?: { minOutputLengthToReplace?: number }
+): ShiftMessage[] {
+  const lastUserIndex = findLastUserMessageIndex(messages);
+  if (lastUserIndex < 0) {
+    return messages;
+  }
+
+  const threshold = options?.minOutputLengthToReplace ?? DEFAULT_MIN_OUTPUT_LENGTH_TO_REPLACE;
+  let didChange = false;
+  const updated: ShiftMessage[] = [];
+
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i]!;
+    if (message.role !== "assistant" || i >= lastUserIndex) {
+      updated.push(message);
+      continue;
+    }
+
+    let didMessageChange = false;
+    const newParts = message.parts.map((part) => {
+      if (!isToolUIPart(part)) {
+        return part;
+      }
+      const toolPart = part as ToolUIState;
+      if (!isFinishedToolState(toolPart.state) || toolPart.output === undefined) {
+        return part;
+      }
+
+      const serialized = serializeToolOutput(toolPart.output);
+      if (serialized.length < threshold) {
+        return part;
+      }
+
+      didChange = true;
+      didMessageChange = true;
+      const { blobId } = createBlob(
+        serialized,
+        `Historical tool output (${serialized.length} chars)`
+      );
+      const placeholder = `Read output from blob ID ${blobId} with PayloadBlobRangeRead.`;
+      return {
+        ...part,
+        output: placeholder,
+      } as typeof part;
+    });
+
+    if (!didMessageChange) {
+      updated.push(message);
+      continue;
+    }
+    updated.push({ ...message, parts: newParts } as ShiftMessage);
+  }
+
+  return didChange ? updated : messages;
 }
 
 type ExtractResult = {

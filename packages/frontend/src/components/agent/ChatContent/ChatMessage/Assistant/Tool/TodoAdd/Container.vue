@@ -4,7 +4,7 @@ import { computed, ref, toRef, watch } from "vue";
 
 import { useTool } from "../useTool";
 
-import { type Todo } from "@/agent/types";
+import { isTodoCompleted, isTodoInProgress, type Todo } from "@/agent/types";
 import { useSession } from "@/components/agent/useSession";
 import { TextShimmer } from "@/components/common/TextShimmer";
 import { isPresent, pluralize } from "@/utils";
@@ -44,7 +44,7 @@ const todos = computed(() => {
   return storeTodos.filter((todo) => ids.has(todo.id));
 });
 
-const completedCount = computed(() => todos.value.filter((t) => t.completed).length);
+const completedCount = computed(() => todos.value.filter((t) => isTodoCompleted(t)).length);
 
 const isExpanded = ref(true);
 
@@ -83,9 +83,11 @@ const toggle = () => {
         class="w-full px-2 py-1 flex items-center justify-between hover:bg-surface-800/50 transition-colors"
         :class="{ 'border-b border-surface-700/50': isExpanded }"
         @click="toggle">
-        <span class="text-surface-400 text-xs">
-          {{ completedCount }}/{{ todos.length }} {{ pluralize(todos.length, "todo") }}
-        </span>
+        <div class="flex items-center gap-2">
+          <span class="text-surface-400 text-xs">
+            {{ completedCount }}/{{ todos.length }} {{ pluralize(todos.length, "todo") }}
+          </span>
+        </div>
         <i
           class="fas fa-chevron-down text-surface-500 text-[10px] transition-transform duration-200"
           :class="{ 'rotate-180': isExpanded }" />
@@ -98,18 +100,31 @@ const toggle = () => {
           :key="todo.id"
           class="flex items-center gap-1.5 px-2 py-1 border-b border-surface-700/30 last:border-b-0">
           <div
-            v-if="todo.completed"
+            v-if="isTodoCompleted(todo)"
             class="w-3 h-3 rounded-sm bg-blue-500 shrink-0 flex items-center justify-center">
             <i class="fas fa-check text-white text-[8px]" />
           </div>
           <div
+            v-else-if="isTodoInProgress(todo)"
+            class="w-3 h-3 rounded-sm border border-amber-400/50 bg-amber-500/10 shrink-0 flex items-center justify-center">
+            <div class="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" />
+          </div>
+          <div
             v-else
             class="w-3 h-3 rounded-sm border border-surface-600 bg-surface-800 shrink-0" />
-          <span
-            class="text-xs font-mono truncate"
-            :class="todo.completed ? 'text-surface-500 line-through' : 'text-surface-300'">
-            {{ todo.content }}
-          </span>
+          <div class="min-w-0 flex-1">
+            <span
+              v-if="isTodoInProgress(todo)"
+              class="block truncate text-xs font-mono text-amber-100">
+              {{ todo.content }}
+            </span>
+            <span
+              v-else
+              class="block truncate text-xs font-mono"
+              :class="isTodoCompleted(todo) ? 'text-surface-500 line-through' : 'text-surface-300'">
+              {{ todo.content }}
+            </span>
+          </div>
         </div>
       </div>
     </div>

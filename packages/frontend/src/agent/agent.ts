@@ -2,68 +2,19 @@ import { stepCountIs, ToolLoopAgent } from "ai";
 import type { AgentMode, Model } from "shared";
 
 import type { AgentContext } from "@/agent/context";
-import { BASE_SYSTEM_PROMPT, WILDCARD_MODE_PROMPT } from "@/agent/prompt";
+import {
+  buildAgentInstructions,
+  buildRuntimeContextMessage,
+  withRuntimeContextMessage,
+} from "@/agent/instructions";
 import { shiftAgentTools } from "@/agent/tools";
-import { trimOldToolCalls } from "@/agent/utils/messages";
 import { repairToolCall } from "@/float/toolCallRepair";
 import { type FrontendSDK } from "@/types";
 import { createModel, type ReasoningEffort } from "@/utils/ai";
 
-type BuildInstructionsOptions = {
-  context: AgentContext;
-  steps: number;
-  maxSteps: number;
-  model: Model;
-};
-
-function isGeminiModel(model: Model): boolean {
-  return model.id.toLowerCase().includes("gemini");
-}
-
 function getToolsForMode(mode: AgentMode) {
   const tools = { ...shiftAgentTools };
   return tools;
-}
-
-const RECENT_TOOL_MESSAGES = 15;
-
-function buildInstructions(options: BuildInstructionsOptions): string {
-  const { context, steps, maxSteps, model } = options;
-  const parts: string[] = [BASE_SYSTEM_PROMPT];
-
-  if (context.mode === "wildcard") {
-    parts.push(WILDCARD_MODE_PROMPT);
-  }
-
-  // TODO: temporary fix, seems like signatures are broken when agent returns multiple toolcalls
-  if (isGeminiModel(model)) {
-    parts.push(
-      `IMPORTANT: You must NEVER call multiple tools in parallel. Only call ONE tool per response. ` +
-        `Wait for each tool result before making the next tool call.`
-    );
-  }
-
-  const skillsPrompt = context.toSkillsPrompt();
-  if (skillsPrompt !== "") {
-    parts.push(skillsPrompt);
-  }
-
-  const contextPrompt = context.toContextPrompt();
-  if (contextPrompt !== "") {
-    parts.push(contextPrompt);
-  }
-
-  if (steps > 0) {
-    parts.push(
-      `You have already completed ${steps} iterations out of a maximum of ${maxSteps}. ` +
-        (steps >= maxSteps * 0.8
-          ? `You are approaching the iteration limit, so start wrapping up your work. `
-          : "") +
-        `The agent will automatically pause when it reaches ${maxSteps} iterations, but you can stop at any time once your task is complete.`
-    );
-  }
-
-  return parts.join("\n\n");
 }
 
 type AgentOptions = {
@@ -86,10 +37,8 @@ export const createShiftAgent = (options: AgentOptions) => {
   const tools = getToolsForMode(context.mode);
   const agent = new ToolLoopAgent({
     model: caidoModel,
-    instructions: buildInstructions({
+    instructions: buildAgentInstructions({
       context,
-      steps: 0,
-      maxSteps: maxIterations,
       model,
     }),
     tools,
@@ -99,17 +48,24 @@ export const createShiftAgent = (options: AgentOptions) => {
     experimental_context: context,
     experimental_repairToolCall: async ({ toolCall, inputSchema, error }) =>
       (await repairToolCall(toolCall, inputSchema, error)) ?? null,
-    // Trim old tool calls/results to reduce context size while preserving text content
-    prepareStep: ({ messages, ...settings }) => ({
-      ...settings,
-      messages: trimOldToolCalls(messages, RECENT_TOOL_MESSAGES),
-      system: buildInstructions({
+    prepareStep: async ({ messages, ...settings }) => {
+      await context.fetchEntriesInfo();
+
+      const runtimeContextMessage = buildRuntimeContextMessage({
         context,
         steps: settings.steps.length,
         maxSteps: maxIterations,
-        model,
-      }),
-    }),
+      });
+
+      return {
+        ...settings,
+        messages: withRuntimeContextMessage(messages, runtimeContextMessage),
+        system: buildAgentInstructions({
+          context,
+          model,
+        }),
+      };
+    },
   });
 
   return agent;

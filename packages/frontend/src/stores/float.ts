@@ -9,7 +9,7 @@ import { isPresent } from "@/utils/optional";
 export const useFloatStore = defineStore("float", () => {
   const sdk = useSDK();
   const textarea = ref<HTMLTextAreaElement | undefined>(undefined);
-  const query = shallowRef<string>("spin up a background agent that higlights auth flow");
+  const query = shallowRef<string>("");
   const isRunning = shallowRef(false);
   const historyIndex = shallowRef<number>(-1);
   const history = shallowRef<string[]>([]);

@@ -1,7 +1,5 @@
 ---
-globs:
-  - "**/packages/frontend/**"
-alwaysApply: true
+name: caido-frontend
 description: Caido Frontend SDK Rules and Patterns
 ---
 

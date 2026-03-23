@@ -1,6 +1,6 @@
 ---
-globs: *.vue
-alwaysApply: false
+name: components
+description: Vue component structure, PrimeVue, and script setup conventions
 ---
 
 # Components

@@ -42,6 +42,12 @@ function handleUpdateStaticSkill(
         skill.scope = message.updates.scope;
         skill.projectId = message.updates.scope === "project" ? message.projectId : undefined;
       }
+      if (message.updates.description !== undefined) {
+        skill.description = message.updates.description;
+      }
+      if (message.updates.attachMode !== undefined) {
+        skill.attachMode = message.updates.attachMode;
+      }
     }
   });
 }
@@ -67,6 +73,12 @@ function handleUpdateDynamicSkill(
       if (message.updates.scope !== undefined) {
         skill.scope = message.updates.scope;
         skill.projectId = message.updates.scope === "project" ? message.projectId : undefined;
+      }
+      if (message.updates.description !== undefined) {
+        skill.description = message.updates.description;
+      }
+      if (message.updates.attachMode !== undefined) {
+        skill.attachMode = message.updates.attachMode;
       }
     }
   });

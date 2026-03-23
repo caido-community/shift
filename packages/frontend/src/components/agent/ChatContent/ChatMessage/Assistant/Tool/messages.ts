@@ -1,13 +1,16 @@
 import { display as binaryExecRunDisplay } from "@/agent/tools/binaries/BinaryExecRun";
 import { display as environmentCreateDisplay } from "@/agent/tools/environment/EnvironmentCreate";
+import { display as environmentReadDisplay } from "@/agent/tools/environment/EnvironmentRead";
 import { display as environmentRemoveDisplay } from "@/agent/tools/environment/EnvironmentRemove";
 import { display as environmentUpdateDisplay } from "@/agent/tools/environment/EnvironmentUpdate";
 import { display as FindingsCreateDisplay } from "@/agent/tools/findings/FindingsCreate";
 import { display as historySearchDisplay } from "@/agent/tools/history/HistorySearch";
 import { display as learningAddDisplay } from "@/agent/tools/learnings/LearningAdd";
+import { display as learningReadDisplay } from "@/agent/tools/learnings/LearningRead";
 import { display as learningRemoveDisplay } from "@/agent/tools/learnings/LearningRemove";
 import { display as learningUpdateDisplay } from "@/agent/tools/learnings/LearningUpdate";
 import { display as payloadBlobCreateDisplay } from "@/agent/tools/payload/PayloadBlobCreate";
+import { display as payloadBlobRangeReadDisplay } from "@/agent/tools/payload/PayloadBlobRangeRead";
 import { display as replayEntryNavigateDisplay } from "@/agent/tools/replay/ReplayEntryNavigate";
 import { display as requestBodySetDisplay } from "@/agent/tools/request/RequestBodySet";
 import { display as requestCookieAddDisplay } from "@/agent/tools/request/RequestCookieAdd";
@@ -27,9 +30,11 @@ import { display as requestRawSetDisplay } from "@/agent/tools/request/RequestRa
 import { display as requestSendDisplay } from "@/agent/tools/request/RequestSend";
 import { display as responseRangeReadDisplay } from "@/agent/tools/response/ResponseRangeRead";
 import { display as responseSearchDisplay } from "@/agent/tools/response/ResponseSearch";
+import { display as readSkillDisplay } from "@/agent/tools/skills/ReadSkill";
 import { display as todoAddDisplay } from "@/agent/tools/todo/TodoAdd";
 import { display as todoCompleteDisplay } from "@/agent/tools/todo/TodoComplete";
 import { display as todoRemoveDisplay } from "@/agent/tools/todo/TodoRemove";
+import { display as todoStartDisplay } from "@/agent/tools/todo/TodoStart";
 import { display as workflowConvertListDisplay } from "@/agent/tools/workflows/WorkflowConvertList";
 import { display as workflowConvertRunDisplay } from "@/agent/tools/workflows/WorkflowConvertRun";
 import { type ToolDisplay } from "@/agent/types";
@@ -37,12 +42,15 @@ import { type ToolDisplay } from "@/agent/types";
 const configs = {
   BinaryExecRun: binaryExecRunDisplay,
   TodoAdd: todoAddDisplay,
+  TodoStart: todoStartDisplay,
   TodoComplete: todoCompleteDisplay,
   TodoRemove: todoRemoveDisplay,
   LearningAdd: learningAddDisplay,
+  LearningRead: learningReadDisplay,
   LearningUpdate: learningUpdateDisplay,
   LearningRemove: learningRemoveDisplay,
   PayloadBlobCreate: payloadBlobCreateDisplay,
+  PayloadBlobRangeRead: payloadBlobRangeReadDisplay,
   RequestBodySet: requestBodySetDisplay,
   RequestCookieAdd: requestCookieAddDisplay,
   RequestCookieRemove: requestCookieRemoveDisplay,
@@ -61,7 +69,9 @@ const configs = {
   RequestSend: requestSendDisplay,
   ResponseRangeRead: responseRangeReadDisplay,
   ResponseSearch: responseSearchDisplay,
+  ReadSkill: readSkillDisplay,
   EnvironmentCreate: environmentCreateDisplay,
+  EnvironmentRead: environmentReadDisplay,
   EnvironmentUpdate: environmentUpdateDisplay,
   EnvironmentRemove: environmentRemoveDisplay,
   HistorySearch: historySearchDisplay,

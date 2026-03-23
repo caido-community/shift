@@ -10,6 +10,16 @@ import type {
   ShiftMessage,
 } from "shared";
 
+import {
+  buildContextPrompt,
+  buildSkillsPrompt,
+  type ContextPromptSnapshot,
+  ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS,
+  type EnvironmentVariablePreviewSnapshot,
+  LEARNING_VALUE_CHARS,
+  type LearningPreviewSnapshot,
+  type SkillsPromptSnapshot,
+} from "@/agent/context.prompt";
 import { truncateContextValue } from "@/agent/context.truncation";
 import type { Todo } from "@/agent/types";
 import { type SessionStore } from "@/stores/agent/session";
@@ -42,30 +52,29 @@ type ConvertWorkflowContext = {
   description: string;
 };
 
-const HTTP_REQUEST_CONTEXT_CHARS = 12_000;
-const ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS = 400;
-const ENVIRONMENT_VARIABLES_CONTEXT_CHARS = 8_000;
-const PAYLOAD_BLOB_MAX_COUNT = 20;
+const PAYLOAD_BLOB_MAX_COUNT = 40;
 const PAYLOAD_BLOB_MAX_BYTES = 1_000_000;
 const PAYLOAD_BLOB_PREVIEW_CHARS = 200;
 
 type PayloadBlobMetadata = {
   blobId: string;
+  reason: string;
   length: number;
   preview: string;
 };
 
 type EnvironmentVariablePromptEntry = {
   name: string;
-  value: string;
-  valueLength?: number;
+  kind: "PLAIN" | "SECRET";
+  preview?: string;
+  valueLength: number;
 };
 
 export class AgentContext {
   private readonly _sdk: FrontendSDK;
   private readonly replaySessionId: string;
   private readonly store: SessionStore;
-  private readonly payloadBlobs = new Map<string, string>();
+  private readonly payloadBlobs = new Map<string, { content: string; reason: string }>();
   private streamWriter: UIMessageStreamWriter<ShiftMessage> | undefined;
   private skillsGetter: () => AgentSkill[];
   private environmentsContext: EnvironmentsContext | undefined;
@@ -140,26 +149,38 @@ export class AgentContext {
 
     const selectedIds = this.store.selectedSkillIds;
     if (selectedIds.length === 0) {
-      return [];
+      return this.skillsGetter();
     }
 
     const selectedSet = new Set(selectedIds);
     return this.skillsGetter().filter((skill) => selectedSet.has(skill.id));
   }
 
+  getSkillById(skillId: string): AgentSkill | undefined {
+    return this.selectedSkills.find((s) => s.id === skillId);
+  }
+
   get learnings(): string[] {
     return useLearningsStore().entries;
+  }
+
+  get selectedEnvironmentId(): string | undefined {
+    return this.environmentsContext?.selectedId;
   }
 
   addTodo(content: string): Result<Todo> {
     return this.store.addTodo(content);
   }
 
-  completeTodo(id: string): Result<Todo> {
+  startTodo(id: number): Result<Todo> {
+    return this.store.startTodo(id);
+  }
+
+  completeTodo(id: number): Result<Todo> {
     return this.store.completeTodo(id);
   }
 
-  removeTodo(id: string): Result<Todo> {
+  removeTodo(id: number): Result<Todo> {
     return this.store.removeTodo(id);
   }
 
@@ -195,11 +216,12 @@ export class AgentContext {
     this.streamWriter = writer;
   }
 
-  createPayloadBlob(content: string): PayloadBlobMetadata {
+  createPayloadBlob(content: string, reason: string): PayloadBlobMetadata {
     if (this.payloadBlobs.size >= PAYLOAD_BLOB_MAX_COUNT) {
-      throw new Error(
-        `Cannot create more than ${PAYLOAD_BLOB_MAX_COUNT} payload blobs in one run. Reuse an existing blobId or finish this run and start a new one.`
-      );
+      const oldest = this.payloadBlobs.keys().next().value;
+      if (oldest !== undefined) {
+        this.payloadBlobs.delete(oldest);
+      }
     }
 
     const bytes = new TextEncoder().encode(content).length;
@@ -214,20 +236,17 @@ export class AgentContext {
       blobId = `blob-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
     } while (this.payloadBlobs.has(blobId));
 
-    this.payloadBlobs.set(blobId, content);
+    this.payloadBlobs.set(blobId, { content, reason });
     return {
       blobId,
+      reason,
       length: content.length,
       preview: truncate(content, PAYLOAD_BLOB_PREVIEW_CHARS),
     };
   }
 
   getPayloadBlob(blobId: string): string | undefined {
-    return this.payloadBlobs.get(blobId);
-  }
-
-  clearPayloadBlobs(): void {
-    this.payloadBlobs.clear();
+    return this.payloadBlobs.get(blobId)?.content;
   }
 
   get environmentVariables(): EnvironmentVariable[] {
@@ -241,6 +260,7 @@ export class AgentContext {
       id: env.id,
       name: env.name,
     }));
+    all.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 
     const selectedElement = document.querySelector<HTMLElement>("[data-environment-id]");
     const selectedId = selectedElement?.dataset.environmentId;
@@ -284,6 +304,7 @@ export class AgentContext {
     return this.sdk.workflows
       .getWorkflows()
       .filter((workflow) => workflow.kind === "Convert" && allowedSet.has(workflow.id))
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
       .map((workflow) => ({
         id: workflow.id,
         name: workflow.name,
@@ -291,149 +312,151 @@ export class AgentContext {
       }));
   }
 
-  private getEnvironmentVariablesPrompt(): string | undefined {
+  private getEnvironmentVariablesSnapshot(): EnvironmentVariablePreviewSnapshot[] | undefined {
     const envVars = this.environmentVariables;
     if (envVars.length === 0) {
       return undefined;
     }
 
-    const serialized = JSON.stringify(
-      envVars.map((variable): EnvironmentVariablePromptEntry => {
+    return [...envVars]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((variable): EnvironmentVariablePromptEntry => {
         if (variable.isSecret) {
-          return { name: variable.name, value: "[SECRET]" };
+          return {
+            name: variable.name,
+            kind: "SECRET",
+            valueLength: variable.value.length,
+          };
         }
 
-        if (variable.value.length <= ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS) {
-          return { name: variable.name, value: variable.value };
-        }
+        const preview =
+          variable.value.length <= ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS
+            ? variable.value
+            : truncateContextValue(variable.value, ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS, {
+                retrievalHint: `Use EnvironmentRead to inspect ${variable.name}.`,
+              });
 
         return {
           name: variable.name,
-          value: truncateContextValue(variable.value, ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS),
+          kind: "PLAIN",
+          preview,
           valueLength: variable.value.length,
         };
-      }),
-      null,
-      2
-    );
+      });
+  }
 
-    return truncateContextValue(serialized, ENVIRONMENT_VARIABLES_CONTEXT_CHARS);
+  private getLearningsSnapshot(): LearningPreviewSnapshot[] | undefined {
+    if (this.learnings.length === 0) {
+      return undefined;
+    }
+
+    return this.learnings.map((value, index) => ({
+      index,
+      preview:
+        value.length <= LEARNING_VALUE_CHARS
+          ? value
+          : truncateContextValue(value, LEARNING_VALUE_CHARS, {
+              retrievalHint: `Use LearningRead with index ${index} for the full entry.`,
+            }),
+      length: value.length,
+    }));
   }
 
   toContextPrompt(): string {
-    const parts: string[] = [];
+    const snapshot = this.buildContextSnapshot();
+    return buildContextPrompt(snapshot);
+  }
+
+  private buildContextSnapshot(): ContextPromptSnapshot {
+    const snapshot: ContextPromptSnapshot = {};
 
     if (this.todos.length > 0) {
-      const todoList = this.todos
-        .map((t) => `- [${t.completed ? "completed" : "pending"}] (id: ${t.id}) ${t.content}`)
-        .join("\n");
-      parts.push(`<todos>\n${todoList}\n</todos>`);
+      snapshot.todos = this.todos.map((t) => ({
+        id: t.id,
+        content: t.content,
+        status: t.status,
+      }));
     }
 
-    if (this.payloadBlobs.size > 0) {
-      const blobList = JSON.stringify(
-        [...this.payloadBlobs.entries()].map(([blobId, value]) => ({
-          blobId,
-          length: value.length,
-          preview: truncate(value, 80),
-        })),
-        null,
-        2
-      );
-      parts.push(`<payload_blobs>\n${blobList}\n</payload_blobs>`);
-    }
-
-    if (this.learnings.length > 0) {
-      const serializedLearnings = JSON.stringify(
-        this.learnings.map((value, index) => ({ index, value })),
-        null,
-        2
-      );
-      parts.push(`<learnings>\n${serializedLearnings}\n</learnings>`);
+    const learningsSnapshot = this.getLearningsSnapshot();
+    if (learningsSnapshot !== undefined) {
+      snapshot.learnings = learningsSnapshot;
     }
 
     if (this.httpRequest !== "") {
-      const requestForPrompt = truncateContextValue(this.httpRequest, HTTP_REQUEST_CONTEXT_CHARS);
-      parts.push(`<current_http_request>\n${requestForPrompt}\n</current_http_request>`);
+      snapshot.httpRequest = this.httpRequest;
     }
 
     const restrictedConvertWorkflows = this.getRestrictedConvertWorkflows();
     if (restrictedConvertWorkflows !== undefined) {
-      const workflowList = JSON.stringify(restrictedConvertWorkflows, null, 2);
-      parts.push(`<allowed_convert_workflows>\n${workflowList}\n</allowed_convert_workflows>`);
+      snapshot.allowedConvertWorkflows = restrictedConvertWorkflows;
     }
 
     if (isPresent(this.resolvedAgent)) {
-      const binaryList = JSON.stringify(
-        (this.allowedBinaries ?? []).map((binary) => ({
-          path: binary.path,
-          instructions:
-            binary.instructions !== undefined && binary.instructions.trim() !== ""
-              ? binary.instructions
-              : undefined,
-        })),
-        null,
-        2
-      );
-      parts.push(`<allowed_binaries>\n${binaryList}\n</allowed_binaries>`);
+      snapshot.allowedBinaries = (this.allowedBinaries ?? []).map((binary) => ({
+        path: binary.path,
+        instructions:
+          binary.instructions !== undefined && binary.instructions.trim() !== ""
+            ? binary.instructions
+            : undefined,
+      }));
     }
 
     if (isPresent(this.entriesContext) && this.entriesContext.recentEntryIds.length > 0) {
-      const { activeEntryId, recentEntryIds } = this.entriesContext;
-      const entryList = recentEntryIds.map((id) => `- ${id}`).join("\n");
-      const activeLine = isPresent(activeEntryId)
-        ? `Active entry: ${activeEntryId}`
-        : "No active entry";
-      parts.push(`<replay_entries>\n${entryList}\n\n${activeLine}\n</replay_entries>`);
+      snapshot.entriesContext = this.entriesContext;
     }
 
-    if (this.environmentsContext) {
+    if (this.environmentsContext !== undefined) {
       const { all, selectedId } = this.environmentsContext;
       const selectedName = isPresent(selectedId)
         ? (all.find((e) => e.id === selectedId)?.name ?? "Unknown")
         : undefined;
-
-      const envList = all.map((e) => `- ${e.name} (id: ${e.id})`).join("\n");
-      const selectedLine = isPresent(selectedName)
-        ? `Currently selected: ${selectedName} (id: ${selectedId})`
-        : "No environment selected";
-
-      parts.push(`<environments>\n${envList}\n\n${selectedLine}\n</environments>`);
+      snapshot.environmentsContext = {
+        all,
+        selectedId,
+        selectedName,
+      };
     }
 
-    const environmentVariablesPrompt = this.getEnvironmentVariablesPrompt();
-    if (environmentVariablesPrompt !== undefined) {
-      parts.push(
-        `<environment_variables>\n${environmentVariablesPrompt}\n</environment_variables>`
-      );
+    const environmentVariables = this.getEnvironmentVariablesSnapshot();
+    if (environmentVariables !== undefined) {
+      snapshot.environmentVariables = environmentVariables;
     }
 
-    if (parts.length === 0) {
-      return "";
-    }
-
-    return `<context>\n${parts.join("\n\n")}\n</context>`;
+    return snapshot;
   }
 
   toSkillsPrompt(): string {
-    const skills = this.selectedSkills;
+    const snapshot = this.buildSkillsSnapshot();
+    return buildSkillsPrompt(snapshot);
+  }
+
+  private buildSkillsSnapshot(): SkillsPromptSnapshot {
     const agentInstructions = this.getAgentInstructions();
+    const skills = this.selectedSkills;
+
     if (skills.length === 0 && agentInstructions === "") {
-      return "";
+      return {};
     }
 
-    const parts: string[] = [];
+    const snapshot: SkillsPromptSnapshot = {};
     if (agentInstructions !== "") {
-      parts.push(`<agent_instructions>\n${agentInstructions}\n</agent_instructions>`);
+      snapshot.agentInstructions = agentInstructions;
     }
-
     if (skills.length > 0) {
-      const skillEntries = skills
-        .map((skill) => `<skill title="${skill.title}">\n${skill.content}\n</skill>`)
-        .join("\n");
-      parts.push(skillEntries);
+      snapshot.skills = skills.map((s) => {
+        const isAlwaysAttached = s.attachMode === "always";
+        if (isAlwaysAttached) {
+          return { kind: "always-attached" as const, id: s.id, title: s.title, content: s.content };
+        }
+        return {
+          kind: "on-demand" as const,
+          id: s.id,
+          title: s.title,
+          description: s.description,
+        };
+      });
     }
-
-    return `<additional_instructions>\n${parts.join("\n")}\n</additional_instructions>`;
+    return snapshot;
   }
 }

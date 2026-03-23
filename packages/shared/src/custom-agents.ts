@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { SkillScopeSchema } from "./skills";
+import { AgentSkillSchema, SkillScopeSchema } from "./skills";
 
 export const AgentModeSchema = z.enum(["focus", "wildcard"]);
 export type AgentMode = z.infer<typeof AgentModeSchema>;
@@ -29,7 +29,7 @@ const ResolvedCustomAgentSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   description: z.string(),
-  skills: z.array(z.object({ id: z.string(), title: z.string(), content: z.string() })),
+  skills: z.array(AgentSkillSchema),
   allowedWorkflowIds: z.array(z.string()).optional(),
   allowedBinaries: z.array(CustomAgentBinarySchema).optional(),
   instructions: z.string(),

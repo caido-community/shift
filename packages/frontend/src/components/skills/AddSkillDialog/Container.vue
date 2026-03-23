@@ -4,14 +4,14 @@ import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import SelectButton from "primevue/selectbutton";
 import Textarea from "primevue/textarea";
-import type { SkillScope } from "shared";
+import type { CreateDynamicSkillInput, CreateStaticSkillInput, SkillScope } from "shared";
 import { computed, ref, watch } from "vue";
 
 const visible = defineModel<boolean>("visible", { required: true });
 
 const emit = defineEmits<{
-  addStatic: [input: { title: string; content: string; scope: SkillScope }];
-  addDynamic: [input: { title: string; url: string; scope: SkillScope }];
+  addStatic: [input: CreateStaticSkillInput];
+  addDynamic: [input: CreateDynamicSkillInput];
 }>();
 
 const skillTypeOptions = ref([
@@ -24,11 +24,18 @@ const scopeOptions = ref([
   { label: "Global", value: "global" },
 ]);
 
+const attachModeOptions = ref([
+  { label: "On-demand", value: "on-demand" },
+  { label: "Always", value: "always" },
+]);
+
 const activeTab = ref<"static" | "dynamic">("static");
 const title = ref("");
 const content = ref("");
 const url = ref("");
 const scope = ref<SkillScope>("project");
+const description = ref("");
+const attachMode = ref<"always" | "on-demand">("on-demand");
 
 const resetForm = () => {
   title.value = "";
@@ -36,6 +43,8 @@ const resetForm = () => {
   url.value = "";
   activeTab.value = "static";
   scope.value = "project";
+  description.value = "";
+  attachMode.value = "on-demand";
 };
 
 watch(visible, (isVisible) => {
@@ -58,12 +67,17 @@ const canSaveDynamic = () => title.value.trim() !== "" && isValidUrl(url.value.t
 const hasUrlError = computed(() => url.value.trim() !== "" && !isValidUrl(url.value.trim()));
 
 const handleSave = () => {
+  const base = {
+    description: description.value.trim() || undefined,
+    attachMode: attachMode.value,
+  };
   if (activeTab.value === "static") {
     if (!canSaveStatic()) return;
     emit("addStatic", {
       title: title.value.trim(),
       content: content.value.trim(),
       scope: scope.value,
+      ...base,
     });
   } else {
     if (!canSaveDynamic()) return;
@@ -71,6 +85,7 @@ const handleSave = () => {
       title: title.value.trim(),
       url: url.value.trim(),
       scope: scope.value,
+      ...base,
     });
   }
   visible.value = false;
@@ -93,7 +108,7 @@ const canSave = () => {
     v-model:visible="visible"
     modal
     header="Add Skill"
-    :style="{ width: '35rem' }">
+    :style="{ width: '55rem' }">
     <div class="flex flex-col gap-4">
       <SelectButton
         v-model="activeTab"
@@ -104,6 +119,50 @@ const canSave = () => {
         :pt="{
           button: { class: 'flex-1 w-full' },
         }" />
+
+      <div class="flex flex-col gap-2">
+        <label
+          for="add-skill-title"
+          class="font-medium text-surface-200">
+          Title
+        </label>
+        <InputText
+          id="add-skill-title"
+          v-model="title"
+          placeholder="XSS Testing"
+          class="w-full" />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="font-medium text-surface-200">Description</label>
+        <InputText
+          v-model="description"
+          placeholder="Short guidance on when to use this skill (optional)"
+          class="w-full" />
+        <p class="text-xs text-surface-400">
+          Shown in the agent prompt catalog. Helps the agent decide when to load full content.
+        </p>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="font-medium text-surface-200">Load mode</label>
+        <SelectButton
+          v-model="attachMode"
+          :options="attachModeOptions"
+          option-label="label"
+          option-value="value"
+          class="w-full flex"
+          :pt="{
+            button: { class: 'flex-1 w-full' },
+          }" />
+        <p class="text-xs text-surface-400">
+          {{
+            attachMode === "always"
+              ? "Full content is always in the prompt (higher context usage, higher cost)"
+              : "Agent loads content on demand when needed"
+          }}
+        </p>
+      </div>
 
       <div class="flex flex-col gap-2">
         <label class="font-medium text-surface-200">Scope</label>
@@ -125,22 +184,10 @@ const canSave = () => {
         </p>
       </div>
 
-      <div class="h-[250px]">
+      <div :class="activeTab === 'static' ? 'min-h-[32rem]' : 'min-h-[8rem]'">
         <div
           v-if="activeTab === 'static'"
           class="flex flex-col gap-4">
-          <div class="flex flex-col gap-2">
-            <label
-              for="static-title"
-              class="font-medium text-surface-200">
-              Title
-            </label>
-            <InputText
-              id="static-title"
-              v-model="title"
-              placeholder="XSS Testing"
-              class="w-full" />
-          </div>
           <div class="flex flex-col gap-2">
             <label
               for="static-content"
@@ -151,26 +198,14 @@ const canSave = () => {
               id="static-content"
               v-model="content"
               placeholder="Instructions for the agent..."
-              rows="10"
-              class="w-full font-mono text-sm" />
+              rows="20"
+              class="w-full min-h-[28rem] font-mono text-sm" />
           </div>
         </div>
 
         <div
           v-else
           class="flex flex-col gap-4">
-          <div class="flex flex-col gap-2">
-            <label
-              for="dynamic-title"
-              class="font-medium text-surface-200">
-              Title
-            </label>
-            <InputText
-              id="dynamic-title"
-              v-model="title"
-              placeholder="XSS Testing"
-              class="w-full" />
-          </div>
           <div class="flex flex-col gap-2">
             <label
               for="dynamic-url"

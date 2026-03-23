@@ -11,6 +11,7 @@ export type Snapshot = {
 export type SessionModel = {
   model: Model | undefined;
   todos: Todo[];
+  nextTodoId: number;
   queuedMessages: QueuedMessage[];
   draftMessage: string;
   httpRequest: string;
@@ -26,6 +27,7 @@ export function createInitialModel(): SessionModel {
   return {
     model: undefined,
     todos: [],
+    nextTodoId: 1,
     queuedMessages: [],
     draftMessage: "",
     httpRequest: "",
@@ -40,9 +42,10 @@ export function createInitialModel(): SessionModel {
 
 export type SessionMessage =
   | { type: "SET_MODEL"; model: Model | undefined }
-  | { type: "ADD_TODO"; id: string; content: string }
-  | { type: "COMPLETE_TODO"; id: string }
-  | { type: "REMOVE_TODO"; id: string }
+  | { type: "ADD_TODO"; content: string }
+  | { type: "START_TODO"; id: number }
+  | { type: "COMPLETE_TODO"; id: number }
+  | { type: "REMOVE_TODO"; id: number }
   | { type: "CLEAR_TODOS" }
   | { type: "ADD_TO_QUEUE"; id: string; text: string; createdAt: number }
   | { type: "REMOVE_FROM_QUEUE"; id: string }

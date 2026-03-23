@@ -8,7 +8,7 @@ const MAX_TOTAL_ARG_BYTES = 16_384;
 const MAX_STDIN_BYTES = 65_536;
 const MAX_STDIO_BYTES = 65_536;
 
-export type CollectedStream = {
+type CollectedStream = {
   chunks: Buffer[];
   bytes: number;
   truncated: boolean;

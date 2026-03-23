@@ -1,6 +1,5 @@
 ---
-globs:
-alwaysApply: true
+name: best-practices
 description: Code Quality Best Practices
 ---
 

@@ -2,6 +2,8 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { createRequestModelOutput } from "./modelOutput";
+
 import type { AgentContext } from "@/agent/context";
 import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
@@ -61,4 +63,7 @@ export const RequestCookieAdd = tool({
       message: `Cookie "${name}" added\nCookie: ${cookieHeader ?? "(empty)"}`,
     });
   },
+  toModelOutput: createRequestModelOutput({
+    errorPrefix: "Failed to add cookie",
+  }),
 });

@@ -1,5 +1,5 @@
 [data-component="markdown"] {
-  font-size: 1rem;
+  font-size: 0.9rem;
   line-height: 1.5;
   white-space: normal;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas,
@@ -69,8 +69,10 @@
   h4,
   h5,
   h6 {
-    font-size: 0.8125rem;
+    font-size: 0.9125rem;
     font-weight: 600;
+    margin-bottom: 0.375em;
+    margin-top: 0.6em;
   }
 
   h1 + *,
@@ -79,7 +81,7 @@
   h4 + *,
   h5 + *,
   h6 + * {
-    margin-top: 0.25em;
+    margin-top: 0.375em;
   }
 
   * + h1,
@@ -88,7 +90,7 @@
   * + h4,
   * + h5,
   * + h6 {
-    margin-top: 0.75em;
+    margin-top: 1.25em;
   }
 
   strong,
@@ -119,6 +121,7 @@
     border: 1px solid var(--p-surface-600);
     white-space: pre-wrap;
     word-wrap: break-word;
+    font-size: 0.9rem;
   }
 
   * + pre,

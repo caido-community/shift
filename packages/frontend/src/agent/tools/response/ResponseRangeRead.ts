@@ -47,7 +47,7 @@ export const display = {
     }
     const truncatedText = output.truncated ? " (truncated)" : "";
     return [
-      { text: "Read " },
+      { text: "Read response " },
       { text: `${output.endIndex - output.startIndex} bytes`, muted: true },
       { text: truncatedText },
     ];

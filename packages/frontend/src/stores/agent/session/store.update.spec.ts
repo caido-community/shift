@@ -11,6 +11,7 @@ import { update } from "./store.update";
 const createModelWithTodos = (todos: SessionModel["todos"]): SessionModel => ({
   ...createInitialModel(),
   todos,
+  nextTodoId: todos.reduce((maxId, todo) => Math.max(maxId, todo.id), 0) + 1,
 });
 
 const createModelWithQueue = (queuedMessages: SessionModel["queuedMessages"]): SessionModel => ({
@@ -111,96 +112,188 @@ describe("session update", () => {
     it("adds a new todo to the list", () => {
       const model = createInitialModel();
 
-      const result = update(model, { type: "ADD_TODO", id: "todo-1", content: "Test todo" });
+      const result = update(model, { type: "ADD_TODO", content: "Test todo" });
 
       expect(isResultWithValue(result)).toBe(true);
       if (isResultWithValue(result)) {
         expect(result.model.todos).toHaveLength(1);
         expect(result.model.todos[0]).toEqual({
-          id: "todo-1",
+          id: 1,
           content: "Test todo",
-          completed: false,
+          status: "pending",
         });
+        expect(result.model.nextTodoId).toBe(2);
         expect(result.result).toEqual({
           kind: "Ok",
-          value: { id: "todo-1", content: "Test todo", completed: false },
+          value: { id: 1, content: "Test todo", status: "pending" },
         });
       }
     });
 
     it("appends to existing todos", () => {
-      const model = createModelWithTodos([
-        { id: "existing", content: "Existing todo", completed: false },
-      ]);
+      const model = createModelWithTodos([{ id: 4, content: "Existing todo", status: "pending" }]);
 
-      const result = update(model, { type: "ADD_TODO", id: "todo-2", content: "New todo" });
+      const result = update(model, { type: "ADD_TODO", content: "New todo" });
 
       expect(isResultWithValue(result)).toBe(true);
       if (isResultWithValue(result)) {
         expect(result.model.todos).toHaveLength(2);
         expect(result.model.todos[1]).toEqual({
-          id: "todo-2",
+          id: 5,
           content: "New todo",
-          completed: false,
+          status: "pending",
         });
+        expect(result.model.nextTodoId).toBe(6);
       }
     });
 
     it("creates a new array instance", () => {
-      const model = createModelWithTodos([
-        { id: "existing", content: "Existing", completed: false },
-      ]);
+      const model = createModelWithTodos([{ id: 1, content: "Existing", status: "pending" }]);
 
-      const result = update(model, { type: "ADD_TODO", id: "new", content: "New" });
+      const result = update(model, { type: "ADD_TODO", content: "New" });
 
       expect(isResultWithValue(result)).toBe(true);
       if (isResultWithValue(result)) {
         expect(result.model.todos).not.toBe(model.todos);
       }
     });
-  });
 
-  describe("COMPLETE_TODO", () => {
-    it("marks an existing todo as completed", () => {
-      const model = createModelWithTodos([{ id: "todo-1", content: "Test", completed: false }]);
+    it("keeps incrementing IDs after removals", () => {
+      const model = {
+        ...createModelWithTodos([{ id: 1, content: "Remaining", status: "pending" }]),
+        nextTodoId: 3,
+      };
 
-      const result = update(model, { type: "COMPLETE_TODO", id: "todo-1" });
+      const result = update(model, { type: "ADD_TODO", content: "Later todo" });
 
       expect(isResultWithValue(result)).toBe(true);
       if (isResultWithValue(result)) {
-        expect(result.model.todos[0]?.completed).toBe(true);
+        expect(result.model.todos[1]).toEqual({
+          id: 3,
+          content: "Later todo",
+          status: "pending",
+        });
+        expect(result.model.nextTodoId).toBe(4);
+      }
+    });
+  });
+
+  describe("START_TODO", () => {
+    it("marks one todo as in progress", () => {
+      const model = createModelWithTodos([{ id: 1, content: "Test", status: "pending" }]);
+
+      const result = update(model, { type: "START_TODO", id: 1 });
+
+      expect(isResultWithValue(result)).toBe(true);
+      if (isResultWithValue(result)) {
+        expect(result.model.todos[0]?.status).toBe("in_progress");
         expect(result.result).toEqual({
           kind: "Ok",
-          value: { id: "todo-1", content: "Test", completed: true },
+          value: { id: 1, content: "Test", status: "in_progress" },
         });
+      }
+    });
+
+    it("moves a previously active todo back to pending", () => {
+      const model = createModelWithTodos([
+        { id: 1, content: "First", status: "in_progress" },
+        { id: 2, content: "Second", status: "pending" },
+      ]);
+
+      const result = update(model, { type: "START_TODO", id: 2 });
+
+      expect(isResultWithValue(result)).toBe(true);
+      if (isResultWithValue(result)) {
+        expect(result.model.todos).toEqual([
+          { id: 1, content: "First", status: "pending" },
+          { id: 2, content: "Second", status: "in_progress" },
+        ]);
       }
     });
 
     it("returns error when todo not found", () => {
       const model = createInitialModel();
 
-      const result = update(model, { type: "COMPLETE_TODO", id: "nonexistent" });
+      const result = update(model, { type: "START_TODO", id: 999 });
 
       expect(isResultWithValue(result)).toBe(true);
       if (isResultWithValue(result)) {
         expect(result.result).toEqual({
           kind: "Error",
-          error: 'Todo with id "nonexistent" not found',
+          error: 'Todo with id "999" not found',
         });
         expect(result.model).toBe(model);
       }
     });
 
     it("returns error when todo is already completed", () => {
-      const model = createModelWithTodos([{ id: "todo-1", content: "Test", completed: true }]);
+      const model = createModelWithTodos([{ id: 1, content: "Done", status: "completed" }]);
 
-      const result = update(model, { type: "COMPLETE_TODO", id: "todo-1" });
+      const result = update(model, { type: "START_TODO", id: 1 });
 
       expect(isResultWithValue(result)).toBe(true);
       if (isResultWithValue(result)) {
         expect(result.result).toEqual({
           kind: "Error",
-          error: 'Todo "todo-1" is already completed',
+          error: 'Todo "1" is already completed',
+        });
+        expect(result.model).toBe(model);
+      }
+    });
+  });
+
+  describe("COMPLETE_TODO", () => {
+    it("marks an existing todo as completed", () => {
+      const model = createModelWithTodos([{ id: 1, content: "Test", status: "pending" }]);
+
+      const result = update(model, { type: "COMPLETE_TODO", id: 1 });
+
+      expect(isResultWithValue(result)).toBe(true);
+      if (isResultWithValue(result)) {
+        expect(result.model.todos[0]?.status).toBe("completed");
+        expect(result.result).toEqual({
+          kind: "Ok",
+          value: { id: 1, content: "Test", status: "completed" },
+        });
+      }
+    });
+
+    it("completes an in-progress todo", () => {
+      const model = createModelWithTodos([{ id: 1, content: "Test", status: "in_progress" }]);
+
+      const result = update(model, { type: "COMPLETE_TODO", id: 1 });
+
+      expect(isResultWithValue(result)).toBe(true);
+      if (isResultWithValue(result)) {
+        expect(result.model.todos[0]?.status).toBe("completed");
+      }
+    });
+
+    it("returns error when todo not found", () => {
+      const model = createInitialModel();
+
+      const result = update(model, { type: "COMPLETE_TODO", id: 999 });
+
+      expect(isResultWithValue(result)).toBe(true);
+      if (isResultWithValue(result)) {
+        expect(result.result).toEqual({
+          kind: "Error",
+          error: 'Todo with id "999" not found',
+        });
+        expect(result.model).toBe(model);
+      }
+    });
+
+    it("returns error when todo is already completed", () => {
+      const model = createModelWithTodos([{ id: 1, content: "Test", status: "completed" }]);
+
+      const result = update(model, { type: "COMPLETE_TODO", id: 1 });
+
+      expect(isResultWithValue(result)).toBe(true);
+      if (isResultWithValue(result)) {
+        expect(result.result).toEqual({
+          kind: "Error",
+          error: 'Todo "1" is already completed',
         });
         expect(result.model).toBe(model);
       }
@@ -208,19 +301,19 @@ describe("session update", () => {
 
     it("preserves other todos", () => {
       const model = createModelWithTodos([
-        { id: "todo-1", content: "First", completed: false },
-        { id: "todo-2", content: "Second", completed: false },
+        { id: 1, content: "First", status: "pending" },
+        { id: 2, content: "Second", status: "pending" },
       ]);
 
-      const result = update(model, { type: "COMPLETE_TODO", id: "todo-1" });
+      const result = update(model, { type: "COMPLETE_TODO", id: 1 });
 
       expect(isResultWithValue(result)).toBe(true);
       if (isResultWithValue(result)) {
         expect(result.model.todos).toHaveLength(2);
         expect(result.model.todos[1]).toEqual({
-          id: "todo-2",
+          id: 2,
           content: "Second",
-          completed: false,
+          status: "pending",
         });
       }
     });
@@ -228,16 +321,16 @@ describe("session update", () => {
 
   describe("REMOVE_TODO", () => {
     it("removes an existing todo", () => {
-      const model = createModelWithTodos([{ id: "todo-1", content: "Test", completed: false }]);
+      const model = createModelWithTodos([{ id: 1, content: "Test", status: "pending" }]);
 
-      const result = update(model, { type: "REMOVE_TODO", id: "todo-1" });
+      const result = update(model, { type: "REMOVE_TODO", id: 1 });
 
       expect(isResultWithValue(result)).toBe(true);
       if (isResultWithValue(result)) {
         expect(result.model.todos).toHaveLength(0);
         expect(result.result).toEqual({
           kind: "Ok",
-          value: { id: "todo-1", content: "Test", completed: false },
+          value: { id: 1, content: "Test", status: "pending" },
         });
       }
     });
@@ -245,13 +338,13 @@ describe("session update", () => {
     it("returns error when todo not found", () => {
       const model = createInitialModel();
 
-      const result = update(model, { type: "REMOVE_TODO", id: "nonexistent" });
+      const result = update(model, { type: "REMOVE_TODO", id: 999 });
 
       expect(isResultWithValue(result)).toBe(true);
       if (isResultWithValue(result)) {
         expect(result.result).toEqual({
           kind: "Error",
-          error: 'Todo with id "nonexistent" not found',
+          error: 'Todo with id "999" not found',
         });
         expect(result.model).toBe(model);
       }
@@ -259,19 +352,19 @@ describe("session update", () => {
 
     it("preserves other todos", () => {
       const model = createModelWithTodos([
-        { id: "todo-1", content: "First", completed: false },
-        { id: "todo-2", content: "Second", completed: false },
+        { id: 1, content: "First", status: "pending" },
+        { id: 2, content: "Second", status: "pending" },
       ]);
 
-      const result = update(model, { type: "REMOVE_TODO", id: "todo-1" });
+      const result = update(model, { type: "REMOVE_TODO", id: 1 });
 
       expect(isResultWithValue(result)).toBe(true);
       if (isResultWithValue(result)) {
         expect(result.model.todos).toHaveLength(1);
         expect(result.model.todos[0]).toEqual({
-          id: "todo-2",
+          id: 2,
           content: "Second",
-          completed: false,
+          status: "pending",
         });
       }
     });
@@ -280,8 +373,8 @@ describe("session update", () => {
   describe("CLEAR_TODOS", () => {
     it("clears all todos", () => {
       const model = createModelWithTodos([
-        { id: "todo-1", content: "First", completed: false },
-        { id: "todo-2", content: "Second", completed: true },
+        { id: 1, content: "First", status: "pending" },
+        { id: 2, content: "Second", status: "completed" },
       ]);
 
       const result = asSessionModel(update(model, { type: "CLEAR_TODOS" }));
@@ -299,7 +392,7 @@ describe("session update", () => {
 
     it("does not modify other state", () => {
       const model: SessionModel = {
-        ...createModelWithTodos([{ id: "todo-1", content: "Test", completed: false }]),
+        ...createModelWithTodos([{ id: 1, content: "Test", status: "pending" }]),
         draftMessage: "test draft",
       };
 

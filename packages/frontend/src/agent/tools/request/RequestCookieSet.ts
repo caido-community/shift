@@ -2,6 +2,8 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { createRequestModelOutput } from "./modelOutput";
+
 import type { AgentContext } from "@/agent/context";
 import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
@@ -64,4 +66,7 @@ export const RequestCookieSet = tool({
     const cookieHeader = forge.getHeader("Cookie");
     return ToolResult.ok({ message: `Cookie "${name}" set\nCookie: ${cookieHeader ?? "(empty)"}` });
   },
+  toModelOutput: createRequestModelOutput({
+    errorPrefix: "Failed to set cookie",
+  }),
 });

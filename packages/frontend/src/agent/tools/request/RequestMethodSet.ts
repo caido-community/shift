@@ -2,6 +2,8 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { createRequestModelOutput } from "./modelOutput";
+
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 
@@ -41,4 +43,7 @@ export const RequestMethodSet = tool({
     const fullPath = query !== null ? `${path}?${query}` : path;
     return ToolResult.ok({ message: `Method set to "${method}"\n${method} ${fullPath}` });
   },
+  toModelOutput: createRequestModelOutput({
+    errorPrefix: "Failed to set request method",
+  }),
 });

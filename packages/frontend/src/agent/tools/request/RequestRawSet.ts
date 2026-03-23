@@ -1,6 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { createRequestModelOutput } from "./modelOutput";
+
 import type { AgentContext } from "@/agent/context";
 import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
@@ -57,4 +59,7 @@ export const RequestRawSet = tool({
     const truncationNote = truncated ? "\n\n[... truncated]" : "";
     return ToolResult.ok({ message: `Raw request replaced\n\n${preview}${truncationNote}` });
   },
+  toModelOutput: createRequestModelOutput({
+    errorPrefix: "Failed to replace request",
+  }),
 });
