@@ -4,8 +4,13 @@ import Checkbox from "primevue/checkbox";
 import Dialog from "primevue/dialog";
 import Dropdown from "primevue/dropdown";
 import InputText from "primevue/inputtext";
-import { type Model, ModelProvider, type ModelProvider as ModelProviderType } from "shared";
-import { ref, watch } from "vue";
+import {
+  getProviderReasoningDisabledMessage,
+  type Model,
+  ModelProvider,
+  type ModelProvider as ModelProviderType,
+} from "shared";
+import { computed, ref, watch } from "vue";
 
 const { initialProvider } = defineProps<{
   initialProvider: ModelProviderType;
@@ -26,6 +31,9 @@ const name = ref("");
 const id = ref("");
 const isReasoningModel = ref(false);
 const provider = ref<ModelProviderType>(initialProvider);
+const providerReasoningDisabledMessage = computed(() => {
+  return getProviderReasoningDisabledMessage(provider.value);
+});
 
 const canSave = () => name.value.trim() !== "" && id.value.trim() !== "";
 
@@ -42,6 +50,12 @@ watch(visible, (isVisible) => {
   }
 });
 
+watch(provider, (nextProvider) => {
+  if (getProviderReasoningDisabledMessage(nextProvider) !== undefined) {
+    isReasoningModel.value = false;
+  }
+});
+
 const handleSave = () => {
   if (!canSave()) return;
 
@@ -50,7 +64,7 @@ const handleSave = () => {
     id: id.value.trim(),
     provider: provider.value,
     capabilities: {
-      reasoning: isReasoningModel.value,
+      reasoning: providerReasoningDisabledMessage.value === undefined && isReasoningModel.value,
     },
   });
 
@@ -111,10 +125,13 @@ const handleCancel = () => {
         <Checkbox
           v-model="isReasoningModel"
           binary
+          :disabled="providerReasoningDisabledMessage !== undefined"
           input-id="reasoning" />
         <label
           for="reasoning"
-          class="text-surface-200">
+          :class="
+            providerReasoningDisabledMessage === undefined ? 'text-surface-200' : 'text-surface-500'
+          ">
           Is Reasoning Model
         </label>
       </div>

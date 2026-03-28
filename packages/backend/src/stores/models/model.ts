@@ -7,6 +7,7 @@ import {
   type ModelsUserData,
   type ModelUsageType,
   type ModelUserConfig,
+  normalizeModelReasoningSupport,
 } from "shared";
 
 import {
@@ -33,7 +34,7 @@ const builtInModels: Model[] = [
   ...googleModels,
   ...openaiModels,
   ...openrouterModels,
-];
+].map(normalizeModelReasoningSupport);
 
 const defaultModelsConfig: Record<string, ModelUsageType[]> = {
   ...defaultAnthropicModelsConfig,
@@ -54,7 +55,10 @@ export function getBuiltInModelKeys(): Set<string> {
 }
 
 export function computeRuntimeConfig(userData: ModelsUserData): ModelsConfig {
-  const allModels = [...builtInModels, ...userData.customModels];
+  const allModels = [
+    ...builtInModels,
+    ...userData.customModels.map(normalizeModelReasoningSupport),
+  ];
   const config: Record<string, ModelUserConfig> = {};
 
   for (const model of allModels) {
