@@ -1,4 +1,4 @@
-import type { Model } from "shared";
+import { type Model, supportsProviderReasoning } from "shared";
 import { computed, type MaybeRefOrGetter, nextTick, type Ref, ref, toValue, watch } from "vue";
 
 import { type ProviderInfo, useSelector } from "./useSelector";
@@ -55,20 +55,27 @@ export function useModelSelector(options: UseModelSelectorOptions) {
 
   const usesReasoningVariants = computed(() => toValue(options.reasoningMode) === "variant");
   const isDisabled = computed(() => toValue(options.disabled));
+  const supportsReasoning = (model: Model | undefined): boolean => {
+    return (
+      model !== undefined &&
+      model.capabilities.reasoning &&
+      supportsProviderReasoning(model.provider)
+    );
+  };
 
   const activeReasoningModel = computed(() => {
     if (activeReasoningModelId.value === undefined) return undefined;
     return providerModels.value.find((model) => model.id === activeReasoningModelId.value);
   });
 
-  const shouldShowEffortStep = computed(
-    () => usesReasoningVariants.value && activeReasoningModel.value?.capabilities.reasoning === true
-  );
+  const shouldShowEffortStep = computed(() => {
+    return usesReasoningVariants.value && supportsReasoning(activeReasoningModel.value);
+  });
 
   const selectedModelLabel = computed(() => {
     const model = options.selectedModel.value;
     if (model === undefined) return "Select model";
-    if (!usesReasoningVariants.value || model.capabilities.reasoning !== true) {
+    if (!usesReasoningVariants.value || !supportsReasoning(model)) {
       return model.name;
     }
     return `${model.name} ${effortConfig[reasoningEffort.value].label}`;
@@ -92,7 +99,7 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     if (
       usesReasoningVariants.value &&
       model !== undefined &&
-      model.capabilities.reasoning &&
+      supportsReasoning(model) &&
       model.provider === activeProvider.value
     ) {
       activeReasoningModelId.value = model.id;
@@ -101,7 +108,7 @@ export function useModelSelector(options: UseModelSelectorOptions) {
 
   const handleSelect = (model: ModelWithConfig) => {
     if (!model.isConfigured) return;
-    if (usesReasoningVariants.value && model.capabilities.reasoning) {
+    if (usesReasoningVariants.value && supportsReasoning(model)) {
       activeReasoningModelId.value = model.id;
       return;
     }
@@ -117,7 +124,7 @@ export function useModelSelector(options: UseModelSelectorOptions) {
   const handleEffortSelect = (effort: ReasoningEffort) => {
     if (!usesReasoningVariants.value) return;
     const model = activeReasoningModel.value;
-    if (model === undefined || !model.isConfigured || !model.capabilities.reasoning) return;
+    if (model === undefined || !model.isConfigured || !supportsReasoning(model)) return;
     reasoningEffort.value = effort;
     options.selectedModel.value = model;
     close();
@@ -152,6 +159,7 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     activeReasoningModel,
     shouldShowEffortStep,
     selectedModelLabel,
+    supportsReasoning,
     reasoningEfforts,
     effortConfig,
     reasoningEffort,

@@ -1,5 +1,5 @@
 import { create } from "mutative";
-import { createModelKey } from "shared";
+import { createModelKey, normalizeModelReasoningSupport } from "shared";
 
 import { getBuiltInModelKeys, type ModelsMessage, type ModelsModel } from "./model";
 
@@ -7,7 +7,8 @@ function handleAddModel(
   model: ModelsModel,
   message: Extract<ModelsMessage, { type: "ADD_MODEL" }>
 ): ModelsModel {
-  const key = createModelKey(message.model.provider, message.model.id);
+  const normalizedModel = normalizeModelReasoningSupport(message.model);
+  const key = createModelKey(normalizedModel.provider, normalizedModel.id);
   const builtInKeys = getBuiltInModelKeys();
 
   if (builtInKeys.has(key)) {
@@ -21,7 +22,7 @@ function handleAddModel(
   }
 
   return create(model, (draft) => {
-    draft.customModels.push(message.model);
+    draft.customModels.push(normalizedModel);
     draft.configOverrides[key] = {
       enabled: true,
       enabledFor: ["agent", "float"],

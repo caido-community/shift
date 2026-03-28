@@ -1,4 +1,4 @@
-import { type Model, ModelProvider, type ModelUsageType } from "shared";
+import { type Model, ModelProvider, type ModelUsageType, supportsProviderReasoning } from "shared";
 
 const OpenAIModelIds = {
   GPT_5_4: "gpt-5.4",
@@ -7,6 +7,8 @@ const OpenAIModelIds = {
   GPT_5_3_CODEX: "gpt-5.3-codex",
 } as const;
 
+const openAIReasoningEnabled = supportsProviderReasoning(ModelProvider.OpenAI);
+
 export const openaiModels: Model[] = [
   {
     id: OpenAIModelIds.GPT_5_4,
@@ -14,7 +16,7 @@ export const openaiModels: Model[] = [
     provider: ModelProvider.OpenAI,
     contextWindow: 1_000_000,
     capabilities: {
-      reasoning: true,
+      reasoning: openAIReasoningEnabled,
     },
   },
   {
@@ -23,7 +25,7 @@ export const openaiModels: Model[] = [
     provider: ModelProvider.OpenAI,
     contextWindow: 400_000,
     capabilities: {
-      reasoning: true,
+      reasoning: openAIReasoningEnabled,
     },
   },
   {
@@ -32,7 +34,7 @@ export const openaiModels: Model[] = [
     provider: ModelProvider.OpenAI,
     contextWindow: 400_000,
     capabilities: {
-      reasoning: true,
+      reasoning: openAIReasoningEnabled,
     },
   },
   {
@@ -40,7 +42,7 @@ export const openaiModels: Model[] = [
     name: "GPT 5.3 Codex",
     provider: ModelProvider.OpenAI,
     capabilities: {
-      reasoning: true,
+      reasoning: openAIReasoningEnabled,
     },
   },
 ];

@@ -77,6 +77,22 @@ describe("models update", () => {
       expect(result.customModels).toHaveLength(0);
       expect(result).toBe(model);
     });
+
+    it("disables reasoning for new openai custom models", () => {
+      const model = createInitialModel();
+
+      const result = update(model, {
+        type: "ADD_MODEL",
+        model: {
+          id: "custom-model-2",
+          name: "Custom Model 2",
+          provider: "openai",
+          capabilities: { reasoning: true },
+        },
+      });
+
+      expect(result.customModels[0]?.capabilities.reasoning).toBe(false);
+    });
   });
 
   describe("REMOVE_MODEL", () => {
@@ -238,6 +254,15 @@ describe("models update", () => {
 
       expect(overriddenRuntime.config[key]?.enabled).toBe(false);
       expect(overriddenRuntime.config[key]?.enabledFor).toEqual([]);
+    });
+
+    it("disables reasoning for openai models in runtime config", () => {
+      const runtime = computeRuntimeConfig(createTestModel());
+      const customModel = runtime.models.find((model) => model.id === "custom-model-1");
+      const builtInOpenAIModel = runtime.models.find((model) => model.provider === "openai");
+
+      expect(customModel?.capabilities.reasoning).toBe(false);
+      expect(builtInOpenAIModel?.capabilities.reasoning).toBe(false);
     });
   });
 });

@@ -27,6 +27,35 @@ const ModelSchema = z.object({
 });
 export type Model = z.infer<typeof ModelSchema>;
 
+export const PROVIDER_REASONING_DISABLED_MESSAGES: Partial<Record<ModelProvider, string>> = {
+  [ModelProvider.OpenAI]: "Reasoning is temporarily unavailable for this provider.",
+};
+
+export const getProviderReasoningDisabledMessage = (
+  provider: ModelProvider
+): string | undefined => {
+  return PROVIDER_REASONING_DISABLED_MESSAGES[provider];
+};
+
+export const supportsProviderReasoning = (provider: ModelProvider): boolean => {
+  return getProviderReasoningDisabledMessage(provider) === undefined;
+};
+
+export const normalizeModelReasoningSupport = (model: Model): Model => {
+  const reasoning = model.capabilities.reasoning && supportsProviderReasoning(model.provider);
+  if (reasoning === model.capabilities.reasoning) {
+    return model;
+  }
+
+  return {
+    ...model,
+    capabilities: {
+      ...model.capabilities,
+      reasoning,
+    },
+  };
+};
+
 const ModelUsageTypeSchema = z.enum(["agent", "float"]);
 export type ModelUsageType = z.infer<typeof ModelUsageTypeSchema>;
 

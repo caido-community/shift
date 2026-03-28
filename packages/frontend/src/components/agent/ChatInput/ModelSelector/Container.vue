@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onClickOutside } from "@vueuse/core";
-import type { Model } from "shared";
+import { getProviderReasoningDisabledMessage, type Model } from "shared";
 import { ref } from "vue";
 
 import { useModelSelector } from "./useModelSelector";
@@ -38,6 +38,7 @@ const {
   activeReasoningModel,
   shouldShowEffortStep,
   selectedModelLabel,
+  supportsReasoning,
   reasoningEfforts,
   effortConfig,
   reasoningEffort,
@@ -126,7 +127,15 @@ onClickOutside(containerRef, close);
                       : 'text-surface-400 hover:bg-surface-800 hover:text-surface-200',
                 ]"
                 @click="handleProviderClick(provider)">
-                <span class="truncate">{{ getProviderDisplayName(provider.id) }}</span>
+                <div class="flex min-w-0 items-center gap-1">
+                  <span class="truncate">{{ getProviderDisplayName(provider.id) }}</span>
+                  <span
+                    v-if="getProviderReasoningDisabledMessage(provider.id) !== undefined"
+                    v-tooltip.right="getProviderReasoningDisabledMessage(provider.id)"
+                    class="inline-flex h-4 w-4 shrink-0 cursor-help items-center justify-center text-surface-400 opacity-80">
+                    <i class="fas fa-exclamation-triangle text-[10px]" />
+                  </span>
+                </div>
                 <i
                   v-if="!provider.isConfigured"
                   class="fas fa-exclamation-circle text-[10px] text-surface-600" />
@@ -172,7 +181,7 @@ onClickOutside(containerRef, close);
                       v-if="!model.isConfigured"
                       class="fas fa-exclamation-circle text-[10px] text-surface-500" />
                     <div
-                      v-else-if="usesReasoningVariants && model.capabilities.reasoning"
+                      v-else-if="usesReasoningVariants && supportsReasoning(model)"
                       class="flex items-center gap-1.5 shrink-0">
                       <i
                         v-if="model.id === selectedModel?.id"
