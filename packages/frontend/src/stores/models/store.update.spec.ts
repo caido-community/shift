@@ -40,7 +40,9 @@ describe("models update", () => {
       const result = update(loadingModel, { type: "FETCH_SUCCESS", config: config! });
 
       expect(result.isLoading).toBe(false);
-      expect(result.config).toEqual(config);
+      expect(result.config?.models[0]?.capabilities.reasoning).toBe(false);
+      expect(result.config?.config).toEqual(config?.config);
+      expect(result.config?.customModelKeys).toEqual(config?.customModelKeys);
       expect(result.error).toBeUndefined();
     });
   });
@@ -112,6 +114,23 @@ describe("models update", () => {
       });
 
       expect(result).toBe(initialModel);
+    });
+
+    it("disables reasoning for openai models", () => {
+      const config = createTestConfig();
+      const modelWithConfig: ModelsModel = { ...initialModel, config };
+
+      const result = update(modelWithConfig, {
+        type: "ADD_MODEL_SUCCESS",
+        input: {
+          id: "custom-openai",
+          name: "Custom OpenAI",
+          provider: "openai",
+          capabilities: { reasoning: true },
+        },
+      });
+
+      expect(result.config?.models[1]?.capabilities.reasoning).toBe(false);
     });
   });
 

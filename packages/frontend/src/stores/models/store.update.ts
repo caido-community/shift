@@ -4,6 +4,7 @@ import {
   createModelKey,
   type ModelsConfig,
   type ModelUsageType,
+  normalizeModelReasoningSupport,
   type RemoveModelInput,
   type UpdateModelConfigInput,
 } from "shared";
@@ -20,7 +21,10 @@ function handleFetchRequest(model: ModelsModel): ModelsModel {
 function handleFetchSuccess(model: ModelsModel, config: ModelsConfig): ModelsModel {
   return create(model, (draft) => {
     draft.isLoading = false;
-    draft.config = config;
+    draft.config = {
+      ...config,
+      models: config.models.map(normalizeModelReasoningSupport),
+    };
     draft.error = undefined;
   });
 }
@@ -37,7 +41,8 @@ function handleAddModelSuccess(model: ModelsModel, input: AddModelInput): Models
     return model;
   }
 
-  const key = createModelKey(input.provider, input.id);
+  const normalizedInput = normalizeModelReasoningSupport(input);
+  const key = createModelKey(normalizedInput.provider, normalizedInput.id);
   const exists = model.config.models.some((m) => createModelKey(m.provider, m.id) === key);
 
   if (exists) {
@@ -46,7 +51,7 @@ function handleAddModelSuccess(model: ModelsModel, input: AddModelInput): Models
 
   return create(model, (draft) => {
     if (draft.config === undefined) return;
-    draft.config.models.push(input);
+    draft.config.models.push(normalizedInput);
     draft.config.config[key] = {
       modelKey: key,
       enabled: true,

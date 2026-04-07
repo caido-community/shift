@@ -5,6 +5,7 @@ import {
   type Model,
   ModelProvider,
   type ModelProvider as ModelProviderId,
+  supportsProviderReasoning,
 } from "shared";
 
 import type { FrontendSDK } from "../types";
@@ -58,7 +59,10 @@ export function createModel(sdk: FrontendSDK, model: Model, options: CreateModel
     openRouterPrioritizeFastProviders = false,
   } = options;
 
-  const isReasoningModel = reasoning && (model?.capabilities.reasoning ?? false);
+  const isReasoningModel =
+    reasoning &&
+    (model?.capabilities.reasoning ?? false) &&
+    supportsProviderReasoning(model.provider);
 
   const provider = sdk.ai.createProvider();
 
