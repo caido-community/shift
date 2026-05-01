@@ -33,6 +33,9 @@ function handleUpdateSettings(
     if (input.featureFlags !== undefined) {
       draft.featureFlags = { ...draft.featureFlags, ...input.featureFlags };
     }
+    if (input.bedrockCredentials !== undefined) {
+      draft.bedrockCredentials = input.bedrockCredentials ?? undefined;
+    }
   });
 }
 

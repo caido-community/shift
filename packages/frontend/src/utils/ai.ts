@@ -1,5 +1,5 @@
+import { createAmazonBedrock } from "@ai-sdk/amazon-bedrock";
 import { type LanguageModelV3 } from "@ai-sdk/provider";
-import { type AIUpstreamProviderId } from "@caido/sdk-frontend";
 import {
   createModelKey,
   type Model,
@@ -12,22 +12,39 @@ import type { FrontendSDK } from "../types";
 
 import { isPresent } from "./optional";
 
+import { useSettingsStore } from "@/stores/settings";
+
 type ProviderStatus = {
-  id: AIUpstreamProviderId;
+  id: string;
   isConfigured: boolean;
 };
 
+function isBedrockConfigured(): boolean {
+  const settingsStore = useSettingsStore();
+  const creds = settingsStore.bedrockCredentials;
+  return (
+    creds !== undefined &&
+    creds.accessKeyId !== "" &&
+    creds.secretAccessKey !== "" &&
+    creds.region !== ""
+  );
+}
+
 export function getProviderStatuses(sdk: FrontendSDK): ProviderStatus[] {
-  return sdk.ai.getUpstreamProviders().map((provider) => ({
+  const caidoStatuses = sdk.ai.getUpstreamProviders().map((provider) => ({
     id: provider.id,
     isConfigured: provider.status === "Ready",
   }));
+  return [...caidoStatuses, { id: ModelProvider.Bedrock, isConfigured: isBedrockConfigured() }];
 }
 
 export function isProviderConfigured(sdk: FrontendSDK, provider: ModelProviderId): boolean {
-  const statuses = getProviderStatuses(sdk);
+  if (provider === ModelProvider.Bedrock) {
+    return isBedrockConfigured();
+  }
+  const statuses = sdk.ai.getUpstreamProviders();
   const status = statuses.find((s) => s.id === provider);
-  return status?.isConfigured ?? false;
+  return status?.status === "Ready";
 }
 
 export function isAnyProviderConfigured(sdk: FrontendSDK): boolean {
@@ -37,7 +54,11 @@ export function isAnyProviderConfigured(sdk: FrontendSDK): boolean {
 
 export class ProviderNotConfiguredError extends Error {
   constructor(provider: ModelProviderId) {
-    super(`Provider "${provider}" is not configured. Please configure it in Caido AI settings.`);
+    const hint =
+      provider === ModelProvider.Bedrock
+        ? "Please add your AWS credentials in Shift settings."
+        : "Please configure it in Caido AI settings.";
+    super(`Provider "${provider}" is not configured. ${hint}`);
     this.name = "ProviderNotConfiguredError";
   }
 }
@@ -63,6 +84,25 @@ export function createModel(sdk: FrontendSDK, model: Model, options: CreateModel
     reasoning &&
     (model?.capabilities.reasoning ?? false) &&
     supportsProviderReasoning(model.provider);
+
+  if (model.provider === ModelProvider.Bedrock) {
+    const settingsStore = useSettingsStore();
+    const creds = settingsStore.bedrockCredentials;
+    if (
+      creds === undefined ||
+      creds.accessKeyId === "" ||
+      creds.secretAccessKey === "" ||
+      creds.region === ""
+    ) {
+      throw new ProviderNotConfiguredError(model.provider);
+    }
+    const bedrock = createAmazonBedrock({
+      region: creds.region,
+      accessKeyId: creds.accessKeyId,
+      secretAccessKey: creds.secretAccessKey,
+    });
+    return bedrock(model.id) as unknown as LanguageModelV3;
+  }
 
   const provider = sdk.ai.createProvider();
 

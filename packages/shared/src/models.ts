@@ -1,4 +1,3 @@
-import { type AIUpstreamProviderId } from "@caido/sdk-frontend";
 import { z } from "zod";
 
 import { isPresent } from "../../frontend/src/utils/optional";
@@ -8,7 +7,8 @@ export const ModelProvider = {
   OpenAI: "openai",
   Anthropic: "anthropic",
   Google: "google",
-} as const satisfies Record<string, AIUpstreamProviderId>;
+  Bedrock: "bedrock",
+} as const;
 
 export type ModelProvider = (typeof ModelProvider)[keyof typeof ModelProvider];
 const ModelProviderSchema = z.nativeEnum(ModelProvider);

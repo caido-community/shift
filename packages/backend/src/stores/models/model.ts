@@ -12,7 +12,9 @@ import {
 
 import {
   anthropicModels,
+  bedrockModels,
   defaultAnthropicModelsConfig,
+  defaultBedrockModelsConfig,
   defaultGoogleModelsConfig,
   defaultOpenAIModelsConfig,
   defaultOpenRouterModelsConfig,
@@ -31,6 +33,7 @@ export type ModelsMessage =
 
 const builtInModels: Model[] = [
   ...anthropicModels,
+  ...bedrockModels,
   ...googleModels,
   ...openaiModels,
   ...openrouterModels,
@@ -38,6 +41,7 @@ const builtInModels: Model[] = [
 
 const defaultModelsConfig: Record<string, ModelUsageType[]> = {
   ...defaultAnthropicModelsConfig,
+  ...defaultBedrockModelsConfig,
   ...defaultGoogleModelsConfig,
   ...defaultOpenAIModelsConfig,
   ...defaultOpenRouterModelsConfig,

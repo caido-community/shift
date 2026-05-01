@@ -63,6 +63,9 @@ function handleUpdateSuccess(model: SettingsModel, input: UpdateSettingsInput): 
         ...input.featureFlags,
       };
     }
+    if (input.bedrockCredentials !== undefined) {
+      draft.config.bedrockCredentials = input.bedrockCredentials ?? undefined;
+    }
   });
 }
 

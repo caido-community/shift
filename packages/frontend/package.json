@@ -6,6 +6,7 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/amazon-bedrock": "4.0.97",
     "@ai-sdk/provider": "3.0.8",
     "@ai-sdk/vue": "3.0.116",
     "@caido/primevue": "0.3.3",

@@ -34,6 +34,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const backgroundAgentsEnabled = computed(() =>
     isFeatureFlagEnabled(model.value.config?.featureFlags, "backgroundAgents")
   );
+  const bedrockCredentials = computed(() => model.value.config?.bedrockCredentials);
 
   async function initialize() {
     await fetchSettings(sdk, dispatch);
@@ -60,6 +61,7 @@ export const useSettingsStore = defineStore("settings", () => {
     openRouterPrioritizeFastProviders,
     featureFlags,
     backgroundAgentsEnabled,
+    bedrockCredentials,
     isFeatureEnabled,
     initialize,
   };

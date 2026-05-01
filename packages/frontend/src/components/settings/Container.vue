@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import Button from "primevue/button";
 import Card from "primevue/card";
 import Checkbox from "primevue/checkbox";
 import InputNumber from "primevue/inputnumber";
+import InputText from "primevue/inputtext";
 import ToggleSwitch from "primevue/toggleswitch";
 import { DEFAULT_MAX_ITERATIONS, defaultFeatureFlags, type FeatureFlagKey } from "shared";
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 
 import { featureFlagEntries } from "@/features";
 import { useSettingsStore } from "@/stores/settings";
@@ -62,6 +64,46 @@ const updateFeatureFlag = (flag: FeatureFlagKey, value: boolean) => {
     featureFlags: { [flag]: value },
   });
 };
+
+const bedrockAccessKeyId = ref(settingsStore.bedrockCredentials?.accessKeyId ?? "");
+const bedrockSecretAccessKey = ref(settingsStore.bedrockCredentials?.secretAccessKey ?? "");
+const bedrockRegion = ref(settingsStore.bedrockCredentials?.region ?? "");
+
+watch(
+  () => settingsStore.bedrockCredentials,
+  (creds) => {
+    bedrockAccessKeyId.value = creds?.accessKeyId ?? "";
+    bedrockSecretAccessKey.value = creds?.secretAccessKey ?? "";
+    bedrockRegion.value = creds?.region ?? "";
+  }
+);
+
+const bedrockIsConfigured = computed(() => {
+  const creds = settingsStore.bedrockCredentials;
+  return (
+    creds !== undefined &&
+    creds.accessKeyId !== "" &&
+    creds.secretAccessKey !== "" &&
+    creds.region !== ""
+  );
+});
+
+function saveBedrockCredentials() {
+  const accessKeyId = bedrockAccessKeyId.value.trim();
+  const secretAccessKey = bedrockSecretAccessKey.value.trim();
+  const region = bedrockRegion.value.trim();
+  if (!accessKeyId || !secretAccessKey || !region) return;
+  updateSettings(sdk, dispatch, {
+    bedrockCredentials: { accessKeyId, secretAccessKey, region },
+  });
+}
+
+function clearBedrockCredentials() {
+  bedrockAccessKeyId.value = "";
+  bedrockSecretAccessKey.value = "";
+  bedrockRegion.value = "";
+  updateSettings(sdk, dispatch, { bedrockCredentials: null });
+}
 </script>
 
 <template>
@@ -129,6 +171,49 @@ const updateFeatureFlag = (flag: FeatureFlagKey, value: boolean) => {
             </div>
 
             <ToggleSwitch v-model="openRouterPrioritizeFastProviders" />
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col">
+                <label class="text-base font-medium">AWS Bedrock</label>
+                <p class="text-sm text-surface-400">
+                  Configure AWS credentials to use Bedrock-hosted models.
+                </p>
+              </div>
+              <span
+                :class="bedrockIsConfigured ? 'text-green-400' : 'text-surface-400'"
+                class="text-xs font-medium">
+                {{ bedrockIsConfigured ? "Configured" : "Not configured" }}
+              </span>
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <InputText
+                v-model="bedrockAccessKeyId"
+                placeholder="Access Key ID"
+                class="w-full"
+                @blur="saveBedrockCredentials" />
+              <InputText
+                v-model="bedrockSecretAccessKey"
+                type="password"
+                placeholder="Secret Access Key"
+                class="w-full"
+                @blur="saveBedrockCredentials" />
+              <InputText
+                v-model="bedrockRegion"
+                placeholder="Region (e.g. us-east-1)"
+                class="w-full"
+                @blur="saveBedrockCredentials" />
+              <div class="flex justify-end">
+                <Button
+                  v-if="bedrockIsConfigured"
+                  label="Clear credentials"
+                  severity="secondary"
+                  size="small"
+                  @click="clearBedrockCredentials" />
+              </div>
+            </div>
           </div>
 
           <div class="flex flex-col gap-3">

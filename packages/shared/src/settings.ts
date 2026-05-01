@@ -9,6 +9,13 @@ const RenamingConfigSchema = z.object({
 });
 export type RenamingConfig = z.infer<typeof RenamingConfigSchema>;
 
+export const BedrockCredentialsSchema = z.object({
+  accessKeyId: z.string(),
+  secretAccessKey: z.string(),
+  region: z.string(),
+});
+export type BedrockCredentials = z.infer<typeof BedrockCredentialsSchema>;
+
 const SettingsConfigSchema = z.object({
   agentsModel: z.string(),
   floatModel: z.string(),
@@ -19,6 +26,7 @@ const SettingsConfigSchema = z.object({
   autoCreateShiftCollection: z.boolean(),
   openRouterPrioritizeFastProviders: z.boolean(),
   featureFlags: FeatureFlagsConfigSchema,
+  bedrockCredentials: BedrockCredentialsSchema.optional(),
 });
 export type SettingsConfig = z.infer<typeof SettingsConfigSchema>;
 
@@ -41,6 +49,7 @@ export const defaultSettingsConfig: SettingsConfig = {
   autoCreateShiftCollection: true,
   openRouterPrioritizeFastProviders: false,
   featureFlags: defaultFeatureFlags,
+  bedrockCredentials: undefined,
 };
 
 export const UpdateSettingsSchema = z.object({
@@ -53,5 +62,6 @@ export const UpdateSettingsSchema = z.object({
   autoCreateShiftCollection: z.boolean().optional(),
   openRouterPrioritizeFastProviders: z.boolean().optional(),
   featureFlags: FeatureFlagsConfigSchema.partial().optional(),
+  bedrockCredentials: BedrockCredentialsSchema.nullable().optional(),
 });
 export type UpdateSettingsInput = z.infer<typeof UpdateSettingsSchema>;

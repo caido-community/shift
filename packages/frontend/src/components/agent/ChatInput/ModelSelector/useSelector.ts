@@ -9,13 +9,14 @@ export type ProviderInfo = {
   isConfigured: boolean;
 };
 
-const PROVIDER_ORDER: ModelProvider[] = ["openrouter", "anthropic", "google", "openai"];
+const PROVIDER_ORDER: ModelProvider[] = ["openrouter", "anthropic", "google", "openai", "bedrock"];
 
 const PROVIDER_DISPLAY_NAMES: Record<ModelProvider, string> = {
   openrouter: "OpenRouter",
   anthropic: "Anthropic",
   google: "Google",
   openai: "OpenAI",
+  bedrock: "AWS Bedrock",
 };
 
 export const getProviderDisplayName = (provider: ModelProvider): string => {
