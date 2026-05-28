@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { isPresent } from "@/utils/optional";
+import { getReplayEntryRequest } from "@/utils/caido";
 
 const inputSchema = z.object({
   entryId: z
@@ -16,6 +16,7 @@ const inputSchema = z.object({
 const valueSchema = z.object({
   entryId: z.string(),
   requestId: z.string().optional(),
+  requestRaw: z.string().optional(),
 });
 
 const outputSchema = ToolResult.schema(valueSchema);
@@ -46,12 +47,14 @@ export const ReplayEntryNavigate = tool({
       const context = experimental_context as AgentContext;
       const sdk = context.sdk;
 
-      const entry = sdk.replay.getEntry(entryId);
-      if (!isPresent(entry)) {
-        return ToolResult.err("Entry not found");
+      const entryRequestResult = await getReplayEntryRequest(sdk, context.sessionId, entryId);
+      if (entryRequestResult.kind === "Error") {
+        return ToolResult.err("Entry not found", entryRequestResult.error);
       }
 
-      if (entry.sessionId !== context.sessionId) {
+      const { entry, request } = entryRequestResult.value;
+
+      if (entry.session.id !== context.sessionId) {
         return ToolResult.err("Entry does not belong to the current session");
       }
 
@@ -59,20 +62,13 @@ export const ReplayEntryNavigate = tool({
         overwriteDraft: true,
       });
 
-      const entryResult = await sdk.graphql.replayEntry({
-        id: entryId,
-      });
-      const replayEntry = entryResult.replayEntry;
-
-      if (isPresent(replayEntry)) {
-        context.setHttpRequest(replayEntry.raw);
-      }
+      context.setHttpRequest(entry.raw);
 
       return ToolResult.ok({
         message: `Navigated to entry ${entryId}`,
         entryId,
-        requestId: entry.requestId,
-        requestRaw: replayEntry?.raw,
+        requestId: request?.id,
+        requestRaw: entry.raw,
       });
     } catch (error) {
       return ToolResult.err("Failed to navigate to entry", (error as Error).message);

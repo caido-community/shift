@@ -158,7 +158,7 @@ export const historyReadTool = tool({
 
     try {
       const result = await sdk.graphql.interceptEntriesByOffset({
-        filter,
+        filter: filter !== undefined ? { code: filter } : undefined,
         limit,
         offset,
         scopeId: effectiveScopeId,

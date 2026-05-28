@@ -27,8 +27,8 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "@caido/sdk-backend": "0.55.3",
-    "@caido/sdk-frontend": "0.55.3",
+    "@caido/sdk-backend": "0.56.2",
+    "@caido/sdk-frontend": "0.56.2",
     "@codemirror/view": "6.39.16",
     "vue-tsc": "3.2.5"
   }

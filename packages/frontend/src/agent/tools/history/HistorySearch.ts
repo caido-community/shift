@@ -108,7 +108,7 @@ Returns request metadata (id, host, port, path, query, method, isTls, createdAt,
     const graphqlResult = await safeGraphQL(
       () =>
         context.sdk.graphql.requestsByOffset({
-          filter,
+          filter: { code: filter },
           limit,
           offset,
           order: {

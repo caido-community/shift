@@ -36,6 +36,148 @@ type ReplaySession = {
   };
 };
 
+export type ReplayEntryRequest = {
+  entry: ReplayHttpEntry;
+  request: ReplayHttpEntry["request"];
+};
+
+type ConnectionInfo = {
+  host: string;
+  port: number;
+  isTLS: boolean;
+  SNI?: string | null;
+};
+
+type ReplayHttpRequest = {
+  id: string;
+  raw?: string;
+  host?: string;
+  port?: number;
+  isTls?: boolean;
+  sni?: string | null;
+};
+
+type RawReplayHttpEntry = {
+  __typename?: "ReplayEntry" | "ReplayEntryHttp";
+  id: string;
+  raw?: string;
+  connection: ConnectionInfo;
+  request?: ReplayHttpRequest | null;
+  session: {
+    id: string;
+  };
+};
+
+type ReplayHttpEntry = RawReplayHttpEntry & {
+  raw: string;
+};
+
+type ReplayWsEntry = {
+  __typename?: "ReplayEntryWs";
+  id: string;
+  http: RawReplayHttpEntry;
+};
+
+type ReplayEntry = RawReplayHttpEntry | ReplayWsEntry;
+
+type ReplaySessionEntriesQuery = {
+  replaySession?: {
+    activeEntry?: ReplayEntry | null;
+    entries: {
+      edges: Array<{
+        node: ReplayEntry;
+      }>;
+    };
+  } | null;
+};
+
+const toReplayHttpEntry = (
+  entry: ReplayEntry | null | undefined
+): RawReplayHttpEntry | undefined => {
+  if (!isPresent(entry)) {
+    return undefined;
+  }
+
+  if ("http" in entry) {
+    return entry.http;
+  }
+
+  return entry;
+};
+
+const matchesReplayEntryId = (entry: ReplayEntry, entryId: string): boolean => {
+  if (entry.id === entryId) {
+    return true;
+  }
+
+  return "http" in entry && entry.http.id === entryId;
+};
+
+const hydrateReplayHttpEntry = async (
+  sdk: FrontendSDK,
+  entry: RawReplayHttpEntry
+): Promise<Result<ReplayEntryRequest>> => {
+  if (entry.raw !== undefined) {
+    return Result.ok({ entry: { ...entry, raw: entry.raw }, request: entry.request });
+  }
+
+  if (!isPresent(entry.request?.id)) {
+    return Result.err("Replay entry has no raw request or linked request");
+  }
+
+  const requestId = entry.request.id;
+  const requestResult = await safeGraphQL(
+    () => sdk.graphql.request({ id: requestId }),
+    "Failed to fetch replay entry request"
+  );
+
+  if (requestResult.kind === "Error") {
+    return requestResult;
+  }
+
+  const request = requestResult.value.request;
+  if (!isPresent(request)) {
+    return Result.err("Replay entry request not found");
+  }
+
+  return Result.ok({
+    entry: { ...entry, raw: request.raw },
+    request,
+  });
+};
+
+export async function getReplayEntryRequest(
+  sdk: FrontendSDK,
+  sessionId: string,
+  entryId: string
+): Promise<Result<ReplayEntryRequest>> {
+  const sessionResult = await safeGraphQL(
+    () => sdk.graphql.replaySessionEntries({ id: sessionId }),
+    "Failed to fetch replay session entries"
+  );
+
+  if (sessionResult.kind === "Error") {
+    return sessionResult;
+  }
+
+  const session = (sessionResult.value as ReplaySessionEntriesQuery).replaySession;
+  if (!isPresent(session)) {
+    return Result.err("Replay session not found");
+  }
+
+  const entries = [session.activeEntry, ...session.entries.edges.map((edge) => edge.node)].filter(
+    isPresent
+  );
+
+  const selectedEntry = entries.find((entry) => matchesReplayEntryId(entry, entryId));
+  const entry = toReplayHttpEntry(selectedEntry);
+  if (!isPresent(entry)) {
+    return Result.err("Replay entry is not an HTTP replay entry");
+  }
+
+  return hydrateReplayHttpEntry(sdk, entry);
+}
+
 const getRequestEditorRequestID = (): Result<string> => {
   const requestEditor = document.querySelector("[data-language=http-request]") as
     | EditorElement
@@ -82,7 +224,12 @@ export const getCurrentRequestID = async (sdk: FrontendSDK): Promise<Result<stri
     return { kind: "Error", error: "No active entry found in replay session" };
   }
 
-  const requestId = activeEntry.request?.id;
+  const entryResult = await getReplayEntryRequest(sdk, currSession.id, activeEntry.id);
+  if (entryResult.kind === "Error") {
+    return entryResult;
+  }
+
+  const requestId = entryResult.value.request?.id;
   if (requestId === undefined || requestId === null || requestId === "") {
     return { kind: "Error", error: "Request ID not found in active entry" };
   }
@@ -125,24 +272,22 @@ export async function getReplaySession(
     // });
   }
 
-  const entryResult = await sdk.graphql.replayEntry({
-    id: activeEntry.id,
-  });
-  const replayEntry = entryResult.replayEntry;
-
-  if (replayEntry === undefined || replayEntry === null) {
-    return Result.err("No request found");
+  const entryRequestResult = await getReplayEntryRequest(sdk, replaySessionId, activeEntry.id);
+  if (entryRequestResult.kind === "Error") {
+    return entryRequestResult;
   }
+
+  const { entry } = entryRequestResult.value;
 
   return Result.ok({
     id: replaySessionId,
-    activeEntryId: activeEntry.id,
+    activeEntryId: entry.id,
     request: {
-      raw: replayEntry.raw,
-      host: replayEntry.connection.host,
-      port: replayEntry.connection.port,
-      isTLS: replayEntry.connection.isTLS,
-      SNI: replayEntry.connection.SNI ?? "",
+      raw: entry.raw,
+      host: entry.connection.host,
+      port: entry.connection.port,
+      isTLS: entry.connection.isTLS,
+      SNI: entry.connection.SNI ?? "",
     },
   });
 }
@@ -165,15 +310,23 @@ export const writeToRequestEditor = (raw: string) => {
 };
 
 const readRequestEditor = (): Result<string> => {
-  const requestEditor = document.querySelector(".cm-content[data-language='http-request']") as
-    | EditorElement
-    | undefined;
+  const requestEditors = document.querySelectorAll<EditorElement>(
+    ".cm-content[data-language='http-request'], [data-language='http-request'] .cm-content, [data-language='http-request']"
+  );
+
+  let requestEditor: EditorElement | undefined;
+  for (let i = 0; i < requestEditors.length; i++) {
+    const candidate = requestEditors.item(i);
+    if (isPresent(candidate.cmView?.view)) {
+      requestEditor = candidate;
+      break;
+    }
+  }
 
   if (!isPresent(requestEditor)) {
     return Result.err("Request editor not found");
   }
 
-  // TODO: replace with proper SDK API call once we have it, we are hacking around to read content of editor
   const rawContent = requestEditor.cmView?.view.state.doc.toString();
 
   if (rawContent === undefined) {
