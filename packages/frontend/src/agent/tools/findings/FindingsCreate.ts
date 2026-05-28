@@ -73,7 +73,10 @@ export const FindingsCreate = tool({
       return ToolResult.err("No active entry found in replay session");
     }
 
-    const requestId = activeEntry.request?.id;
+    const requestId =
+      activeEntry.__typename === "ReplayEntryWs"
+        ? activeEntry.http.request?.id
+        : activeEntry.request?.id;
     if (requestId === undefined || requestId === null || requestId === "") {
       return ToolResult.err("Request ID not found in active entry");
     }

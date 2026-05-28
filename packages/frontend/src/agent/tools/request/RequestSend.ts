@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { getReplaySession } from "@/utils/caido";
+import { getReplaySession, usesReplayEntryInterface, writeToRequestEditor } from "@/utils/caido";
 import { formatStringWithSuffix } from "@/utils/text";
 
 const inputSchema = z.object({});
@@ -20,6 +20,34 @@ const outputSchema = ToolResult.schema(valueSchema);
 type RequestSendInput = z.infer<typeof inputSchema>;
 type RequestSendValue = z.infer<typeof valueSchema>;
 type RequestSendOutput = ToolResultType<RequestSendValue>;
+
+type LegacySendRequestOptions = {
+  background?: boolean;
+  connectionInfo: {
+    host: string;
+    isTLS: boolean;
+    port: number;
+    SNI?: string;
+  };
+  raw: string;
+};
+
+type LegacySendRequest = (sessionId: string, options: LegacySendRequestOptions) => Promise<void>;
+
+const getActiveEntryResponseId = async (
+  sdk: AgentContext["sdk"],
+  sessionId: string
+): Promise<string | undefined> => {
+  const result = await sdk.graphql.replaySessionEntries({ id: sessionId });
+  const activeEntry = result.replaySession?.activeEntry;
+
+  return activeEntry?.__typename === "ReplayEntryWs"
+    ? activeEntry.http.request?.response?.id
+    : activeEntry?.request?.response?.id;
+};
+
+const sleep = (duration: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, duration));
 
 export const formatRequestSendModelOutput = (value: {
   message: string;
@@ -113,17 +141,47 @@ export const RequestSend = tool({
 
     const replaySession = replaySessionResult.value;
 
-    await sdk.replay.sendRequest(replaySession.id, {
-      connectionInfo: {
-        host: replaySession.request.host,
-        isTLS: replaySession.request.isTLS,
-        port: replaySession.request.port,
-      },
-      raw: context.httpRequest,
-      background: true,
-    });
+    const previousResponseId = await getActiveEntryResponseId(sdk, replaySession.id);
 
     let responseId: string | undefined = undefined;
+
+    const captureResponseId = (nextResponseId: string | undefined): boolean => {
+      if (nextResponseId !== undefined && nextResponseId !== previousResponseId) {
+        responseId = nextResponseId;
+        return true;
+      }
+
+      return false;
+    };
+
+    try {
+      if (usesReplayEntryInterface(sdk)) {
+        writeToRequestEditor(context.httpRequest);
+        await sdk.replay.sendRequest(replaySession.id, {
+          background: false,
+        });
+      } else {
+        if (replaySession.request.host === "" || replaySession.request.port === 0) {
+          return ToolResult.err("No active replay entry to send");
+        }
+
+        const sendRequest = sdk.replay.sendRequest as unknown as LegacySendRequest;
+        await sendRequest(replaySession.id, {
+          background: false,
+          connectionInfo: {
+            host: replaySession.request.host,
+            isTLS: replaySession.request.isTLS,
+            port: replaySession.request.port,
+            SNI: replaySession.request.SNI || undefined,
+          },
+          raw: context.httpRequest,
+        });
+      }
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "Unknown error occurred";
+      return ToolResult.err("Failed to send request", detail);
+    }
+
     const iterator = sdk.graphql.updatedReplaySession({});
 
     const timeout = new Promise<never>((_, reject) => {
@@ -144,15 +202,31 @@ export const RequestSend = tool({
     const responsePromise = (async () => {
       for await (const event of iterator) {
         if (event.updatedReplaySession.sessionEdge.node.id === replaySession.id) {
-          responseId =
-            event.updatedReplaySession.sessionEdge.node.activeEntry?.request?.response?.id;
-          break;
+          const activeEntry = event.updatedReplaySession.sessionEdge.node.activeEntry;
+          const nextResponseId =
+            activeEntry?.__typename === "ReplayEntryWs"
+              ? activeEntry.http.request?.response?.id
+              : activeEntry?.request?.response?.id;
+
+          if (captureResponseId(nextResponseId ?? undefined)) {
+            break;
+          }
         }
       }
     })();
 
+    const pollResponsePromise = (async () => {
+      while (responseId === undefined) {
+        if (captureResponseId(await getActiveEntryResponseId(sdk, replaySession.id))) {
+          break;
+        }
+
+        await sleep(250);
+      }
+    })();
+
     try {
-      await Promise.race([responsePromise, timeout, abortPromise]);
+      await Promise.race([responsePromise, pollResponsePromise, timeout, abortPromise]);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         throw error;

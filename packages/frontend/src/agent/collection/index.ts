@@ -61,7 +61,7 @@ function showLaunchDialog(sdk: FrontendSDK, sessionId: string, preSelectedSkillI
 
   dialog = sdk.window.showDialog(
     {
-      component: LaunchDialog,
+      component: LaunchDialog as never,
       props: {
         onConfirm: () => handleConfirm,
         onCancel: () => handleCancel,

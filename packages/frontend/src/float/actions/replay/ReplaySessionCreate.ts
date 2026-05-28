@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { normalizeRawHttpRequest } from "@/agent/utils/http";
 import { ActionResult, type FloatToolContext } from "@/float/types";
+import { type FrontendSDK } from "@/types";
+import { usesReplayEntryInterface } from "@/utils/caido";
 
 const inputSchema = z.object({
   rawRequest: z.string().describe("Raw HTTP request source (non-empty)"),
@@ -21,19 +23,32 @@ export const replaySessionCreateTool = tool({
   outputSchema: ActionResult.schema,
   execute: async ({ rawRequest, host, port, isTls, sessionName }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
-    const result = await sdk.graphql.createReplaySession({
-      input: {
-        requestSource: {
-          raw: {
-            raw: normalizeRawHttpRequest(rawRequest),
-            connectionInfo: {
-              host,
-              port,
-              isTLS: isTls,
-            },
-          },
+    type CreateReplaySessionVariables = Parameters<
+      FrontendSDK["graphql"]["createReplaySession"]
+    >[0];
+    const requestSource = {
+      raw: {
+        raw: normalizeRawHttpRequest(rawRequest),
+        connectionInfo: {
+          host,
+          port,
+          isTLS: isTls,
         },
       },
+    };
+    const input = (
+      usesReplayEntryInterface(sdk)
+        ? {
+            kind: "HTTP",
+            requestSource,
+          }
+        : {
+            requestSource,
+          }
+    ) as CreateReplaySessionVariables["input"];
+
+    const result = await sdk.graphql.createReplaySession({
+      input,
     });
 
     const sessionId = result.createReplaySession.session?.id;

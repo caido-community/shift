@@ -163,6 +163,7 @@ export const automateSessionCreateTool = tool({
     }
 
     const graphPayloads = attachDefaultPreprocessors((payloads ?? []).map(toGraphQLPayload));
+    const { extractors, ...settings } = session.settings;
 
     await sdk.graphql.updateAutomateSession({
       id: session.id,
@@ -174,9 +175,16 @@ export const automateSessionCreateTool = tool({
         },
         raw: session.raw,
         settings: {
-          ...session.settings,
+          ...settings,
           strategy: strategy ?? "ALL",
           concurrency: concurrency ?? { delay: 0, workers: 10 },
+          extractors: extractors.map(({ body, regex, workflowId }) => ({
+            automateExtractorRegex: {
+              body,
+              regex,
+              workflowId,
+            },
+          })),
           payloads: graphPayloads,
           placeholders,
         },

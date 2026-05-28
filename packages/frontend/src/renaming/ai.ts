@@ -1,4 +1,3 @@
-import { type ReplayEntryQuery } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
 import { generateText, Output } from "ai";
 import { Result } from "shared";
 import { z } from "zod";
@@ -7,6 +6,7 @@ import { useModelsStore } from "@/stores/models";
 import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
 import { createModel, resolveModel } from "@/utils";
+import { type ReplayEntryWithRequest } from "@/utils/caido";
 
 const outputSchema = z.object({
   name: z.string(),
@@ -66,7 +66,7 @@ OUTPUT:
 
 export async function generateName(
   sdk: FrontendSDK,
-  entry: ReplayEntryQuery
+  entry: ReplayEntryWithRequest
 ): Promise<Result<string>> {
   try {
     const settingsStore = useSettingsStore();

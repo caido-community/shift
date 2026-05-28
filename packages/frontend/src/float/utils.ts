@@ -160,7 +160,7 @@ const showConfirmationDialog = (
 ) => {
   const dialog = sdk.window.showDialog(
     {
-      component: ConfirmationDialog,
+      component: ConfirmationDialog as never,
       props: {
         fileName,
         content,
