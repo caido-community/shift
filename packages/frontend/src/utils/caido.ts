@@ -186,10 +186,9 @@ const getInterfaceReplayEntry = async (
     return Result.err("Replay session not found");
   }
 
-  const entries = [session.activeEntry, ...session.entries.edges.map((edge) => edge.node)].filter(
-    isPresent
-  );
-  const selectedEntry = entries.find((entry) => entry.id === entryId);
+  const selectedEntry =
+    (session.activeEntry?.id === entryId ? session.activeEntry : undefined) ??
+    session.entries.edges.find((e) => e.node.id === entryId)?.node;
 
   if (!isPresent(selectedEntry)) {
     return Result.err("Replay entry not found");

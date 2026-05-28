@@ -88,7 +88,7 @@ export async function generateName(
 
     const prompt = `
       <entry>
-      ${JSON.stringify(entry)}
+      ${JSON.stringify(entry.entry)}
       </entry>
 
       <instructions>
