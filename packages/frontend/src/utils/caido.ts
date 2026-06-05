@@ -36,6 +36,180 @@ type ReplaySession = {
   };
 };
 
+type ReplayEntryHttp = {
+  __typename: "ReplayEntry" | "ReplayEntryHttp";
+  id: string;
+  raw: string;
+  connection: {
+    host: string;
+    port: number;
+    isTLS: boolean;
+    SNI?: string;
+  };
+  session: {
+    id: string;
+  };
+  request?: {
+    id: string;
+    response?: {
+      id: string;
+    };
+  };
+};
+
+type ReplayEntryHttpInput = Omit<ReplayEntryHttp, "connection" | "request"> & {
+  connection: Omit<ReplayEntryHttp["connection"], "SNI"> & {
+    SNI?: unknown;
+  };
+  request?: unknown;
+};
+
+type LegacyReplayEntryQuery = {
+  replayEntry?: ReplayEntryHttp;
+};
+
+type LegacyReplayEntryVariables = {
+  id: string;
+};
+
+type LegacyReplayEntryFn = (
+  variables: LegacyReplayEntryVariables
+) => Promise<LegacyReplayEntryQuery>;
+
+type ReplaySessionEntriesResult = Awaited<
+  ReturnType<FrontendSDK["graphql"]["replaySessionEntries"]>
+>;
+type ReplaySessionEntry = NonNullable<
+  NonNullable<ReplaySessionEntriesResult["replaySession"]>["activeEntry"]
+>;
+type ReplaySessionEntryLike = ReplaySessionEntry;
+
+export type ReplayEntryWithRequest = {
+  entry: ReplayEntryHttp;
+  request: ReplayEntryHttp["request"];
+};
+
+const getMajorMinorPatch = (version: string): [number, number, number] => {
+  const [major = "0", minor = "0", patch = "0"] = version.split(/[.-]/);
+  return [Number(major) || 0, Number(minor) || 0, Number(patch) || 0];
+};
+
+const isVersionAtLeast = (version: string, minimum: [number, number, number]): boolean => {
+  const current = getMajorMinorPatch(version);
+
+  for (let index = 0; index < minimum.length; index++) {
+    const currentPart = current[index] ?? 0;
+    const minimumPart = minimum[index] ?? 0;
+    if (currentPart > minimumPart) return true;
+    if (currentPart < minimumPart) return false;
+  }
+
+  return true;
+};
+
+export const usesReplayEntryInterface = (sdk: FrontendSDK): boolean =>
+  isVersionAtLeast(sdk.runtime.version, [0, 57, 0]);
+
+const normalizeReplayEntryHttp = (entry: ReplayEntryHttpInput): ReplayEntryHttp => {
+  let request: ReplayEntryHttp["request"] = undefined;
+  if (typeof entry.request === "object" && isPresent(entry.request)) {
+    const entryRequest = entry.request as { id?: unknown; response?: unknown };
+    let response: { id: string } | undefined = undefined;
+
+    if (typeof entryRequest.response === "object" && isPresent(entryRequest.response)) {
+      const entryResponse = entryRequest.response as { id?: unknown };
+      if (typeof entryResponse.id === "string") {
+        response = { id: entryResponse.id };
+      }
+    }
+
+    if (typeof entryRequest.id === "string") {
+      request = {
+        id: entryRequest.id,
+        response,
+      };
+    }
+  }
+
+  return {
+    ...entry,
+    connection: {
+      ...entry.connection,
+      SNI: typeof entry.connection.SNI === "string" ? entry.connection.SNI : undefined,
+    },
+    request,
+  };
+};
+
+const toSessionReplayEntryHttp = (entry: ReplaySessionEntryLike): ReplayEntryHttp =>
+  normalizeReplayEntryHttp(entry.__typename === "ReplayEntryWs" ? entry.http : entry);
+
+const getConcreteReplayEntry = async (
+  sdk: FrontendSDK,
+  entryId: string
+): Promise<Result<ReplayEntryWithRequest>> => {
+  const replayEntry = sdk.graphql.replayEntry as unknown as LegacyReplayEntryFn;
+  const result = await safeGraphQL(
+    () => replayEntry({ id: entryId }),
+    "Failed to fetch replay entry"
+  );
+
+  if (result.kind === "Error") {
+    return result;
+  }
+
+  const entry = result.value.replayEntry;
+  if (!isPresent(entry)) {
+    return Result.err("Replay entry not found");
+  }
+
+  const normalizedEntry = normalizeReplayEntryHttp(entry);
+  return Result.ok({ entry: normalizedEntry, request: normalizedEntry.request });
+};
+
+const getInterfaceReplayEntry = async (
+  sdk: FrontendSDK,
+  sessionId: string,
+  entryId: string
+): Promise<Result<ReplayEntryWithRequest>> => {
+  const result = await safeGraphQL(
+    () => sdk.graphql.replaySessionEntries({ id: sessionId }),
+    "Failed to fetch replay session entries"
+  );
+
+  if (result.kind === "Error") {
+    return result;
+  }
+
+  const session = result.value.replaySession;
+  if (!isPresent(session)) {
+    return Result.err("Replay session not found");
+  }
+
+  const selectedEntry =
+    (session.activeEntry?.id === entryId ? session.activeEntry : undefined) ??
+    session.entries.edges.find((e) => e.node.id === entryId)?.node;
+
+  if (!isPresent(selectedEntry)) {
+    return Result.err("Replay entry not found");
+  }
+
+  const entry = toSessionReplayEntryHttp(selectedEntry);
+  return Result.ok({ entry, request: entry.request });
+};
+
+export const getReplayEntryRequest = async (
+  sdk: FrontendSDK,
+  entryId: string,
+  sessionId: string
+): Promise<Result<ReplayEntryWithRequest>> => {
+  if (usesReplayEntryInterface(sdk)) {
+    return getInterfaceReplayEntry(sdk, sessionId, entryId);
+  }
+
+  return getConcreteReplayEntry(sdk, entryId);
+};
+
 const getRequestEditorRequestID = (): Result<string> => {
   const requestEditor = document.querySelector("[data-language=http-request]") as
     | EditorElement
@@ -82,7 +256,12 @@ export const getCurrentRequestID = async (sdk: FrontendSDK): Promise<Result<stri
     return { kind: "Error", error: "No active entry found in replay session" };
   }
 
-  const requestId = activeEntry.request?.id;
+  const entryResult = await getReplayEntryRequest(sdk, activeEntry.id, currSession.id);
+  if (entryResult.kind === "Error") {
+    return entryResult;
+  }
+
+  const requestId = entryResult.value.request?.id;
   if (requestId === undefined || requestId === null || requestId === "") {
     return { kind: "Error", error: "Request ID not found in active entry" };
   }
@@ -110,29 +289,25 @@ export async function getReplaySession(
   const activeEntry = sessionResult.replaySession?.activeEntry;
 
   if (activeEntry === undefined || activeEntry === null) {
-    throw new Error("TODO: investigate this");
-    // No active entry found, this is a new session
-    // return Result.ok({
-    //   id: replaySessionId,
-    //   activeEntryId: "",
-    //   request: {
-    //     raw: "",
-    //     host: "",
-    //     port: 0,
-    //     isTLS: false,
-    //     SNI: "",
-    //   },
-    // });
+    return Result.ok({
+      id: replaySessionId,
+      activeEntryId: "",
+      request: {
+        raw: "",
+        host: "",
+        port: 0,
+        isTLS: false,
+        SNI: "",
+      },
+    });
   }
 
-  const entryResult = await sdk.graphql.replayEntry({
-    id: activeEntry.id,
-  });
-  const replayEntry = entryResult.replayEntry;
-
-  if (replayEntry === undefined || replayEntry === null) {
-    return Result.err("No request found");
+  const entryResult = await getReplayEntryRequest(sdk, activeEntry.id, replaySessionId);
+  if (entryResult.kind === "Error") {
+    return entryResult;
   }
+
+  const replayEntry = entryResult.value.entry;
 
   return Result.ok({
     id: replaySessionId,
