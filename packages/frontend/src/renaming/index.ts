@@ -6,13 +6,22 @@ import {
 import { generateName } from "@/renaming/ai";
 import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
+import { getReplayEntryRequest } from "@/utils/caido";
 import { isPresent } from "@/utils/optional";
 
 export const setupRenaming = (sdk: FrontendSDK) => {
   const settingsStore = useSettingsStore();
 
   const renameSession = async (entryId: string, sessionId: string) => {
-    const nameResult = await generateName(sdk, await sdk.graphql.replayEntry({ id: entryId }));
+    const entryResult = await getReplayEntryRequest(sdk, entryId, sessionId);
+    if (entryResult.kind === "Error") {
+      sdk.window.showToast(`[Shift] Failed while fetching replay entry: ${entryResult.error}`, {
+        variant: "error",
+      });
+      return;
+    }
+
+    const nameResult = await generateName(sdk, entryResult.value);
     if (nameResult.kind === "Error") {
       sdk.window.showToast(`[Shift] Failed while renaming session: ${nameResult.error}`, {
         variant: "error",

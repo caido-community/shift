@@ -15,6 +15,6 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "@caido/sdk-frontend": "0.55.3"
+    "@caido/sdk-frontend": "0.56.3-beta.0"
   }
 }
