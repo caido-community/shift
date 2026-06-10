@@ -18,9 +18,12 @@ type ProviderStatus = {
 };
 
 export function getProviderStatuses(sdk: FrontendSDK): ProviderStatus[] {
+  // The custom AI provider system returns only providers that are configured
+  // (each as { id, api }), so any returned provider is usable. The installed
+  // SDK types still describe the old { id, status } shape.
   return sdk.ai.getUpstreamProviders().map((provider) => ({
     id: provider.id,
-    isConfigured: provider.status === "Ready",
+    isConfigured: true,
   }));
 }
 
