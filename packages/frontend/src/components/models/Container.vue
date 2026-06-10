@@ -148,6 +148,7 @@ const vTooltip = Tooltip;
     <AddModelDialog
       v-model:visible="isAddModalVisible"
       :initial-provider="selectedProvider"
+      :providers="providers"
       @add="addCustomModel" />
   </div>
 </template>

@@ -8,6 +8,7 @@ import {
   updateModelConfig,
   updateModelEnabledFor,
 } from "@/stores/models/store.effects";
+import { getAvailableProviderIds } from "@/utils/ai";
 
 type ModelWithConfig = Model & {
   enabled: boolean;
@@ -23,7 +24,7 @@ export const useModels = () => {
   const isAddModalVisible = ref(false);
   const selectedProvider = ref<ModelProvider>(ModelProvider.OpenRouter);
 
-  const providers = Object.values(ModelProvider).map((p) => ({
+  const providers = getAvailableProviderIds(sdk).map((p) => ({
     label: p,
     value: p,
   }));

@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { isPresent } from "../../frontend/src/utils/optional";
 
+// Known providers that ship with predefined model lists. Custom providers from
+// the Caido AI provider system use arbitrary slugs, so a provider is any string.
 export const ModelProvider = {
   OpenRouter: "openrouter",
   OpenAI: "openai",
@@ -10,8 +12,8 @@ export const ModelProvider = {
   Google: "google",
 } as const satisfies Record<string, AIUpstreamProviderId>;
 
-export type ModelProvider = (typeof ModelProvider)[keyof typeof ModelProvider];
-const ModelProviderSchema = z.nativeEnum(ModelProvider);
+export type ModelProvider = string;
+const ModelProviderSchema = z.string().min(1);
 
 const ModelCapabilitiesSchema = z.object({
   reasoning: z.boolean(),
@@ -97,7 +99,7 @@ export const parseModelKey = (key: string): { provider: ModelProvider; id: strin
     throw new Error(`Invalid model key: ${key}`);
   }
 
-  return { provider: provider as ModelProvider, id };
+  return { provider: provider, id };
 };
 
 export const AddModelSchema = ModelSchema;

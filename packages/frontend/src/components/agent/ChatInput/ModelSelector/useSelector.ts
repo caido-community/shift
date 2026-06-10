@@ -11,15 +11,22 @@ export type ProviderInfo = {
 
 const PROVIDER_ORDER: ModelProvider[] = ["openrouter", "anthropic", "google", "openai"];
 
-const PROVIDER_DISPLAY_NAMES: Record<ModelProvider, string> = {
+const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   openrouter: "OpenRouter",
   anthropic: "Anthropic",
   google: "Google",
   openai: "OpenAI",
 };
 
+// Custom providers have no predefined display name, so fall back to their id.
 export const getProviderDisplayName = (provider: ModelProvider): string => {
-  return PROVIDER_DISPLAY_NAMES[provider];
+  return PROVIDER_DISPLAY_NAMES[provider] ?? provider;
+};
+
+// Known providers keep their fixed order; custom providers sort after them.
+const providerOrderIndex = (provider: ModelProvider): number => {
+  const index = PROVIDER_ORDER.indexOf(provider);
+  return index === -1 ? PROVIDER_ORDER.length : index;
 };
 
 type UseSelectorOptions = {
@@ -32,7 +39,7 @@ export function useSelector(options: UseSelectorOptions) {
 
   const providerStatuses = computed(() => {
     const statuses = getProviderStatuses(sdk);
-    return new Map(statuses.map((s) => [s.id as ModelProvider, s.isConfigured]));
+    return new Map(statuses.map((s) => [s.id, s.isConfigured]));
   });
 
   const models = computed(() => toValue(options.models));
@@ -53,7 +60,7 @@ export function useSelector(options: UseSelectorOptions) {
       if (a.isConfigured !== b.isConfigured) {
         return a.isConfigured ? -1 : 1;
       }
-      return PROVIDER_ORDER.indexOf(a.id) - PROVIDER_ORDER.indexOf(b.id);
+      return providerOrderIndex(a.id) - providerOrderIndex(b.id);
     });
   });
 

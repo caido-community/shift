@@ -7,13 +7,13 @@ import InputText from "primevue/inputtext";
 import {
   getProviderReasoningDisabledMessage,
   type Model,
-  ModelProvider,
   type ModelProvider as ModelProviderType,
 } from "shared";
 import { computed, ref, watch } from "vue";
 
-const { initialProvider } = defineProps<{
+const { initialProvider, providers } = defineProps<{
   initialProvider: ModelProviderType;
+  providers: { label: string; value: string }[];
 }>();
 
 const visible = defineModel<boolean>("visible", { required: true });
@@ -21,11 +21,6 @@ const visible = defineModel<boolean>("visible", { required: true });
 const emit = defineEmits<{
   add: [model: Model];
 }>();
-
-const providers = Object.values(ModelProvider).map((p) => ({
-  label: p,
-  value: p,
-}));
 
 const name = ref("");
 const id = ref("");

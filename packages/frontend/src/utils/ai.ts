@@ -1,5 +1,4 @@
 import { type LanguageModelV3 } from "@ai-sdk/provider";
-import { type AIUpstreamProviderId } from "@caido/sdk-frontend";
 import {
   createModelKey,
   type Model,
@@ -13,7 +12,7 @@ import type { FrontendSDK } from "../types";
 import { isPresent } from "./optional";
 
 type ProviderStatus = {
-  id: AIUpstreamProviderId;
+  id: string;
   isConfigured: boolean;
 };
 
@@ -25,6 +24,14 @@ export function getProviderStatuses(sdk: FrontendSDK): ProviderStatus[] {
     id: provider.id,
     isConfigured: true,
   }));
+}
+
+// All providers to surface for model management: the known providers that ship
+// with predefined models, plus any custom providers configured in Caido.
+export function getAvailableProviderIds(sdk: FrontendSDK): string[] {
+  const known: string[] = Object.values(ModelProvider);
+  const configured = getProviderStatuses(sdk).map((status) => status.id);
+  return [...new Set([...known, ...configured])];
 }
 
 export function isProviderConfigured(sdk: FrontendSDK, provider: ModelProviderId): boolean {
