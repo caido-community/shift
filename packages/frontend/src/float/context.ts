@@ -9,6 +9,7 @@ import { type EditorView } from "@codemirror/view";
 import { type ActionContext } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 import { type EditorElement, isPresent } from "@/utils";
+import { resolveEditorView } from "@/utils/caido";
 
 const MAX_CONTEXT_LENGTH = 10_000;
 
@@ -60,8 +61,8 @@ const getBaseContext = (sdk: FrontendSDK, globalContext: GlobalContext): ActionC
       | EditorElement
       | undefined;
 
-    const requestEditorView = requestEditor?.cmView?.view;
-    const responseEditorView = responseEditor?.cmView?.view;
+    const requestEditorView = resolveEditorView(requestEditor);
+    const responseEditorView = resolveEditorView(responseEditor);
 
     const getSelectedText = (editor: EditorView | undefined) => {
       if (isPresent(editor)) {
@@ -72,8 +73,8 @@ const getBaseContext = (sdk: FrontendSDK, globalContext: GlobalContext): ActionC
       return undefined;
     };
 
-    const requestRaw = requestEditor?.cmView?.view.state.doc.toString();
-    const responseRaw = responseEditor?.cmView?.view.state.doc.toString();
+    const requestRaw = requestEditorView?.state.doc.toString();
+    const responseRaw = responseEditorView?.state.doc.toString();
     const requestSelection = getSelectedText(requestEditorView);
     const responseSelection = getSelectedText(responseEditorView);
 
