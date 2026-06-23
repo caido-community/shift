@@ -64,8 +64,8 @@ importers:
         version: link:../shared
     devDependencies:
       '@caido/sdk-backend':
-        specifier: 0.55.3
-        version: 0.55.3
+        specifier: 0.57.0
+        version: 0.57.0
 
   packages/frontend:
     dependencies:
@@ -128,11 +128,11 @@ importers:
         version: 4.3.6
     devDependencies:
       '@caido/sdk-backend':
-        specifier: 0.55.3
-        version: 0.55.3
+        specifier: 0.57.0
+        version: 0.57.0
       '@caido/sdk-frontend':
-        specifier: 0.56.3-beta.0
-        version: 0.56.3-beta.0(@ai-sdk/provider@3.0.8)(@codemirror/state@6.5.4)(@codemirror/view@6.39.16)(vue@3.5.29(typescript@5.5.4))
+        specifier: 0.57.1-beta.4
+        version: 0.57.1-beta.4(@ai-sdk/provider@3.0.8)(@codemirror/state@6.5.4)(@codemirror/view@6.39.16)(vue@3.5.29(typescript@5.5.4))
       '@codemirror/view':
         specifier: 6.39.16
         version: 6.39.16
@@ -150,8 +150,8 @@ importers:
         version: 4.3.6
     devDependencies:
       '@caido/sdk-frontend':
-        specifier: 0.56.3-beta.0
-        version: 0.56.3-beta.0(@ai-sdk/provider@3.0.8)(@codemirror/state@6.5.4)(@codemirror/view@6.39.16)(vue@3.5.29(typescript@5.5.4))
+        specifier: 0.57.1-beta.4
+        version: 0.57.1-beta.4(@ai-sdk/provider@3.0.8)(@codemirror/state@6.5.4)(@codemirror/view@6.39.16)(vue@3.5.29(typescript@5.5.4))
 
 packages:
 
@@ -217,22 +217,22 @@ packages:
     peerDependencies:
       primevue: 4.1.0
 
-  '@caido/quickjs-types@0.25.4':
-    resolution: {integrity: sha512-U7Cvi4aHoCN8T2JB+Az3ArqQ3MUK0PRCtBm5Sq1rfqaJ9NymAkh3O29q77Keh3G/zINq2WTkKZq5qJlvrQNl+Q==}
+  '@caido/quickjs-types@0.26.0':
+    resolution: {integrity: sha512-Nnpu87fnTvVxEdLUQXAc9d763vj13GPcQEhSWireuLlDPDgxM/7dK8kZdOhGX/BhWRRZ7nUzNc3IdN+OVdsoSA==}
 
-  '@caido/sdk-backend@0.55.3':
-    resolution: {integrity: sha512-kOrkBtmu8U0qo4kJje7C0BOO9PWf7skKAJM77bVeWJ6aIkxsnBzRyxVxdaD77UbKK3oVT5xUgSx62Ns3xjzSEw==}
+  '@caido/sdk-backend@0.57.0':
+    resolution: {integrity: sha512-GwPytq4g+lhrLXkwkAHOzp8CQuPEfU+zAC92o1HDZa0gkeDWwKB3j0zi9HgdF8dgyARY5MV3s67ebljGrC0ywQ==}
 
-  '@caido/sdk-frontend@0.56.3-beta.0':
-    resolution: {integrity: sha512-fmJdQfjy48Vl+QOd+ikYOkIjpyLr9wa+eOZWuX+MCrIk75fMVym8ZaCnQKeUZM90VBvGqgvnq0roRUAPHgP2bg==}
+  '@caido/sdk-frontend@0.57.1-beta.4':
+    resolution: {integrity: sha512-nfekgMRGr3cTcCbZOC4jDGime4H1jAcN3zAHvp1OUJLk+DUWX02Sefd3bqfSYk+cFHg7x+ByZAjv635mtzK7Qg==}
     peerDependencies:
       '@ai-sdk/provider': ^3.0.1
       '@codemirror/state': ^6.0.0
       '@codemirror/view': ^6.0.0
       vue: ^3.0.0
 
-  '@caido/sdk-shared@0.1.1':
-    resolution: {integrity: sha512-JAV5ajUqxZdXYPTmDEvIKBZon8I5uHq44ATj0Nj3BVpllRDUGY9kcBd+PXMD50+3lv1CvhR3/f6q24T0+4aVJQ==}
+  '@caido/sdk-shared@0.2.2':
+    resolution: {integrity: sha512-qzfwXrjujNAmXxedQW2YI5Ls5h+Y/MvzHZxd10vnL6IJbRJStZGusDTnFYDWUyiQpCrc5kGuY3fLr8dYh3UHnw==}
 
   '@caido/tailwindcss@0.1.0':
     resolution: {integrity: sha512-QZ9KeyFOPl9UkC6J+YtzTsaYjaUd8QW3jwu5kwbUIIULJTWZBr7R1pHSYmoSWood5RNQw6stNY7s8v1e2H2aTA==}
@@ -697,41 +697,49 @@ packages:
     resolution: {integrity: sha512-heV2+jmXyYnUrpUXSPugqWDRpnsQcDm2AX4wzTuvgdlZfoNYO0O3W2AVpJYaDn9AG4JdM6Kxom8+foE7/BcSig==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@oxc-resolver/binding-linux-arm64-musl@11.19.1':
     resolution: {integrity: sha512-jvo2Pjs1c9KPxMuMPIeQsgu0mOJF9rEb3y3TdpsrqwxRM+AN6/nDDwv45n5ZrUnQMsdBy5gIabioMKnQfWo9ew==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@oxc-resolver/binding-linux-ppc64-gnu@11.19.1':
     resolution: {integrity: sha512-vLmdNxWCdN7Uo5suays6A/+ywBby2PWBBPXctWPg5V0+eVuzsJxgAn6MMB4mPlshskYbppjpN2Zg83ArHze9gQ==}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@oxc-resolver/binding-linux-riscv64-gnu@11.19.1':
     resolution: {integrity: sha512-/b+WgR+VTSBxzgOhDO7TlMXC1ufPIMR6Vj1zN+/x+MnyXGW7prTLzU9eW85Aj7Th7CCEG9ArCbTeqxCzFWdg2w==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@oxc-resolver/binding-linux-riscv64-musl@11.19.1':
     resolution: {integrity: sha512-YlRdeWb9j42p29ROh+h4eg/OQ3dTJlpHSa+84pUM9+p6i3djtPz1q55yLJhgW9XfDch7FN1pQ/Vd6YP+xfRIuw==}
     cpu: [riscv64]
     os: [linux]
+    libc: [musl]
 
   '@oxc-resolver/binding-linux-s390x-gnu@11.19.1':
     resolution: {integrity: sha512-EDpafVOQWF8/MJynsjOGFThcqhRHy417sRyLfQmeiamJ8qVhSKAn2Dn2VVKUGCjVB9C46VGjhNo7nOPUi1x6uA==}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@oxc-resolver/binding-linux-x64-gnu@11.19.1':
     resolution: {integrity: sha512-NxjZe+rqWhr+RT8/Ik+5ptA3oz7tUw361Wa5RWQXKnfqwSSHdHyrw6IdcTfYuml9dM856AlKWZIUXDmA9kkiBQ==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@oxc-resolver/binding-linux-x64-musl@11.19.1':
     resolution: {integrity: sha512-cM/hQwsO3ReJg5kR+SpI69DMfvNCp+A/eVR4b4YClE5bVZwz8rh2Nh05InhwI5HR/9cArbEkzMjcKgTHS6UaNw==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@oxc-resolver/binding-openharmony-arm64@11.19.1':
     resolution: {integrity: sha512-QF080IowFB0+9Rh6RcD19bdgh49BpQHUW5TajG1qvWHvmrQznTZZjYlgE2ltLXyKY+qs4F/v5xuX1XS7Is+3qA==}
@@ -817,66 +825,79 @@ packages:
     resolution: {integrity: sha512-Ob8YgT5kD/lSIYW2Rcngs5kNB/44Q2RzBSPz9brf2WEtcGR7/f/E9HeHn1wYaAwKBni+bdXEwgHvUd0x12lQSA==}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm-musleabihf@4.58.0':
     resolution: {integrity: sha512-K+RI5oP1ceqoadvNt1FecL17Qtw/n9BgRSzxif3rTL2QlIu88ccvY+Y9nnHe/cmT5zbH9+bpiJuG1mGHRVwF4Q==}
     cpu: [arm]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-arm64-gnu@4.58.0':
     resolution: {integrity: sha512-T+17JAsCKUjmbopcKepJjHWHXSjeW7O5PL7lEFaeQmiVyw4kkc5/lyYKzrv6ElWRX/MrEWfPiJWqbTvfIvjM1Q==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm64-musl@4.58.0':
     resolution: {integrity: sha512-cCePktb9+6R9itIJdeCFF9txPU7pQeEHB5AbHu/MKsfH/k70ZtOeq1k4YAtBv9Z7mmKI5/wOLYjQ+B9QdxR6LA==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-loong64-gnu@4.58.0':
     resolution: {integrity: sha512-iekUaLkfliAsDl4/xSdoCJ1gnnIXvoNz85C8U8+ZxknM5pBStfZjeXgB8lXobDQvvPRCN8FPmmuTtH+z95HTmg==}
     cpu: [loong64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-loong64-musl@4.58.0':
     resolution: {integrity: sha512-68ofRgJNl/jYJbxFjCKE7IwhbfxOl1muPN4KbIqAIe32lm22KmU7E8OPvyy68HTNkI2iV/c8y2kSPSm2mW/Q9Q==}
     cpu: [loong64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-ppc64-gnu@4.58.0':
     resolution: {integrity: sha512-dpz8vT0i+JqUKuSNPCP5SYyIV2Lh0sNL1+FhM7eLC457d5B9/BC3kDPp5BBftMmTNsBarcPcoz5UGSsnCiw4XQ==}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-ppc64-musl@4.58.0':
     resolution: {integrity: sha512-4gdkkf9UJ7tafnweBCR/mk4jf3Jfl0cKX9Np80t5i78kjIH0ZdezUv/JDI2VtruE5lunfACqftJ8dIMGN4oHew==}
     cpu: [ppc64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-riscv64-gnu@4.58.0':
     resolution: {integrity: sha512-YFS4vPnOkDTD/JriUeeZurFYoJhPf9GQQEF/v4lltp3mVcBmnsAdjEWhr2cjUCZzZNzxCG0HZOvJU44UGHSdzw==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-riscv64-musl@4.58.0':
     resolution: {integrity: sha512-x2xgZlFne+QVNKV8b4wwaCS8pwq3y14zedZ5DqLzjdRITvreBk//4Knbcvm7+lWmms9V9qFp60MtUd0/t/PXPw==}
     cpu: [riscv64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-s390x-gnu@4.58.0':
     resolution: {integrity: sha512-jIhrujyn4UnWF8S+DHSkAkDEO3hLX0cjzxJZPLF80xFyzyUIYgSMRcYQ3+uqEoyDD2beGq7Dj7edi8OnJcS/hg==}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-gnu@4.58.0':
     resolution: {integrity: sha512-+410Srdoh78MKSJxTQ+hZ/Mx+ajd6RjjPwBPNd0R3J9FtL6ZA0GqiiyNjCO9In0IzZkCNrpGymSfn+kgyPQocg==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-musl@4.58.0':
     resolution: {integrity: sha512-ZjMyby5SICi227y1MTR3VYBpFTdZs823Rs/hpakufleBoufoOIB6jtm9FEoxn/cgO7l6PM2rCEl5Kre5vX0QrQ==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-openbsd-x64@4.58.0':
     resolution: {integrity: sha512-ds4iwfYkSQ0k1nb8LTcyXw//ToHOnNTJtceySpL3fa7tc/AsE+UpUFphW126A6fKBGJD5dhRvg8zw1rvoGFxmw==}
@@ -3189,21 +3210,21 @@ snapshots:
     dependencies:
       primevue: 4.1.0(vue@3.5.29(typescript@5.5.4))
 
-  '@caido/quickjs-types@0.25.4': {}
+  '@caido/quickjs-types@0.26.0': {}
 
-  '@caido/sdk-backend@0.55.3':
+  '@caido/sdk-backend@0.57.0':
     dependencies:
-      '@caido/quickjs-types': 0.25.4
-      '@caido/sdk-shared': 0.1.1
+      '@caido/quickjs-types': 0.26.0
+      '@caido/sdk-shared': 0.2.2
 
-  '@caido/sdk-frontend@0.56.3-beta.0(@ai-sdk/provider@3.0.8)(@codemirror/state@6.5.4)(@codemirror/view@6.39.16)(vue@3.5.29(typescript@5.5.4))':
+  '@caido/sdk-frontend@0.57.1-beta.4(@ai-sdk/provider@3.0.8)(@codemirror/state@6.5.4)(@codemirror/view@6.39.16)(vue@3.5.29(typescript@5.5.4))':
     dependencies:
       '@ai-sdk/provider': 3.0.8
       '@codemirror/state': 6.5.4
       '@codemirror/view': 6.39.16
       vue: 3.5.29(typescript@5.5.4)
 
-  '@caido/sdk-shared@0.1.1': {}
+  '@caido/sdk-shared@0.2.2': {}
 
   '@caido/tailwindcss@0.1.0':
     dependencies:

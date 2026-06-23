@@ -3,7 +3,13 @@ import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { getReplaySession, usesReplayEntryInterface, writeToRequestEditor } from "@/utils/caido";
+import {
+  getReplaySession,
+  setActiveEntryDraftRaw,
+  startReplayTaskDirect,
+  usesReplayEntryInterface,
+  writeToRequestEditor,
+} from "@/utils/caido";
 import { formatStringWithSuffix } from "@/utils/text";
 
 const inputSchema = z.object({});
@@ -156,10 +162,28 @@ export const RequestSend = tool({
 
     try {
       if (usesReplayEntryInterface(sdk)) {
-        writeToRequestEditor(context.httpRequest);
-        await sdk.replay.sendRequest(replaySession.id, {
-          background: false,
-        });
+        const currentSession = sdk.replay.getCurrentSession();
+        const onAgentTab = location.hash === "#/replay" && currentSession?.id === replaySession.id;
+
+        if (onAgentTab) {
+          writeToRequestEditor(context.httpRequest);
+          await sdk.replay.sendRequest(replaySession.id, {
+            background: false,
+          });
+        } else {
+          const draftSync = await setActiveEntryDraftRaw(sdk, replaySession, context.httpRequest);
+          if (draftSync.kind === "Error") {
+            return ToolResult.err(
+              "Failed to sync request into the session draft before sending",
+              draftSync.error
+            );
+          }
+
+          const taskResult = await startReplayTaskDirect(sdk, replaySession.id);
+          if (taskResult.kind === "Error") {
+            return ToolResult.err("Failed to start replay task", taskResult.error);
+          }
+        }
       } else {
         if (replaySession.request.host === "" || replaySession.request.port === 0) {
           return ToolResult.err("No active replay entry to send");

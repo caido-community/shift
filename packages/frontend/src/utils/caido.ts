@@ -1,9 +1,30 @@
-import { type EditorView } from "@codemirror/view";
+import { EditorView } from "@codemirror/view";
 import { Result } from "shared";
 
 import { isPresent } from "./optional";
 
 import { type FrontendSDK } from "@/types";
+
+export const resolveEditorView = (el: Element | undefined): EditorView | undefined => {
+  if (!isPresent(el)) {
+    return undefined;
+  }
+
+  const fromDom =
+    EditorView.findFromDOM(el as HTMLElement) ??
+    (isPresent(el.closest(".cm-editor"))
+      ? EditorView.findFromDOM(el.closest(".cm-editor") as HTMLElement)
+      : undefined);
+  if (isPresent(fromDom)) {
+    return fromDom;
+  }
+
+  const anyEl = el as Element & {
+    cmView?: { view?: EditorView };
+    cmTile?: { view?: EditorView };
+  };
+  return anyEl.cmView?.view ?? anyEl.cmTile?.view;
+};
 
 export async function safeGraphQL<T>(
   fn: () => Promise<T>,
@@ -322,6 +343,60 @@ export async function getReplaySession(
   });
 }
 
+export async function setActiveEntryDraftRaw(
+  sdk: FrontendSDK,
+  session: ReplaySession,
+  raw: string
+): Promise<Result<void>> {
+  const result = await safeGraphQL(
+    () =>
+      sdk.graphql.updateReplayEntryDraft({
+        id: session.activeEntryId,
+        input: {
+          http: {
+            raw,
+            connection: {
+              host: session.request.host,
+              port: session.request.port,
+              isTLS: session.request.isTLS,
+              SNI: session.request.SNI !== "" ? session.request.SNI : undefined,
+            },
+            settings: { placeholders: [] },
+            editorState: "",
+          },
+        },
+      }),
+    "Failed to update replay entry draft"
+  );
+
+  if (result.kind === "Error") {
+    return result;
+  }
+
+  return Result.ok(undefined);
+}
+
+export async function startReplayTaskDirect(
+  sdk: FrontendSDK,
+  sessionId: string
+): Promise<Result<void>> {
+  const result = await safeGraphQL(
+    () => sdk.graphql.startReplayTask({ sessionId }),
+    "Failed to start replay task"
+  );
+
+  if (result.kind === "Error") {
+    return result;
+  }
+
+  const taskError = result.value.startReplayTask.error;
+  if (isPresent(taskError)) {
+    return Result.err(`Replay task failed to start: ${taskError.code}`);
+  }
+
+  return Result.ok(undefined);
+}
+
 export const writeToRequestEditor = (raw: string) => {
   const requestEditor = document.querySelector(".cm-content[data-language='http-request']") as
     | EditorElement
@@ -331,7 +406,7 @@ export const writeToRequestEditor = (raw: string) => {
     return;
   }
 
-  const requestEditorView = requestEditor?.cmView?.view;
+  const requestEditorView = resolveEditorView(requestEditor);
   if (isPresent(requestEditorView)) {
     requestEditorView.dispatch({
       changes: { from: 0, to: requestEditorView.state.doc.length, insert: raw },
@@ -349,7 +424,7 @@ const readRequestEditor = (): Result<string> => {
   }
 
   // TODO: replace with proper SDK API call once we have it, we are hacking around to read content of editor
-  const rawContent = requestEditor.cmView?.view.state.doc.toString();
+  const rawContent = resolveEditorView(requestEditor)?.state.doc.toString();
 
   if (rawContent === undefined) {
     return Result.err("Unable to read request content");
