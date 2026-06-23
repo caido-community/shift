@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { getReplayEntryRequest } from "@/utils/caido";
+import { decodeBlob, getReplayEntryRequest } from "@/utils/caido";
 
 const inputSchema = z.object({
   entryId: z
@@ -58,15 +58,16 @@ export const ReplayEntryNavigate = tool({
         return ToolResult.err("Entry does not belong to the current session");
       }
 
-      await sdk.replay.showEntry(context.sessionId, entryId);
+      const decodedRaw = decodeBlob(entry.raw);
 
-      context.setHttpRequest(entry.raw);
+      await sdk.replay.showEntry(context.sessionId, entryId);
+      context.setHttpRequest(decodedRaw);
 
       return ToolResult.ok({
         message: `Navigated to entry ${entryId}`,
         entryId,
         requestId: request?.id,
-        requestRaw: entry.raw,
+        requestRaw: decodedRaw,
       });
     } catch (error) {
       return ToolResult.err("Failed to navigate to entry", (error as Error).message);
