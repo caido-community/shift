@@ -41,10 +41,10 @@ const testModel = {
 
 describe("session update", () => {
   describe("createInitialModel", () => {
-    it("sets default reasoning effort to medium", () => {
+    it("sets default reasoning effort to low", () => {
       const model = createInitialModel();
 
-      expect(model.reasoningEffort).toBe("medium");
+      expect(model.reasoningEffort).toBe("low");
     });
   });
 

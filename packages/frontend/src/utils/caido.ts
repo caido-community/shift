@@ -5,6 +5,21 @@ import { isPresent } from "./optional";
 
 import { type FrontendSDK } from "@/types";
 
+export const decodeBlob = (encoded: string): string => {
+  if (encoded === "") {
+    return "";
+  }
+
+  const binary = atob(encoded);
+
+  try {
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return binary;
+  }
+};
+
 export const resolveEditorView = (el: Element | undefined): EditorView | undefined => {
   if (!isPresent(el)) {
     return undefined;

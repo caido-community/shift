@@ -36,7 +36,7 @@ export function createInitialModel(): SessionModel {
     selectedCustomAgentId: undefined,
     mode: "focus",
     allowedWorkflowIds: undefined,
-    reasoningEffort: "medium",
+    reasoningEffort: "low",
   };
 }
 

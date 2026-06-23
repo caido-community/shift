@@ -92,6 +92,8 @@ export function createModel(sdk: FrontendSDK, model: Model, options: CreateModel
 }
 
 const PREFERRED_AGENT_MODELS = [
+  "openrouter/openai/gpt-5.5",
+  "openai/gpt-5.5",
   "openrouter/anthropic/claude-sonnet-4.6",
   "openrouter/google/gemini-3.1-pro-preview-customtools",
   "anthropic/claude-sonnet-4-6",
