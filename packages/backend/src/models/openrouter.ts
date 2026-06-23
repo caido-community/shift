@@ -1,10 +1,15 @@
 import { type Model, ModelProvider, type ModelUsageType } from "shared";
 
 const OpenRouterModelIds = {
+  GPT_5_5: "openai/gpt-5.5",
   GPT_5_4: "openai/gpt-5.4",
   GPT_5_4_MINI: "openai/gpt-5.4-mini",
   GPT_5_4_NANO: "openai/gpt-5.4-nano",
   GPT_5_3_CODEX: "openai/gpt-5.3-codex",
+  CLAUDE_OPUS_4_8: "anthropic/claude-opus-4.8",
+  CLAUDE_OPUS_4_8_THINKING: "anthropic/claude-opus-4.8:thinking",
+  CLAUDE_OPUS_4_7: "anthropic/claude-opus-4.7",
+  CLAUDE_OPUS_4_7_THINKING: "anthropic/claude-opus-4.7:thinking",
   CLAUDE_OPUS_4_6: "anthropic/claude-opus-4.6",
   CLAUDE_OPUS_4_6_THINKING: "anthropic/claude-opus-4.6:thinking",
   CLAUDE_SONNET_4_6: "anthropic/claude-sonnet-4.6",
@@ -16,6 +21,15 @@ const OpenRouterModelIds = {
 } as const;
 
 export const openrouterModels: Model[] = [
+  {
+    id: OpenRouterModelIds.GPT_5_5,
+    name: "GPT 5.5",
+    provider: ModelProvider.OpenRouter,
+    contextWindow: 1_000_000,
+    capabilities: {
+      reasoning: true,
+    },
+  },
   {
     id: OpenRouterModelIds.GPT_5_4,
     name: "GPT 5.4",
@@ -47,6 +61,42 @@ export const openrouterModels: Model[] = [
     id: OpenRouterModelIds.GPT_5_3_CODEX,
     name: "GPT 5.3 Codex",
     provider: ModelProvider.OpenRouter,
+    capabilities: {
+      reasoning: true,
+    },
+  },
+  {
+    id: OpenRouterModelIds.CLAUDE_OPUS_4_8,
+    name: "Opus 4.8",
+    provider: ModelProvider.OpenRouter,
+    contextWindow: 1_000_000,
+    capabilities: {
+      reasoning: false,
+    },
+  },
+  {
+    id: OpenRouterModelIds.CLAUDE_OPUS_4_8_THINKING,
+    name: "Opus 4.8 Thinking",
+    provider: ModelProvider.OpenRouter,
+    contextWindow: 1_000_000,
+    capabilities: {
+      reasoning: true,
+    },
+  },
+  {
+    id: OpenRouterModelIds.CLAUDE_OPUS_4_7,
+    name: "Opus 4.7",
+    provider: ModelProvider.OpenRouter,
+    contextWindow: 1_000_000,
+    capabilities: {
+      reasoning: false,
+    },
+  },
+  {
+    id: OpenRouterModelIds.CLAUDE_OPUS_4_7_THINKING,
+    name: "Opus 4.7 Thinking",
+    provider: ModelProvider.OpenRouter,
+    contextWindow: 1_000_000,
     capabilities: {
       reasoning: true,
     },
@@ -124,10 +174,15 @@ export const openrouterModels: Model[] = [
 ];
 
 export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
+  [OpenRouterModelIds.GPT_5_5]: ["agent", "float"],
   [OpenRouterModelIds.GPT_5_4]: ["agent", "float"],
   [OpenRouterModelIds.GPT_5_4_MINI]: ["agent", "float"],
   [OpenRouterModelIds.GPT_5_4_NANO]: ["agent", "float"],
   [OpenRouterModelIds.GPT_5_3_CODEX]: ["agent", "float"],
+  [OpenRouterModelIds.CLAUDE_OPUS_4_8]: ["agent", "float"],
+  [OpenRouterModelIds.CLAUDE_OPUS_4_8_THINKING]: ["agent", "float"],
+  [OpenRouterModelIds.CLAUDE_OPUS_4_7]: ["agent", "float"],
+  [OpenRouterModelIds.CLAUDE_OPUS_4_7_THINKING]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_OPUS_4_6]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_OPUS_4_6_THINKING]: ["agent", "float"],
   [OpenRouterModelIds.CLAUDE_SONNET_4_6]: ["agent", "float"],

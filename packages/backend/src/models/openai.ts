@@ -1,6 +1,7 @@
 import { type Model, ModelProvider, type ModelUsageType, supportsProviderReasoning } from "shared";
 
 const OpenAIModelIds = {
+  GPT_5_5: "gpt-5.5",
   GPT_5_4: "gpt-5.4",
   GPT_5_4_MINI: "gpt-5.4-mini",
   GPT_5_4_NANO: "gpt-5.4-nano",
@@ -10,6 +11,15 @@ const OpenAIModelIds = {
 const openAIReasoningEnabled = supportsProviderReasoning(ModelProvider.OpenAI);
 
 export const openaiModels: Model[] = [
+  {
+    id: OpenAIModelIds.GPT_5_5,
+    name: "GPT 5.5",
+    provider: ModelProvider.OpenAI,
+    contextWindow: 1_000_000,
+    capabilities: {
+      reasoning: openAIReasoningEnabled,
+    },
+  },
   {
     id: OpenAIModelIds.GPT_5_4,
     name: "GPT 5.4",
@@ -48,6 +58,7 @@ export const openaiModels: Model[] = [
 ];
 
 export const defaultOpenAIModelsConfig: Record<string, ModelUsageType[]> = {
+  [OpenAIModelIds.GPT_5_5]: ["agent", "float"],
   [OpenAIModelIds.GPT_5_4]: ["agent", "float"],
   [OpenAIModelIds.GPT_5_4_MINI]: ["agent", "float"],
   [OpenAIModelIds.GPT_5_4_NANO]: ["agent", "float"],
