@@ -2,7 +2,7 @@ import type { Model, ModelProvider } from "shared";
 import { computed, type MaybeRefOrGetter, ref, toValue, watch } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
-import { getProviderStatuses } from "@/utils/ai";
+import { getConfiguredProviderIds } from "@/utils/ai";
 
 export type ProviderInfo = {
   id: ModelProvider;
@@ -18,12 +18,10 @@ const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   openai: "OpenAI",
 };
 
-// Custom providers have no predefined display name, so fall back to their id.
 export const getProviderDisplayName = (provider: ModelProvider): string => {
   return PROVIDER_DISPLAY_NAMES[provider] ?? provider;
 };
 
-// Known providers keep their fixed order; custom providers sort after them.
 const providerOrderIndex = (provider: ModelProvider): number => {
   const index = PROVIDER_ORDER.indexOf(provider);
   return index === -1 ? PROVIDER_ORDER.length : index;
@@ -37,9 +35,8 @@ type UseSelectorOptions = {
 export function useSelector(options: UseSelectorOptions) {
   const sdk = useSDK();
 
-  const providerStatuses = computed(() => {
-    const statuses = getProviderStatuses(sdk);
-    return new Map(statuses.map((s) => [s.id, s.isConfigured]));
+  const configuredProviderIds = computed(() => {
+    return new Set(getConfiguredProviderIds(sdk));
   });
 
   const models = computed(() => toValue(options.models));
@@ -53,7 +50,7 @@ export function useSelector(options: UseSelectorOptions) {
 
     const providerList = [...seen].map((id) => ({
       id,
-      isConfigured: providerStatuses.value.get(id) ?? false,
+      isConfigured: configuredProviderIds.value.has(id),
     }));
 
     return providerList.sort((a, b) => {
@@ -73,7 +70,7 @@ export function useSelector(options: UseSelectorOptions) {
   });
 
   const isModelConfigured = (model: Model): boolean => {
-    return providerStatuses.value.get(model.provider) ?? false;
+    return configuredProviderIds.value.has(model.provider);
   };
 
   const providerModels = computed(() => {

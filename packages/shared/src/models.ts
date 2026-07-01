@@ -3,8 +3,6 @@ import { z } from "zod";
 
 import { isPresent } from "../../frontend/src/utils/optional";
 
-// Known providers that ship with predefined model lists. Custom providers from
-// the Caido AI provider system use arbitrary slugs, so a provider is any string.
 export const ModelProvider = {
   OpenRouter: "openrouter",
   OpenAI: "openai",
@@ -99,7 +97,7 @@ export const parseModelKey = (key: string): { provider: ModelProvider; id: strin
     throw new Error(`Invalid model key: ${key}`);
   }
 
-  return { provider: provider, id };
+  return { provider, id };
 };
 
 export const AddModelSchema = ModelSchema;

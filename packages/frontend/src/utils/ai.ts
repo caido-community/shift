@@ -11,38 +11,22 @@ import type { FrontendSDK } from "../types";
 
 import { isPresent } from "./optional";
 
-type ProviderStatus = {
-  id: string;
-  isConfigured: boolean;
-};
-
-export function getProviderStatuses(sdk: FrontendSDK): ProviderStatus[] {
-  // The custom AI provider system returns only providers that are configured
-  // (each as { id, api }), so any returned provider is usable. The installed
-  // SDK types still describe the old { id, status } shape.
-  return sdk.ai.getUpstreamProviders().map((provider) => ({
-    id: provider.id,
-    isConfigured: true,
-  }));
+export function getConfiguredProviderIds(sdk: FrontendSDK): string[] {
+  return sdk.ai.getUpstreamProviders().map((provider) => provider.id);
 }
 
-// All providers to surface for model management: the known providers that ship
-// with predefined models, plus any custom providers configured in Caido.
 export function getAvailableProviderIds(sdk: FrontendSDK): string[] {
   const known: string[] = Object.values(ModelProvider);
-  const configured = getProviderStatuses(sdk).map((status) => status.id);
+  const configured = getConfiguredProviderIds(sdk);
   return [...new Set([...known, ...configured])];
 }
 
 export function isProviderConfigured(sdk: FrontendSDK, provider: ModelProviderId): boolean {
-  const statuses = getProviderStatuses(sdk);
-  const status = statuses.find((s) => s.id === provider);
-  return status?.isConfigured ?? false;
+  return getConfiguredProviderIds(sdk).includes(provider);
 }
 
 export function isAnyProviderConfigured(sdk: FrontendSDK): boolean {
-  const statuses = getProviderStatuses(sdk);
-  return statuses.some((s) => s.isConfigured === true);
+  return getConfiguredProviderIds(sdk).length > 0;
 }
 
 export class ProviderNotConfiguredError extends Error {
