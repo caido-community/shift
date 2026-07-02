@@ -1,4 +1,4 @@
-import { isToolUIPart } from "ai";
+import { isToolUIPart, type ModelMessage } from "ai";
 import { Result } from "shared";
 import type { ShiftMessage } from "shared";
 
@@ -255,6 +255,29 @@ export function replaceHistoricalToolOutputsWithBlobRefs(
   }
 
   return didChange ? updated : messages;
+}
+
+export function stripReasoningFromModelMessages(messages: ModelMessage[]): ModelMessage[] {
+  return messages.reduce<ModelMessage[]>((acc, message) => {
+    if (message.role !== "assistant" || typeof message.content === "string") {
+      acc.push(message);
+      return acc;
+    }
+
+    const filteredContent = message.content.filter((part) => part.type !== "reasoning");
+
+    if (filteredContent.length === message.content.length) {
+      acc.push(message);
+      return acc;
+    }
+
+    if (filteredContent.length === 0) {
+      return acc;
+    }
+
+    acc.push({ ...message, content: filteredContent });
+    return acc;
+  }, []);
 }
 
 type ExtractResult = {

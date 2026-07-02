@@ -1,3 +1,4 @@
+import { type ModelMessage } from "ai";
 import { Result, type ShiftMessage } from "shared";
 import { describe, expect, it } from "vitest";
 
@@ -9,6 +10,7 @@ import {
   hasToolPartsSinceLastUserMessage,
   replaceHistoricalToolOutputsWithBlobRefs,
   serializeToolOutput,
+  stripReasoningFromModelMessages,
   stripReasoningParts,
   stripUnfinishedToolCalls,
 } from "./messages";
@@ -563,5 +565,67 @@ describe("stripReasoningParts", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]?.parts).toEqual([{ type: "text", text: "visible" }]);
+  });
+});
+
+describe("stripReasoningFromModelMessages", () => {
+  it("removes reasoning parts while keeping tool calls in the same turn", () => {
+    const messages: ModelMessage[] = [
+      { role: "user", content: "hello" },
+      {
+        role: "assistant",
+        content: [
+          {
+            type: "tool-call",
+            toolCallId: "c1",
+            toolName: "historyRead",
+            input: {},
+          },
+          { type: "reasoning", text: "internal chain of thought" },
+        ],
+      },
+    ];
+
+    const result = stripReasoningFromModelMessages(messages);
+
+    expect(result).toEqual([
+      { role: "user", content: "hello" },
+      {
+        role: "assistant",
+        content: [
+          {
+            type: "tool-call",
+            toolCallId: "c1",
+            toolName: "historyRead",
+            input: {},
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("drops assistant messages that only contained reasoning", () => {
+    const messages: ModelMessage[] = [
+      { role: "user", content: "hello" },
+      {
+        role: "assistant",
+        content: [{ type: "reasoning", text: "internal" }],
+      },
+    ];
+
+    const result = stripReasoningFromModelMessages(messages);
+
+    expect(result).toEqual([{ role: "user", content: "hello" }]);
+  });
+
+  it("returns messages unchanged when there is no reasoning", () => {
+    const messages: ModelMessage[] = [
+      { role: "user", content: "hello" },
+      { role: "assistant", content: "hi there" },
+    ];
+
+    const result = stripReasoningFromModelMessages(messages);
+
+    expect(result).toEqual(messages);
   });
 });

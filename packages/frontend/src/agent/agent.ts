@@ -8,6 +8,7 @@ import {
   withRuntimeContextMessage,
 } from "@/agent/instructions";
 import { shiftAgentTools } from "@/agent/tools";
+import { stripReasoningFromModelMessages } from "@/agent/utils/messages";
 import { repairToolCall } from "@/float/toolCallRepair";
 import { type FrontendSDK } from "@/types";
 import { createModel, type ReasoningEffort } from "@/utils/ai";
@@ -59,7 +60,10 @@ export const createShiftAgent = (options: AgentOptions) => {
 
       return {
         ...settings,
-        messages: withRuntimeContextMessage(messages, runtimeContextMessage),
+        messages: withRuntimeContextMessage(
+          stripReasoningFromModelMessages(messages),
+          runtimeContextMessage
+        ),
         system: buildAgentInstructions({
           context,
           model,
