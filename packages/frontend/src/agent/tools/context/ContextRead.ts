@@ -2,7 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
-import { ENVIRONMENT_NAME_CHARS, type ContextPromptSnapshot } from "@/agent/context.prompt";
+import { type ContextPromptSnapshot, ENVIRONMENT_NAME_CHARS } from "@/agent/context.prompt";
 import type { ConvertWorkflowSnapshot } from "@/agent/context.prompt.types";
 import { truncateContextValue } from "@/agent/context.truncation";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
@@ -96,7 +96,7 @@ const valueSchema = z.object({
 });
 
 type ContextReadInput = z.infer<typeof inputSchema>;
-export type ContextReadValue = z.infer<typeof valueSchema>;
+type ContextReadValue = z.infer<typeof valueSchema>;
 type ContextReadOutput = ToolResultType<ContextReadValue>;
 type RequestSummary = z.infer<typeof requestSchema>;
 

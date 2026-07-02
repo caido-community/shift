@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { ContextPromptSnapshot } from "@/agent/context.prompt";
-
 import { buildContextReadValue, summarizeCurrentRequest } from "./ContextRead";
+
+import type { ContextPromptSnapshot } from "@/agent/context.prompt";
 
 describe("summarizeCurrentRequest", () => {
   it("returns metadata without raw request content", () => {
