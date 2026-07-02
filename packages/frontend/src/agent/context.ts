@@ -11,7 +11,6 @@ import type {
 } from "shared";
 
 import {
-  buildContextPrompt,
   buildSkillsPrompt,
   type ContextPromptSnapshot,
   ENVIRONMENT_VARIABLE_VALUE_CONTEXT_CHARS,
@@ -362,12 +361,7 @@ export class AgentContext {
     }));
   }
 
-  toContextPrompt(): string {
-    const snapshot = this.buildContextSnapshot();
-    return buildContextPrompt(snapshot);
-  }
-
-  private buildContextSnapshot(): ContextPromptSnapshot {
+  toContextSnapshot(): ContextPromptSnapshot {
     const snapshot: ContextPromptSnapshot = {};
 
     if (this.todos.length > 0) {

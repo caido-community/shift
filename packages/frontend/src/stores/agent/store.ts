@@ -61,10 +61,6 @@ export const useAgentStore = defineStore("agent", () => {
       usageType: "agent",
     });
 
-    if (modelData === undefined) {
-      throw new Error("No models available");
-    }
-
     const session = new AgentSession(sdk, sessionId, modelData);
     dispatch({ type: "ADD_SESSION", sessionId, session });
 
