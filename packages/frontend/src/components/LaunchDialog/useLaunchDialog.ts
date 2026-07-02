@@ -55,9 +55,15 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
   });
 
   const hasAgent = computed(() => selectedAgent.value !== undefined);
+  const hasAgentOptions = computed(() => agentOptions.value.length > 0);
 
   const selectAgent = (agentId: string | undefined) => {
     selectedCustomAgentId.value = agentId;
+  };
+
+  const openAgentsPage = () => {
+    options.onCancel();
+    sdk.navigation.goTo("/shift");
   };
 
   watch(
@@ -173,12 +179,14 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
     selectedCustomAgentId,
     selectedAgent,
     hasAgent,
+    hasAgentOptions,
     availableModels,
     skillOptions,
     agentOptions,
     isSkillSelected,
     toggleSkill,
     selectAgent,
+    openAgentsPage,
     getSelectedSkills,
     addEmptyEntry,
     removeEntry,
