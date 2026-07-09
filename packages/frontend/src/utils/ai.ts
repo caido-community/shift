@@ -1,5 +1,5 @@
 import { type LanguageModelV3 } from "@ai-sdk/provider";
-import { type AIUpstreamProviderId } from "@caido/sdk-frontend";
+import { type AILanguageModelSettings, type AIUpstreamProviderId } from "@caido/sdk-frontend";
 import {
   createModelKey,
   type Model,
@@ -49,7 +49,25 @@ type CreateModelOptions = {
   openRouterPrioritizeFastProviders?: boolean;
 };
 
-export type ReasoningEffort = "low" | "medium" | "high";
+export type ReasoningEffort = NonNullable<AILanguageModelSettings["reasoning"]>["effort"] | "xhigh";
+
+type ExtendedAILanguageModelSettings = Omit<AILanguageModelSettings, "reasoning"> & {
+  reasoning?: {
+    effort: ReasoningEffort;
+  };
+};
+
+type ExtendedAIProvider = (
+  modelId: string,
+  settings?: ExtendedAILanguageModelSettings
+) => LanguageModelV3;
+
+export function supportsExtraHighReasoning(model: Model): boolean {
+  return (
+    model.provider === ModelProvider.OpenAI ||
+    (model.provider === ModelProvider.OpenRouter && model.id.startsWith("openai/"))
+  );
+}
 
 export function createModel(sdk: FrontendSDK, model: Model, options: CreateModelOptions = {}) {
   const {
@@ -64,7 +82,7 @@ export function createModel(sdk: FrontendSDK, model: Model, options: CreateModel
     (model?.capabilities.reasoning ?? false) &&
     supportsProviderReasoning(model.provider);
 
-  const provider = sdk.ai.createProvider();
+  const provider = sdk.ai.createProvider() as ExtendedAIProvider;
 
   let modelId = model.id.split(":thinking")[0];
   if (!isPresent(modelId)) {
@@ -76,17 +94,20 @@ export function createModel(sdk: FrontendSDK, model: Model, options: CreateModel
   }
 
   const modelKey = createModelKey(model.provider, modelId);
+  const effectiveReasoningEffort =
+    reasoningEffort === "xhigh" && !supportsExtraHighReasoning(model) ? "high" : reasoningEffort;
+
   const caidoModel = provider(modelKey, {
     ...(isReasoningModel && {
       reasoning: {
-        effort: reasoningEffort,
+        effort: effectiveReasoningEffort,
       },
     }),
     capabilities: {
       reasoning: isReasoningModel,
       structured_output: structuredOutput,
     },
-  }) as unknown as LanguageModelV3;
+  });
 
   return caidoModel;
 }

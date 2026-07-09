@@ -1,6 +1,9 @@
 import { type Model, ModelProvider, type ModelUsageType } from "shared";
 
 const OpenRouterModelIds = {
+  GPT_5_6_LUNA: "openai/gpt-5.6-luna",
+  GPT_5_6_TERRA: "openai/gpt-5.6-terra",
+  GPT_5_6_SOL: "openai/gpt-5.6-sol",
   GPT_5_5: "openai/gpt-5.5",
   GPT_5_4: "openai/gpt-5.4",
   GPT_5_4_MINI: "openai/gpt-5.4-mini",
@@ -21,6 +24,33 @@ const OpenRouterModelIds = {
 } as const;
 
 export const openrouterModels: Model[] = [
+  {
+    id: OpenRouterModelIds.GPT_5_6_LUNA,
+    name: "GPT 5.6 Luna",
+    provider: ModelProvider.OpenRouter,
+    contextWindow: 1_050_000,
+    capabilities: {
+      reasoning: true,
+    },
+  },
+  {
+    id: OpenRouterModelIds.GPT_5_6_TERRA,
+    name: "GPT 5.6 Terra",
+    provider: ModelProvider.OpenRouter,
+    contextWindow: 1_050_000,
+    capabilities: {
+      reasoning: true,
+    },
+  },
+  {
+    id: OpenRouterModelIds.GPT_5_6_SOL,
+    name: "GPT 5.6 Sol",
+    provider: ModelProvider.OpenRouter,
+    contextWindow: 1_050_000,
+    capabilities: {
+      reasoning: true,
+    },
+  },
   {
     id: OpenRouterModelIds.GPT_5_5,
     name: "GPT 5.5",
@@ -174,6 +204,9 @@ export const openrouterModels: Model[] = [
 ];
 
 export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
+  [OpenRouterModelIds.GPT_5_6_LUNA]: ["agent", "float"],
+  [OpenRouterModelIds.GPT_5_6_TERRA]: ["agent", "float"],
+  [OpenRouterModelIds.GPT_5_6_SOL]: ["agent", "float"],
   [OpenRouterModelIds.GPT_5_5]: ["agent", "float"],
   [OpenRouterModelIds.GPT_5_4]: ["agent", "float"],
   [OpenRouterModelIds.GPT_5_4_MINI]: ["agent", "float"],
