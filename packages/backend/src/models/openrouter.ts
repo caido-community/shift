@@ -18,6 +18,8 @@ const OpenRouterModelIds = {
   GEMINI_3_1_PRO_PREVIEW_CUSTOMTOOLS: "google/gemini-3.1-pro-preview-customtools",
   GROK_4_1_FAST: "x-ai/grok-4.1-fast",
   MERCURY_2: "inception/mercury-2",
+  DEEPSEEK_V4_PRO: "deepseek/deepseek-v4-pro",
+  DEEPSEEK_V4_FLASH: "deepseek/deepseek-v4-flash",
 } as const;
 
 export const openrouterModels: Model[] = [
@@ -171,6 +173,24 @@ export const openrouterModels: Model[] = [
       reasoning: true,
     },
   },
+  {
+    id: OpenRouterModelIds.DEEPSEEK_V4_PRO,
+    name: "DeepSeek V4 Pro",
+    provider: ModelProvider.OpenRouter,
+    contextWindow: 1_000_000,
+    capabilities: {
+      reasoning: true,
+    },
+  },
+  {
+    id: OpenRouterModelIds.DEEPSEEK_V4_FLASH,
+    name: "DeepSeek V4 Flash",
+    provider: ModelProvider.OpenRouter,
+    contextWindow: 1_000_000,
+    capabilities: {
+      reasoning: true,
+    },
+  },
 ];
 
 export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
@@ -191,4 +211,6 @@ export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
   [OpenRouterModelIds.GEMINI_3_1_PRO_PREVIEW_CUSTOMTOOLS]: ["agent", "float"],
   [OpenRouterModelIds.GROK_4_1_FAST]: ["agent", "float"],
   [OpenRouterModelIds.MERCURY_2]: ["agent", "float"],
+  [OpenRouterModelIds.DEEPSEEK_V4_PRO]: ["agent", "float"],
+  [OpenRouterModelIds.DEEPSEEK_V4_FLASH]: ["agent", "float"],
 };
