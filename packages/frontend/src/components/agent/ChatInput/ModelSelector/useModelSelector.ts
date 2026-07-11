@@ -3,7 +3,7 @@ import { computed, type MaybeRefOrGetter, nextTick, type Ref, ref, toValue, watc
 
 import { type ProviderInfo, useSelector } from "./useSelector";
 
-import type { ReasoningEffort } from "@/utils/ai";
+import { type ReasoningEffort, supportsExtraHighReasoning } from "@/utils/ai";
 
 type EffortConfig = {
   label: string;
@@ -22,6 +22,7 @@ type UseModelSelectorOptions = {
 };
 
 const reasoningEfforts: ReasoningEffort[] = ["low", "medium", "high"];
+const openAIReasoningEfforts: ReasoningEffort[] = [...reasoningEfforts, "xhigh"];
 
 const effortConfig: Record<ReasoningEffort, EffortConfig> = {
   low: {
@@ -35,6 +36,10 @@ const effortConfig: Record<ReasoningEffort, EffortConfig> = {
   high: {
     label: "High",
     description: "Deeper reasoning with potentially slower responses.",
+  },
+  xhigh: {
+    label: "Extra High",
+    description: "Maximum reasoning depth with the slowest responses.",
   },
 };
 
@@ -66,6 +71,13 @@ export function useModelSelector(options: UseModelSelectorOptions) {
   const activeReasoningModel = computed(() => {
     if (activeReasoningModelId.value === undefined) return undefined;
     return providerModels.value.find((model) => model.id === activeReasoningModelId.value);
+  });
+
+  const availableReasoningEfforts = computed(() => {
+    const model = activeReasoningModel.value;
+    return model !== undefined && supportsExtraHighReasoning(model)
+      ? openAIReasoningEfforts
+      : reasoningEfforts;
   });
 
   const shouldShowEffortStep = computed(() => {
@@ -160,7 +172,7 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     shouldShowEffortStep,
     selectedModelLabel,
     supportsReasoning,
-    reasoningEfforts,
+    reasoningEfforts: availableReasoningEfforts,
     effortConfig,
     reasoningEffort,
     close,
