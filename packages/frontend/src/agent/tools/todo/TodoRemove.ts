@@ -5,6 +5,7 @@ import { z } from "zod";
 import { withReadableTodosText } from "./utils";
 
 import type { AgentContext } from "@/agent/context";
+import { scalarOrArray, toArray } from "@/agent/tools/utils/schema";
 import {
   type Todo,
   todoSchema,
@@ -15,7 +16,7 @@ import {
 import { isPresent, pluralize, truncate } from "@/utils";
 
 const inputSchema = z.object({
-  ids: z.array(z.number().int().positive()).describe("The IDs of the todo items to remove"),
+  ids: scalarOrArray(z.number().int().positive()).describe("The IDs of the todo items to remove"),
 });
 
 const valueSchema = z.object({
@@ -28,13 +29,17 @@ type TodoRemoveInput = z.infer<typeof inputSchema>;
 type TodoRemoveValue = z.infer<typeof valueSchema>;
 type TodoRemoveOutput = ToolResultType<TodoRemoveValue>;
 
-const formatRemovedPreview = (todos: Todo[] | undefined, ids: number[] | undefined): string => {
+const formatRemovedPreview = (
+  todos: Todo[] | undefined,
+  ids: number | number[] | undefined
+): string => {
   const first = todos?.[0];
   if (isPresent(first) && todos?.length === 1) {
     return truncate(first.content, 52);
   }
   if (isPresent(ids)) {
-    return `${ids.length} ${pluralize(ids.length, "todo")}`;
+    const items = toArray(ids);
+    return `${items.length} ${pluralize(items.length, "todo")}`;
   }
   return "todos";
 };
@@ -44,7 +49,7 @@ export const display = {
     { text: "Removing " },
     {
       text: isPresent(input?.ids)
-        ? `${input.ids.length} ${pluralize(input.ids.length, "todo")}`
+        ? `${toArray(input.ids).length} ${pluralize(toArray(input.ids).length, "todo")}`
         : "todos",
       muted: true,
     },
@@ -63,7 +68,7 @@ export const TodoRemove = tool({
   outputSchema,
   execute: ({ ids }, { experimental_context }): TodoRemoveOutput => {
     const context = experimental_context as AgentContext;
-    const results = ids.map((id) => context.removeTodo(id));
+    const results = toArray(ids).map((id) => context.removeTodo(id));
 
     const errors = results.filter((r) => r.kind === "Error");
     if (errors.length > 0) {

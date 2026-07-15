@@ -101,4 +101,52 @@ describe("repairToolInput", () => {
 
     expect(repaired).toBe('{"limit":"50","offset":"10"}');
   });
+
+  it("wraps a scalar string in an array when the schema expects an array", () => {
+    const schema = z.toJSONSchema(
+      z.object({
+        content: z.array(z.string()),
+      })
+    ) as JSONSchema7;
+
+    const repaired = repairToolInput('{"content":"Say hello #1"}', schema);
+
+    expect(repaired).toBe('{"content":["Say hello #1"]}');
+  });
+
+  it("wraps a scalar number in an array when the schema expects an array", () => {
+    const schema = z.toJSONSchema(
+      z.object({
+        ids: z.array(z.number().int().positive()),
+      })
+    ) as JSONSchema7;
+
+    const repaired = repairToolInput('{"ids":7}', schema);
+
+    expect(repaired).toBe('{"ids":[7]}');
+  });
+
+  it("leaves array values untouched", () => {
+    const schema = z.toJSONSchema(
+      z.object({
+        content: z.array(z.string()),
+      })
+    ) as JSONSchema7;
+
+    const repaired = repairToolInput('{"content":["a","b"]}', schema);
+
+    expect(repaired).toBe('{"content":["a","b"]}');
+  });
+
+  it("does not wrap scalars for non-array fields", () => {
+    const schema = z.toJSONSchema(
+      z.object({
+        name: z.string(),
+      })
+    ) as JSONSchema7;
+
+    const repaired = repairToolInput('{"name":"todo"}', schema);
+
+    expect(repaired).toBe('{"name":"todo"}');
+  });
 });

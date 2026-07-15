@@ -8,6 +8,7 @@ import {
   withRuntimeContextMessage,
 } from "@/agent/instructions";
 import { shiftAgentTools } from "@/agent/tools";
+import { hasRepeatedToolCalls } from "@/agent/utils/loopGuard";
 import { repairToolCall } from "@/float/toolCallRepair";
 import { type FrontendSDK } from "@/types";
 import { createModel, type ReasoningEffort } from "@/utils/ai";
@@ -43,7 +44,7 @@ export const createShiftAgent = (options: AgentOptions) => {
     }),
     tools,
     toolChoice: "auto",
-    stopWhen: stepCountIs(maxIterations),
+    stopWhen: [stepCountIs(maxIterations), ({ steps }) => hasRepeatedToolCalls(steps)],
     maxRetries: 3,
     experimental_context: context,
     experimental_repairToolCall: async ({ toolCall, inputSchema, error }) =>

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { withReadableTodosText } from "./utils";
 
 import type { AgentContext } from "@/agent/context";
+import { scalarOrArray, toArray } from "@/agent/tools/utils/schema";
 import {
   type Todo,
   todoSchema,
@@ -15,7 +16,7 @@ import {
 import { isPresent, pluralize, truncate } from "@/utils";
 
 const inputSchema = z.object({
-  ids: z.array(z.number().int().positive()).describe("The IDs of the todo items to complete"),
+  ids: scalarOrArray(z.number().int().positive()).describe("The IDs of the todo items to complete"),
 });
 
 const valueSchema = z.object({
@@ -28,13 +29,17 @@ type TodoCompleteInput = z.infer<typeof inputSchema>;
 type TodoCompleteValue = z.infer<typeof valueSchema>;
 type TodoCompleteOutput = ToolResultType<TodoCompleteValue>;
 
-const formatCompletedPreview = (todos: Todo[] | undefined, ids: number[] | undefined): string => {
+const formatCompletedPreview = (
+  todos: Todo[] | undefined,
+  ids: number | number[] | undefined
+): string => {
   const first = todos?.[0];
   if (isPresent(first) && todos?.length === 1) {
     return truncate(first.content, 52);
   }
   if (isPresent(ids)) {
-    return `${ids.length} ${pluralize(ids.length, "todo")}`;
+    const items = toArray(ids);
+    return `${items.length} ${pluralize(items.length, "todo")}`;
   }
   return "todos";
 };
@@ -44,7 +49,7 @@ export const display = {
     { text: "Completing " },
     {
       text: isPresent(input?.ids)
-        ? `${input.ids.length} ${pluralize(input.ids.length, "todo")}`
+        ? `${toArray(input.ids).length} ${pluralize(toArray(input.ids).length, "todo")}`
         : "todos",
       muted: true,
     },
@@ -63,7 +68,7 @@ export const TodoComplete = tool({
   outputSchema,
   execute: ({ ids }, { experimental_context }): TodoCompleteOutput => {
     const context = experimental_context as AgentContext;
-    const results = ids.map((id) => context.completeTodo(id));
+    const results = toArray(ids).map((id) => context.completeTodo(id));
 
     const errors = results.filter((r) => r.kind === "Error");
     if (errors.length > 0) {

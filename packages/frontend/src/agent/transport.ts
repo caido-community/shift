@@ -12,8 +12,10 @@ import type { FrontendSDK } from "../types";
 import { createShiftAgent } from "@/agent/agent";
 import type { AgentContext } from "@/agent/context";
 import {
+  ensureToolCallsResolved,
   findLastUserMessageId,
   replaceHistoricalToolOutputsWithBlobRefs,
+  stripInlineThinkTags,
   stripReasoningParts,
   stripUnfinishedToolCalls,
 } from "@/agent/utils/messages";
@@ -88,7 +90,9 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
           openRouterPrioritizeFastProviders,
         });
 
-        const stripped = stripReasoningParts(stripUnfinishedToolCalls(options.messages));
+        const stripped = stripInlineThinkTags(
+          stripReasoningParts(stripUnfinishedToolCalls(options.messages))
+        );
         const createBlobForHistory = (content: string, reason: string) => {
           const meta = context.createPayloadBlob(content, reason);
           return { blobId: meta.blobId };
@@ -102,9 +106,11 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
         } catch (err) {
           console.warn("Historical tool output blob replacement failed, using full messages:", err);
         }
-        const modelMessages = await convertToModelMessages(messagesForModel, {
-          ignoreIncompleteToolCalls: true,
-        });
+        const modelMessages = ensureToolCallsResolved(
+          await convertToModelMessages(messagesForModel, {
+            ignoreIncompleteToolCalls: true,
+          })
+        );
 
         const result = await agent.stream({
           messages: modelMessages,
