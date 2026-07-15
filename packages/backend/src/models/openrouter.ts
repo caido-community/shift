@@ -19,6 +19,7 @@ const OpenRouterModelIds = {
   CLAUDE_SONNET_4_6_THINKING: "anthropic/claude-sonnet-4.6:thinking",
   GEMINI_3_FLASH_PREVIEW: "google/gemini-3-flash-preview",
   GEMINI_3_1_PRO_PREVIEW_CUSTOMTOOLS: "google/gemini-3.1-pro-preview-customtools",
+  GROK_4_5: "x-ai/grok-4.5",
   GROK_4_1_FAST: "x-ai/grok-4.1-fast",
   MERCURY_2: "inception/mercury-2",
   DEEPSEEK_V4_PRO: "deepseek/deepseek-v4-pro",
@@ -186,6 +187,15 @@ export const openrouterModels: Model[] = [
     },
   },
   {
+    id: OpenRouterModelIds.GROK_4_5,
+    name: "Grok 4.5",
+    provider: ModelProvider.OpenRouter,
+    contextWindow: 500_000,
+    capabilities: {
+      reasoning: true,
+    },
+  },
+  {
     id: OpenRouterModelIds.GROK_4_1_FAST,
     name: "Grok 4.1 Fast",
     provider: ModelProvider.OpenRouter,
@@ -242,6 +252,7 @@ export const defaultOpenRouterModelsConfig: Record<string, ModelUsageType[]> = {
   [OpenRouterModelIds.CLAUDE_SONNET_4_6_THINKING]: ["agent", "float"],
   [OpenRouterModelIds.GEMINI_3_FLASH_PREVIEW]: ["agent", "float"],
   [OpenRouterModelIds.GEMINI_3_1_PRO_PREVIEW_CUSTOMTOOLS]: ["agent", "float"],
+  [OpenRouterModelIds.GROK_4_5]: ["agent", "float"],
   [OpenRouterModelIds.GROK_4_1_FAST]: ["agent", "float"],
   [OpenRouterModelIds.MERCURY_2]: ["agent", "float"],
   [OpenRouterModelIds.DEEPSEEK_V4_PRO]: ["agent", "float"],
