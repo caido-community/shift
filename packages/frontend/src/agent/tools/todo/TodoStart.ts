@@ -4,6 +4,7 @@ import { z } from "zod";
 import { withReadableTodosText } from "./utils";
 
 import type { AgentContext } from "@/agent/context";
+import { idNumber } from "@/agent/tools/utils/schema";
 import {
   type Todo,
   todoSchema,
@@ -14,11 +15,7 @@ import {
 import { isPresent, truncate } from "@/utils";
 
 const inputSchema = z.object({
-  id: z
-    .number()
-    .int()
-    .positive()
-    .describe("The ID of the todo item to mark as currently in progress"),
+  id: idNumber().describe("The ID of the todo item to mark as currently in progress"),
 });
 
 const valueSchema = z.object({

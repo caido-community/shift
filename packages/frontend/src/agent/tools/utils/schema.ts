@@ -19,3 +19,31 @@ export function scalarOrArray<T extends z.ZodTypeAny>(item: T) {
 export function toArray<T>(value: T | T[]): T[] {
   return Array.isArray(value) ? value : [value];
 }
+
+/** A positive integer id that also accepts numeric strings ("1" -> 1). */
+export function idNumber() {
+  return z.coerce.number().int().positive();
+}
+
+/**
+ * Input shape for tools that act on one or more todo ids.
+ *
+ * Weaker / local models are inconsistent here — they send `ids: [1,2]`, a single
+ * `ids: 1`, a singular `id: 1`, or numeric strings like `"1"`. Accept all of them
+ * (both keys optional, scalar-or-array, string-coercing) and normalize with
+ * `collectIds`. `execute` should error when the result is empty.
+ */
+export function idListInput(idsDescription: string) {
+  return z.object({
+    ids: scalarOrArray(idNumber()).optional().describe(idsDescription),
+    id: idNumber().optional().describe("Alias accepted for a single id."),
+  });
+}
+
+export function collectIds(input: { ids?: number | number[]; id?: number }): number[] {
+  const list = input.ids === undefined ? [] : toArray(input.ids);
+  if (input.id !== undefined) {
+    list.push(input.id);
+  }
+  return list;
+}

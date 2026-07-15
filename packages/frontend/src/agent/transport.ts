@@ -128,7 +128,9 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
               context.clearTodos();
             },
             onError: (error) => {
-              context.clearTodos();
+              // Do NOT clear todos here: a recoverable tool error (e.g. a malformed
+              // tool call the model then retries) must not destroy the user's todo
+              // state mid-run. Todos are cleared on normal completion (onFinish).
               writer.write({
                 type: "message-metadata",
                 messageMetadata: {
