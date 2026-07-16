@@ -31,7 +31,10 @@ const { toolState, extractedOutput, errorMessage } = useTool(
 
 const messages = computed(() => getToolMessages(toolName));
 
-const defaultParts = (text: string): MessageResult => [{ text }, { text: toolName, muted: true }];
+const defaultParts = (text: string): MessageResult => [
+  { text: `${text} ` },
+  { text: toolName, muted: true },
+];
 
 const displayContext = computed(() => ({ input, output: extractedOutput.value }));
 

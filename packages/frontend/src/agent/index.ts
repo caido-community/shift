@@ -11,15 +11,32 @@ export const setupAgents = (sdk: FrontendSDK) => {
   const uiStore = useUIStore();
   const agentStore = useAgentStore();
 
+  const syncSession = () => {
+    const currentReplaySession = sdk.replay.getCurrentSession();
+    if (isPresent(currentReplaySession)) {
+      agentStore.dispatch({
+        type: "SELECT_SESSION",
+        sessionId: currentReplaySession.id,
+      });
+    } else {
+      agentStore.dispatch({ type: "CLEAR_SESSION_SELECTION" });
+    }
+  };
+
+  const toggleDrawer = () => {
+    syncSession();
+    uiStore.toggleDrawer();
+  };
+
   sdk.replay.addToSlot("topbar", {
     type: "Button",
     label: "Agent",
-    onClick: () => uiStore.toggleDrawer(),
+    onClick: toggleDrawer,
   });
 
   sdk.commands.register("shift:toggle-drawer", {
     name: "Toggle Shift Agents Drawer",
-    run: () => uiStore.toggleDrawer(),
+    run: toggleDrawer,
   });
 
   sdk.shortcuts.register("shift:toggle-drawer", ["shift", "control", "i"]);
@@ -46,15 +63,6 @@ export const setupAgents = (sdk: FrontendSDK) => {
 
       await agentStore.removeSession(deletedSessionId);
     }
-  };
-
-  const syncSession = () => {
-    const currentReplaySession = sdk.replay.getCurrentSession();
-    if (currentReplaySession === undefined) {
-      return;
-    }
-
-    agentStore.dispatch({ type: "SELECT_SESSION", sessionId: currentReplaySession.id });
   };
 
   sdk.navigation.onPageChange((event) => {

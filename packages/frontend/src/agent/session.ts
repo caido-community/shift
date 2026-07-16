@@ -3,7 +3,7 @@ import { type Model, type ShiftMessage } from "shared";
 import { nextTick, ref, watch } from "vue";
 
 import { AgentContext } from "@/agent/context";
-import { buildAgentInstructions, buildRuntimeContextMessage } from "@/agent/instructions";
+import { buildAgentInstructions } from "@/agent/instructions";
 import { LocalChatTransport } from "@/agent/transport";
 import { getEstimatedContextUsage } from "@/agent/utils/contextUsage";
 import {
@@ -24,7 +24,7 @@ export class AgentSession {
   private isInitialized = false;
   private contextMetadataVersion = ref(0);
 
-  constructor(sdk: FrontendSDK, replaySessionId: string, model: Model) {
+  constructor(sdk: FrontendSDK, replaySessionId: string, model: Model | undefined) {
     this.id = replaySessionId;
     this.sdk = sdk;
     this.store = useSessionStore(replaySessionId);
@@ -154,39 +154,21 @@ export class AgentSession {
     this.contextMetadataVersion.value++;
   }
 
-  estimateContextUsage(options?: { messages?: ShiftMessage[]; steps?: number; maxSteps?: number }) {
+  estimateContextUsage(options?: { messages?: ShiftMessage[] }) {
     this.contextMetadataVersion.value;
 
     const messages = options?.messages ?? this.chat.messages;
-    const steps = options?.steps ?? 0;
-    const maxSteps = options?.maxSteps ?? 1;
     const model = this.model;
 
     const systemPrompt = buildAgentInstructions({
       context: this.context,
       model,
     });
-    const runtimeContextMessage = buildRuntimeContextMessage({
-      context: this.context,
-      steps,
-      maxSteps,
-    });
-    const messagesWithRuntimeContext =
-      runtimeContextMessage !== undefined
-        ? [
-            ...messages,
-            {
-              id: "__runtime-context__",
-              role: "user",
-              parts: [{ type: "text", text: runtimeContextMessage.content as string }],
-            } as ShiftMessage,
-          ]
-        : messages;
 
     return getEstimatedContextUsage({
       model,
       systemPrompt,
-      messages: messagesWithRuntimeContext,
+      messages,
     });
   }
 

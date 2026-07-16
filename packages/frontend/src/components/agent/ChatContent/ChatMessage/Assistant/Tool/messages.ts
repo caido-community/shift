@@ -1,4 +1,5 @@
 import { display as binaryExecRunDisplay } from "@/agent/tools/binaries/BinaryExecRun";
+import { display as contextReadDisplay } from "@/agent/tools/context/ContextRead";
 import { display as environmentCreateDisplay } from "@/agent/tools/environment/EnvironmentCreate";
 import { display as environmentReadDisplay } from "@/agent/tools/environment/EnvironmentRead";
 import { display as environmentRemoveDisplay } from "@/agent/tools/environment/EnvironmentRemove";
@@ -41,6 +42,7 @@ import { type ToolDisplay } from "@/agent/types";
 
 const configs = {
   BinaryExecRun: binaryExecRunDisplay,
+  ContextRead: contextReadDisplay,
   TodoAdd: todoAddDisplay,
   TodoStart: todoStartDisplay,
   TodoComplete: todoCompleteDisplay,

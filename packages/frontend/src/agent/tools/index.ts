@@ -1,4 +1,5 @@
 import { BinaryExecRun } from "./binaries";
+import { ContextRead } from "./context";
 import {
   EnvironmentCreate,
   EnvironmentRead,
@@ -34,6 +35,7 @@ import { TodoAdd, TodoComplete, TodoRemove, TodoStart } from "./todo";
 import { WorkflowConvertList, WorkflowConvertRun } from "./workflows";
 
 export const shiftAgentTools = {
+  ContextRead,
   BinaryExecRun,
   PayloadBlobCreate,
   PayloadBlobRangeRead,
