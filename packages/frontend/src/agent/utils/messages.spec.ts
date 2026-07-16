@@ -1,7 +1,9 @@
+import type { ModelMessage } from "ai";
 import { Result, type ShiftMessage } from "shared";
 import { describe, expect, it } from "vitest";
 
 import {
+  ensureToolCallsResolved,
   extractLastUserMessageText,
   findLastUserMessageId,
   findLastUserMessageIndex,
@@ -9,6 +11,7 @@ import {
   hasToolPartsSinceLastUserMessage,
   replaceHistoricalToolOutputsWithBlobRefs,
   serializeToolOutput,
+  stripInlineThinkTags,
   stripReasoningParts,
   stripUnfinishedToolCalls,
 } from "./messages";
@@ -563,5 +566,122 @@ describe("stripReasoningParts", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]?.parts).toEqual([{ type: "text", text: "visible" }]);
+  });
+});
+
+describe("stripInlineThinkTags", () => {
+  function assistantText(text: string, id = "a1"): ShiftMessage {
+    return { id, role: "assistant", parts: [{ type: "text", text }] } as ShiftMessage;
+  }
+
+  it("removes inline think blocks and keeps remaining text", () => {
+    const messages = [assistantText("<think>reasoning</think>\n\nLet me create a todo list:")];
+
+    const result = stripInlineThinkTags(messages);
+
+    expect(result[0]?.parts).toEqual([{ type: "text", text: "Let me create a todo list:" }]);
+  });
+
+  it("drops an assistant message that is only a think block", () => {
+    const messages = [createUserMessage("hi"), assistantText("<think>\n\n</think>")];
+
+    const result = stripInlineThinkTags(messages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.role).toBe("user");
+  });
+
+  it("preserves tool parts when the text becomes empty", () => {
+    const messages = [
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [
+          { type: "text", text: "<think>\n\n</think>" },
+          { type: "tool-TodoAdd", toolCallId: "tc1", toolName: "TodoAdd", state: "result" },
+        ],
+      } as ShiftMessage,
+    ];
+
+    const result = stripInlineThinkTags(messages);
+
+    expect(result[0]?.parts).toEqual([
+      { type: "tool-TodoAdd", toolCallId: "tc1", toolName: "TodoAdd", state: "result" },
+    ]);
+  });
+
+  it("leaves messages without think tags unchanged", () => {
+    const messages = [assistantText("just text")];
+
+    const result = stripInlineThinkTags(messages);
+
+    expect(result).toBe(messages);
+  });
+});
+
+describe("ensureToolCallsResolved", () => {
+  function assistantCall(toolCallId: string, toolName = "TodoAdd"): ModelMessage {
+    return {
+      role: "assistant",
+      content: [{ type: "tool-call", toolCallId, toolName, input: { content: ["x"] } }],
+    } as ModelMessage;
+  }
+
+  function toolResult(toolCallId: string, toolName = "TodoAdd"): ModelMessage {
+    return {
+      role: "tool",
+      content: [
+        { type: "tool-result", toolCallId, toolName, output: { type: "text", value: "ok" } },
+      ],
+    } as ModelMessage;
+  }
+
+  it("injects a synthetic result for an unanswered tool call", () => {
+    const messages: ModelMessage[] = [assistantCall("call_1"), assistantCall("call_2")];
+
+    const result = ensureToolCallsResolved(messages);
+
+    expect(result).toHaveLength(4);
+    expect(result[1]?.role).toBe("tool");
+    expect(result[3]?.role).toBe("tool");
+    // every tool call now has a matching tool result
+    const callIds = messages.map((m) => (m.content as { toolCallId: string }[])[0]!.toolCallId);
+    const resultIds = result
+      .filter((m) => m.role === "tool")
+      .map((m) => (m.content as { toolCallId: string }[])[0]!.toolCallId);
+    expect(resultIds.sort()).toEqual(callIds.sort());
+  });
+
+  it("leaves already-resolved tool calls untouched", () => {
+    const messages: ModelMessage[] = [assistantCall("call_1"), toolResult("call_1")];
+
+    const result = ensureToolCallsResolved(messages);
+
+    expect(result).toBe(messages);
+  });
+
+  it("resolves only the missing calls in a mixed turn", () => {
+    const messages: ModelMessage[] = [
+      assistantCall("call_ok"),
+      toolResult("call_ok"),
+      assistantCall("call_missing"),
+    ];
+
+    const result = ensureToolCallsResolved(messages);
+
+    expect(result).toHaveLength(4);
+    expect(result[3]?.role).toBe("tool");
+    expect((result[3]?.content as { toolCallId: string }[])[0]?.toolCallId).toBe("call_missing");
+  });
+
+  it("ignores assistant messages without tool calls", () => {
+    const messages: ModelMessage[] = [
+      { role: "assistant", content: "hello" } as ModelMessage,
+      { role: "user", content: "hi" } as ModelMessage,
+    ];
+
+    const result = ensureToolCallsResolved(messages);
+
+    expect(result).toBe(messages);
   });
 });

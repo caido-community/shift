@@ -5,6 +5,7 @@ import { z } from "zod";
 import { withReadableTodosText } from "./utils";
 
 import type { AgentContext } from "@/agent/context";
+import { scalarOrArray, toArray } from "@/agent/tools/utils/schema";
 import {
   type Todo,
   todoSchema,
@@ -15,7 +16,7 @@ import {
 import { isPresent, pluralize, truncate } from "@/utils";
 
 const inputSchema = z.object({
-  content: z.array(z.string()).describe("The todo item contents/descriptions"),
+  content: scalarOrArray(z.string()).describe("The todo item contents/descriptions"),
 });
 
 const valueSchema = z.object({
@@ -28,11 +29,13 @@ type TodoAddInput = z.infer<typeof inputSchema>;
 type TodoAddValue = z.infer<typeof valueSchema>;
 type TodoAddOutput = ToolResultType<TodoAddValue>;
 
-const formatTodoPreview = (content: string[] | undefined): string => {
-  if (!isPresent(content) || content.length === 0) return "todos";
-  const first = content[0];
-  if (content.length === 1 && isPresent(first)) return truncate(first, 52);
-  return `${content.length} ${pluralize(content.length, "todo")}`;
+const formatTodoPreview = (content: string | string[] | undefined): string => {
+  if (!isPresent(content)) return "todos";
+  const items = toArray(content);
+  if (items.length === 0) return "todos";
+  const first = items[0];
+  if (items.length === 1 && isPresent(first)) return truncate(first, 52);
+  return `${items.length} ${pluralize(items.length, "todo")}`;
 };
 
 const formatTodoOutput = (todos: Todo[] | undefined): string => {
@@ -65,7 +68,7 @@ export const TodoAdd = tool({
   outputSchema,
   execute: ({ content }, { experimental_context }): TodoAddOutput => {
     const context = experimental_context as AgentContext;
-    const results = content.map((item) => context.addTodo(item));
+    const results = toArray(content).map((item) => context.addTodo(item));
 
     const errors = results.filter((r) => r.kind === "Error");
     if (errors.length > 0) {

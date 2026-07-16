@@ -1,12 +1,66 @@
-import { isToolUIPart } from "ai";
+import { isToolUIPart, type ModelMessage } from "ai";
 import { Result } from "shared";
 import type { ShiftMessage } from "shared";
+
+import { hasThinkTag, stripThinkTags } from "@/utils";
 
 type ToolUIState = { state?: string; output?: unknown };
 type ReasoningPart = { type: "reasoning" };
 
 function isReasoningPart(part: { type: string }): part is ReasoningPart {
   return part.type === "reasoning";
+}
+
+/**
+ * Remove inline `<think>...</think>` blocks from assistant text parts.
+ *
+ * Some providers (e.g. qwen served via Ollama/LiteLLM) stream reasoning inline in
+ * the text content instead of as a dedicated `reasoning` part. `stripReasoningParts`
+ * only drops `reasoning`-typed parts, so those inline blocks survive into replayed
+ * history and inflate context on every turn. Assistant messages that become empty
+ * (and carry no tool parts) are dropped, mirroring `stripReasoningParts`.
+ */
+export function stripInlineThinkTags(messages: ShiftMessage[]): ShiftMessage[] {
+  let didChange = false;
+  const updated: ShiftMessage[] = [];
+
+  for (const message of messages) {
+    if (message.role !== "assistant") {
+      updated.push(message);
+      continue;
+    }
+
+    let didMessageChange = false;
+    const newParts: ShiftMessage["parts"] = [];
+
+    for (const part of message.parts) {
+      if (part.type !== "text" || !hasThinkTag(part.text)) {
+        newParts.push(part);
+        continue;
+      }
+
+      const cleaned = stripThinkTags(part.text);
+      didMessageChange = true;
+      didChange = true;
+
+      if (cleaned.length > 0) {
+        newParts.push({ ...part, text: cleaned });
+      }
+    }
+
+    if (!didMessageChange) {
+      updated.push(message);
+      continue;
+    }
+
+    if (newParts.length === 0) {
+      continue;
+    }
+
+    updated.push({ ...message, parts: newParts });
+  }
+
+  return didChange ? updated : messages;
 }
 
 export function stripReasoningParts(messages: ShiftMessage[]): ShiftMessage[] {
@@ -255,6 +309,89 @@ export function replaceHistoricalToolOutputsWithBlobRefs(
   }
 
   return didChange ? updated : messages;
+}
+
+type ToolCallRef = { toolCallId: string; toolName: string };
+
+const UNFULFILLED_TOOL_CALL_MESSAGE =
+  "Tool call was not executed (invalid arguments or unfulfilled). Treat it as failed. " +
+  "Do not repeat the same call verbatim — fix the arguments or take a different step.";
+
+function assistantToolCalls(message: ModelMessage): ToolCallRef[] {
+  if (message.role !== "assistant" || typeof message.content === "string") {
+    return [];
+  }
+  const calls: ToolCallRef[] = [];
+  for (const part of message.content) {
+    if (part.type === "tool-call") {
+      calls.push({ toolCallId: part.toolCallId, toolName: part.toolName });
+    }
+  }
+  return calls;
+}
+
+function toolResultIds(message: ModelMessage): string[] {
+  if (message.role !== "tool" || typeof message.content === "string") {
+    return [];
+  }
+  const ids: string[] = [];
+  for (const part of message.content) {
+    if (part.type === "tool-result") {
+      ids.push(part.toolCallId);
+    }
+  }
+  return ids;
+}
+
+/**
+ * Guarantee the OpenAI tool-use contract: every assistant `tool-call` is answered by
+ * exactly one `tool` result before the next model turn.
+ *
+ * When a tool call fails input validation and can't be repaired it is never executed,
+ * so no result is produced. Left as-is, the wire contains consecutive assistant
+ * `tool-call` messages with no intervening `tool` message — a contract violation that
+ * lenient backends accept and then loop on. For any unanswered call we splice in a
+ * synthetic error result telling the model the call failed, so it can correct instead
+ * of re-issuing it forever.
+ */
+export function ensureToolCallsResolved(messages: ModelMessage[]): ModelMessage[] {
+  let didChange = false;
+  const result: ModelMessage[] = [];
+
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i]!;
+    result.push(message);
+
+    const toolCalls = assistantToolCalls(message);
+    if (toolCalls.length === 0) {
+      continue;
+    }
+
+    const resolved = new Set<string>();
+    for (let j = i + 1; j < messages.length && messages[j]!.role === "tool"; j++) {
+      for (const id of toolResultIds(messages[j]!)) {
+        resolved.add(id);
+      }
+    }
+
+    const missing = toolCalls.filter((call) => !resolved.has(call.toolCallId));
+    if (missing.length === 0) {
+      continue;
+    }
+
+    didChange = true;
+    result.push({
+      role: "tool",
+      content: missing.map((call) => ({
+        type: "tool-result",
+        toolCallId: call.toolCallId,
+        toolName: call.toolName,
+        output: { type: "error-text", value: UNFULFILLED_TOOL_CALL_MESSAGE },
+      })),
+    } as ModelMessage);
+  }
+
+  return didChange ? result : messages;
 }
 
 type ExtractResult = {

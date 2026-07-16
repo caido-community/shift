@@ -3,6 +3,7 @@ import type { ShiftDataTypes, ShiftMessage } from "shared";
 import { computed, type MaybeRefOrGetter, toValue } from "vue";
 
 import { formatReasoningTime } from "@/agent/utils/formatting";
+import { hasThinkTag, stripThinkTags } from "@/utils";
 
 type ShiftMessagePart = UIMessagePart<ShiftDataTypes, UITools>;
 
@@ -25,6 +26,18 @@ export function useAssistantMessage(message: MaybeRefOrGetter<ShiftMessage>) {
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
       if (part === undefined || shouldSkipPart(part.type)) {
+        continue;
+      }
+
+      // Strip inline <think> reasoning blocks this model emits into text parts.
+      // Drop the part entirely if nothing is left (e.g. an empty <think></think>).
+      if (part.type === "text" && hasThinkTag(part.text)) {
+        const isStreaming = part.state === "streaming";
+        const cleaned = stripThinkTags(part.text, { stripDangling: isStreaming });
+        if (cleaned.length === 0) {
+          continue;
+        }
+        result.push({ part: { ...part, text: cleaned }, index: i });
         continue;
       }
 

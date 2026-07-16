@@ -27,6 +27,63 @@ function schemaAllowsString(schema: JSONSchema7 | boolean | undefined): boolean 
   });
 }
 
+function schemaIsArray(schema: JSONSchema7 | boolean | undefined): boolean {
+  if (schema === undefined || typeof schema === "boolean") {
+    return false;
+  }
+
+  if (schema.type === "array") {
+    return true;
+  }
+
+  return [schema.anyOf, schema.oneOf, schema.allOf].some((variants) => {
+    if (variants === undefined) {
+      return false;
+    }
+
+    return variants.some((variant) => schemaIsArray(variant) === true) === true;
+  });
+}
+
+/**
+ * Wrap scalar values in a single-element array when the schema expects an array.
+ *
+ * Weaker / local models often emit `{"content":"x"}` where the schema requires
+ * `{"content":["x"]}`. Left unrepaired, validation fails, the tool never runs,
+ * no `tool` result is produced, and the model loops re-issuing the same call.
+ */
+function coerceScalarsToArrays(schema: JSONSchema7, data: unknown): void {
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    return;
+  }
+
+  const properties = schema.properties;
+  if (properties === undefined) {
+    return;
+  }
+
+  const record = data as Record<string, unknown>;
+
+  for (const [key, value] of Object.entries(record)) {
+    const propertySchema = properties[key];
+    if (propertySchema === undefined || typeof propertySchema === "boolean") {
+      continue;
+    }
+
+    if (
+      schemaIsArray(propertySchema) &&
+      value !== undefined &&
+      value !== null &&
+      !Array.isArray(value)
+    ) {
+      record[key] = [value];
+      continue;
+    }
+
+    coerceScalarsToArrays(propertySchema, value);
+  }
+}
+
 function stripOptionalEmptyStrings(schema: JSONSchema7, data: unknown): void {
   if (data === null || typeof data !== "object" || Array.isArray(data)) {
     return;
@@ -64,6 +121,7 @@ export function repairToolInput(input: string, schema: JSONSchema7): string | un
     return undefined;
   }
 
+  coerceScalarsToArrays(schema, data);
   stripOptionalEmptyStrings(schema, data);
 
   return JSON.stringify(data);
