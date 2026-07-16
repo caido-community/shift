@@ -21,12 +21,14 @@ const {
   selectedCustomAgentId,
   selectedAgent,
   hasAgent,
+  hasAgentOptions,
   availableModels,
   skillOptions,
   agentOptions,
   isSkillSelected,
   toggleSkill,
   selectAgent,
+  openAgentsPage,
   addEmptyEntry,
   removeEntry,
   handleConfirm,
@@ -74,18 +76,45 @@ const handleAgentChange = (value: string | undefined) => {
     </div>
 
     <section class="flex flex-col gap-2">
-      <label class="text-sm font-medium text-surface-200">Agent</label>
+      <label class="text-sm font-medium text-surface-200">Custom Agent</label>
       <Select
+        v-if="hasAgentOptions"
         :model-value="selectedCustomAgentId ?? ''"
         :options="[
-          { label: 'No Agent', value: '' },
+          { label: 'No Custom Agent', value: '' },
           ...agentOptions.map((a) => ({ label: a.name, value: a.id })),
         ]"
         option-label="label"
         option-value="value"
-        placeholder="Select an agent..."
+        placeholder="Select custom agent..."
         class="w-full"
+        overlay-class="!z-[3001] overflow-hidden rounded-md border border-surface-700 bg-surface-800 text-surface-100 shadow-lg"
         @update:model-value="handleAgentChange" />
+      <div
+        v-else
+        class="flex items-start gap-3 rounded-md border border-surface-700 bg-surface-800/50 p-3">
+        <div
+          class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-surface-700 text-surface-300">
+          <i class="fas fa-robot text-sm" />
+        </div>
+        <div class="flex min-w-0 flex-1 flex-col gap-2">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-sm font-medium text-surface-200">No custom agents yet</span>
+            <span class="text-xs leading-relaxed text-surface-400">
+              Create custom agents in Shift Agents to bundle skills, workflows, binaries, and
+              instructions for future launches.
+            </span>
+          </div>
+          <Button
+            class="w-fit"
+            icon="fas fa-arrow-up-right-from-square"
+            label="Open Custom Agents"
+            severity="secondary"
+            size="small"
+            outlined
+            @click="openAgentsPage" />
+        </div>
+      </div>
       <div
         v-if="selectedAgent !== undefined"
         class="flex items-center gap-2 text-xs text-surface-400">

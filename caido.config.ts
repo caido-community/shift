@@ -15,7 +15,7 @@ export default defineConfig({
   id,
   name: "Shift",
   description: "Delegate your work to Shift",
-  version: "2.3.4",
+  version: "2.3.5",
   author: {
     name: "Caido Labs Inc.",
     email: "dev@caido.io",
