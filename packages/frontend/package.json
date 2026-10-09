@@ -6,13 +6,13 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/provider": "3.0.8",
-    "@ai-sdk/vue": "3.0.116",
+    "@ai-sdk/provider": "3.0.18",
+    "@ai-sdk/vue": "3.0.302",
     "@caido/primevue": "0.3.3",
     "@codemirror/state": "6.5.4",
     "@types/markdown-it": "14.1.2",
     "@vueuse/core": "14.2.1",
-    "ai": "6.0.116",
+    "ai": "6.0.302",
     "backend": "workspace:*",
     "dompurify": "3.3.3",
     "jsonrepair": "3.13.3",
