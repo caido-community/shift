@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Caido's default provider IDs; users can add providers under any alias.
 export const ModelProvider = {
   OpenRouter: "openrouter",
   OpenAI: "openai",

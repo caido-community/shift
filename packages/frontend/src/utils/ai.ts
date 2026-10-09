@@ -52,7 +52,7 @@ function toWellFormed<T>(value: T): T {
   return value;
 }
 
-// Caido's backend rejects lone UTF-16 surrogates, which truncated tool outputs can contain.
+// Caido's backend rejects lone UTF-16 surrogates left by truncated tool output.
 const wellFormedPromptMiddleware: LanguageModelV3Middleware = {
   specificationVersion: "v3",
   transformParams: ({ params }) =>
@@ -63,8 +63,7 @@ type ExtendedAILanguageModelSettings = Omit<
   AILanguageModelSettings,
   "reasoning" | "capabilities"
 > & {
-  // Omitted for models that do not reason: an explicit `disabled` is sent to
-  // the provider verbatim and rejected by models that cannot turn it off.
+  // Omitted rather than disabled: models that always reason reject `disabled`.
   reasoning?: {
     kind: "effort";
     effort: ReasoningEffort;

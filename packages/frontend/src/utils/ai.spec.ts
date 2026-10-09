@@ -104,8 +104,6 @@ describe("createModel", () => {
       },
     });
 
-    // The provider default keeps working on models that cannot turn reasoning
-    // off, whereas an explicit `disabled` is rejected by them.
     createModel(sdk, model, { reasoning: false });
     expect(languageModel).toHaveBeenLastCalledWith("openai/gpt-5.6-sol", {
       reasoning: undefined,

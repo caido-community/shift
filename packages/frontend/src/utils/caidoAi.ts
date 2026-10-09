@@ -2,39 +2,24 @@ import { type Model, type ModelReasoningEffort } from "shared";
 
 import type { FrontendSDK } from "../types";
 
-// Not typed by `@caido/sdk-frontend` yet.
 type UpstreamProvider = {
   id: string;
-  api: string;
   kind: string;
   auth: "API_KEY" | "OAUTH" | "AWS" | "NONE";
 };
 
-type UpstreamModelCapabilitySupport = "SUPPORTED" | "UNSUPPORTED" | "UNKNOWN";
-
 type UpstreamModel = {
-  /** Model name without the provider prefix; may itself contain `/`. */
   id: string;
   providerId: string;
-  modelId: string;
   displayName: string;
-  support: {
-    toolCalling: UpstreamModelCapabilitySupport;
-    reasoning: UpstreamModelCapabilitySupport;
-    structuredOutput: UpstreamModelCapabilitySupport;
-    temperature: UpstreamModelCapabilitySupport;
-  };
+  support: { reasoning: "SUPPORTED" | "UNSUPPORTED" | "UNKNOWN" };
   reasoningEfforts: ModelReasoningEffort[];
   contextWindow?: number;
-  outputTokenLimit?: number;
-  source: "CATALOG" | "CUSTOM" | "CUSTOMIZED";
 };
 
-type ListenerHandle = { stop: () => void };
-
-type AiSdkWithRegistry = FrontendSDK["ai"] & {
-  getUpstreamModels: () => UpstreamModel[];
-  onUpstreamModelsChange: (callback: (models: UpstreamModel[]) => void) => ListenerHandle;
+type ModelRegistry = {
+  getUpstreamModels?: () => UpstreamModel[];
+  onUpstreamModelsChange?: (callback: () => void) => void;
 };
 
 type UpstreamProviderStatus = {
@@ -94,11 +79,10 @@ const toModel = (model: UpstreamModel): Model => ({
   reasoningEfforts: model.reasoningEfforts,
 });
 
-// Caido added the model registry in 0.59; older versions have no models to offer.
 export function listCaidoModels(sdk: FrontendSDK): Model[] {
-  return (sdk.ai as Partial<AiSdkWithRegistry>).getUpstreamModels?.().map(toModel) ?? [];
+  return (sdk.ai as ModelRegistry).getUpstreamModels?.().map(toModel) ?? [];
 }
 
 export function onCaidoModelsChange(sdk: FrontendSDK, callback: () => void) {
-  (sdk.ai as Partial<AiSdkWithRegistry>).onUpstreamModelsChange?.(callback);
+  (sdk.ai as ModelRegistry).onUpstreamModelsChange?.(callback);
 }
