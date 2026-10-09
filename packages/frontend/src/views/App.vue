@@ -7,7 +7,6 @@ import { computed, ref, watch } from "vue";
 import { CustomAgentsContainer } from "@/components/custom-agents";
 import { LearningsContainer } from "@/components/learnings";
 import { LegacyCollectionAutoRunDialog } from "@/components/migration";
-import { ModelsContainer } from "@/components/models";
 import { RenamingContainer } from "@/components/renaming";
 import { SettingsContainer } from "@/components/settings";
 import { SkillsContainer } from "@/components/skills";
@@ -16,14 +15,7 @@ import { useSDK } from "@/plugins/sdk";
 import { useSettingsStore } from "@/stores/settings";
 import { useSkillsStore } from "@/stores/skills";
 
-type Page =
-  | "Agents"
-  | "Skills"
-  | "Models"
-  | "Learnings"
-  | "Session Renaming"
-  | "Settings"
-  | "Tutorial";
+type Page = "Agents" | "Skills" | "Learnings" | "Session Renaming" | "Settings" | "Tutorial";
 
 const sdk = useSDK();
 const settingsStore = useSettingsStore();
@@ -40,13 +32,6 @@ const items = [
     isActive: () => page.value === "Agents",
     command: () => {
       page.value = "Agents";
-    },
-  },
-  {
-    label: "Models",
-    isActive: () => page.value === "Models",
-    command: () => {
-      page.value = "Models";
     },
   },
   {
@@ -92,8 +77,6 @@ const component = computed(() => {
       return CustomAgentsContainer;
     case "Skills":
       return SkillsContainer;
-    case "Models":
-      return ModelsContainer;
     case "Session Renaming":
       return RenamingContainer;
     case "Learnings":

@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { AgentContext } from "@/agent/context";
 import { resolveToolInputPlaceholders } from "@/agent/tools/utils/placeholders";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
+import { getActiveEntryRequest } from "@/utils/caido";
 
 const inputSchema = z.object({
   title: z
@@ -73,11 +74,8 @@ export const FindingsCreate = tool({
       return ToolResult.err("No active entry found in replay session");
     }
 
-    const requestId =
-      activeEntry.__typename === "ReplayEntryWs"
-        ? activeEntry.http.request?.id
-        : activeEntry.request?.id;
-    if (requestId === undefined || requestId === null || requestId === "") {
+    const requestId = getActiveEntryRequest(activeEntry)?.id;
+    if (requestId === undefined || requestId === "") {
       return ToolResult.err("Request ID not found in active entry");
     }
 

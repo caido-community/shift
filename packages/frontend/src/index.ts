@@ -26,8 +26,9 @@ async function initializeStores(sdk: FrontendSDK) {
   const skillsStore = useSkillsStore();
   const customAgentsStore = useCustomAgentsStore();
 
+  modelsStore.initialize();
+
   await Promise.all([
-    modelsStore.initialize(),
     settingsStore.initialize(),
     learningsStore.initialize(),
     skillsStore.initialize(),

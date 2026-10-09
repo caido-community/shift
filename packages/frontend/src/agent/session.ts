@@ -8,6 +8,7 @@ import { LocalChatTransport } from "@/agent/transport";
 import { getEstimatedContextUsage } from "@/agent/utils/contextUsage";
 import {
   extractLastUserMessageText,
+  hasDisplayableAssistantContent,
   hasToolPartsSinceLastUserMessage,
 } from "@/agent/utils/messages";
 import { useAgentStore } from "@/stores/agent";
@@ -233,11 +234,18 @@ export class AgentSession {
   }
 
   isWaitingForFirstToken(): boolean {
-    return this.chat.status === "submitted";
+    if (!this.isGenerating()) return false;
+
+    const lastMessage = this.chat.messages.at(-1);
+    return lastMessage === undefined || !hasDisplayableAssistantContent(lastMessage);
   }
 
   isErrored(): boolean {
     return this.chat.status === "error";
+  }
+
+  errorMessage(): string {
+    return this.chat.error?.message ?? "The agent stopped because of an unexpected error.";
   }
 
   hasExecutedToolsSinceLastUserMessage(): boolean {

@@ -1,9 +1,12 @@
+import { MockLanguageModelV3 } from "ai/test";
 import { type Model, ModelProvider } from "shared";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { supportsExtraHighReasoning } from "./ai";
+import type { FrontendSDK } from "../types";
 
-const createModel = (provider: Model["provider"], id: string): Model => ({
+import { createModel, getReasoningEfforts, resolveReasoningEffort } from "./ai";
+
+const createTestModel = (provider: Model["provider"], id: string): Model => ({
   id,
   name: id,
   provider,
@@ -12,13 +15,122 @@ const createModel = (provider: Model["provider"], id: string): Model => ({
   },
 });
 
-describe("supportsExtraHighReasoning", () => {
-  it.each([
-    [ModelProvider.OpenAI, "gpt-5.6-luna", true],
-    [ModelProvider.OpenRouter, "openai/gpt-5.6-luna", true],
-    [ModelProvider.OpenRouter, "anthropic/claude-opus-4.8", false],
-    [ModelProvider.Anthropic, "claude-opus-4-8", false],
-  ])("identifies OpenAI models", (provider, id, expected) => {
-    expect(supportsExtraHighReasoning(createModel(provider, id))).toBe(expected);
+describe("reasoning metadata", () => {
+  it("honors provider constraints including minimal and max without alias heuristics", () => {
+    const model = {
+      ...createTestModel("bedrock-personal", "claude"),
+      reasoningEfforts: ["minimal", "high", "max"] as const,
+    };
+    const available = { ...model, reasoningEfforts: [...model.reasoningEfforts] };
+    expect(getReasoningEfforts(available)).toEqual(["minimal", "high", "max"]);
+    expect(resolveReasoningEffort(available, "max")).toBe("max");
+    expect(resolveReasoningEffort(available, "xhigh")).toBe("high");
+    expect(resolveReasoningEffort(available, "medium")).toBe("minimal");
+    expect(getReasoningEfforts({ ...available, capabilities: { reasoning: false } })).toEqual([]);
+    expect(getReasoningEfforts({ ...available, reasoningEfforts: [] })).toEqual([
+      "minimal",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ]);
+  });
+});
+
+describe("createModel", () => {
+  it("uses fresh registry reasoning constraints when the selected model is stale", () => {
+    const languageModel = vi.fn(() => new MockLanguageModelV3());
+    const registryModel = {
+      id: "model",
+      displayName: "Model",
+      providerId: "aws-team",
+      support: { reasoning: "SUPPORTED" },
+      reasoningEfforts: ["minimal", "max"],
+    };
+    const sdk = {
+      ai: {
+        createProvider: () => languageModel,
+        getUpstreamProviders: () => [],
+        getUpstreamModels: () => [registryModel],
+      },
+    } as unknown as FrontendSDK;
+    const selected = {
+      ...createTestModel("aws-team", "model"),
+      reasoningEfforts: ["low", "high"] as const,
+    };
+    createModel(
+      sdk,
+      { ...selected, reasoningEfforts: [...selected.reasoningEfforts] },
+      { reasoningEffort: "max" }
+    );
+    expect(languageModel).toHaveBeenLastCalledWith("aws-team/model", {
+      reasoning: { kind: "effort", effort: "max", output: "include" },
+    });
+    createModel(
+      sdk,
+      { ...selected, reasoningEfforts: [...selected.reasoningEfforts] },
+      { reasoningEffort: "minimal" }
+    );
+    expect(languageModel).toHaveBeenLastCalledWith("aws-team/model", {
+      reasoning: { kind: "effort", effort: "minimal", output: "include" },
+    });
+    registryModel.support.reasoning = "UNSUPPORTED";
+    createModel(
+      sdk,
+      { ...selected, reasoningEfforts: [...selected.reasoningEfforts] },
+      { reasoningEffort: "max" }
+    );
+    expect(languageModel).toHaveBeenLastCalledWith("aws-team/model", { reasoning: undefined });
+  });
+
+  it("uses the tagged reasoning contract and omits reasoning instead of disabling it", () => {
+    const languageModel = vi.fn(() => ({}));
+    const sdk = {
+      ai: {
+        createProvider: () => languageModel,
+        getUpstreamProviders: () => [],
+        getUpstreamModels: () => [],
+      },
+    } as unknown as FrontendSDK;
+    const model = createTestModel(ModelProvider.OpenAI, "gpt-5.6-sol");
+
+    createModel(sdk, model, { reasoningEffort: "high" });
+    expect(languageModel).toHaveBeenLastCalledWith("openai/gpt-5.6-sol", {
+      reasoning: {
+        kind: "effort",
+        effort: "high",
+        output: "include",
+      },
+    });
+
+    createModel(sdk, model, { reasoning: false });
+    expect(languageModel).toHaveBeenLastCalledWith("openai/gpt-5.6-sol", {
+      reasoning: undefined,
+    });
+  });
+
+  it("replaces lone surrogates that Caido's backend rejects", async () => {
+    const underlying = new MockLanguageModelV3({ doStream: { stream: new ReadableStream() } });
+    const sdk = {
+      ai: {
+        createProvider: () => () => underlying,
+        getUpstreamProviders: () => [],
+        getUpstreamModels: () => [],
+      },
+    } as unknown as FrontendSDK;
+    const truncated = "ok 😀".slice(0, -1);
+
+    await createModel(sdk, createTestModel("work", "some-model")).doStream({
+      prompt: [
+        { role: "system", content: truncated },
+        { role: "user", content: [{ type: "text", text: `${truncated} 😀` }] },
+      ],
+    });
+
+    expect(underlying.doStreamCalls[0]?.prompt).toEqual([
+      { role: "system", content: "ok \uFFFD" },
+      { role: "user", content: [{ type: "text", text: "ok \uFFFD 😀" }] },
+    ]);
   });
 });

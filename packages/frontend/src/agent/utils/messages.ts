@@ -9,6 +9,13 @@ function isReasoningPart(part: { type: string }): part is ReasoningPart {
   return part.type === "reasoning";
 }
 
+export function hasDisplayableAssistantContent(message: ShiftMessage): boolean {
+  return (
+    message.role === "assistant" &&
+    message.parts.some((part) => part !== undefined && part.type !== "step-start")
+  );
+}
+
 export function stripReasoningParts(messages: ShiftMessage[]): ShiftMessage[] {
   let didChange = false;
   const updated: ShiftMessage[] = [];

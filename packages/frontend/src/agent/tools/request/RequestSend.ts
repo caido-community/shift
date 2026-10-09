@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import {
+  getActiveEntryRequest,
   getReplaySession,
   setActiveEntryDraftRaw,
   startReplayTaskDirect,
@@ -47,9 +48,7 @@ const getActiveEntryResponseId = async (
   const result = await sdk.graphql.replaySessionEntries({ id: sessionId });
   const activeEntry = result.replaySession?.activeEntry;
 
-  return activeEntry?.__typename === "ReplayEntryWs"
-    ? activeEntry.http.request?.response?.id
-    : activeEntry?.request?.response?.id;
+  return getActiveEntryRequest(activeEntry)?.response?.id;
 };
 
 const sleep = (duration: number): Promise<void> =>
@@ -227,10 +226,7 @@ export const RequestSend = tool({
       for await (const event of iterator) {
         if (event.updatedReplaySession.sessionEdge.node.id === replaySession.id) {
           const activeEntry = event.updatedReplaySession.sessionEdge.node.activeEntry;
-          const nextResponseId =
-            activeEntry?.__typename === "ReplayEntryWs"
-              ? activeEntry.http.request?.response?.id
-              : activeEntry?.request?.response?.id;
+          const nextResponseId = getActiveEntryRequest(activeEntry)?.response?.id;
 
           if (captureResponseId(nextResponseId ?? undefined)) {
             break;

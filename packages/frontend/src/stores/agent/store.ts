@@ -20,7 +20,7 @@ export const useAgentStore = defineStore("agent", () => {
   const settingsStore = useSettingsStore();
 
   const isReady = computed(() => {
-    const modelsReady = !modelsStore.isLoading && isPresent(modelsStore.config);
+    const modelsReady = !modelsStore.isLoading;
     const settingsReady = !settingsStore.isLoading && isPresent(settingsStore.config);
     return modelsReady && settingsReady;
   });
@@ -57,7 +57,7 @@ export const useAgentStore = defineStore("agent", () => {
     const modelData = resolveModel({
       sdk,
       savedModelKey: settingsStore.agentsModel,
-      enabledModels: modelsStore.getEnabledModels({ usageType: "agent" }),
+      enabledModels: modelsStore.getEnabledModels(),
       usageType: "agent",
     });
 

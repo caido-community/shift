@@ -1,14 +1,10 @@
-import { type Model, supportsProviderReasoning } from "shared";
+import { useLocalStorage } from "@vueuse/core";
+import { createModelKey, type Model } from "shared";
 import { computed, type MaybeRefOrGetter, nextTick, type Ref, ref, toValue, watch } from "vue";
 
 import { type ProviderInfo, useSelector } from "./useSelector";
 
-import { type ReasoningEffort, supportsExtraHighReasoning } from "@/utils/ai";
-
-type EffortConfig = {
-  label: string;
-  description: string;
-};
+import { getReasoningEfforts, type ReasoningEffort, resolveReasoningEffort } from "@/utils/ai";
 
 type ModelWithConfig = Model & { isConfigured: boolean };
 
@@ -21,164 +17,215 @@ type UseModelSelectorOptions = {
   containerRef: Ref<HTMLElement | undefined>;
 };
 
-const reasoningEfforts: ReasoningEffort[] = ["low", "medium", "high"];
-const openAIReasoningEfforts: ReasoningEffort[] = [...reasoningEfforts, "xhigh"];
-
-const effortConfig: Record<ReasoningEffort, EffortConfig> = {
-  low: {
-    label: "Low",
-    description: "Faster responses with lighter reasoning.",
-  },
-  medium: {
-    label: "Medium",
-    description: "Balanced speed and reasoning depth.",
-  },
-  high: {
-    label: "High",
-    description: "Deeper reasoning with potentially slower responses.",
-  },
-  xhigh: {
-    label: "Extra High",
-    description: "Maximum reasoning depth with the slowest responses.",
-  },
+const effortLabels: Record<ReasoningEffort, string> = {
+  minimal: "Minimal",
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  xhigh: "Extra High",
+  max: "Max",
 };
+
+const RECENT_LIMIT = 5;
+
+const keyOf = (model: Model) => createModelKey(model.provider, model.id);
+const displayName = (model: Model) => model.name.replace(/^Claude /, "");
 
 export function useModelSelector(options: UseModelSelectorOptions) {
   const { providers, activeProvider, providerModels, selectProvider } = useSelector({
     models: options.models,
     selectedModel: options.selectedModel,
   });
-
-  const reasoningEffort = computed<ReasoningEffort>({
-    get: () => options.selectedReasoningEffort.value ?? "medium",
-    set: (value) => {
-      options.selectedReasoningEffort.value = value;
-    },
-  });
-  const isOpen = ref(false);
-  const activeReasoningModelId = ref<string | undefined>(undefined);
-
-  const usesReasoningVariants = computed(() => toValue(options.reasoningMode) === "variant");
+  const openMenu = ref<"model" | "effort">();
+  const isOpen = computed(() => openMenu.value === "model");
+  const isEffortOpen = computed(() => openMenu.value === "effort");
+  const query = ref("");
+  const showRecent = ref(false);
+  const recentKeys = useLocalStorage<string[]>("shift-recent-models", []);
+  const selectedModel = computed(() => options.selectedModel.value);
   const isDisabled = computed(() => toValue(options.disabled));
-  const supportsReasoning = (model: Model | undefined): boolean => {
-    return (
-      model !== undefined &&
-      model.capabilities.reasoning &&
-      supportsProviderReasoning(model.provider)
-    );
-  };
+  const usesReasoningVariants = computed(() => toValue(options.reasoningMode) === "variant");
+  const isSelected = (model: Model) =>
+    selectedModel.value !== undefined && keyOf(model) === keyOf(selectedModel.value);
 
-  const activeReasoningModel = computed(() => {
-    if (activeReasoningModelId.value === undefined) return undefined;
-    return providerModels.value.find((model) => model.id === activeReasoningModelId.value);
+  const findProvider = (id: string) => providers.value.find((provider) => provider.id === id);
+  const selectedProvider = computed(() =>
+    selectedModel.value === undefined ? undefined : findProvider(selectedModel.value.provider)
+  );
+  const withConfig = (model: Model): ModelWithConfig => ({
+    ...model,
+    isConfigured: findProvider(model.provider)?.isConfigured ?? false,
   });
-
-  const availableReasoningEfforts = computed(() => {
-    const model = activeReasoningModel.value;
-    return model !== undefined && supportsExtraHighReasoning(model)
-      ? openAIReasoningEfforts
-      : reasoningEfforts;
-  });
-
-  const shouldShowEffortStep = computed(() => {
-    return usesReasoningVariants.value && supportsReasoning(activeReasoningModel.value);
-  });
-
-  const selectedModelLabel = computed(() => {
-    const model = options.selectedModel.value;
-    if (model === undefined) return "Select model";
-    if (!usesReasoningVariants.value || !supportsReasoning(model)) {
-      return model.name;
+  const recentModels = computed(() =>
+    recentKeys.value
+      .map((key) => toValue(options.models).find((model) => keyOf(model) === key))
+      .filter((model): model is Model => model !== undefined)
+      .map(withConfig)
+  );
+  const isSearching = computed(() => query.value.trim() !== "");
+  const listedModels = computed<ModelWithConfig[]>(() => {
+    if (isSearching.value) {
+      const needle = query.value.trim().toLowerCase();
+      return toValue(options.models)
+        .filter((model) =>
+          `${model.name} ${model.id} ${findProvider(model.provider)?.label ?? model.provider}`
+            .toLowerCase()
+            .includes(needle)
+        )
+        .map(withConfig);
     }
-    return `${model.name} ${effortConfig[reasoningEffort.value].label}`;
+    return showRecent.value ? recentModels.value : providerModels.value;
   });
+  const showProviderLogos = computed(() => isSearching.value || showRecent.value);
+  const providerSuffix = (model: Model) => {
+    const name = displayName(model);
+    const isAmbiguous = listedModels.value.some(
+      (other) => other.provider !== model.provider && displayName(other) === name
+    );
+    return isAmbiguous ? `via ${findProvider(model.provider)?.label ?? model.provider}` : undefined;
+  };
+  const isRecentActive = computed(() => !isSearching.value && showRecent.value);
+  const isProviderActive = (provider: ProviderInfo) =>
+    !isSearching.value && !showRecent.value && activeProvider.value === provider.id;
+
+  const reasoningEfforts = computed(() =>
+    usesReasoningVariants.value && selectedModel.value !== undefined
+      ? getReasoningEfforts(selectedModel.value)
+      : []
+  );
+  const showEffortPicker = computed(() => reasoningEfforts.value.length > 0);
+  const reasoningEffort = computed(() =>
+    selectedModel.value === undefined
+      ? undefined
+      : resolveReasoningEffort(
+          selectedModel.value,
+          options.selectedReasoningEffort.value ?? "medium"
+        )
+  );
+  const isSelectedEffort = (effort: ReasoningEffort) => reasoningEffort.value === effort;
+
+  const selectedModelLabel = computed(() =>
+    selectedModel.value === undefined ? "Select model" : displayName(selectedModel.value)
+  );
+
+  watch(
+    [() => toValue(options.models), selectedModel],
+    ([models, current]) => {
+      if (current === undefined) return;
+      const fresh = models.find((model) => keyOf(model) === keyOf(current));
+      if (fresh !== undefined && fresh !== current) options.selectedModel.value = fresh;
+    },
+    { immediate: true }
+  );
+
+  watch(
+    reasoningEffort,
+    (effort) => {
+      if (
+        usesReasoningVariants.value &&
+        effort !== undefined &&
+        effort !== options.selectedReasoningEffort.value
+      ) {
+        options.selectedReasoningEffort.value = effort;
+      }
+    },
+    { immediate: true }
+  );
 
   const close = () => {
-    isOpen.value = false;
-    activeReasoningModelId.value = undefined;
+    openMenu.value = undefined;
+    query.value = "";
   };
-
   const toggle = () => {
     if (isDisabled.value) return;
-    const next = !isOpen.value;
-    isOpen.value = next;
-    if (!next) {
-      activeReasoningModelId.value = undefined;
+    if (isOpen.value) {
+      close();
       return;
     }
-
-    const model = options.selectedModel.value;
-    if (
-      usesReasoningVariants.value &&
-      model !== undefined &&
-      supportsReasoning(model) &&
-      model.provider === activeProvider.value
-    ) {
-      activeReasoningModelId.value = model.id;
-    }
+    query.value = "";
+    showRecent.value = false;
+    if (selectedModel.value !== undefined) activeProvider.value = selectedModel.value.provider;
+    openMenu.value = "model";
   };
-
+  const toggleEffort = () => {
+    if (isDisabled.value || !showEffortPicker.value) return;
+    if (isEffortOpen.value) {
+      close();
+      return;
+    }
+    query.value = "";
+    openMenu.value = "effort";
+  };
   const handleSelect = (model: ModelWithConfig) => {
     if (!model.isConfigured) return;
-    if (usesReasoningVariants.value && supportsReasoning(model)) {
-      activeReasoningModelId.value = model.id;
-      return;
-    }
-    options.selectedModel.value = model;
+    const key = keyOf(model);
+    options.selectedModel.value =
+      toValue(options.models).find((candidate) => keyOf(candidate) === key) ?? model;
+    recentKeys.value = [key, ...recentKeys.value.filter((recent) => recent !== key)].slice(
+      0,
+      RECENT_LIMIT
+    );
     close();
   };
-
+  const selectFirstMatch = () => {
+    const match = listedModels.value.find((model) => model.isConfigured);
+    if (match !== undefined) handleSelect(match);
+  };
   const handleProviderClick = (provider: ProviderInfo) => {
     selectProvider(provider);
-    activeReasoningModelId.value = undefined;
+    showRecent.value = false;
+    query.value = "";
   };
-
+  const showRecentModels = () => {
+    showRecent.value = true;
+    query.value = "";
+  };
   const handleEffortSelect = (effort: ReasoningEffort) => {
-    if (!usesReasoningVariants.value) return;
-    const model = activeReasoningModel.value;
-    if (model === undefined || !model.isConfigured || !supportsReasoning(model)) return;
-    reasoningEffort.value = effort;
-    options.selectedModel.value = model;
+    if (!reasoningEfforts.value.includes(effort)) return;
+    options.selectedReasoningEffort.value = effort;
     close();
   };
-
-  const scrollItemIntoView = (selector: string) => {
-    const item = options.containerRef.value?.querySelector<HTMLElement>(selector);
-    if (item === undefined || item === null) return;
-    item.scrollIntoView({ block: "center" });
-  };
-
-  const scrollSelectedItemsIntoView = () => {
-    scrollItemIntoView('[data-selected-provider="true"]');
-    scrollItemIntoView('[data-selected-model="true"]');
-    scrollItemIntoView('[data-selected-effort="true"]');
-  };
-
-  watch(isOpen, (open, wasOpen) => {
-    if (!open || wasOpen) return;
+  watch(openMenu, (menu) => {
+    if (menu === undefined) return;
     void nextTick(() => {
-      scrollSelectedItemsIntoView();
+      const container = options.containerRef.value;
+      for (const selector of [
+        '[data-selected-provider="true"]',
+        '[data-selected-model="true"]',
+        '[data-selected-effort="true"]',
+      ]) {
+        container?.querySelector<HTMLElement>(selector)?.scrollIntoView({ block: "nearest" });
+      }
+      if (menu === "model") container?.querySelector<HTMLInputElement>("input")?.focus();
     });
   });
-
   return {
     isOpen,
+    isEffortOpen,
+    query,
     providers,
-    activeProvider,
-    providerModels,
-    activeReasoningModelId,
-    usesReasoningVariants,
-    activeReasoningModel,
-    shouldShowEffortStep,
-    selectedModelLabel,
-    supportsReasoning,
-    reasoningEfforts: availableReasoningEfforts,
-    effortConfig,
+    selectedProvider,
+    listedModels,
+    recentModels,
+    showProviderLogos,
+    providerSuffix,
+    isRecentActive,
+    isProviderActive,
+    reasoningEfforts,
     reasoningEffort,
+    effortLabels,
+    showEffortPicker,
+    selectedModelLabel,
+    displayName,
+    isSelected,
+    isSelectedEffort,
     close,
     toggle,
+    toggleEffort,
     handleSelect,
+    selectFirstMatch,
     handleProviderClick,
+    showRecentModels,
     handleEffortSelect,
   };
 }

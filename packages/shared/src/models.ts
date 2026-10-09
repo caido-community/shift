@@ -1,22 +1,30 @@
-import { type AIUpstreamProviderId } from "@caido/sdk-frontend";
 import { z } from "zod";
-
-import { isPresent } from "../../frontend/src/utils/optional";
 
 export const ModelProvider = {
   OpenRouter: "openrouter",
   OpenAI: "openai",
   Anthropic: "anthropic",
   Google: "google",
-} as const satisfies Record<string, AIUpstreamProviderId>;
+} as const;
 
-export type ModelProvider = (typeof ModelProvider)[keyof typeof ModelProvider];
-const ModelProviderSchema = z.nativeEnum(ModelProvider);
+export type ModelProvider = (typeof ModelProvider)[keyof typeof ModelProvider] | (string & {});
+const ModelProviderSchema = z.string().min(1);
 
 const ModelCapabilitiesSchema = z.object({
   reasoning: z.boolean(),
 });
 export type ModelCapabilities = z.infer<typeof ModelCapabilitiesSchema>;
+
+export const MODEL_REASONING_EFFORTS = [
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
+const ReasoningEffortSchema = z.enum(MODEL_REASONING_EFFORTS);
+export type ModelReasoningEffort = z.infer<typeof ReasoningEffortSchema>;
 
 const ModelSchema = z.object({
   id: z.string().min(1),
@@ -24,98 +32,12 @@ const ModelSchema = z.object({
   provider: ModelProviderSchema,
   contextWindow: z.number().int().positive().optional(),
   capabilities: ModelCapabilitiesSchema,
+  reasoningEfforts: z.array(ReasoningEffortSchema).optional(),
 });
 export type Model = z.infer<typeof ModelSchema>;
-
-export const PROVIDER_REASONING_DISABLED_MESSAGES: Partial<Record<ModelProvider, string>> = {
-  [ModelProvider.OpenAI]: "Reasoning is temporarily unavailable for this provider.",
-};
-
-export const getProviderReasoningDisabledMessage = (
-  provider: ModelProvider
-): string | undefined => {
-  return PROVIDER_REASONING_DISABLED_MESSAGES[provider];
-};
-
-export const supportsProviderReasoning = (provider: ModelProvider): boolean => {
-  return getProviderReasoningDisabledMessage(provider) === undefined;
-};
-
-export const normalizeModelReasoningSupport = (model: Model): Model => {
-  const reasoning = model.capabilities.reasoning && supportsProviderReasoning(model.provider);
-  if (reasoning === model.capabilities.reasoning) {
-    return model;
-  }
-
-  return {
-    ...model,
-    capabilities: {
-      ...model.capabilities,
-      reasoning,
-    },
-  };
-};
-
-const ModelUsageTypeSchema = z.enum(["agent", "float"]);
-export type ModelUsageType = z.infer<typeof ModelUsageTypeSchema>;
-
-const ModelUserConfigSchema = z.object({
-  modelKey: z.string().min(1),
-  enabled: z.boolean(),
-  enabledFor: z.array(ModelUsageTypeSchema),
-});
-export type ModelUserConfig = z.infer<typeof ModelUserConfigSchema>;
-
-const ModelsConfigSchema = z.object({
-  models: z.array(ModelSchema),
-  config: z.record(z.string(), ModelUserConfigSchema),
-  customModelKeys: z.array(z.string()),
-});
-export type ModelsConfig = z.infer<typeof ModelsConfigSchema>;
-
-const ConfigOverrideSchema = z.object({
-  enabled: z.boolean().optional(),
-  enabledFor: z.array(ModelUsageTypeSchema).optional(),
-});
-export type ConfigOverride = z.infer<typeof ConfigOverrideSchema>;
-
-const ModelsUserDataSchema = z.object({
-  customModels: z.array(ModelSchema),
-  configOverrides: z.record(z.string(), ConfigOverrideSchema),
-});
-export type ModelsUserData = z.infer<typeof ModelsUserDataSchema>;
 
 type ModelKey = `${ModelProvider}/${string}`;
 
 export const createModelKey = (provider: ModelProvider, id: string): ModelKey => {
   return `${provider}/${id}`;
 };
-
-export const parseModelKey = (key: string): { provider: ModelProvider; id: string } => {
-  const [provider, id] = key.split("/", 2);
-  if (!isPresent(provider) || !isPresent(id)) {
-    throw new Error(`Invalid model key: ${key}`);
-  }
-
-  return { provider: provider as ModelProvider, id };
-};
-
-export const AddModelSchema = ModelSchema;
-export type AddModelInput = z.infer<typeof AddModelSchema>;
-
-export const RemoveModelSchema = z.object({
-  provider: ModelProviderSchema,
-  id: z.string().min(1),
-});
-export type RemoveModelInput = z.infer<typeof RemoveModelSchema>;
-
-export const UpdateModelConfigSchema = z.object({
-  enabled: z.boolean().optional(),
-  enabledFor: z.array(ModelUsageTypeSchema).optional(),
-});
-export type UpdateModelConfigInput = z.infer<typeof UpdateModelConfigSchema>;
-
-export const UpdateModelEnabledForSchema = z.object({
-  enabledFor: z.array(ModelUsageTypeSchema),
-});
-export type UpdateModelEnabledForInput = z.infer<typeof UpdateModelEnabledForSchema>;

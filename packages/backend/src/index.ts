@@ -4,7 +4,6 @@ import {
   addCustomAgent,
   addDynamicSkill,
   addLearning,
-  addModel,
   addStaticSkill,
   cancelAgentBinaryExecution,
   clearLearnings,
@@ -14,7 +13,6 @@ import {
   getCustomAgentDefinitions,
   getLearnings,
   getLegacyCollectionAutoRunMigrationSummary,
-  getModelsConfig,
   getProjectOverride,
   getProjectOverrides,
   getResolvedCustomAgents,
@@ -25,7 +23,6 @@ import {
   removeAgent,
   removeCustomAgent,
   removeLearnings,
-  removeModel,
   removeProjectOverride,
   removeSkill,
   setLearnings,
@@ -33,8 +30,6 @@ import {
   updateCustomAgent,
   updateDynamicSkill,
   updateLearning,
-  updateModelConfig,
-  updateModelEnabledFor,
   updateRenaming,
   updateSettings,
   updateStaticSkill,
@@ -45,7 +40,6 @@ import {
   getAgentsStore,
   getCustomAgentsStore,
   getLearningsStore,
-  getModelsStore,
   getSettingsStore,
   getSkillsStore,
 } from "./stores";
@@ -54,11 +48,6 @@ import type { BackendEvents } from "./types";
 export * from "./types";
 
 export type API = DefineAPI<{
-  getModelsConfig: typeof getModelsConfig;
-  addModel: typeof addModel;
-  removeModel: typeof removeModel;
-  updateModelConfig: typeof updateModelConfig;
-  updateModelEnabledFor: typeof updateModelEnabledFor;
   getAgent: typeof getAgent;
   getAgents: typeof getAgents;
   writeAgent: typeof writeAgent;
@@ -96,14 +85,12 @@ export type API = DefineAPI<{
 
 export function init(sdk: SDK<API, BackendEvents>) {
   setSDK(sdk);
-  const modelsStore = getModelsStore();
   const agentsStore = getAgentsStore();
   const skillsStore = getSkillsStore();
   const customAgentsStore = getCustomAgentsStore();
   const settingsStore = getSettingsStore();
   const learningsStore = getLearningsStore();
 
-  modelsStore.initialize();
   agentsStore.initialize();
   skillsStore.initialize();
   customAgentsStore.initialize();
@@ -116,12 +103,6 @@ export function init(sdk: SDK<API, BackendEvents>) {
     skillsStore.switchProject(project?.getId());
     customAgentsStore.switchProject(project?.getId());
   });
-
-  sdk.api.register("getModelsConfig", getModelsConfig);
-  sdk.api.register("addModel", addModel);
-  sdk.api.register("removeModel", removeModel);
-  sdk.api.register("updateModelConfig", updateModelConfig);
-  sdk.api.register("updateModelEnabledFor", updateModelEnabledFor);
 
   sdk.api.register("getAgent", getAgent);
   sdk.api.register("getAgents", getAgents);

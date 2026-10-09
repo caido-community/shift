@@ -40,12 +40,12 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
   const initialModel = resolveModel({
     sdk,
     savedModelKey: settingsStore.agentsModel,
-    enabledModels: modelsStore.getEnabledModels({ usageType: "agent" }),
+    enabledModels: modelsStore.getEnabledModels(),
     usageType: "agent",
   });
   const selectedModel = ref<Model | undefined>(initialModel);
 
-  const availableModels = computed(() => modelsStore.getEnabledModels({ usageType: "agent" }));
+  const availableModels = computed(() => modelsStore.getEnabledModels());
   const skillOptions = computed(() => skillsStore.skills);
   const agentOptions = computed(() => customAgentsStore.agents);
 

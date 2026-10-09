@@ -60,7 +60,7 @@ export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Pro
   const modelData = resolveModel({
     sdk,
     savedModelKey: settingsStore.floatModel,
-    enabledModels: modelsStore.getEnabledModels({ usageType: "float" }),
+    enabledModels: modelsStore.getEnabledModels(),
     usageType: "float",
   });
   if (modelData === undefined) {
@@ -87,7 +87,6 @@ export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Pro
   try {
     const result = await generateText({
       model,
-      temperature: 0,
       tools: getCoreFloatTools(),
       toolChoice: "required",
       stopWhen: stepCountIs(1),

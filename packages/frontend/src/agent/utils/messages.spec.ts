@@ -5,6 +5,7 @@ import {
   extractLastUserMessageText,
   findLastUserMessageId,
   findLastUserMessageIndex,
+  hasDisplayableAssistantContent,
   hasToolPartsSinceIndex,
   hasToolPartsSinceLastUserMessage,
   replaceHistoricalToolOutputsWithBlobRefs,
@@ -12,6 +13,24 @@ import {
   stripReasoningParts,
   stripUnfinishedToolCalls,
 } from "./messages";
+
+describe("hasDisplayableAssistantContent", () => {
+  it("ignores step boundaries and accepts the first renderable part", () => {
+    const pending = {
+      id: "assistant-1",
+      role: "assistant",
+      parts: [{ type: "step-start" }],
+    } as ShiftMessage;
+    const reasoning = {
+      id: "assistant-1",
+      role: "assistant",
+      parts: [{ type: "reasoning", text: "Checking", state: "streaming" }],
+    } as ShiftMessage;
+
+    expect(hasDisplayableAssistantContent(pending)).toBe(false);
+    expect(hasDisplayableAssistantContent(reasoning)).toBe(true);
+  });
+});
 
 function createUserMessage(text: string, id = "u1"): ShiftMessage {
   return {

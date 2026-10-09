@@ -1,38 +1,25 @@
-import { type LanguageModelV3 } from "@ai-sdk/provider";
-import { type AILanguageModelSettings, type AIUpstreamProviderId } from "@caido/sdk-frontend";
+import { type LanguageModelV3, type LanguageModelV3Middleware } from "@ai-sdk/provider";
+import { type AILanguageModelSettings } from "@caido/sdk-frontend";
+import { wrapLanguageModel } from "ai";
 import {
   createModelKey,
   type Model,
+  MODEL_REASONING_EFFORTS,
   ModelProvider,
   type ModelProvider as ModelProviderId,
-  supportsProviderReasoning,
+  type ModelReasoningEffort,
 } from "shared";
 
 import type { FrontendSDK } from "../types";
 
-import { isPresent } from "./optional";
-
-type ProviderStatus = {
-  id: AIUpstreamProviderId;
-  isConfigured: boolean;
-};
-
-export function getProviderStatuses(sdk: FrontendSDK): ProviderStatus[] {
-  return sdk.ai.getUpstreamProviders().map((provider) => ({
-    id: provider.id,
-    isConfigured: provider.status === "Ready",
-  }));
-}
+import { listCaidoModels, listUpstreamProviders } from "./caidoAi";
 
 export function isProviderConfigured(sdk: FrontendSDK, provider: ModelProviderId): boolean {
-  const statuses = getProviderStatuses(sdk);
-  const status = statuses.find((s) => s.id === provider);
-  return status?.isConfigured ?? false;
+  return listUpstreamProviders(sdk).some((s) => s.id === provider);
 }
 
 export function isAnyProviderConfigured(sdk: FrontendSDK): boolean {
-  const statuses = getProviderStatuses(sdk);
-  return statuses.some((s) => s.isConfigured === true);
+  return listUpstreamProviders(sdk).length > 0;
 }
 
 export class ProviderNotConfiguredError extends Error {
@@ -43,17 +30,44 @@ export class ProviderNotConfiguredError extends Error {
 }
 
 type CreateModelOptions = {
-  structuredOutput?: boolean;
   reasoning?: boolean;
   reasoningEffort?: ReasoningEffort;
   openRouterPrioritizeFastProviders?: boolean;
 };
 
-export type ReasoningEffort = NonNullable<AILanguageModelSettings["reasoning"]>["effort"] | "xhigh";
+export type ReasoningEffort = ModelReasoningEffort;
 
-type ExtendedAILanguageModelSettings = Omit<AILanguageModelSettings, "reasoning"> & {
+function toWellFormed<T>(value: T): T {
+  if (typeof value === "string") return value.toWellFormed() as T;
+  if (Array.isArray(value)) return value.map(toWellFormed) as T;
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    Object.getPrototypeOf(value) === Object.prototype
+  ) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, toWellFormed(entry)])
+    ) as T;
+  }
+  return value;
+}
+
+// Caido's backend rejects lone UTF-16 surrogates left by truncated tool output.
+const wellFormedPromptMiddleware: LanguageModelV3Middleware = {
+  specificationVersion: "v3",
+  transformParams: ({ params }) =>
+    Promise.resolve({ ...params, prompt: toWellFormed(params.prompt) }),
+};
+
+type ExtendedAILanguageModelSettings = Omit<
+  AILanguageModelSettings,
+  "reasoning" | "capabilities"
+> & {
+  // Omitted rather than disabled: models that always reason reject `disabled`.
   reasoning?: {
+    kind: "effort";
     effort: ReasoningEffort;
+    output: "include";
   };
 };
 
@@ -62,54 +76,65 @@ type ExtendedAIProvider = (
   settings?: ExtendedAILanguageModelSettings
 ) => LanguageModelV3;
 
-export function supportsExtraHighReasoning(model: Model): boolean {
+export function getReasoningEfforts(model: Model): ReasoningEffort[] {
+  if (!model.capabilities.reasoning) return [];
+  const declared = model.reasoningEfforts;
+  return declared !== undefined && declared.length > 0
+    ? MODEL_REASONING_EFFORTS.filter((effort) => declared.includes(effort))
+    : [...MODEL_REASONING_EFFORTS];
+}
+
+export function resolveReasoningEffort(model: Model, requested: ReasoningEffort) {
+  const efforts = getReasoningEfforts(model);
+  if (efforts.includes(requested)) return requested;
+  const requestedIndex = MODEL_REASONING_EFFORTS.indexOf(requested);
   return (
-    model.provider === ModelProvider.OpenAI ||
-    (model.provider === ModelProvider.OpenRouter && model.id.startsWith("openai/"))
+    efforts
+      .toReversed()
+      .find((effort) => MODEL_REASONING_EFFORTS.indexOf(effort) < requestedIndex) ?? efforts[0]
   );
 }
 
-export function createModel(sdk: FrontendSDK, model: Model, options: CreateModelOptions = {}) {
+export function createModel(
+  sdk: FrontendSDK,
+  selectedModel: Model,
+  options: CreateModelOptions = {}
+) {
+  const model =
+    listCaidoModels(sdk).find(
+      (candidate) =>
+        candidate.provider === selectedModel.provider && candidate.id === selectedModel.id
+    ) ?? selectedModel;
   const {
-    structuredOutput = true,
     reasoning = true,
     reasoningEffort = "medium",
     openRouterPrioritizeFastProviders = false,
   } = options;
 
-  const isReasoningModel =
-    reasoning &&
-    (model?.capabilities.reasoning ?? false) &&
-    supportsProviderReasoning(model.provider);
+  const isReasoningModel = reasoning && model.capabilities.reasoning;
 
   const provider = sdk.ai.createProvider() as ExtendedAIProvider;
 
-  let modelId = model.id.split(":thinking")[0];
-  if (!isPresent(modelId)) {
-    throw new Error(`Invalid model ID: ${model.id}`);
-  }
-
-  if (model.provider === ModelProvider.OpenRouter && openRouterPrioritizeFastProviders) {
-    modelId = `${modelId}:nitro`;
-  }
+  const modelId =
+    model.provider === ModelProvider.OpenRouter && openRouterPrioritizeFastProviders
+      ? `${model.id}:nitro`
+      : model.id;
 
   const modelKey = createModelKey(model.provider, modelId);
-  const effectiveReasoningEffort =
-    reasoningEffort === "xhigh" && !supportsExtraHighReasoning(model) ? "high" : reasoningEffort;
+  const effectiveReasoningEffort = resolveReasoningEffort(model, reasoningEffort);
 
   const caidoModel = provider(modelKey, {
-    ...(isReasoningModel && {
-      reasoning: {
-        effort: effectiveReasoningEffort,
-      },
-    }),
-    capabilities: {
-      reasoning: isReasoningModel,
-      structured_output: structuredOutput,
-    },
+    reasoning:
+      isReasoningModel && effectiveReasoningEffort !== undefined
+        ? {
+            kind: "effort",
+            effort: effectiveReasoningEffort,
+            output: "include",
+          }
+        : undefined,
   });
 
-  return caidoModel;
+  return wrapLanguageModel({ model: caidoModel, middleware: wellFormedPromptMiddleware });
 }
 
 const PREFERRED_AGENT_MODELS = [

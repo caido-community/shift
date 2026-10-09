@@ -15,7 +15,7 @@ export default defineConfig({
   id,
   name: "Shift",
   description: "Delegate your work to Shift",
-  version: "2.3.5",
+  version: "2.3.6",
   author: {
     name: "Caido Labs Inc.",
     email: "dev@caido.io",
@@ -78,7 +78,7 @@ export default defineConfig({
                 },
                 content: [
                   "./packages/frontend/src/**/*.{vue,ts}",
-                  "./node_modules/@caido/primevue/dist/primevue.mjs",
+                  "./packages/frontend/node_modules/@caido/primevue/dist/primevue.mjs",
                 ],
                 // Check the [data-mode="dark"] attribute on the <html> element to determine the mode
                 // This attribute is set in the Caido core application

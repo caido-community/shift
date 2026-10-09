@@ -1,7 +1,7 @@
 import { EditorView } from "@codemirror/view";
 import { Result } from "shared";
 
-import { isPresent } from "./optional";
+import { isPresent, type UndefinedOrNull } from "./optional";
 
 import { type FrontendSDK } from "@/types";
 
@@ -120,6 +120,28 @@ type ReplaySessionEntry = NonNullable<
 >;
 type ReplaySessionEntryLike = ReplaySessionEntry;
 
+type EntryRequest = { id: string; response?: { id: string } | UndefinedOrNull } | UndefinedOrNull;
+type AnyReplayEntry =
+  | { __typename: "ReplayEntryHttp"; request?: EntryRequest }
+  | { __typename: "ReplayEntryWs"; http: { request?: EntryRequest } }
+  | {
+      __typename: "ReplayEntryHttpOnePipeline";
+      activeHttpEntry?: { request?: EntryRequest } | UndefinedOrNull;
+    };
+
+export const getActiveEntryRequest = (entry: AnyReplayEntry | UndefinedOrNull) => {
+  switch (entry?.__typename) {
+    case "ReplayEntryHttp":
+      return entry.request ?? undefined;
+    case "ReplayEntryWs":
+      return entry.http.request ?? undefined;
+    case "ReplayEntryHttpOnePipeline":
+      return entry.activeHttpEntry?.request ?? undefined;
+    default:
+      return undefined;
+  }
+};
+
 export type ReplayEntryWithRequest = {
   entry: ReplayEntryHttp;
   request: ReplayEntryHttp["request"];
@@ -177,8 +199,18 @@ const normalizeReplayEntryHttp = (entry: ReplayEntryHttpInput): ReplayEntryHttp 
   };
 };
 
-const toSessionReplayEntryHttp = (entry: ReplaySessionEntryLike): ReplayEntryHttp =>
-  normalizeReplayEntryHttp(entry.__typename === "ReplayEntryWs" ? entry.http : entry);
+const toSessionReplayEntryHttp = (entry: ReplaySessionEntryLike): ReplayEntryHttp | undefined => {
+  switch (entry.__typename) {
+    case "ReplayEntryWs":
+      return normalizeReplayEntryHttp(entry.http);
+    case "ReplayEntryHttpOnePipeline":
+      return isPresent(entry.activeHttpEntry)
+        ? normalizeReplayEntryHttp(entry.activeHttpEntry)
+        : undefined;
+    default:
+      return normalizeReplayEntryHttp(entry);
+  }
+};
 
 const getConcreteReplayEntry = async (
   sdk: FrontendSDK,
@@ -231,6 +263,9 @@ const getInterfaceReplayEntry = async (
   }
 
   const entry = toSessionReplayEntryHttp(selectedEntry);
+  if (entry === undefined) {
+    return Result.err("Replay entry has no HTTP request");
+  }
   return Result.ok({ entry, request: entry.request });
 };
 

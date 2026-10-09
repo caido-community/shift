@@ -11,6 +11,7 @@ import type { FrontendSDK } from "../types";
 
 import { createShiftAgent } from "@/agent/agent";
 import type { AgentContext } from "@/agent/context";
+import { formatAgentError } from "@/agent/utils/errors";
 import {
   findLastUserMessageId,
   replaceHistoricalToolOutputsWithBlobRefs,
@@ -130,7 +131,7 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
                   reasoning_times: [...reasoningTimes],
                 },
               });
-              return (error as Error).message;
+              return formatAgentError(error);
             },
             messageMetadata: ({ part }) => {
               if (part.type === "start-step") {
@@ -196,7 +197,7 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
       },
       onError: (error) => {
         console.error("Error: ", error);
-        return (error as Error).message;
+        return formatAgentError(error);
       },
     });
 

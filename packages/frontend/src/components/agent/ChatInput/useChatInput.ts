@@ -28,7 +28,7 @@ export function useChatInput() {
     }
   });
 
-  const agentModels = computed(() => modelsStore.getEnabledModels({ usageType: "agent" }));
+  const agentModels = computed(() => modelsStore.getEnabledModels());
 
   const { height, startResize } = useResize();
 
