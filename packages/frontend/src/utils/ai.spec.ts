@@ -111,4 +111,28 @@ describe("createModel", () => {
       reasoning: undefined,
     });
   });
+
+  it("replaces lone surrogates that Caido's backend rejects", async () => {
+    const underlying = new MockLanguageModelV3({ doStream: { stream: new ReadableStream() } });
+    const sdk = {
+      ai: {
+        createProvider: () => () => underlying,
+        getUpstreamProviders: () => [],
+        getUpstreamModels: () => [],
+      },
+    } as unknown as FrontendSDK;
+    const truncated = "ok 😀".slice(0, -1);
+
+    await createModel(sdk, createTestModel("work", "some-model")).doStream({
+      prompt: [
+        { role: "system", content: truncated },
+        { role: "user", content: [{ type: "text", text: `${truncated} 😀` }] },
+      ],
+    });
+
+    expect(underlying.doStreamCalls[0]?.prompt).toEqual([
+      { role: "system", content: "ok \uFFFD" },
+      { role: "user", content: [{ type: "text", text: "ok \uFFFD 😀" }] },
+    ]);
+  });
 });

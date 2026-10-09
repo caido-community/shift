@@ -1,5 +1,6 @@
-import { type LanguageModelV3 } from "@ai-sdk/provider";
+import { type LanguageModelV3, type LanguageModelV3Middleware } from "@ai-sdk/provider";
 import { type AILanguageModelSettings } from "@caido/sdk-frontend";
+import { wrapLanguageModel } from "ai";
 import {
   createModelKey,
   type Model,
@@ -35,6 +36,28 @@ type CreateModelOptions = {
 };
 
 export type ReasoningEffort = ModelReasoningEffort;
+
+function toWellFormed<T>(value: T): T {
+  if (typeof value === "string") return value.toWellFormed() as T;
+  if (Array.isArray(value)) return value.map(toWellFormed) as T;
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    Object.getPrototypeOf(value) === Object.prototype
+  ) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, toWellFormed(entry)])
+    ) as T;
+  }
+  return value;
+}
+
+// Caido's backend rejects lone UTF-16 surrogates, which truncated tool outputs can contain.
+const wellFormedPromptMiddleware: LanguageModelV3Middleware = {
+  specificationVersion: "v3",
+  transformParams: ({ params }) =>
+    Promise.resolve({ ...params, prompt: toWellFormed(params.prompt) }),
+};
 
 type ExtendedAILanguageModelSettings = Omit<
   AILanguageModelSettings,
@@ -101,7 +124,7 @@ export function createModel(
   const modelKey = createModelKey(model.provider, modelId);
   const effectiveReasoningEffort = resolveReasoningEffort(model, reasoningEffort);
 
-  return provider(modelKey, {
+  const caidoModel = provider(modelKey, {
     reasoning:
       isReasoningModel && effectiveReasoningEffort !== undefined
         ? {
@@ -111,6 +134,8 @@ export function createModel(
           }
         : undefined,
   });
+
+  return wrapLanguageModel({ model: caidoModel, middleware: wellFormedPromptMiddleware });
 }
 
 const PREFERRED_AGENT_MODELS = [

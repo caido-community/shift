@@ -6,7 +6,8 @@ export const getToolErrorMessage = (output: unknown): string | undefined => {
     return undefined;
   }
 
-  return output.error.message;
+  const { message, detail } = output.error;
+  return detail === undefined || detail === "" ? message : `${message}: ${detail}`;
 };
 
 export const getToolSuccessMessage = (output: unknown): string | undefined => {
