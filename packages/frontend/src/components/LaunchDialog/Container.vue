@@ -61,7 +61,7 @@ const handleAgentChange = (value: string | undefined) => {
           v-model="selectedModel"
           :models="availableModels"
           direction="down"
-          class="w-full [&>button]:w-full [&>button]:justify-between [&>div:last-child]:!z-[3001]" />
+          class="w-full [&>button:first-child]:flex-1 [&>button:first-child]:justify-between [&>div:last-child]:!z-[3001]" />
       </section>
 
       <section class="flex flex-col gap-2">

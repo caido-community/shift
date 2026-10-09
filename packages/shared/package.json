@@ -13,8 +13,5 @@
   "dependencies": {
     "ai": "6.0.116",
     "zod": "4.3.6"
-  },
-  "devDependencies": {
-    "@caido/sdk-frontend": "0.57.1-beta.4"
   }
 }

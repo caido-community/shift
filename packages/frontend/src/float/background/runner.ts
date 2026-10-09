@@ -1,5 +1,6 @@
 import { generateText, stepCountIs } from "ai";
 
+import { formatAgentError } from "@/agent/utils/errors";
 import { plainParts } from "@/backgroundAgents/logs";
 import { backgroundFloatTools } from "@/float/actions";
 import { BACKGROUND_EXECUTION_NOTE, buildBackgroundPrompt } from "@/float/background/prompt";
@@ -64,7 +65,7 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
   const modelData = resolveModel({
     sdk: input.sdk,
     savedModelKey: settingsStore.floatModel,
-    enabledModels: modelsStore.getEnabledModels({ usageType: "float" }),
+    enabledModels: modelsStore.getEnabledModels(),
     usageType: "float",
   });
 
@@ -107,7 +108,6 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
   try {
     const result = await generateText({
       model,
-      temperature: 0,
       tools,
       toolChoice: "auto",
       stopWhen: stepCountIs(maxSteps),
@@ -173,7 +173,7 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
       return;
     }
 
-    const message = error instanceof Error ? error.message : String(error);
+    const message = formatAgentError(error);
     if (executionError === message) {
       store.setError(input.agentId, message);
       return;

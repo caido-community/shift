@@ -44,7 +44,7 @@ const instructions = computed({
   },
 });
 
-const allModels = computed(() => modelsStore.getEnabledModels({}));
+const allModels = computed(() => modelsStore.getEnabledModels());
 
 const selectedModel = computed(() => {
   const key = settingsStore.renamingModel;

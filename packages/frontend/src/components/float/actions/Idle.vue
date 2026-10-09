@@ -19,7 +19,7 @@ const settingsStore = useSettingsStore();
 
 const { canSendMessage } = storeToRefs(floatStore);
 
-const floatModels = computed(() => modelsStore.getEnabledModels({ usageType: "float" }));
+const floatModels = computed(() => modelsStore.getEnabledModels());
 
 const selectedModel = computed(() => {
   const key = settingsStore.floatModel;

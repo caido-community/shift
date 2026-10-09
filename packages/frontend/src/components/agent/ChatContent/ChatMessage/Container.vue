@@ -5,7 +5,7 @@ import { computed, toRef } from "vue";
 import { ChatMessageAssistant } from "./Assistant";
 import { ChatMessageUser } from "./User";
 
-import { isPresent } from "@/utils/optional";
+import { hasDisplayableAssistantContent } from "@/agent/utils/messages";
 
 const { message, debugMode } = defineProps<{
   message: ShiftMessage;
@@ -22,12 +22,12 @@ const hasVisibleContent = computed(() => {
   }
 
   if (message.role === "assistant") {
-    return message.parts.some((part) => isPresent(part) && part.type !== "step-start");
+    return hasDisplayableAssistantContent(message);
   }
 
   if (message.role === "user") {
     return message.parts.some(
-      (part) => isPresent(part) && part.type === "text" && part.text.trim() !== ""
+      (part) => part !== undefined && part.type === "text" && part.text.trim() !== ""
     );
   }
 

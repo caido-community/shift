@@ -75,7 +75,7 @@ export async function generateName(
     const modelData = resolveModel({
       sdk,
       savedModelKey: settingsStore.renamingModel,
-      enabledModels: modelsStore.getEnabledModels({ usageType: "float" }),
+      enabledModels: modelsStore.getEnabledModels(),
       usageType: "float",
     });
     if (modelData === undefined) {

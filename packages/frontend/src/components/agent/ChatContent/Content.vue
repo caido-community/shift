@@ -15,6 +15,7 @@ const store = useAgentStore();
 const messages = computed(() => session.chat.messages);
 const isSubmitted = computed(() => session.isWaitingForFirstToken());
 const isErrored = computed(() => session.isErrored());
+const errorMessage = computed(() => session.errorMessage());
 const debugMode = computed(() => store.debugMode);
 const generatingText = useAnimatedDots("Generating", isSubmitted);
 
@@ -62,7 +63,7 @@ watch(
     <div
       v-else-if="isErrored"
       class="text-surface-500 font-mono text-sm px-2.5">
-      Something went wrong
+      {{ errorMessage }}
     </div>
   </div>
 </template>
