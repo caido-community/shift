@@ -12,7 +12,7 @@
     "watch": "caido-dev watch"
   },
   "devDependencies": {
-    "@caido-community/dev": "0.1.6",
+    "@caido-community/dev": "0.1.7",
     "@caido/eslint-config": "0.8.0",
     "@caido/tailwindcss": "0.1.0",
     "@vitejs/plugin-vue": "6.0.1",

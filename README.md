@@ -1,5 +1,5 @@
 <div align="center">
-  <img width="1000" alt="image" src="https://github.com/caido-community/.github/blob/main/content/banner.png?raw=true">
+  <img width="1000" alt="image" src="assets/banner.png">
 
   <br />
   <br />
@@ -18,7 +18,7 @@ Shift is an AI plugin that integrates state-of-the-art LLMs directly into Caido'
 
 
 <p align="center">
-<img src="https://github.com/user-attachments/assets/0641619d-b629-40c6-9aec-dc209deb8491" width=250>
+<img src="assets/shift-logo.png" width=250>
 <p/>
 
 Use Cases include:
@@ -49,7 +49,7 @@ Build personalized micro-agents for tasks like XSS exploitation, WAF bypassing, 
     <p>Shift Core, Shift Memory, Shift Rename Demo - Watch Video</p>
   </a>
   <a href="https://www.loom.com/share/ac132e7b4ab645fdaa67c8a34a818fb2">
-    <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/ac132e7b4ab645fdaa67c8a34a818fb2-329aa30b44cf128f-full.jpg">
+    <img style="max-width:300px;" src="assets/loom-thumbnail.png">
   </a>
 </div>
 
