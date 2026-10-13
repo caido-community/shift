@@ -74,9 +74,9 @@ describe("getEstimatedContextUsage", () => {
     });
 
     expect(result.contextWindowTokens).toBe(272_000);
-    expect(result.availableTokens).toBe(200_000);
+    expect(result.availableTokens).toBe(240_000);
     expect(result.usedTokens).toBe(100);
-    expect(result.percentage).toBeCloseTo((100 / 200_000) * 100);
+    expect(result.percentage).toBeCloseTo((100 / 240_000) * 100);
   });
 
   it("compacts earlier on small context windows", () => {
@@ -88,7 +88,7 @@ describe("getEstimatedContextUsage", () => {
       messages: [],
     });
 
-    expect(result.availableTokens).toBe(102_400);
+    expect(result.availableTokens).toBe(96_000);
   });
 
   it("falls back to the default window when the model is unknown", () => {
@@ -100,7 +100,7 @@ describe("getEstimatedContextUsage", () => {
       messages: [],
     });
 
-    expect(result.availableTokens).toBe(160_000);
+    expect(result.availableTokens).toBe(168_000);
   });
 
   it("supports different configured context windows", () => {
@@ -119,8 +119,8 @@ describe("getEstimatedContextUsage", () => {
       messages: [],
     });
 
-    expect(mercury.availableTokens).toBe(102_400);
-    expect(grok.availableTokens).toBe(200_000);
+    expect(mercury.availableTokens).toBe(96_000);
+    expect(grok.availableTokens).toBe(240_000);
   });
 
   it("ignores messages replaced by a compaction summary", () => {

@@ -1,12 +1,13 @@
 import { asSchema, type Tool } from "ai";
 import type { Model, ShiftMessage } from "shared";
 
-import { applyCompactionMarker, getCompactionThreshold } from "@/agent/compaction";
+import {
+  applyCompactionMarker,
+  getCompactionThreshold,
+  getContextWindow,
+} from "@/agent/compaction";
 
 const CHARS_PER_TOKEN = 4;
-const DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000;
-// Models advertise up to 1M+, but quality and pricing degrade well before that (Codex caps GPT-5 at 272k)
-const RECOMMENDED_CONTEXT_WINDOW_TOKENS = 272_000;
 
 function estimateSerializableCharacters(value: unknown): number {
   if (value === undefined || value === null) {
@@ -109,11 +110,8 @@ export function getEstimatedContextUsage(args: {
     }),
   ].filter((segment) => segment.tokens > 0);
 
-  const contextWindowTokens = Math.min(
-    model?.contextWindow ?? DEFAULT_CONTEXT_WINDOW_TOKENS,
-    RECOMMENDED_CONTEXT_WINDOW_TOKENS
-  );
-  const availableTokens = getCompactionThreshold(contextWindowTokens);
+  const contextWindowTokens = getContextWindow(model?.contextWindow);
+  const availableTokens = getCompactionThreshold(model?.contextWindow);
   const usedTokens = segments.reduce((total, segment) => total + segment.tokens, 0);
 
   return {

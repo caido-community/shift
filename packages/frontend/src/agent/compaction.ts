@@ -9,12 +9,20 @@ import type { ShiftMessage } from "shared";
 
 const CHARS_PER_TOKEN = 4;
 const DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000;
-const COMPACTION_TRIGGER_TOKENS = 200_000;
+// Models advertise up to 1M+, but quality and pricing degrade well before that (Codex caps GPT-5 at 272k)
+const RECOMMENDED_CONTEXT_WINDOW_TOKENS = 272_000;
 const SUMMARY_MAX_OUTPUT_TOKENS = 32_000;
 
+export function getContextWindow(contextWindow: number | undefined): number {
+  return Math.min(
+    contextWindow ?? DEFAULT_CONTEXT_WINDOW_TOKENS,
+    RECOMMENDED_CONTEXT_WINDOW_TOKENS
+  );
+}
+
 export function getCompactionThreshold(contextWindow: number | undefined): number {
-  const window = contextWindow ?? DEFAULT_CONTEXT_WINDOW_TOKENS;
-  return Math.min(COMPACTION_TRIGGER_TOKENS, Math.floor(window * 0.8));
+  const windowTokens = getContextWindow(contextWindow);
+  return Math.min(Math.floor(windowTokens * 0.9), windowTokens - SUMMARY_MAX_OUTPUT_TOKENS);
 }
 
 const COMPACTION_PROMPT = `

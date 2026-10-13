@@ -1,4 +1,5 @@
 import { stepCountIs, streamText } from "ai";
+import { DEFAULT_MAX_ITERATIONS } from "shared";
 
 import { createCompactor } from "@/agent/compaction";
 import { formatAgentError } from "@/agent/utils/errors";
@@ -21,7 +22,6 @@ import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
 import { createModel, resolveModel } from "@/utils";
 
-const DEFAULT_BACKGROUND_MAX_STEPS = 100;
 type SpawnBackgroundAgentInput = {
   sdk: FrontendSDK;
   task: string;
@@ -91,7 +91,7 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
   };
 
   const tools = backgroundFloatTools;
-  const maxSteps = settingsStore.maxIterations ?? DEFAULT_BACKGROUND_MAX_STEPS;
+  const maxSteps = settingsStore.maxIterations ?? DEFAULT_MAX_ITERATIONS;
   const prompt = buildBackgroundPrompt(
     {
       content: input.task,

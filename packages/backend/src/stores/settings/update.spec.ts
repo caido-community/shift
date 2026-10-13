@@ -1,7 +1,7 @@
 import { DEFAULT_MAX_ITERATIONS, defaultFeatureFlags, UpdateSettingsSchema } from "shared";
 import { describe, expect, it } from "vitest";
 
-import { createInitialModel, type SettingsModel } from "./model";
+import { createInitialModel, migrateLoadedSettings, type SettingsModel } from "./model";
 import { update } from "./update";
 
 const createTestModel = (): SettingsModel => ({
@@ -240,6 +240,18 @@ describe("settings update", () => {
       expect(model.renaming.renameAfterSend).toBe(false);
       expect(model.openRouterPrioritizeFastProviders).toBe(false);
       expect(model.featureFlags.backgroundAgents).toBe(false);
+    });
+  });
+
+  describe("migrateLoadedSettings", () => {
+    it("raises the legacy default iteration limit", () => {
+      expect(migrateLoadedSettings({ maxIterations: 100 })).toEqual({
+        maxIterations: DEFAULT_MAX_ITERATIONS,
+      });
+    });
+
+    it("keeps a custom iteration limit", () => {
+      expect(migrateLoadedSettings({ maxIterations: 50 })).toEqual({ maxIterations: 50 });
     });
   });
 });

@@ -2,7 +2,12 @@ import { type RenamingConfig, type SettingsConfig, type UpdateSettingsInput } fr
 
 import { GlobalStore } from "../global-store";
 
-import { createInitialModel, type SettingsMessage, type SettingsModel } from "./model";
+import {
+  createInitialModel,
+  migrateLoadedSettings,
+  type SettingsMessage,
+  type SettingsModel,
+} from "./model";
 import { update } from "./update";
 
 class SettingsStore extends GlobalStore<SettingsModel, SettingsMessage> {
@@ -16,6 +21,10 @@ class SettingsStore extends GlobalStore<SettingsModel, SettingsMessage> {
 
   protected update(model: SettingsModel, message: SettingsMessage): SettingsModel {
     return update(model, message);
+  }
+
+  protected mergeLoadedModel(current: SettingsModel, loaded: unknown): SettingsModel {
+    return super.mergeLoadedModel(current, migrateLoadedSettings(loaded));
   }
 
   getSettings(): SettingsConfig {
