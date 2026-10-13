@@ -129,6 +129,38 @@
     margin-top: 0.5em;
   }
 
+  .code-block {
+    position: relative;
+  }
+
+  * + .code-block,
+  .code-block + * {
+    margin-top: 0.5em;
+  }
+
+  .code-block > button {
+    position: absolute;
+    top: 0.5em;
+    right: 0.6em;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 0.75rem;
+    color: var(--p-surface-400);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .code-block:hover > button {
+    opacity: 1;
+  }
+
+  .code-block > button:hover {
+    color: var(--p-surface-200);
+  }
+
   :not(pre) > code {
     font-family: ui-monospace, monospace;
     font-size: 0.8rem;

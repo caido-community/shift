@@ -32,7 +32,7 @@ export function useChatInput() {
 
   const { height, startResize } = useResize();
 
-  useFocus(textarea, { initialValue: true });
+  const { focused } = useFocus(textarea, { initialValue: true });
 
   watch(
     draftMessage,
@@ -40,6 +40,7 @@ export function useChatInput() {
       if (draft !== "") {
         inputMessage.value = draft;
         session.draftMessage = "";
+        focused.value = true;
       }
     },
     { immediate: true }

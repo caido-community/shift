@@ -198,6 +198,7 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
                 return {
                   state: "done",
                   reasoning_times: [...reasoningTimes],
+                  stepLimitReached: part.finishReason === "tool-calls",
                 };
               }
 

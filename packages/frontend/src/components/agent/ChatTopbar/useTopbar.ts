@@ -86,6 +86,7 @@ export function useTopbar() {
   }
 
   return {
+    hasMessages: computed(() => session.chat.messages.length > 0),
     clearConversation,
     debugMode: computed(() => store.debugMode),
     debugToolsEnabled: computed(() => settingsStore.debugToolsEnabled ?? true),

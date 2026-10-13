@@ -121,7 +121,7 @@ type ReplaySessionEntry = NonNullable<
 type ReplaySessionEntryLike = ReplaySessionEntry;
 
 type EntryRequest = { id: string; response?: { id: string } | UndefinedOrNull } | UndefinedOrNull;
-type AnyReplayEntry =
+export type AnyReplayEntry =
   | { __typename: "ReplayEntryHttp"; request?: EntryRequest }
   | { __typename: "ReplayEntryWs"; http: { request?: EntryRequest } }
   | {

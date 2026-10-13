@@ -10,6 +10,7 @@ export type ReasoningTime = {
 export type MessageState = "streaming" | "done" | "aborted" | "error";
 export type MessageMetadata = {
   state?: MessageState;
+  stepLimitReached?: boolean;
   reasoning_times?: {
     start: number;
     end?: number;

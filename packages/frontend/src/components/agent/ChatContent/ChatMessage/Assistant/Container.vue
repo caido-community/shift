@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useClipboard } from "@vueuse/core";
 import { getToolName, isToolUIPart } from "ai";
 import type { ShiftMessage } from "shared";
 import { computed } from "vue";
@@ -34,12 +35,21 @@ const isWaitingForNextPart = computed(() => {
 });
 
 const processingText = useAnimatedDots("Processing", isWaitingForNextPart);
+
+const { copy, copied } = useClipboard();
+const text = computed(() =>
+  message.parts
+    .flatMap((part) => (part.type === "text" ? [part.text.trim()] : []))
+    .filter((partText) => partText !== "")
+    .join("\n\n")
+);
+const canCopy = computed(() => metadata.value?.state !== "streaming" && text.value !== "");
 </script>
 
 <template>
   <div
     v-if="processedParts.length > 0"
-    class="animate-fade-in text-red-400 px-2.5 font-mono flex flex-col gap-1.5">
+    class="group/message animate-fade-in text-red-400 px-2.5 font-mono flex flex-col gap-1.5">
     <template
       v-for="(processed, index) in processedParts"
       :key="processed.index">
@@ -80,5 +90,14 @@ const processingText = useAnimatedDots("Processing", isWaitingForNextPart);
       class="font-mono select-none text-surface-300 text-sm animate-fade-in w-fit"
       >{{ processingText }}</TextShimmer
     >
+
+    <button
+      v-if="canCopy"
+      type="button"
+      class="self-start -ml-1 px-1 text-xs text-surface-500 hover:text-surface-300 opacity-0 group-hover/message:opacity-100 transition-all duration-150 select-none"
+      title="Copy message"
+      @click="copy(text)">
+      <i :class="copied ? 'fas fa-check' : 'fas fa-copy'" />
+    </button>
   </div>
 </template>

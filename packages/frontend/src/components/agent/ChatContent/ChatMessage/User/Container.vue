@@ -15,7 +15,7 @@ const { editMessage, revertToSnapshot, hasSnapshot, isGenerating } = useUserMess
 const canRevert = computed(() => hasSnapshot(message.id) && !isGenerating.value);
 const showRevertDialog = ref(false);
 
-function handleDoubleClick() {
+function handleEdit() {
   if (isGenerating.value) {
     return;
   }
@@ -38,15 +38,26 @@ function handleRevertConfirm() {
   <div
     class="group relative max-h-64 overflow-y-auto p-3 rounded-lg bg-surface-900 border border-surface-700 transition-colors duration-100 select-text"
     :class="{ 'cursor-pointer hover:border-surface-500': !isGenerating }"
-    @dblclick="handleDoubleClick">
-    <button
-      v-if="canRevert"
-      type="button"
-      class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 text-surface-500 hover:text-surface-300 hover:bg-surface-800 transition-all duration-150 rounded"
-      title="Revert to this point"
-      @click.stop="handleRevert">
-      <i class="fas fa-undo text-xs" />
-    </button>
+    @dblclick="handleEdit">
+    <div
+      class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+      <button
+        v-if="!isGenerating"
+        type="button"
+        class="p-1 text-surface-500 hover:text-surface-300 hover:bg-surface-800 transition-colors duration-150 rounded"
+        title="Edit and resend"
+        @click.stop="handleEdit">
+        <i class="fas fa-pen text-xs" />
+      </button>
+      <button
+        v-if="canRevert"
+        type="button"
+        class="p-1 text-surface-500 hover:text-surface-300 hover:bg-surface-800 transition-colors duration-150 rounded"
+        title="Revert to this point"
+        @click.stop="handleRevert">
+        <i class="fas fa-undo text-xs" />
+      </button>
+    </div>
     <div
       v-for="(part, index) in message.parts"
       :key="index"

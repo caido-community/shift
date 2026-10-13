@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import {
+  type AnyReplayEntry,
   getActiveEntryRequest,
   getReplaySession,
   setActiveEntryDraftRaw,
@@ -11,6 +12,7 @@ import {
   usesReplayEntryInterface,
   writeToRequestEditor,
 } from "@/utils/caido";
+import type { UndefinedOrNull } from "@/utils/optional";
 import { formatStringWithSuffix } from "@/utils/text";
 
 const inputSchema = z.object({});
@@ -20,6 +22,7 @@ const valueSchema = z.object({
   roundtripTime: z.number(),
   responseId: z.string(),
   statusLine: z.string(),
+  entryId: z.string().optional(),
 });
 
 const outputSchema = ToolResult.schema(valueSchema);
@@ -41,14 +44,21 @@ type LegacySendRequestOptions = {
 
 type LegacySendRequest = (sessionId: string, options: LegacySendRequestOptions) => Promise<void>;
 
-const getActiveEntryResponseId = async (
+type ActiveEntryIds = { entryId: string | undefined; responseId: string | undefined };
+
+const toActiveEntryIds = (
+  activeEntry: (AnyReplayEntry & { id: string }) | UndefinedOrNull
+): ActiveEntryIds => ({
+  entryId: activeEntry?.id,
+  responseId: getActiveEntryRequest(activeEntry)?.response?.id ?? undefined,
+});
+
+const getActiveEntryIds = async (
   sdk: AgentContext["sdk"],
   sessionId: string
-): Promise<string | undefined> => {
+): Promise<ActiveEntryIds> => {
   const result = await sdk.graphql.replaySessionEntries({ id: sessionId });
-  const activeEntry = result.replaySession?.activeEntry;
-
-  return getActiveEntryRequest(activeEntry)?.response?.id;
+  return toActiveEntryIds(result.replaySession?.activeEntry);
 };
 
 const sleep = (duration: number): Promise<void> =>
@@ -146,13 +156,15 @@ export const RequestSend = tool({
 
     const replaySession = replaySessionResult.value;
 
-    const previousResponseId = await getActiveEntryResponseId(sdk, replaySession.id);
+    const { responseId: previousResponseId } = await getActiveEntryIds(sdk, replaySession.id);
 
     let responseId: string | undefined = undefined;
+    let entryId: string | undefined = undefined;
 
-    const captureResponseId = (nextResponseId: string | undefined): boolean => {
-      if (nextResponseId !== undefined && nextResponseId !== previousResponseId) {
-        responseId = nextResponseId;
+    const captureActiveEntry = (next: ActiveEntryIds): boolean => {
+      if (next.responseId !== undefined && next.responseId !== previousResponseId) {
+        responseId = next.responseId;
+        entryId = next.entryId;
         return true;
       }
 
@@ -225,10 +237,11 @@ export const RequestSend = tool({
     const responsePromise = (async () => {
       for await (const event of iterator) {
         if (event.updatedReplaySession.sessionEdge.node.id === replaySession.id) {
-          const activeEntry = event.updatedReplaySession.sessionEdge.node.activeEntry;
-          const nextResponseId = getActiveEntryRequest(activeEntry)?.response?.id;
-
-          if (captureResponseId(nextResponseId ?? undefined)) {
+          if (
+            captureActiveEntry(
+              toActiveEntryIds(event.updatedReplaySession.sessionEdge.node.activeEntry)
+            )
+          ) {
             break;
           }
         }
@@ -237,7 +250,7 @@ export const RequestSend = tool({
 
     const pollResponsePromise = (async () => {
       while (responseId === undefined) {
-        if (captureResponseId(await getActiveEntryResponseId(sdk, replaySession.id))) {
+        if (captureActiveEntry(await getActiveEntryIds(sdk, replaySession.id))) {
           break;
         }
 
@@ -283,6 +296,7 @@ export const RequestSend = tool({
       roundtripTime: result.response.roundtripTime,
       responseId,
       statusLine,
+      entryId,
     });
   },
   toModelOutput: ({ output }) => {

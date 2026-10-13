@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Button from "primevue/button";
 import Card from "primevue/card";
 import Checkbox from "primevue/checkbox";
 import InputNumber from "primevue/inputnumber";
@@ -69,8 +70,18 @@ const updateFeatureFlag = (flag: FeatureFlagKey, value: boolean) => {
         <div class="flex items-center justify-between">
           <div>
             <h2 class="text-base font-bold">Settings</h2>
-            <p class="text-sm text-surface-400">Configure global preferences for Shift.</p>
+            <p class="text-sm text-surface-400">
+              Configure global preferences for Shift. Providers and API keys live in Caido settings,
+              under AI.
+            </p>
           </div>
+          <Button
+            label="Set API keys"
+            icon="fas fa-key"
+            size="small"
+            severity="secondary"
+            class="shrink-0"
+            @click="sdk.navigation.goTo('/settings')" />
         </div>
       </template>
     </Card>

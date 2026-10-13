@@ -7,7 +7,9 @@ import { useTool } from "./useTool";
 
 import { type MessageResult } from "@/agent/types";
 import { formatToolDisplayText } from "@/agent/utils/formatting";
+import { useSession } from "@/components/agent/useSession";
 import { TextShimmer } from "@/components/common/TextShimmer";
+import { useSDK } from "@/plugins/sdk";
 
 const { toolName, input, partState, messageMetadata, output, errorText } = defineProps<{
   toolName: string;
@@ -47,6 +49,21 @@ const pendingResult = computed(
 const successResult = computed(
   () => messages.value?.success(displayContext.value) ?? defaultParts("Called")
 );
+
+const sdk = useSDK();
+const session = useSession();
+
+const entryId = computed(() => {
+  const value = extractedOutput.value as { entryId?: unknown } | undefined;
+  return typeof value?.entryId === "string" ? value.entryId : undefined;
+});
+
+const openEntry = () => {
+  if (entryId.value === undefined) return;
+  sdk.replay.showEntry(session.id, entryId.value).catch(() => {
+    sdk.window.showToast("This Replay entry no longer exists", { variant: "error" });
+  });
+};
 </script>
 
 <template>
@@ -80,11 +97,15 @@ const successResult = computed(
     </template>
 
     <template v-else-if="toolState === 'success'">
-      <span class="min-w-0 truncate">
+      <span
+        class="min-w-0 truncate"
+        :class="{ 'group/entry cursor-pointer hover:text-surface-100': entryId !== undefined }"
+        :title="entryId !== undefined ? 'Open this entry in Replay' : undefined"
+        @click="openEntry">
         <template
           v-for="(part, index) in successResult"
           :key="index">
-          <span :class="{ 'text-surface-500': part.muted }">
+          <span :class="{ 'text-surface-500 group-hover/entry:text-surface-300': part.muted }">
             {{ formatToolDisplayText(part.text) }}
           </span>
         </template>
