@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   estimateMessagesCharacters,
   estimateTokensFromCharacters,
-  formatContextUsageLabel,
+  getCacheHitRate,
   getEstimatedContextUsage,
 } from "./contextUsage";
 
@@ -64,57 +64,132 @@ describe("estimateTokensFromCharacters", () => {
 });
 
 describe("getEstimatedContextUsage", () => {
-  it("uses the model context window with the safety buffer", () => {
+  it("measures against the compaction threshold", () => {
     const result = getEstimatedContextUsage({
-      model: createModel("gpt-5.4", "GPT 5.4", 1_000_000),
+      model: createModel("gpt-6-sol", "GPT 6 Sol", 1_000_000),
       systemPrompt: "a".repeat(400),
+      skillsPrompt: "",
+      toolsCharacters: 0,
       messages: [],
     });
 
-    expect(result.availableTokens).toBe(980_000);
+    expect(result.contextWindowTokens).toBe(272_000);
+    expect(result.availableTokens).toBe(200_000);
     expect(result.usedTokens).toBe(100);
-    expect(result.percentage).toBeCloseTo((100 / 980_000) * 100);
+    expect(result.percentage).toBeCloseTo((100 / 200_000) * 100);
   });
 
-  it("uses the provided smaller model context window", () => {
+  it("compacts earlier on small context windows", () => {
     const result = getEstimatedContextUsage({
-      model: createModel("gpt-5.4-mini", "GPT 5.4 Mini", 400_000),
+      model: createModel("mercury-2", "Mercury 2", 128_000),
       systemPrompt: "",
+      skillsPrompt: "",
+      toolsCharacters: 0,
       messages: [],
     });
 
-    expect(result.availableTokens).toBe(380_000);
+    expect(result.availableTokens).toBe(102_400);
   });
 
-  it("falls back to the default safe window when the model is unknown", () => {
+  it("falls back to the default window when the model is unknown", () => {
     const result = getEstimatedContextUsage({
       model: createModel("custom-model", "Custom Model"),
       systemPrompt: "",
+      skillsPrompt: "",
+      toolsCharacters: 0,
       messages: [],
     });
 
-    expect(result.availableTokens).toBe(180_000);
+    expect(result.availableTokens).toBe(160_000);
   });
 
   it("supports different configured context windows", () => {
     const mercury = getEstimatedContextUsage({
       model: createModel("mercury-2", "Mercury 2", 128_000),
       systemPrompt: "",
+      skillsPrompt: "",
+      toolsCharacters: 0,
       messages: [],
     });
     const grok = getEstimatedContextUsage({
       model: createModel("grok-4.1-fast", "Grok 4.1 Fast", 2_000_000),
       systemPrompt: "",
+      skillsPrompt: "",
+      toolsCharacters: 0,
       messages: [],
     });
 
-    expect(mercury.availableTokens).toBe(108_000);
-    expect(grok.availableTokens).toBe(1_980_000);
+    expect(mercury.availableTokens).toBe(102_400);
+    expect(grok.availableTokens).toBe(200_000);
+  });
+
+  it("ignores messages replaced by a compaction summary", () => {
+    const messages: ShiftMessage[] = [
+      { id: "u1", role: "user", parts: [{ type: "text", text: "y".repeat(400_000) }] },
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [{ type: "data-compaction", data: { summary: "s".repeat(400) } }],
+      },
+    ];
+
+    const result = getEstimatedContextUsage({
+      model: createModel("gpt-6-sol", "GPT 6 Sol", 1_000_000),
+      systemPrompt: "",
+      skillsPrompt: "",
+      toolsCharacters: 0,
+      messages,
+    });
+
+    expect(result.usedTokens).toBe(100);
+    expect(result.segments.map((segment) => segment.label)).toEqual(["Summary"]);
   });
 });
 
-describe("formatContextUsageLabel", () => {
-  it("rounds to a whole percent", () => {
-    expect(formatContextUsageLabel(29.6)).toBe("30% context used");
+describe("context segments", () => {
+  it("splits skills out of the system prompt and groups messages into turns", () => {
+    const messages = [
+      { id: "u1", role: "user", parts: [{ type: "text", text: "a".repeat(400) }] },
+      { id: "a1", role: "assistant", parts: [{ type: "text", text: "b".repeat(400) }] },
+      { id: "u2", role: "user", parts: [{ type: "text", text: "c".repeat(400) }] },
+    ] as ShiftMessage[];
+
+    const result = getEstimatedContextUsage({
+      model: createModel("m", "M", 200_000),
+      systemPrompt: "s".repeat(800),
+      skillsPrompt: "k".repeat(400),
+      toolsCharacters: 4000,
+      messages,
+    });
+
+    expect(result.segments.map((segment) => [segment.kind, segment.label])).toEqual([
+      ["system", "System prompt"],
+      ["tools", "Tools"],
+      ["skills", "Skills"],
+      ["turn", "Turn 1"],
+      ["latest", "Latest turn"],
+    ]);
+    expect(result.segments[0]?.tokens).toBe(100);
+    expect(result.segments[1]?.tokens).toBe(1000);
+    expect(result.usedTokens).toBe(
+      result.segments.reduce((total, segment) => total + segment.tokens, 0)
+    );
+  });
+});
+
+describe("getCacheHitRate", () => {
+  it("averages over all reported usage and skips providers without cache data", () => {
+    const withUsage = (inputTokens?: number, cacheReadTokens?: number) =>
+      ({
+        id: "a",
+        role: "assistant",
+        parts: [],
+        metadata: { usage: { inputTokens, cacheReadTokens } },
+      }) as ShiftMessage;
+
+    expect(getCacheHitRate([withUsage(1000, 100), withUsage(3000, 2900)])).toBe(75);
+    expect(getCacheHitRate([withUsage(1000, 500), withUsage(9000, undefined)])).toBe(50);
+    expect(getCacheHitRate([withUsage(1000, undefined)])).toBeUndefined();
+    expect(getCacheHitRate([])).toBeUndefined();
   });
 });

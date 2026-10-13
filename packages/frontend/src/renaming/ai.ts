@@ -84,7 +84,10 @@ export async function generateName(
 
     const openRouterPrioritizeFastProviders =
       settingsStore.openRouterPrioritizeFastProviders ?? false;
-    const model = createModel(sdk, modelData, { openRouterPrioritizeFastProviders });
+    const model = createModel(sdk, modelData, {
+      openRouterPrioritizeFastProviders,
+      ...settingsStore.getRequestOptions(modelData),
+    });
 
     const prompt = `
       <entry>

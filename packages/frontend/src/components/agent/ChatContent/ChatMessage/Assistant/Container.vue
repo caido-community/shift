@@ -65,6 +65,13 @@ const processingText = useAnimatedDots("Processing", isWaitingForNextPart);
         :output="processed.part.output"
         :error-text="getToolErrorText(processed.part)" />
 
+      <div
+        v-else-if="processed.part.type === 'data-compaction'"
+        class="text-sm text-surface-400 select-none"
+        :title="processed.part.data.summary">
+        Context compacted, continuing from a summary
+      </div>
+
       <div v-else>Unknown part: {{ processed.part.type }}</div>
     </template>
 

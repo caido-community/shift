@@ -31,6 +31,7 @@ const ModelSchema = z.object({
   name: z.string().min(1),
   provider: ModelProviderSchema,
   contextWindow: z.number().int().positive().optional(),
+  outputTokenLimit: z.number().int().positive().optional(),
   capabilities: ModelCapabilitiesSchema,
   reasoningEfforts: z.array(ReasoningEffortSchema).optional(),
 });

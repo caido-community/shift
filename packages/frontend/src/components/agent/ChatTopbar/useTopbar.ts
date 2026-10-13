@@ -3,7 +3,6 @@ import { computed, nextTick } from "vue";
 
 import { useSession } from "../useSession";
 
-import { formatContextUsageLabel } from "@/agent/utils/contextUsage";
 import { useSDK } from "@/plugins/sdk";
 import { useAgentStore } from "@/stores/agent/store";
 import { useSettingsStore } from "@/stores/settings";
@@ -86,27 +85,8 @@ export function useTopbar() {
     });
   }
 
-  const contextUsage = computed(() => {
-    return session.estimateContextUsage();
-  });
-
-  const contextUsageClass = computed(() => {
-    const percentage = contextUsage.value.percentage;
-    if (percentage >= 90) {
-      return "text-red-400";
-    }
-
-    if (percentage >= 70) {
-      return "text-yellow-400";
-    }
-
-    return "text-surface-400";
-  });
-
   return {
     clearConversation,
-    contextUsageClass,
-    contextUsageLabel: computed(() => formatContextUsageLabel(contextUsage.value.percentage)),
     debugMode: computed(() => store.debugMode),
     debugToolsEnabled: computed(() => settingsStore.debugToolsEnabled ?? true),
     sessionID: session.id,

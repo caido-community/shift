@@ -1,4 +1,4 @@
-import { generateText } from "ai";
+import { generateText, streamText } from "ai";
 import { type Model, ModelProvider, Result } from "shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,6 +9,7 @@ import type { FrontendSDK } from "@/types";
 
 const mocks = vi.hoisted(() => ({
   generateText: vi.fn(),
+  streamText: vi.fn(),
   setDone: vi.fn(),
 }));
 
@@ -21,6 +22,7 @@ const model: Model = {
 
 vi.mock("ai", () => ({
   generateText: mocks.generateText,
+  streamText: mocks.streamText,
   stepCountIs: vi.fn(() => "stop-condition"),
 }));
 
@@ -58,6 +60,7 @@ vi.mock("@/stores/settings", () => ({
     floatModel: "openai/gpt-5.6-sol",
     maxIterations: 4,
     openRouterPrioritizeFastProviders: false,
+    getRequestOptions: () => ({}),
   }),
 }));
 vi.mock("@/utils", () => ({
@@ -77,6 +80,14 @@ describe("float model calls", () => {
       finishReason: "stop",
       toolCalls: [{ toolName: "testTool" }],
     });
+    mocks.streamText.mockReset();
+    mocks.streamText.mockImplementation((options: { onStepFinish: (step: unknown) => void }) => ({
+      consumeStream: () => {
+        options.onStepFinish({ toolCalls: [{ toolName: "testTool" }], toolResults: [] });
+        return Promise.resolve();
+      },
+      text: Promise.resolve("done"),
+    }));
   });
 
   it("does not force sampling parameters for synchronous float actions", async () => {
@@ -100,7 +111,7 @@ describe("float model calls", () => {
     });
 
     await vi.waitFor(() => expect(mocks.setDone).toHaveBeenCalledWith("agent-1"));
-    expect(generateText).toHaveBeenCalledWith(
+    expect(streamText).toHaveBeenCalledWith(
       expect.not.objectContaining({ temperature: expect.anything() })
     );
   });

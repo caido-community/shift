@@ -60,6 +60,7 @@ const spawnFloat = (sdk: FrontendSDK) => {
     pt: Classic,
     zIndex: {
       overlay: 5000,
+      tooltip: 5100,
     },
   });
   app.directive("tooltip", Tooltip);

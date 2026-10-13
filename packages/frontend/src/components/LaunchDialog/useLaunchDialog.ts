@@ -1,13 +1,7 @@
-import { useEventListener } from "@vueuse/core";
-import {
-  type AgentSkill,
-  DEFAULT_MAX_ITERATIONS,
-  type Model,
-  type ResolvedCustomAgent,
-} from "shared";
-import { computed, ref, watch } from "vue";
+import { type AgentMode, type Model, type ResolvedCustomAgent } from "shared";
+import { computed, ref } from "vue";
 
-import type { LaunchDialogResult, SelectionEntry } from "./types";
+import type { LaunchDialogResult } from "./types";
 
 import { useSDK } from "@/plugins/sdk";
 import { useCustomAgentsStore } from "@/stores/custom-agents/store";
@@ -15,8 +9,10 @@ import { useModelsStore } from "@/stores/models";
 import { useSettingsStore } from "@/stores/settings";
 import { useSkillsStore } from "@/stores/skills";
 import { resolveModel } from "@/utils/ai";
+import { getReplaySession } from "@/utils/caido";
 
 type UseLaunchDialogOptions = {
+  sessionId: string;
   onConfirm: (result: LaunchDialogResult) => void;
   onCancel: () => void;
   initialSkillIds?: string[];
@@ -30,12 +26,11 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
   const skillsStore = useSkillsStore();
   const customAgentsStore = useCustomAgentsStore();
 
-  let nextEntryId = 1;
-  const entries = ref<SelectionEntry[]>([{ id: 0, selection: "", comment: "" }]);
   const instructions = ref("");
-  const maxIterations = ref(settingsStore.maxIterations ?? DEFAULT_MAX_ITERATIONS);
+  const mode = ref<AgentMode>("focus");
   const selectedSkillIds = ref<string[]>(options.initialSkillIds ?? []);
   const selectedCustomAgentId = ref<string | undefined>(options.initialCustomAgentId);
+  const request = ref<{ method: string; target: string } | undefined>(undefined);
 
   const initialModel = resolveModel({
     sdk,
@@ -66,48 +61,12 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
     sdk.navigation.goTo("/shift");
   };
 
-  watch(
-    () => settingsStore.maxIterations,
-    (value) => {
-      if (value !== undefined && value > 0) {
-        maxIterations.value = value;
-      }
-    }
-  );
-
-  const lastEntry = () => entries.value.at(-1) ?? undefined;
-
-  const syncSelection = () => {
-    const entry = lastEntry();
-    if (entry === undefined) return;
-
-    const selectedText = sdk.window.getActiveEditor()?.getSelectedText() ?? "";
-    if (entry.selection !== selectedText) {
-      entry.selection = selectedText;
-    }
-  };
-
-  const addEmptyEntry = () => {
-    const active = lastEntry();
-    if (active !== undefined && active.selection.trim() === "" && active.comment.trim() === "") {
-      syncSelection();
-      return;
-    }
-
-    entries.value.push({ id: nextEntryId++, selection: "", comment: "" });
-    syncSelection();
-  };
-
-  const removeEntry = (entryId: number) => {
-    if (entries.value.length <= 1) {
-      entries.value = [{ id: nextEntryId++, selection: "", comment: "" }];
-      syncSelection();
-      return;
-    }
-
-    entries.value = entries.value.filter((entry) => entry.id !== entryId);
-    syncSelection();
-  };
+  getReplaySession(sdk, options.sessionId).then((result) => {
+    if (result.kind === "Error") return;
+    const [method, path] = result.value.request.raw.split("\n", 1)[0]?.split(" ") ?? [];
+    if (method === undefined || path === undefined) return;
+    request.value = { method, target: `${result.value.request.host}${path}` };
+  });
 
   const isSkillSelected = (id: string) => selectedSkillIds.value.includes(id);
 
@@ -119,29 +78,13 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
     }
   };
 
-  const getSelectedSkills = (): AgentSkill[] => {
-    return selectedSkillIds.value
-      .map((id) => skillOptions.value.find((s) => s.id === id))
-      .filter((s): s is AgentSkill => s !== undefined);
-  };
-
   const handleConfirm = () => {
-    syncSelection();
-
-    const selections = entries.value
-      .map((entry) => ({
-        selection: entry.selection.trim(),
-        comment: entry.comment.trim(),
-      }))
-      .filter((entry) => entry.selection !== "" || entry.comment !== "");
-
     options.onConfirm({
       customAgentId: selectedCustomAgentId.value,
       model: selectedModel.value,
+      mode: mode.value,
       selectedSkillIds: selectedSkillIds.value,
-      maxIterations: maxIterations.value,
       instructions: instructions.value.trim(),
-      selections,
     });
   };
 
@@ -149,35 +92,12 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
     options.onCancel();
   };
 
-  const handleMaxIterationsInput = (event: Event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement)) return;
-    const value = Number.parseInt(target.value, 10);
-    maxIterations.value = Number.isNaN(value) ? 1 : Math.max(1, value);
-  };
-
-  const handleSelectionsKeydown = (event: KeyboardEvent) => {
-    if (event.key === "Enter" && event.ctrlKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      addEmptyEntry();
-    }
-  };
-
-  useEventListener(document, "selectionchange", syncSelection);
-  useEventListener(document, "mouseup", syncSelection);
-  useEventListener(document, "keyup", syncSelection);
-
-  syncSelection();
-
   return {
-    entries,
     instructions,
-    maxIterations,
+    mode,
+    request,
     selectedModel,
-    selectedSkillIds,
     selectedCustomAgentId,
-    selectedAgent,
     hasAgent,
     hasAgentOptions,
     availableModels,
@@ -187,13 +107,7 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
     toggleSkill,
     selectAgent,
     openAgentsPage,
-    getSelectedSkills,
-    addEmptyEntry,
-    removeEntry,
     handleConfirm,
     handleCancel,
-    handleMaxIterationsInput,
-    handleSelectionsKeydown,
-    syncSelection,
   };
 }

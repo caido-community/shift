@@ -4,6 +4,7 @@ import type { FrontendSDK } from "../types";
 
 type UpstreamProvider = {
   id: string;
+  api: string;
   kind: string;
   auth: "API_KEY" | "OAUTH" | "AWS" | "NONE";
 };
@@ -15,6 +16,7 @@ type UpstreamModel = {
   support: { reasoning: "SUPPORTED" | "UNSUPPORTED" | "UNKNOWN" };
   reasoningEfforts: ModelReasoningEffort[];
   contextWindow?: number;
+  outputTokenLimit?: number;
 };
 
 type ModelRegistry = {
@@ -67,11 +69,53 @@ export function listUpstreamProviders(sdk: FrontendSDK): UpstreamProviderStatus[
   }));
 }
 
+function findUpstreamProvider(sdk: FrontendSDK, providerId: string) {
+  const providers = sdk.ai.getUpstreamProviders() as unknown as UpstreamProvider[];
+  return providers.find((candidate) => candidate.id === providerId);
+}
+
+export function getProviderKind(sdk: FrontendSDK, providerId: string): string | undefined {
+  return findUpstreamProvider(sdk, providerId)?.kind;
+}
+
+// Per OpenAI's Codex model picker; gpt-6.1-sol and gpt-6-astra are left out there.
+const DAYBREAK_MODELS = ["gpt-6-sol", "gpt-6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];
+// https://developers.openai.com/api/docs/guides/ultrafast-mode
+const ULTRAFAST_MODELS = ["gpt-6.1-sol", "gpt-6-astra"];
+
+export function isOpenAIProvider(sdk: FrontendSDK, providerId: string): boolean {
+  const kind = getProviderKind(sdk, providerId);
+  return kind === "OPENAI" || kind === "CHATGPT";
+}
+
+export function supportsDaybreak(sdk: FrontendSDK, model: Model): boolean {
+  return isOpenAIProvider(sdk, model.provider) && DAYBREAK_MODELS.includes(model.id);
+}
+
+export function isDaybreakUnsupported(sdk: FrontendSDK, model: Model): boolean {
+  return isOpenAIProvider(sdk, model.provider) && !DAYBREAK_MODELS.includes(model.id);
+}
+
+export function supportsUltrafast(sdk: FrontendSDK, model: Model): boolean {
+  return getProviderKind(sdk, model.provider) === "OPENAI" && ULTRAFAST_MODELS.includes(model.id);
+}
+
+export function supportsFastMode(sdk: FrontendSDK, providerId: string): boolean {
+  const provider = findUpstreamProvider(sdk, providerId);
+  return (
+    provider !== undefined &&
+    (provider.api === "OPENAI_COMPLETION" ||
+      provider.api === "OPENAI_RESPONSE" ||
+      provider.api === "CHATGPT_RESPONSE")
+  );
+}
+
 const toModel = (model: UpstreamModel): Model => ({
   id: model.id,
   name: model.displayName,
   provider: model.providerId,
   contextWindow: model.contextWindow,
+  outputTokenLimit: model.outputTokenLimit,
   capabilities: {
     // UNKNOWN stays permissive: Caido narrows requests server-side
     reasoning: model.support.reasoning !== "UNSUPPORTED",

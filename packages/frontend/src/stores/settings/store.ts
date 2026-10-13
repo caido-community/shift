@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { type FeatureFlagKey, isFeatureFlagEnabled } from "shared";
+import { createModelKey, type FeatureFlagKey, isFeatureFlagEnabled, type Model } from "shared";
 import { computed, readonly, ref } from "vue";
 
 import { fetchSettings } from "./store.effects";
@@ -31,6 +31,16 @@ export const useSettingsStore = defineStore("settings", () => {
     () => model.value.config?.openRouterPrioritizeFastProviders
   );
   const featureFlags = computed(() => model.value.config?.featureFlags);
+  const daybreak = computed(() => model.value.config?.daybreak ?? false);
+  const getModelPreference = (selected: Model) =>
+    model.value.config?.modelPreferences?.[createModelKey(selected.provider, selected.id)];
+  const isFastModeEnabled = (selected: Model) => getModelPreference(selected)?.fastMode ?? false;
+  const isUltrafastEnabled = (selected: Model) => getModelPreference(selected)?.ultrafast ?? false;
+  const getRequestOptions = (selected: Model) => ({
+    fastMode: isFastModeEnabled(selected),
+    ultrafast: isUltrafastEnabled(selected),
+    daybreak: daybreak.value,
+  });
   const backgroundAgentsEnabled = computed(() =>
     isFeatureFlagEnabled(model.value.config?.featureFlags, "backgroundAgents")
   );
@@ -58,6 +68,10 @@ export const useSettingsStore = defineStore("settings", () => {
     debugToolsEnabled,
     autoCreateShiftCollection,
     openRouterPrioritizeFastProviders,
+    daybreak,
+    isFastModeEnabled,
+    isUltrafastEnabled,
+    getRequestOptions,
     featureFlags,
     backgroundAgentsEnabled,
     isFeatureEnabled,

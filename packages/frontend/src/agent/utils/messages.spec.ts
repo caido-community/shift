@@ -8,6 +8,7 @@ import {
   hasDisplayableAssistantContent,
   hasToolPartsSinceIndex,
   hasToolPartsSinceLastUserMessage,
+  markUnfinishedMessagesAborted,
   replaceHistoricalToolOutputsWithBlobRefs,
   serializeToolOutput,
   stripReasoningParts,
@@ -422,6 +423,21 @@ describe("serializeToolOutput", () => {
 });
 
 describe("replaceHistoricalToolOutputsWithBlobRefs", () => {
+  it("produces identical history on repeated sends", () => {
+    const messages = [
+      createUserMessage("First"),
+      createAssistantMessageWithToolOutput("x".repeat(600)),
+      createUserMessage("Second"),
+    ];
+    const createBlob = (_content: string, toolCallId: string) => ({ blobId: `tool-${toolCallId}` });
+
+    const first = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob);
+    const second = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob);
+
+    expect(first).toEqual(second);
+    expect(JSON.stringify(first)).toContain("blob ID tool-");
+  });
+
   it("returns messages unchanged when no last user message", () => {
     const messages = [createAssistantMessage()];
     const createBlob = () => ({ blobId: "blob-1" });
@@ -550,6 +566,32 @@ describe("replaceHistoricalToolOutputsWithBlobRefs", () => {
 });
 
 describe("stripReasoningParts", () => {
+  it("keeps reasoning on messages accepted by the keep predicate", () => {
+    const sameModel = {
+      id: "a1",
+      role: "assistant",
+      metadata: { model: "openai/gpt-6-sol" },
+      parts: [{ type: "reasoning", text: "internal", state: "done" }],
+    } as ShiftMessage;
+    const otherModel = {
+      id: "a2",
+      role: "assistant",
+      metadata: { model: "anthropic/claude-opus-5-5" },
+      parts: [
+        { type: "reasoning", text: "internal", state: "done" },
+        { type: "text", text: "visible" },
+      ],
+    } as ShiftMessage;
+
+    const result = stripReasoningParts(
+      [sameModel, otherModel],
+      (message) => message.metadata?.model === "openai/gpt-6-sol"
+    );
+
+    expect(result[0]).toBe(sameModel);
+    expect(result[1]?.parts).toEqual([{ type: "text", text: "visible" }]);
+  });
+
   it("removes assistant reasoning-only messages", () => {
     const messages: ShiftMessage[] = [
       { id: "u1", role: "user", parts: [{ type: "text", text: "hello" }] } as ShiftMessage,
@@ -582,5 +624,32 @@ describe("stripReasoningParts", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]?.parts).toEqual([{ type: "text", text: "visible" }]);
+  });
+});
+
+describe("markUnfinishedMessagesAborted", () => {
+  it("marks streaming or stateless assistant messages as aborted", () => {
+    const user = createUserMessage("hi");
+    const done = {
+      id: "a1",
+      role: "assistant",
+      parts: [],
+      metadata: { state: "done" },
+    } as ShiftMessage;
+    const streaming = {
+      id: "a2",
+      role: "assistant",
+      parts: [],
+      metadata: { state: "streaming", usage: { inputTokens: 5 } },
+    } as ShiftMessage;
+    const stateless = { id: "a3", role: "assistant", parts: [] } as ShiftMessage;
+
+    const result = markUnfinishedMessagesAborted([user, done, streaming, stateless]);
+
+    expect(result[0]).toBe(user);
+    expect(result[1]).toBe(done);
+    expect(result[2]?.metadata).toEqual({ state: "aborted", usage: { inputTokens: 5 } });
+    expect(result[3]?.metadata?.state).toBe("aborted");
+    expect(markUnfinishedMessagesAborted([user, done])).toEqual([user, done]);
   });
 });

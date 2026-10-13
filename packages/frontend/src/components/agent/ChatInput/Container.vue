@@ -2,6 +2,7 @@
 import Button from "primevue/button";
 
 import { AgentSelector } from "./AgentSelector";
+import { ContextMeter } from "./ContextMeter";
 import { ModelSelector } from "./ModelSelector";
 import { ModeSelector } from "./ModeSelector";
 import { useChatInput } from "./useChatInput";
@@ -66,6 +67,7 @@ const {
         </div>
 
         <div class="shrink-0 flex items-center gap-2">
+          <ContextMeter />
           <Button
             v-if="!isGenerating"
             severity="tertiary"

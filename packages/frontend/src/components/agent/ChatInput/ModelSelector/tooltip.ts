@@ -23,6 +23,8 @@ export function hint(title: string, detail?: string) {
     value: line(title, 0) + (detail === undefined ? "" : line(detail, 400)),
     escape: false,
     pt: {
+      // Unstyled PrimeVue tooltips capture the pointer, which fires mouseleave on what's under them.
+      root: { style: { pointerEvents: "none" } },
       arrow: { style: { display: "none" } },
       text: { style: textStyle },
     },

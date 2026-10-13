@@ -1,14 +1,12 @@
+import { asSchema, type Tool } from "ai";
 import type { Model, ShiftMessage } from "shared";
+
+import { applyCompactionMarker, getCompactionThreshold } from "@/agent/compaction";
 
 const CHARS_PER_TOKEN = 4;
 const DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000;
-const CONTEXT_WINDOW_SAFETY_BUFFER_TOKENS = 20_000;
-
-function getSafeContextWindowTokens(model: Pick<Model, "contextWindow"> | undefined): number {
-  const contextWindow = model?.contextWindow ?? DEFAULT_CONTEXT_WINDOW_TOKENS;
-  const safeContextWindow = contextWindow - CONTEXT_WINDOW_SAFETY_BUFFER_TOKENS;
-  return Math.max(1, safeContextWindow);
-}
+// Models advertise up to 1M+, but quality and pricing degrade well before that (Codex caps GPT-5 at 272k)
+const RECOMMENDED_CONTEXT_WINDOW_TOKENS = 272_000;
 
 function estimateSerializableCharacters(value: unknown): number {
   if (value === undefined || value === null) {
@@ -48,28 +46,97 @@ export function estimateTokensFromCharacters(characters: number): number {
   return Math.ceil(Math.max(0, characters) / CHARS_PER_TOKEN);
 }
 
+export function estimateToolsCharacters(tools: Record<string, Tool>): number {
+  return Object.entries(tools).reduce((total, [name, tool]) => {
+    return (
+      total +
+      name.length +
+      (tool.description?.length ?? 0) +
+      estimateSerializableCharacters(asSchema(tool.inputSchema).jsonSchema)
+    );
+  }, 0);
+}
+
+export type ContextSegment = {
+  label: string;
+  tokens: number;
+  kind: "system" | "tools" | "skills" | "turn" | "latest";
+};
+
+function groupTurns(messages: ShiftMessage[]): ShiftMessage[][] {
+  const turns: ShiftMessage[][] = [];
+  for (const message of messages) {
+    const current = turns[turns.length - 1];
+    if (message.role === "user" || current === undefined) {
+      turns.push([message]);
+    } else {
+      current.push(message);
+    }
+  }
+  return turns;
+}
+
 export function getEstimatedContextUsage(args: {
   model: Model | undefined;
   systemPrompt: string;
+  skillsPrompt: string;
+  toolsCharacters: number;
   messages: ShiftMessage[];
-}): {
-  usedTokens: number;
-  availableTokens: number;
-  percentage: number;
-} {
-  const { model, systemPrompt, messages } = args;
-  const availableTokens = getSafeContextWindowTokens(model);
-  const usedTokens = estimateTokensFromCharacters(
-    systemPrompt.length + estimateMessagesCharacters(messages)
+}) {
+  const { model, systemPrompt, skillsPrompt, toolsCharacters } = args;
+  const { summary, messages } = applyCompactionMarker(args.messages);
+  const turns = groupTurns(messages);
+
+  const fixedSegments: ContextSegment[] = [
+    {
+      label: "System prompt",
+      tokens: estimateTokensFromCharacters(systemPrompt.length - skillsPrompt.length),
+      kind: "system",
+    },
+    { label: "Tools", tokens: estimateTokensFromCharacters(toolsCharacters), kind: "tools" },
+    { label: "Skills", tokens: estimateTokensFromCharacters(skillsPrompt.length), kind: "skills" },
+    { label: "Summary", tokens: estimateTokensFromCharacters(summary?.length ?? 0), kind: "turn" },
+  ];
+  const segments = [
+    ...fixedSegments,
+    ...turns.map((turn, index): ContextSegment => {
+      const isLatest = index === turns.length - 1;
+      return {
+        label: isLatest ? "Latest turn" : `Turn ${index + 1}`,
+        tokens: estimateTokensFromCharacters(estimateMessagesCharacters(turn)),
+        kind: isLatest ? "latest" : "turn",
+      };
+    }),
+  ].filter((segment) => segment.tokens > 0);
+
+  const contextWindowTokens = Math.min(
+    model?.contextWindow ?? DEFAULT_CONTEXT_WINDOW_TOKENS,
+    RECOMMENDED_CONTEXT_WINDOW_TOKENS
   );
+  const availableTokens = getCompactionThreshold(contextWindowTokens);
+  const usedTokens = segments.reduce((total, segment) => total + segment.tokens, 0);
 
   return {
+    segments,
     usedTokens,
     availableTokens,
+    contextWindowTokens,
     percentage: (usedTokens / availableTokens) * 100,
   };
 }
 
-export function formatContextUsageLabel(percentage: number): string {
-  return `${Math.max(0, Math.round(percentage))}% context used`;
+export function getCacheHitRate(messages: ShiftMessage[]): number | undefined {
+  let inputTokens = 0;
+  let cacheReadTokens = 0;
+  for (const { metadata } of messages) {
+    const usage = metadata?.usage;
+    if (usage?.inputTokens === undefined || usage.cacheReadTokens === undefined) continue;
+    inputTokens += usage.inputTokens;
+    cacheReadTokens += usage.cacheReadTokens;
+  }
+  return inputTokens === 0 ? undefined : (cacheReadTokens / inputTokens) * 100;
+}
+
+export function formatTokens(tokens: number): string {
+  return tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : String(tokens);
 }

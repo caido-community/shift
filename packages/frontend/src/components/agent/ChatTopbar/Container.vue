@@ -3,8 +3,6 @@ import { useTopbar } from "./useTopbar";
 
 const {
   clearConversation,
-  contextUsageClass,
-  contextUsageLabel,
   debugMode,
   debugToolsEnabled,
   toggleDebugMode,
@@ -14,13 +12,7 @@ const {
 </script>
 
 <template>
-  <div class="flex items-center justify-between gap-2 h-8">
-    <span
-      class="text-xs select-none transition-colors"
-      :class="contextUsageClass">
-      {{ contextUsageLabel }}
-    </span>
-
+  <div class="flex items-center justify-end gap-2 h-8">
     <div class="flex items-center gap-2">
       <i
         v-if="debugToolsEnabled"

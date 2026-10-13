@@ -5,12 +5,20 @@ import {
   createUIMessageStream,
   type UIMessageChunk,
 } from "ai";
-import { DEFAULT_MAX_ITERATIONS, type ReasoningTime, type ShiftMessage } from "shared";
+import {
+  createModelKey,
+  DEFAULT_MAX_ITERATIONS,
+  type MessageMetadata,
+  type ReasoningTime,
+  type ShiftMessage,
+} from "shared";
 
 import type { FrontendSDK } from "../types";
 
 import { createShiftAgent } from "@/agent/agent";
+import { applyCompactionMarker, buildSummaryMessage } from "@/agent/compaction";
 import type { AgentContext } from "@/agent/context";
+import { isAITraceEnabled, writeAITrace } from "@/agent/trace";
 import { formatAgentError } from "@/agent/utils/errors";
 import {
   findLastUserMessageId,
@@ -20,7 +28,11 @@ import {
 } from "@/agent/utils/messages";
 import { type SessionStore } from "@/stores/agent/session";
 import { useSettingsStore } from "@/stores/settings/store";
-import { isProviderConfigured, ProviderNotConfiguredError } from "@/utils/ai";
+import {
+  assertDaybreakSupported,
+  isProviderConfigured,
+  ProviderNotConfiguredError,
+} from "@/utils/ai";
 import { getSessionContent } from "@/utils/caido";
 
 export class LocalChatTransport implements ChatTransport<ShiftMessage> {
@@ -52,6 +64,20 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
     if (!isProviderConfigured(this.sdk, model.provider)) {
       throw new ProviderNotConfiguredError(model.provider);
     }
+    assertDaybreakSupported(this.sdk, model, useSettingsStore().daybreak);
+
+    const traceEnabled = isAITraceEnabled();
+    const traceRunId = crypto.randomUUID();
+    writeAITrace(traceEnabled, traceRunId, "transport", {
+      chatId: options.chatId,
+      messageId: options.messageId,
+      trigger: options.trigger,
+      model: {
+        provider: model.provider,
+        id: model.id,
+      },
+    });
+    writeAITrace(traceEnabled, traceRunId, "transport.input", options.messages);
 
     const context = this.context;
 
@@ -87,25 +113,34 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
           maxIterations,
           reasoningEffort: this.store.reasoningEffort,
           openRouterPrioritizeFastProviders,
+          legacyTodos: settingsStore.isFeatureEnabled("legacyTodos"),
+          ...settingsStore.getRequestOptions(model),
+          ...(traceEnabled ? { traceRunId } : {}),
+          abortSignal: options.abortSignal,
         });
 
-        const stripped = stripReasoningParts(stripUnfinishedToolCalls(options.messages));
-        const createBlobForHistory = (content: string, reason: string) => {
-          const meta = context.createPayloadBlob(content, reason);
-          return { blobId: meta.blobId };
-        };
+        const modelKey = createModelKey(model.provider, model.id);
+        const compacted = applyCompactionMarker(options.messages);
+        const stripped = stripReasoningParts(
+          stripUnfinishedToolCalls(compacted.messages),
+          (message) => message.metadata?.model === modelKey
+        );
         let messagesForModel = stripped;
         try {
-          messagesForModel = replaceHistoricalToolOutputsWithBlobRefs(
-            stripped,
-            createBlobForHistory
+          messagesForModel = replaceHistoricalToolOutputsWithBlobRefs(stripped, (content, id) =>
+            context.registerHistoricalToolOutput(id, content)
           );
         } catch (err) {
           console.warn("Historical tool output blob replacement failed, using full messages:", err);
         }
+        writeAITrace(traceEnabled, traceRunId, "convertToModelMessages.input", messagesForModel);
         const modelMessages = await convertToModelMessages(messagesForModel, {
           ignoreIncompleteToolCalls: true,
         });
+        if (compacted.summary !== undefined) {
+          modelMessages.unshift(buildSummaryMessage(compacted.summary));
+        }
+        writeAITrace(traceEnabled, traceRunId, "convertToModelMessages.output", modelMessages);
 
         const result = await agent.stream({
           messages: modelMessages,
@@ -114,6 +149,8 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
 
         const reasoningTimes: ReasoningTime[] = [];
         let isTerminalState = false;
+        // Summed over the run: a single step's cache rate swings with the size of its tool result.
+        const usage: NonNullable<MessageMetadata["usage"]> = {};
 
         writer.merge(
           result.toUIMessageStream<ShiftMessage>({
@@ -139,7 +176,20 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
                 return {
                   state: "streaming",
                   reasoning_times: [...reasoningTimes],
+                  model: modelKey,
                 };
+              }
+
+              if (part.type === "finish-step") {
+                const { inputTokens, inputTokenDetails } = part.usage;
+                if (inputTokens !== undefined) {
+                  usage.inputTokens = (usage.inputTokens ?? 0) + inputTokens;
+                }
+                if (inputTokenDetails.cacheReadTokens !== undefined) {
+                  usage.cacheReadTokens =
+                    (usage.cacheReadTokens ?? 0) + inputTokenDetails.cacheReadTokens;
+                }
+                return { usage: { ...usage } };
               }
 
               if (part.type === "finish") {
@@ -201,9 +251,17 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
       },
     });
 
-    const loggingTransform = new TransformStream({
+    let chunkSequence = 0;
+    const loggingTransform = new TransformStream<UIMessageChunk, UIMessageChunk>({
       transform(chunk, controller) {
+        writeAITrace(traceEnabled, traceRunId, `uiMessageChunk.${chunkSequence}`, chunk);
+        chunkSequence += 1;
         controller.enqueue(chunk);
+      },
+      flush() {
+        writeAITrace(traceEnabled, traceRunId, "uiMessageChunk.end", {
+          count: chunkSequence,
+        });
       },
     });
 

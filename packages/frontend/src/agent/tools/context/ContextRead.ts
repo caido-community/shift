@@ -62,7 +62,7 @@ const binarySchema = z.object({
 });
 
 const valueSchema = z.object({
-  todos: z.array(todoSchema),
+  todos: z.array(todoSchema).optional(),
   request: requestSchema,
   replayEntries: z.object({
     activeEntryId: z.string().optional(),
@@ -261,7 +261,7 @@ export function buildContextReadValue(
   const environments = buildEnvironmentDigest(snapshot);
 
   return {
-    todos: snapshot.todos ?? [],
+    todos: snapshot.todos,
     request,
     replayEntries: {
       activeEntryId: snapshot.entriesContext?.activeEntryId,
@@ -299,7 +299,7 @@ function getAllowedConvertWorkflows(context: AgentContext): ConvertWorkflowSnaps
 
 export const ContextRead = tool({
   description:
-    "Read a compact, live snapshot of the current Shift/Caido agent runtime state. Use this to discover current todos, request metadata, replay entries, selected environment metadata, learning previews, allowed convert workflows, and allowed binaries. This tool intentionally does not return the full raw HTTP request or secret environment values; use the narrower read tools named in the result when exact data is needed.",
+    "Read a compact, live snapshot of the current Shift/Caido agent runtime state. Use this to discover current request metadata, replay entries, selected environment metadata, learning previews, allowed convert workflows, and allowed binaries. This tool intentionally does not return the full raw HTTP request or secret environment values; use the narrower read tools named in the result when exact data is needed.",
   inputSchema,
   outputSchema: ToolResult.schema(valueSchema),
   execute: async (_input, { experimental_context }): Promise<ContextReadOutput> => {

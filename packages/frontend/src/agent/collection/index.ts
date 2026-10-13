@@ -63,6 +63,7 @@ function showLaunchDialog(sdk: FrontendSDK, sessionId: string, preSelectedSkillI
     {
       component: LaunchDialog as never,
       props: {
+        sessionId,
         onConfirm: () => handleConfirm,
         onCancel: () => handleCancel,
         initialSkillIds: preSelectedSkillIds,
@@ -143,6 +144,8 @@ function launchAgent(sdk: FrontendSDK, sessionId: string, config: LaunchDialogRe
     session.model = config.model;
   }
 
+  session.store.setMode(config.mode);
+
   if (isPresent(config.customAgentId)) {
     const resolved = customAgentsStore.getAgentById(config.customAgentId);
     if (resolved !== undefined) {
@@ -156,22 +159,7 @@ function launchAgent(sdk: FrontendSDK, sessionId: string, config: LaunchDialogRe
   sdk.replay.openTab(sessionId);
   uiStore.setDrawerVisible(true);
 
-  let message = config.instructions.trim();
-  if (message === "") {
-    message = "Proceed with testing.";
-  }
-
-  if (config.selections.length > 0) {
-    const selectionsText = config.selections
-      .map((s) => {
-        if (s.comment !== "") {
-          return `- Selection: "${s.selection}"\n  Comment: ${s.comment}`;
-        }
-        return `- Selection: "${s.selection}"`;
-      })
-      .join("\n");
-    message = `${message}\n\nHighlighted selections:\n${selectionsText}`;
-  }
+  const message = config.instructions === "" ? "Proceed with testing." : config.instructions;
 
   session.chat.sendMessage({ text: message });
 }

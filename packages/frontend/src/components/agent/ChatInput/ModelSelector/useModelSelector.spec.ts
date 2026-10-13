@@ -1,6 +1,6 @@
-import { type Model } from "shared";
-import { describe, expect, it, vi } from "vitest";
-import { effectScope, nextTick, ref } from "vue";
+import { createModelKey, type Model, type UpdateSettingsInput } from "shared";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { effectScope, nextTick, reactive, ref } from "vue";
 
 import { useModelSelector } from "./useModelSelector";
 
@@ -13,10 +13,29 @@ const mocks = vi.hoisted(() => ({
     { id: "gemini", kind: "GEMINI", api: "GEMINI" },
     { id: "work-openai", kind: "OPENAI", api: "OPENAI_RESPONSE" },
   ],
+  updateSettings: vi.fn(),
 }));
+const preferences = reactive<Record<string, { fastMode: boolean; ultrafast?: boolean }>>({});
+const settings = reactive({ daybreak: false });
+
 vi.mock("@/plugins/sdk", () => ({
   useSDK: () => ({ ai: { getUpstreamProviders: () => mocks.providers } }),
 }));
+vi.mock("@/stores/settings", () => ({
+  useSettingsStore: () => ({
+    sdk: {},
+    dispatch: vi.fn(),
+    isFastModeEnabled: (model: Model) =>
+      preferences[createModelKey(model.provider, model.id)]?.fastMode ?? false,
+    isUltrafastEnabled: (model: Model) =>
+      preferences[createModelKey(model.provider, model.id)]?.ultrafast ?? false,
+    get daybreak() {
+      return settings.daybreak;
+    },
+  }),
+}));
+vi.mock("@/stores/settings/store.effects", () => ({ updateSettings: mocks.updateSettings }));
+
 const createModel = (provider: string, reasoning = true, id = "model", name = "Model"): Model => ({
   id,
   name,
@@ -48,6 +67,16 @@ function setup(reasoningMode: "standard" | "variant" = "variant") {
     selector.handleProviderClick(selector.providers.value.find((p) => p.id === id)!);
   return { scope, models, selectedModel, selectedReasoningEffort, selector, pickProvider };
 }
+
+beforeEach(() => {
+  for (const key of Object.keys(preferences)) delete preferences[key];
+  mocks.updateSettings.mockReset();
+  mocks.updateSettings.mockImplementation((_sdk, _dispatch, input: UpdateSettingsInput) => {
+    Object.assign(preferences, input.modelPreferences);
+    if (input.daybreak !== undefined) settings.daybreak = input.daybreak;
+  });
+  settings.daybreak = false;
+});
 
 describe("model selector", () => {
   it("selects a model and closes the menu", () => {
@@ -126,24 +155,61 @@ describe("model selector", () => {
     }
   });
 
-  it("names the provider only for models whose names collide in the list", () => {
-    const { scope, models, selector } = setup("standard");
+  it("keeps Fast mode scoped to the selected model while browsing providers and switching models", async () => {
+    const { scope, selectedModel, selector, pickProvider } = setup("standard");
     try {
-      models.value = [
-        createModel("work-codex", true, "luna", "GPT 6 Luna"),
-        createModel("work-openai", true, "luna", "GPT 6 Luna"),
-        createModel("gemini", true, "flash", "Gemini Flash"),
-      ];
+      expect(selector.canUseFastMode.value).toBe(true);
+      selector.cycleSpeed();
+      expect(mocks.updateSettings.mock.lastCall?.[2]).toEqual({
+        modelPreferences: { "work-codex/model": { fastMode: true, ultrafast: false } },
+      });
       selector.toggle();
-      selector.query.value = "a";
-      expect(selector.listedModels.value.map(selector.providerSuffix)).toEqual([
-        "via ChatGPT",
-        "via OpenAI",
-        undefined,
-      ]);
+      pickProvider("aws-team");
+      expect(selectedModel.value?.provider).toBe("work-codex");
+      expect(selector.fastMode.value).toBe(true);
+      selector.handleSelect(selector.listedModels.value[0]!);
+      await nextTick();
+      expect(selectedModel.value?.provider).toBe("aws-team");
+      expect(selector.canUseFastMode.value).toBe(false);
+      expect(selector.fastMode.value).toBe(false);
+      selector.cycleSpeed();
+      expect(mocks.updateSettings).toHaveBeenCalledOnce();
+      selector.toggle();
+      pickProvider("work-codex");
+      selector.handleSelect(selector.listedModels.value[0]!);
+      await nextTick();
+      expect(selector.fastMode.value).toBe(true);
+    } finally {
+      scope.stop();
+    }
+  });
 
+  it("shows the Fast toggle only where it applies to the selected model", async () => {
+    const { scope, selectedModel, selector, pickProvider } = setup("standard");
+    try {
+      selector.toggle();
+      expect(selector.showFastToggle.value).toBe(true);
+      pickProvider("gemini");
+      expect(selector.showFastToggle.value).toBe(false);
+      selector.showRecentModels();
+      expect(selector.showFastToggle.value).toBe(true);
+      pickProvider("gemini");
+      selector.query.value = "model";
+      expect(selector.showFastToggle.value).toBe(true);
       selector.query.value = "";
-      expect(selector.listedModels.value.map(selector.providerSuffix)).toEqual([undefined]);
+      pickProvider("work-codex");
+      expect(selector.showFastToggle.value).toBe(true);
+
+      pickProvider("aws-team");
+      selector.handleSelect(selector.listedModels.value[0]!);
+      await nextTick();
+      expect(selectedModel.value?.provider).toBe("aws-team");
+      selector.toggle();
+      expect(selector.showFastToggle.value).toBe(false);
+      selector.showRecentModels();
+      expect(selector.showFastToggle.value).toBe(false);
+      pickProvider("work-codex");
+      expect(selector.showFastToggle.value).toBe(false);
     } finally {
       scope.stop();
     }
@@ -160,6 +226,43 @@ describe("model selector", () => {
       selector.toggle();
       selector.query.value = "claude";
       expect(selector.listedModels.value).toHaveLength(1);
+    } finally {
+      scope.stop();
+    }
+  });
+
+  it("cycles Standard, Fast and Ultrafast and greys out non-Daybreak models", async () => {
+    const { scope, models, selectedModel, selector } = setup("standard");
+    try {
+      models.value = [
+        createModel("work-openai", false, "gpt-6.1-sol"),
+        createModel("work-openai", false, "gpt-6-sol"),
+      ];
+      selectedModel.value = models.value[0];
+      await nextTick();
+      expect(selector.speedLevel.value).toBe(0);
+      selector.cycleSpeed();
+      expect(selector.speedLevel.value).toBe(1);
+      selector.cycleSpeed();
+      expect(selector.fastMode.value).toBe(false);
+      expect(selector.speedLevel.value).toBe(2);
+      selector.cycleSpeed();
+      expect(selector.speedLevel.value).toBe(0);
+
+      selector.toggle();
+      expect(selector.showDaybreak.value).toBe(true);
+      selector.daybreak.value = true;
+      const [unsupported, supported] = selector.listedModels.value;
+      expect(selector.isDaybreakUnsupported(unsupported!)).toBe(true);
+      expect(selector.isDaybreakUnsupported(supported!)).toBe(false);
+      expect(selector.isSelectedDaybreakUnsupported.value).toBe(true);
+      expect(selector.isDaybreakActive.value).toBe(false);
+      selector.handleSelect(supported!);
+      expect(selectedModel.value?.id).toBe("gpt-6-sol");
+      expect(selector.isSelectedDaybreakUnsupported.value).toBe(false);
+      expect(selector.isDaybreakActive.value).toBe(true);
+      selector.handleSelect(unsupported!);
+      expect(selectedModel.value?.id).toBe("gpt-6-sol");
     } finally {
       scope.stop();
     }

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { onClickOutside } from "@vueuse/core";
+import ToggleSwitch from "primevue/toggleswitch";
 import { type Model } from "shared";
 import { computed, ref } from "vue";
 
+import FastIcon from "./FastIcon.vue";
 import ProviderLogo from "./ProviderLogo.vue";
 import { hint } from "./tooltip";
 import { useModelSelector } from "./useModelSelector";
@@ -37,7 +39,6 @@ const {
   listedModels,
   recentModels,
   showProviderLogos,
-  providerSuffix,
   isRecentActive,
   isProviderActive,
   reasoningEfforts,
@@ -46,6 +47,15 @@ const {
   showEffortPicker,
   selectedModelLabel,
   displayName,
+  showFastToggle,
+  canUseUltrafast,
+  speedLevel,
+  cycleSpeed,
+  showDaybreak,
+  daybreak,
+  isDaybreakUnsupported,
+  isSelectedDaybreakUnsupported,
+  isDaybreakActive,
   isSelected,
   isSelectedEffort,
   close,
@@ -66,6 +76,26 @@ const {
 });
 
 onClickOutside(containerRef, close);
+
+const speedHint = computed(() =>
+  speedLevel.value === 2
+    ? hint("Ultrafast on", "Fastest processing, most usage")
+    : hint("Fast mode on", "Priority processing, more usage")
+);
+const speedToggleHint = computed(() => {
+  if (speedLevel.value === 2) return hint("Ultrafast on", "Click to turn off");
+  if (speedLevel.value === 1) {
+    return hint(
+      "Fast mode on",
+      canUseUltrafast.value ? "Click for Ultrafast" : "Click to turn off"
+    );
+  }
+  return hint("Fast mode", "Priority processing, more usage");
+});
+const daybreakHint = hint(
+  "Daybreak",
+  "Fewer refusals for approved security work (OpenAI Trusted Access for Cyber)"
+);
 
 const triggerClass = computed(() => [
   "flex items-center rounded px-1 py-1 text-surface-200 transition-colors",
@@ -100,10 +130,45 @@ const railButtonClass = (active: boolean, enabled = true) => [
       :aria-expanded="isOpen"
       :class="triggerClass"
       @click="toggle">
+      <i
+        v-if="isSelectedDaybreakUnsupported"
+        v-tooltip.top="hint('Daybreak isn’t supported', 'Switch model or turn Daybreak off')"
+        class="fas fa-exclamation-triangle text-amber-400"
+        role="img"
+        aria-label="Daybreak not supported by this model" />
       <ProviderLogo
         v-if="selectedProvider !== undefined"
         :icon="selectedProvider.icon" />
       <span class="min-w-0 max-w-[190px] flex-1 truncate text-left">{{ selectedModelLabel }}</span>
+      <span
+        v-if="speedLevel > 0"
+        v-tooltip.top="speedHint"
+        class="flex text-amber-400"
+        role="img"
+        :aria-label="speedLevel === 2 ? 'Ultrafast on' : 'Fast mode on'">
+        <FastIcon :level="speedLevel" />
+      </span>
+      <svg
+        v-if="isDaybreakActive"
+        v-tooltip.top="hint('Daybreak on')"
+        viewBox="0 0 24 24"
+        class="h-3.5 w-3.5 shrink-0"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        role="img"
+        aria-label="Daybreak on">
+        <path d="M12 2v8" />
+        <path d="m4.93 10.93 1.41 1.41" />
+        <path d="M2 18h2" />
+        <path d="M20 18h2" />
+        <path d="m19.07 10.93-1.41 1.41" />
+        <path d="M22 22H2" />
+        <path d="m8 6 4-4 4 4" />
+        <path d="M16 18a4 4 0 0 0-8 0" />
+      </svg>
       <i
         :class="[
           'fas fa-chevron-down transition-transform text-surface-600',
@@ -122,7 +187,7 @@ const railButtonClass = (active: boolean, enabled = true) => [
       leave-to-class="opacity-0 scale-95">
       <div
         v-if="isOpen"
-        :class="[popoverClass, 'flex h-80 w-[22rem] flex-row']"
+        :class="[popoverClass, 'flex h-80 w-64 flex-row']"
         @mousedown.stop>
         <div
           class="scrollbar-hide flex w-12 shrink-0 flex-col items-center gap-0.5 overflow-y-auto border-r border-surface-700 bg-surface-800/40 py-1.5">
@@ -178,17 +243,47 @@ const railButtonClass = (active: boolean, enabled = true) => [
               autocomplete="off"
               class="min-w-0 flex-1 border-0 bg-transparent py-1 text-sm text-surface-200 outline-none placeholder:text-surface-500"
               @keydown.enter.prevent="selectFirstMatch" />
+            <button
+              v-if="showFastToggle"
+              v-tooltip.top="speedToggleHint"
+              type="button"
+              :aria-pressed="speedLevel > 0"
+              aria-label="Fast mode"
+              :class="[
+                'flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md border px-1 transition-colors',
+                speedLevel > 0
+                  ? 'border-amber-400/30 bg-amber-400/15 text-amber-400 hover:bg-amber-400/25'
+                  : 'border-surface-700 bg-surface-800 text-surface-300 hover:border-surface-600 hover:bg-surface-700 hover:text-surface-100',
+              ]"
+              @click="cycleSpeed">
+              <FastIcon
+                :level="speedLevel"
+                :size="14" />
+            </button>
           </div>
+          <label
+            v-if="showDaybreak"
+            v-tooltip.right="daybreakHint"
+            class="flex cursor-pointer items-center justify-between gap-2 border-b border-surface-700 px-3 py-1.5 text-sm text-surface-300">
+            <span>Daybreak</span>
+            <ToggleSwitch
+              v-model="daybreak"
+              :disabled="disabled"
+              class="scale-75" />
+          </label>
           <div class="flex flex-1 flex-col overflow-y-auto">
             <button
               v-for="model in listedModels"
               :key="`${model.provider}/${model.id}`"
+              v-tooltip.left="
+                isDaybreakUnsupported(model) ? hint('Not available with Daybreak') : undefined
+              "
               type="button"
-              :disabled="!model.isConfigured"
+              :disabled="!model.isConfigured || isDaybreakUnsupported(model)"
               :data-selected-model="isSelected(model) ? 'true' : undefined"
               :class="[
                 'flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors',
-                !model.isConfigured
+                !model.isConfigured || isDaybreakUnsupported(model)
                   ? 'cursor-not-allowed text-surface-600'
                   : isSelected(model)
                     ? 'text-surface-0'
@@ -198,14 +293,7 @@ const railButtonClass = (active: boolean, enabled = true) => [
               <ProviderLogo
                 v-if="showProviderLogos"
                 :icon="providers.find((provider) => provider.id === model.provider)?.icon ?? ''" />
-              <span class="min-w-0 flex-1 truncate">
-                {{ displayName(model) }}
-                <span
-                  v-if="providerSuffix(model) !== undefined"
-                  class="text-surface-500">
-                  {{ providerSuffix(model) }}
-                </span>
-              </span>
+              <span class="min-w-0 flex-1 truncate">{{ displayName(model) }}</span>
               <i
                 v-if="!model.isConfigured"
                 class="fas fa-exclamation-circle text-[10px] text-surface-500"
@@ -256,7 +344,7 @@ const railButtonClass = (active: boolean, enabled = true) => [
           leave-to-class="opacity-0 scale-95">
           <div
             v-if="isEffortOpen"
-            :class="[popoverClass, 'w-44 p-1']"
+            :class="[popoverClass, 'w-32 p-1']"
             @mousedown.stop>
             <div class="px-2 pb-1 pt-1.5 text-xs text-surface-500">Reasoning</div>
             <button

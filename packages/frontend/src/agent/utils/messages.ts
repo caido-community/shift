@@ -16,12 +16,29 @@ export function hasDisplayableAssistantContent(message: ShiftMessage): boolean {
   );
 }
 
-export function stripReasoningParts(messages: ShiftMessage[]): ShiftMessage[] {
+export function markUnfinishedMessagesAborted(messages: ShiftMessage[]): ShiftMessage[] {
+  let didChange = false;
+  const result = messages.map((message) => {
+    const state = message.metadata?.state;
+    if (message.role !== "assistant" || (state !== undefined && state !== "streaming")) {
+      return message;
+    }
+    didChange = true;
+    return { ...message, metadata: { ...message.metadata, state: "aborted" as const } };
+  });
+  return didChange ? result : messages;
+}
+
+// Reasoning only replays to the model that produced it; other providers reject it.
+export function stripReasoningParts(
+  messages: ShiftMessage[],
+  keep: (message: ShiftMessage) => boolean = () => false
+): ShiftMessage[] {
   let didChange = false;
   const updated: ShiftMessage[] = [];
 
   for (const message of messages) {
-    if (message.role !== "assistant") {
+    if (message.role !== "assistant" || keep(message)) {
       updated.push(message);
       continue;
     }
@@ -197,7 +214,8 @@ export function serializeToolOutput(output: unknown): string {
   return "";
 }
 
-type CreateBlobForHistory = (content: string, reason: string) => { blobId: string };
+// Blob IDs must be stable per tool call or the rewritten history breaks the prompt cache.
+type CreateBlobForHistory = (content: string, toolCallId: string) => { blobId: string };
 
 const DEFAULT_MIN_OUTPUT_LENGTH_TO_REPLACE = 500;
 
@@ -231,7 +249,7 @@ export function replaceHistoricalToolOutputsWithBlobRefs(
       if (!isToolUIPart(part)) {
         return part;
       }
-      const toolPart = part as ToolUIState;
+      const toolPart = part as ToolUIState & { toolCallId: string };
       if (!isFinishedToolState(toolPart.state) || toolPart.output === undefined) {
         return part;
       }
@@ -243,11 +261,8 @@ export function replaceHistoricalToolOutputsWithBlobRefs(
 
       didChange = true;
       didMessageChange = true;
-      const { blobId } = createBlob(
-        serialized,
-        `Historical tool output (${serialized.length} chars)`
-      );
-      const placeholder = `Read output from blob ID ${blobId} with PayloadBlobRangeRead.`;
+      const { blobId } = createBlob(serialized, toolPart.toolCallId);
+      const placeholder = `Read output from blob ID ${blobId} with PayloadBlobRangeRead (${serialized.length} chars).`;
       return {
         ...part,
         output: placeholder,

@@ -1,4 +1,4 @@
-import { DEFAULT_MAX_ITERATIONS, defaultFeatureFlags } from "shared";
+import { DEFAULT_MAX_ITERATIONS, defaultFeatureFlags, UpdateSettingsSchema } from "shared";
 import { describe, expect, it } from "vitest";
 
 import { createInitialModel, type SettingsModel } from "./model";
@@ -17,11 +17,33 @@ const createTestModel = (): SettingsModel => ({
   debugToolsEnabled: false,
   autoCreateShiftCollection: true,
   openRouterPrioritizeFastProviders: false,
+  daybreak: false,
+  modelPreferences: {},
   featureFlags: defaultFeatureFlags,
 });
 
 describe("settings update", () => {
   describe("UPDATE_SETTINGS", () => {
+    it("merges per-model preferences without resetting other models", () => {
+      const initial = createTestModel();
+      initial.modelPreferences = { "work/model": { fastMode: true } };
+      const added = update(initial, {
+        type: "UPDATE_SETTINGS",
+        input: UpdateSettingsSchema.parse({
+          modelPreferences: { "personal/model": { fastMode: true } },
+        }),
+      });
+      const disabled = update(added, {
+        type: "UPDATE_SETTINGS",
+        input: { modelPreferences: { "work/model": { fastMode: false } } },
+      });
+      expect(disabled.modelPreferences).toEqual({
+        "work/model": { fastMode: false },
+        "personal/model": { fastMode: true },
+      });
+      expect(initial.modelPreferences).toEqual({ "work/model": { fastMode: true } });
+    });
+
     it("updates agentsModel", () => {
       const model = createTestModel();
 
@@ -76,6 +98,15 @@ describe("settings update", () => {
       });
 
       expect(result.openRouterPrioritizeFastProviders).toBe(true);
+    });
+
+    it("updates daybreak", () => {
+      const result = update(createTestModel(), {
+        type: "UPDATE_SETTINGS",
+        input: { daybreak: true },
+      });
+
+      expect(result.daybreak).toBe(true);
     });
 
     it("updates feature flags partially", () => {

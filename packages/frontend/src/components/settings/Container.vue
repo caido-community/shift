@@ -49,10 +49,6 @@ const openRouterPrioritizeFastProviders = computed({
   },
 });
 
-const experimentalFeatureFlags = featureFlagEntries.filter(
-  (flag) => flag.category === "experimental"
-);
-
 const getFeatureFlagValue = (flag: FeatureFlagKey): boolean => {
   return settingsStore.featureFlags?.[flag] ?? defaultFeatureFlags[flag];
 };
@@ -140,7 +136,7 @@ const updateFeatureFlag = (flag: FeatureFlagKey, value: boolean) => {
             </div>
 
             <div
-              v-for="flag in experimentalFeatureFlags"
+              v-for="flag in featureFlagEntries"
               :key="flag.key"
               class="flex items-start gap-3 rounded-lg border border-surface-700/60 p-3">
               <Checkbox

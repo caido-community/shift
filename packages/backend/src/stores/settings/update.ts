@@ -30,6 +30,12 @@ function handleUpdateSettings(
     if (input.openRouterPrioritizeFastProviders !== undefined) {
       draft.openRouterPrioritizeFastProviders = input.openRouterPrioritizeFastProviders;
     }
+    if (input.daybreak !== undefined) {
+      draft.daybreak = input.daybreak;
+    }
+    if (input.modelPreferences !== undefined) {
+      draft.modelPreferences = { ...draft.modelPreferences, ...input.modelPreferences };
+    }
     if (input.featureFlags !== undefined) {
       draft.featureFlags = { ...draft.featureFlags, ...input.featureFlags };
     }

@@ -3,7 +3,7 @@ import { z } from "zod";
 type FeatureFlagDefinition = {
   label: string;
   description: string;
-  category: "experimental";
+  category: "experimental" | "legacy";
   defaultValue: boolean;
 };
 
@@ -38,6 +38,13 @@ const registry = defineFeatureFlags({
     description:
       "Allow Shift Float to delegate long-running tasks to background agents and show the background agent panel.",
     category: "experimental",
+    defaultValue: false,
+  },
+  legacyTodos: {
+    label: "(Legacy) Agent Todos",
+    description:
+      "Give the agent todo tools and instructions to plan multi-step testing. Potentially useful for older models.",
+    category: "legacy",
     defaultValue: false,
   },
 });

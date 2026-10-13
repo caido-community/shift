@@ -58,4 +58,16 @@ describe("buildAgentInstructions", () => {
     expect(result).toContain("Call ContextRead once at the beginning");
     expect(result).toContain("Refresh it from time to time after more intense actions");
   });
+
+  it("includes todo instructions only with legacy todos enabled", () => {
+    const build = (legacyTodos: boolean) =>
+      buildAgentInstructions({
+        context: createContext() as never,
+        model: { id: "gpt-5.4" } as never,
+        legacyTodos,
+      });
+
+    expect(build(false)).not.toMatch(/todo/i);
+    expect(build(true)).toContain("<todos>");
+  });
 });

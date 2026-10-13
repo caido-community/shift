@@ -1,24 +1,15 @@
-import type { Model } from "shared";
-
-export type SelectionEntry = {
-  id: number;
-  selection: string;
-  comment: string;
-};
+import type { AgentMode, Model } from "shared";
 
 export type LaunchDialogResult = {
   customAgentId: string | undefined;
   model: Model | undefined;
+  mode: AgentMode;
   selectedSkillIds: string[];
-  maxIterations: number;
   instructions: string;
-  selections: Array<{
-    selection: string;
-    comment: string;
-  }>;
 };
 
 export type LaunchDialogProps = {
+  sessionId: string;
   onConfirm: (result: LaunchDialogResult) => void;
   onCancel: () => void;
   initialSkillIds?: string[];

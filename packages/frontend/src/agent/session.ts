@@ -4,16 +4,20 @@ import { nextTick, ref, watch } from "vue";
 
 import { AgentContext } from "@/agent/context";
 import { buildAgentInstructions } from "@/agent/instructions";
+import { shiftAgentTools } from "@/agent/tools";
 import { LocalChatTransport } from "@/agent/transport";
-import { getEstimatedContextUsage } from "@/agent/utils/contextUsage";
+import { estimateToolsCharacters, getEstimatedContextUsage } from "@/agent/utils/contextUsage";
 import {
   extractLastUserMessageText,
   hasDisplayableAssistantContent,
   hasToolPartsSinceLastUserMessage,
+  markUnfinishedMessagesAborted,
 } from "@/agent/utils/messages";
 import { useAgentStore } from "@/stores/agent";
 import { type SessionStore, useSessionStore } from "@/stores/agent/session";
 import { type FrontendSDK } from "@/types";
+
+let toolsCharacters: number | undefined;
 
 export class AgentSession {
   readonly id: string;
@@ -36,6 +40,11 @@ export class AgentSession {
     this.chat = new Chat<ShiftMessage>({
       id: replaySessionId,
       transport: new LocalChatTransport(sdk, this.store, context),
+      onFinish: ({ isAbort }) => {
+        if (isAbort) {
+          this.chat.messages = markUnfinishedMessagesAborted(this.chat.messages);
+        }
+      },
     });
 
     watch(
@@ -90,7 +99,7 @@ export class AgentSession {
 
     const result = await this.sdk.backend.getAgent(this.id);
     if (result.kind === "Ok" && result.value !== undefined) {
-      this.chat.messages = result.value.messages;
+      this.chat.messages = markUnfinishedMessagesAborted(result.value.messages);
       if (result.value.sessionState?.mode !== undefined) {
         this.store.setMode(result.value.sessionState.mode);
       }
@@ -169,6 +178,8 @@ export class AgentSession {
     return getEstimatedContextUsage({
       model,
       systemPrompt,
+      skillsPrompt: this.context.toSkillsPrompt(),
+      toolsCharacters: (toolsCharacters ??= estimateToolsCharacters(shiftAgentTools)),
       messages,
     });
   }

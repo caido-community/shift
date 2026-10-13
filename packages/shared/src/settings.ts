@@ -9,6 +9,11 @@ const RenamingConfigSchema = z.object({
 });
 export type RenamingConfig = z.infer<typeof RenamingConfigSchema>;
 
+const ModelPreferenceSchema = z.object({
+  fastMode: z.boolean(),
+  ultrafast: z.boolean().optional(),
+});
+
 const SettingsConfigSchema = z.object({
   agentsModel: z.string(),
   floatModel: z.string(),
@@ -18,6 +23,8 @@ const SettingsConfigSchema = z.object({
   debugToolsEnabled: z.boolean(),
   autoCreateShiftCollection: z.boolean(),
   openRouterPrioritizeFastProviders: z.boolean(),
+  daybreak: z.boolean(),
+  modelPreferences: z.record(z.string(), ModelPreferenceSchema),
   featureFlags: FeatureFlagsConfigSchema,
 });
 export type SettingsConfig = z.infer<typeof SettingsConfigSchema>;
@@ -40,6 +47,8 @@ export const defaultSettingsConfig: SettingsConfig = {
   debugToolsEnabled: false,
   autoCreateShiftCollection: true,
   openRouterPrioritizeFastProviders: false,
+  daybreak: false,
+  modelPreferences: {},
   featureFlags: defaultFeatureFlags,
 };
 
@@ -52,6 +61,8 @@ export const UpdateSettingsSchema = z.object({
   debugToolsEnabled: z.boolean().optional(),
   autoCreateShiftCollection: z.boolean().optional(),
   openRouterPrioritizeFastProviders: z.boolean().optional(),
+  daybreak: z.boolean().optional(),
+  modelPreferences: z.record(z.string(), ModelPreferenceSchema).optional(),
   featureFlags: FeatureFlagsConfigSchema.partial().optional(),
 });
 export type UpdateSettingsInput = z.infer<typeof UpdateSettingsSchema>;

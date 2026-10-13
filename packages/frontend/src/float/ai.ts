@@ -72,6 +72,7 @@ export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Pro
   const model = createModel(sdk, modelData, {
     reasoning: false,
     openRouterPrioritizeFastProviders,
+    ...settingsStore.getRequestOptions(modelData),
   });
   const learnings = learningsStore.entries;
   const prompt = buildPrompt(input, learnings);

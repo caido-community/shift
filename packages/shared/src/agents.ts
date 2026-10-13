@@ -14,10 +14,19 @@ export type MessageMetadata = {
     start: number;
     end?: number;
   }[];
+  usage?: {
+    inputTokens?: number;
+    cacheReadTokens?: number;
+  };
+  /** `provider/id` of the model that produced the message. */
+  model?: string;
 };
 export type PartState = UIToolInvocation<UITool>["state"];
 
-export type ShiftDataTypes = Record<string, never>;
+export type ShiftDataTypes = {
+  /** Marks a context compaction: everything before it reaches the model only as this summary. */
+  compaction: { summary: string };
+};
 
 export type ShiftMessage = UIMessage<MessageMetadata, ShiftDataTypes>;
 

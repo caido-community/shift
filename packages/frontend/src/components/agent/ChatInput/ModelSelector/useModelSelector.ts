@@ -4,7 +4,16 @@ import { computed, type MaybeRefOrGetter, nextTick, type Ref, ref, toValue, watc
 
 import { type ProviderInfo, useSelector } from "./useSelector";
 
+import { useSDK } from "@/plugins/sdk";
+import { useSettingsStore } from "@/stores/settings";
+import { updateSettings } from "@/stores/settings/store.effects";
 import { getReasoningEfforts, type ReasoningEffort, resolveReasoningEffort } from "@/utils/ai";
+import {
+  isDaybreakUnsupported as isDaybreakUnsupportedModel,
+  isOpenAIProvider,
+  supportsFastMode,
+  supportsUltrafast,
+} from "@/utils/caidoAi";
 
 type ModelWithConfig = Model & { isConfigured: boolean };
 
@@ -32,6 +41,8 @@ const keyOf = (model: Model) => createModelKey(model.provider, model.id);
 const displayName = (model: Model) => model.name.replace(/^Claude /, "");
 
 export function useModelSelector(options: UseModelSelectorOptions) {
+  const sdk = useSDK();
+  const settingsStore = useSettingsStore();
   const { providers, activeProvider, providerModels, selectProvider } = useSelector({
     models: options.models,
     selectedModel: options.selectedModel,
@@ -77,13 +88,6 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     return showRecent.value ? recentModels.value : providerModels.value;
   });
   const showProviderLogos = computed(() => isSearching.value || showRecent.value);
-  const providerSuffix = (model: Model) => {
-    const name = displayName(model);
-    const isAmbiguous = listedModels.value.some(
-      (other) => other.provider !== model.provider && displayName(other) === name
-    );
-    return isAmbiguous ? `via ${findProvider(model.provider)?.label ?? model.provider}` : undefined;
-  };
   const isRecentActive = computed(() => !isSearching.value && showRecent.value);
   const isProviderActive = (provider: ProviderInfo) =>
     !isSearching.value && !showRecent.value && activeProvider.value === provider.id;
@@ -104,6 +108,70 @@ export function useModelSelector(options: UseModelSelectorOptions) {
   );
   const isSelectedEffort = (effort: ReasoningEffort) => reasoningEffort.value === effort;
 
+  const canUseFastMode = computed(
+    () => selectedModel.value !== undefined && supportsFastMode(sdk, selectedModel.value.provider)
+  );
+  const fastMode = computed(
+    () =>
+      selectedModel.value !== undefined &&
+      canUseFastMode.value &&
+      settingsStore.isFastModeEnabled(selectedModel.value)
+  );
+  // The toggle acts on the selected model, so hide it while browsing another provider's tab.
+  const showFastToggle = computed(
+    () =>
+      canUseFastMode.value &&
+      (isSearching.value ||
+        showRecent.value ||
+        activeProvider.value === selectedModel.value?.provider)
+  );
+  const canUseUltrafast = computed(
+    () => selectedModel.value !== undefined && supportsUltrafast(sdk, selectedModel.value)
+  );
+  const ultrafast = computed(
+    () =>
+      selectedModel.value !== undefined &&
+      canUseUltrafast.value &&
+      settingsStore.isUltrafastEnabled(selectedModel.value)
+  );
+  const speedLevel = computed<0 | 1 | 2>(() => (ultrafast.value ? 2 : fastMode.value ? 1 : 0));
+  // Standard -> Fast -> Ultrafast (where offered) -> Standard
+  const cycleSpeed = () => {
+    const model = selectedModel.value;
+    if (model === undefined || !canUseFastMode.value || isDisabled.value) return;
+    const next =
+      ultrafast.value || (fastMode.value && !canUseUltrafast.value)
+        ? { fastMode: false, ultrafast: false }
+        : fastMode.value
+          ? { fastMode: false, ultrafast: true }
+          : { fastMode: true, ultrafast: false };
+    void updateSettings(settingsStore.sdk, settingsStore.dispatch, {
+      modelPreferences: { [keyOf(model)]: next },
+    });
+  };
+
+  const showDaybreak = computed(() =>
+    listedModels.value.some((model) => isOpenAIProvider(sdk, model.provider))
+  );
+  const daybreak = computed({
+    get: () => settingsStore.daybreak,
+    set(value: boolean) {
+      if (isDisabled.value) return;
+      void updateSettings(settingsStore.sdk, settingsStore.dispatch, { daybreak: value });
+    },
+  });
+  const isDaybreakUnsupported = (model: Model) =>
+    daybreak.value && isDaybreakUnsupportedModel(sdk, model);
+  const isSelectedDaybreakUnsupported = computed(
+    () => selectedModel.value !== undefined && isDaybreakUnsupported(selectedModel.value)
+  );
+  const isDaybreakActive = computed(
+    () =>
+      daybreak.value &&
+      selectedModel.value !== undefined &&
+      isOpenAIProvider(sdk, selectedModel.value.provider) &&
+      !isSelectedDaybreakUnsupported.value
+  );
   const selectedModelLabel = computed(() =>
     selectedModel.value === undefined ? "Select model" : displayName(selectedModel.value)
   );
@@ -157,7 +225,7 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     openMenu.value = "effort";
   };
   const handleSelect = (model: ModelWithConfig) => {
-    if (!model.isConfigured) return;
+    if (!model.isConfigured || isDaybreakUnsupported(model)) return;
     const key = keyOf(model);
     options.selectedModel.value =
       toValue(options.models).find((candidate) => keyOf(candidate) === key) ?? model;
@@ -168,7 +236,9 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     close();
   };
   const selectFirstMatch = () => {
-    const match = listedModels.value.find((model) => model.isConfigured);
+    const match = listedModels.value.find(
+      (model) => model.isConfigured && !isDaybreakUnsupported(model)
+    );
     if (match !== undefined) handleSelect(match);
   };
   const handleProviderClick = (provider: ProviderInfo) => {
@@ -208,7 +278,6 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     listedModels,
     recentModels,
     showProviderLogos,
-    providerSuffix,
     isRecentActive,
     isProviderActive,
     reasoningEfforts,
@@ -217,6 +286,18 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     showEffortPicker,
     selectedModelLabel,
     displayName,
+    canUseFastMode,
+    showFastToggle,
+    canUseUltrafast,
+    fastMode,
+    ultrafast,
+    speedLevel,
+    cycleSpeed,
+    showDaybreak,
+    daybreak,
+    isDaybreakUnsupported,
+    isSelectedDaybreakUnsupported,
+    isDaybreakActive,
     isSelected,
     isSelectedEffort,
     close,

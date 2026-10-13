@@ -57,6 +57,15 @@ function handleUpdateSuccess(model: SettingsModel, input: UpdateSettingsInput): 
     if (input.openRouterPrioritizeFastProviders !== undefined) {
       draft.config.openRouterPrioritizeFastProviders = input.openRouterPrioritizeFastProviders;
     }
+    if (input.daybreak !== undefined) {
+      draft.config.daybreak = input.daybreak;
+    }
+    if (input.modelPreferences !== undefined) {
+      draft.config.modelPreferences = {
+        ...draft.config.modelPreferences,
+        ...input.modelPreferences,
+      };
+    }
     if (input.featureFlags !== undefined) {
       draft.config.featureFlags = {
         ...draft.config.featureFlags,

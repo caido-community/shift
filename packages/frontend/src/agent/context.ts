@@ -74,6 +74,7 @@ export class AgentContext {
   private readonly replaySessionId: string;
   private readonly store: SessionStore;
   private readonly payloadBlobs = new Map<string, { content: string; reason: string }>();
+  private readonly historicalToolOutputs = new Map<string, string>();
   private streamWriter: UIMessageStreamWriter<ShiftMessage> | undefined;
   private skillsGetter: () => AgentSkill[];
   private environmentsContext: EnvironmentsContext | undefined;
@@ -244,8 +245,14 @@ export class AgentContext {
     };
   }
 
+  registerHistoricalToolOutput(toolCallId: string, content: string): { blobId: string } {
+    const blobId = `tool-${toolCallId}`;
+    this.historicalToolOutputs.set(blobId, content);
+    return { blobId };
+  }
+
   getPayloadBlob(blobId: string): string | undefined {
-    return this.payloadBlobs.get(blobId)?.content;
+    return this.payloadBlobs.get(blobId)?.content ?? this.historicalToolOutputs.get(blobId);
   }
 
   get environmentVariables(): EnvironmentVariable[] {

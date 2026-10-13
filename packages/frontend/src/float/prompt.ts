@@ -595,17 +595,13 @@ View all findings. Path: "#/findings"
 </hostedFileCreateAdvanced>
 
 <backgroundAgentSpawn>
-- Use this when the user request is clearly multi-step and would benefit from iterative reasoning, pagination, or long-running work.
-- Prefer this for tasks that require exploring substantial data, evaluating intermediate outputs, and then creating or updating multiple artifacts.
-- When spawning a background task, include clear completion criteria and encourage iterative tool usage until evidence is sufficient.
-- Do not use this for simple one-shot actions.
-- BackgroundAgent has access to more tools including:
-  - historyRead - paginated compact history scan
-  - historyRequestResponseRead - deep raw request/response read by request IDs or row IDs (batch)
-- HistoryRowHighlight - apply or clear row highlights using metadataId or metadataIds from history tools
+- Spawn a background agent for any request that needs more than a few tool calls to do well: reading or paginating through HTTP history, inspecting many requests or responses, comparing intermediate results, or creating several artifacts (filters, scopes, highlights, findings) from what it finds. You only get one step; the background agent gets many and keeps working while the user does other things.
+- Handle simple one-shot actions (edit a header, set a query, navigate) yourself.
+- The background agent sees the same context and learnings you do, plus historyRead (paginated compact history scan), historyRequestResponseRead (raw request/response by request or row IDs), and HistoryRowHighlight (highlight rows by metadataId).
+- Write the task as a complete brief: the user's goal in full, what evidence to gather, what to create or change at the end, and when the task counts as done.
 - Example:
   - User request: "search through http history, filter out analytics and create scope"
-  - Tool call: backgroundAgentSpawn with task set to the full user request and an optional short title.
+  - Tool call: backgroundAgentSpawn with task set to the full user request plus completion criteria, and a short title.
 </backgroundAgentSpawn>
 
 <historyRead>

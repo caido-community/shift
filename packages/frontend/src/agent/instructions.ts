@@ -1,7 +1,7 @@
 import type { Model } from "shared";
 
 import type { AgentContext } from "./context";
-import { BASE_SYSTEM_PROMPT, WILDCARD_MODE_PROMPT } from "./prompt";
+import { BASE_SYSTEM_PROMPT, TODOS_PROMPT, WILDCARD_MODE_PROMPT } from "./prompt";
 
 const GEMINI_PARALLEL_TOOLS_WARNING =
   "IMPORTANT: You must NEVER call multiple tools in parallel. Only call ONE tool per response. " +
@@ -10,6 +10,7 @@ const GEMINI_PARALLEL_TOOLS_WARNING =
 type BuildInstructionsOptions = {
   context: AgentContext;
   model: Model | undefined;
+  legacyTodos?: boolean;
 };
 
 function isGeminiModel(model: Model | undefined): boolean {
@@ -17,11 +18,15 @@ function isGeminiModel(model: Model | undefined): boolean {
 }
 
 export function buildAgentInstructions(options: BuildInstructionsOptions): string {
-  const { context, model } = options;
+  const { context, model, legacyTodos = false } = options;
   const parts: string[] = [BASE_SYSTEM_PROMPT];
 
   if (context.mode === "wildcard") {
     parts.push(WILDCARD_MODE_PROMPT);
+  }
+
+  if (legacyTodos) {
+    parts.push(TODOS_PROMPT);
   }
 
   // TODO: temporary fix, seems like signatures are broken when agent returns multiple toolcalls
