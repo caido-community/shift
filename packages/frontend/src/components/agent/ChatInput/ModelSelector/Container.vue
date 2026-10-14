@@ -50,7 +50,7 @@ const {
   showFastToggle,
   canUseUltrafast,
   speedLevel,
-  cycleSpeed,
+  setSpeed,
   showDaybreak,
   daybreak,
   isDaybreakUnsupported,
@@ -82,16 +82,8 @@ const speedHint = computed(() =>
     ? hint("Ultrafast on", "Fastest processing, most usage")
     : hint("Fast mode on", "Priority processing, more usage")
 );
-const speedToggleHint = computed(() => {
-  if (speedLevel.value === 2) return hint("Ultrafast on", "Click to turn off");
-  if (speedLevel.value === 1) {
-    return hint(
-      "Fast mode on",
-      canUseUltrafast.value ? "Click for Ultrafast" : "Click to turn off"
-    );
-  }
-  return hint("Fast mode", "Priority processing, more usage");
-});
+const fastHint = hint("Fast mode", "Priority processing, more usage");
+const ultrafastHint = hint("Ultrafast", "Fastest processing, most usage");
 const daybreakHint = hint(
   "Daybreak",
   "Fewer refusals for approved security work (OpenAI Trusted Access for Cyber)"
@@ -230,7 +222,7 @@ const railButtonClass = (active: boolean, enabled = true) => [
 
         <div class="flex min-w-0 flex-1 flex-col">
           <div
-            class="flex items-center gap-1.5 border-b border-surface-700 py-1 pl-3 pr-1 text-surface-500">
+            class="flex items-center gap-1.5 border-b border-surface-700 py-1 px-3 text-surface-500">
             <i
               class="fas fa-search text-[11px]"
               aria-hidden="true" />
@@ -243,24 +235,29 @@ const railButtonClass = (active: boolean, enabled = true) => [
               autocomplete="off"
               class="min-w-0 flex-1 border-0 bg-transparent py-1 text-sm text-surface-200 outline-none placeholder:text-surface-500"
               @keydown.enter.prevent="selectFirstMatch" />
-            <button
-              v-if="showFastToggle"
-              v-tooltip.top="speedToggleHint"
-              type="button"
-              :aria-pressed="speedLevel > 0"
-              aria-label="Fast mode"
-              :class="[
-                'flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md border px-1 transition-colors',
-                speedLevel > 0
-                  ? 'border-amber-400/30 bg-amber-400/15 text-amber-400 hover:bg-amber-400/25'
-                  : 'border-surface-700 bg-surface-800 text-surface-300 hover:border-surface-600 hover:bg-surface-700 hover:text-surface-100',
-              ]"
-              @click="cycleSpeed">
-              <FastIcon
-                :level="speedLevel"
-                :size="14" />
-            </button>
           </div>
+          <label
+            v-if="showFastToggle"
+            v-tooltip.right="fastHint"
+            class="flex cursor-pointer items-center justify-between gap-2 border-b border-surface-700 px-3 py-1.5 text-sm text-surface-300">
+            <span>Fast</span>
+            <ToggleSwitch
+              :model-value="speedLevel > 0"
+              :disabled="disabled"
+              class="scale-75"
+              @update:model-value="setSpeed($event ? 1 : 0)" />
+          </label>
+          <label
+            v-if="showFastToggle && canUseUltrafast"
+            v-tooltip.right="ultrafastHint"
+            class="flex cursor-pointer items-center justify-between gap-2 border-b border-surface-700 px-3 py-1.5 text-sm text-surface-300">
+            <span>Ultrafast</span>
+            <ToggleSwitch
+              :model-value="speedLevel === 2"
+              :disabled="disabled"
+              class="scale-75"
+              @update:model-value="setSpeed($event ? 2 : 1)" />
+          </label>
           <label
             v-if="showDaybreak"
             v-tooltip.right="daybreakHint"

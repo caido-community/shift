@@ -159,7 +159,7 @@ describe("model selector", () => {
     const { scope, selectedModel, selector, pickProvider } = setup("standard");
     try {
       expect(selector.canUseFastMode.value).toBe(true);
-      selector.cycleSpeed();
+      selector.setSpeed(1);
       expect(mocks.updateSettings.mock.lastCall?.[2]).toEqual({
         modelPreferences: { "work-codex/model": { fastMode: true, ultrafast: false } },
       });
@@ -172,7 +172,7 @@ describe("model selector", () => {
       expect(selectedModel.value?.provider).toBe("aws-team");
       expect(selector.canUseFastMode.value).toBe(false);
       expect(selector.fastMode.value).toBe(false);
-      selector.cycleSpeed();
+      selector.setSpeed(1);
       expect(mocks.updateSettings).toHaveBeenCalledOnce();
       selector.toggle();
       pickProvider("work-codex");
@@ -231,7 +231,7 @@ describe("model selector", () => {
     }
   });
 
-  it("cycles Standard, Fast and Ultrafast and greys out non-Daybreak models", async () => {
+  it("switches between Standard, Fast and Ultrafast and greys out non-Daybreak models", async () => {
     const { scope, models, selectedModel, selector } = setup("standard");
     try {
       models.value = [
@@ -241,12 +241,12 @@ describe("model selector", () => {
       selectedModel.value = models.value[0];
       await nextTick();
       expect(selector.speedLevel.value).toBe(0);
-      selector.cycleSpeed();
+      selector.setSpeed(1);
       expect(selector.speedLevel.value).toBe(1);
-      selector.cycleSpeed();
+      selector.setSpeed(2);
       expect(selector.fastMode.value).toBe(false);
       expect(selector.speedLevel.value).toBe(2);
-      selector.cycleSpeed();
+      selector.setSpeed(0);
       expect(selector.speedLevel.value).toBe(0);
 
       selector.toggle();

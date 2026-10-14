@@ -135,18 +135,11 @@ export function useModelSelector(options: UseModelSelectorOptions) {
       settingsStore.isUltrafastEnabled(selectedModel.value)
   );
   const speedLevel = computed<0 | 1 | 2>(() => (ultrafast.value ? 2 : fastMode.value ? 1 : 0));
-  // Standard -> Fast -> Ultrafast (where offered) -> Standard
-  const cycleSpeed = () => {
+  const setSpeed = (level: 0 | 1 | 2) => {
     const model = selectedModel.value;
     if (model === undefined || !canUseFastMode.value || isDisabled.value) return;
-    const next =
-      ultrafast.value || (fastMode.value && !canUseUltrafast.value)
-        ? { fastMode: false, ultrafast: false }
-        : fastMode.value
-          ? { fastMode: false, ultrafast: true }
-          : { fastMode: true, ultrafast: false };
     void updateSettings(settingsStore.sdk, settingsStore.dispatch, {
-      modelPreferences: { [keyOf(model)]: next },
+      modelPreferences: { [keyOf(model)]: { fastMode: level === 1, ultrafast: level === 2 } },
     });
   };
 
@@ -292,7 +285,7 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     fastMode,
     ultrafast,
     speedLevel,
-    cycleSpeed,
+    setSpeed,
     showDaybreak,
     daybreak,
     isDaybreakUnsupported,
