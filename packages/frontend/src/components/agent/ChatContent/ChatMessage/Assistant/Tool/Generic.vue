@@ -83,7 +83,7 @@ const handleClick = () => {
       :is="isClickable ? 'button' : 'div'"
       class="flex items-center h-5 text-surface-300 min-w-0"
       :class="{
-        'group/entry cursor-pointer hover:text-surface-100 transition-colors': isClickable,
+        'group/entry cursor-pointer hover:!text-surface-100 transition-colors': isClickable,
       }"
       :title="entryId !== undefined ? 'Open this entry in Replay' : undefined"
       :aria-expanded="requestDiff !== undefined ? showDiff : undefined"
@@ -123,7 +123,8 @@ const handleClick = () => {
             :key="index">
             <span
               :class="{
-                'text-surface-500 group-hover/entry:text-surface-200 transition-colors': part.muted,
+                'text-surface-500 group-hover/entry:!text-surface-200 transition-colors':
+                  part.muted,
               }">
               {{ formatToolDisplayText(part.text) }}
             </span>
@@ -133,7 +134,7 @@ const handleClick = () => {
           v-if="requestDiff !== undefined"
           class="fas fa-chevron-right shrink-0 text-[10px] text-surface-500 transition-all duration-150 ease-in-out ml-1.5"
           :class="[
-            showDiff ? 'rotate-90 opacity-100' : 'opacity-0 group-hover/entry:opacity-100',
+            showDiff ? 'rotate-90 opacity-100' : 'opacity-0 group-hover/entry:!opacity-100',
           ]" />
       </template>
 

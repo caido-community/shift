@@ -31,7 +31,7 @@ const {
       class="h-2 cursor-ns-resize flex items-center justify-center group shrink-0 transition-colors"
       @mousedown="startResize">
       <div
-        class="w-12 h-1 rounded-full bg-surface-600 group-hover:bg-surface-400 transition-colors" />
+        class="w-12 h-1 rounded-full bg-surface-600 group-hover:!bg-surface-400 transition-colors" />
     </div>
 
     <div class="flex flex-col gap-4 p-3 pt-2 flex-1 min-h-0">

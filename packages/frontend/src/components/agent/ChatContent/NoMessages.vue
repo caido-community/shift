@@ -19,10 +19,10 @@ const session = useSession();
         v-for="prompt in STARTER_PROMPTS"
         :key="prompt"
         type="button"
-        class="group max-w-full truncate text-sm text-surface-400 hover:text-surface-100 transition-colors"
+        class="group max-w-full truncate text-sm text-surface-400 hover:!text-surface-100 transition-colors"
         @click="session.draftMessage = prompt">
         <i
-          class="fas fa-arrow-right text-[10px] text-surface-600 group-hover:text-surface-300 transition-colors mr-2" />{{
+          class="fas fa-arrow-right text-[10px] text-surface-600 group-hover:!text-surface-300 transition-colors mr-2" />{{
           prompt
         }}
       </button>

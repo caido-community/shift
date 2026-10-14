@@ -107,7 +107,7 @@ const {
 
     <template v-else-if="isExpandable">
       <button
-        class="flex items-center gap-1.5 h-5 text-surface-300 group hover:text-surface-100 transition-colors"
+        class="flex items-center gap-1.5 h-5 text-surface-300 group hover:!text-surface-100 transition-colors"
         @click="toggle">
         <span class="select-none">
           <template
@@ -115,7 +115,7 @@ const {
             :key="index">
             <span
               :class="{
-                'text-surface-500 group-hover:text-surface-200 transition-colors': part.muted,
+                'text-surface-500 group-hover:!text-surface-200 transition-colors': part.muted,
               }">
               {{ formatToolDisplayText(part.text) }}
             </span>
@@ -123,7 +123,7 @@ const {
         </span>
         <i
           class="fas fa-chevron-right text-[10px] text-surface-500 transition-all duration-150 ease-in-out ml-1.5 shrink-0"
-          :class="[isExpanded ? 'rotate-90 opacity-100' : 'opacity-0 group-hover:opacity-100']" />
+          :class="[isExpanded ? 'rotate-90 opacity-100' : 'opacity-0 group-hover:!opacity-100']" />
       </button>
 
       <div

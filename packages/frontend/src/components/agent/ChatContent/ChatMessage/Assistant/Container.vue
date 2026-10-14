@@ -94,7 +94,7 @@ const canCopy = computed(() => metadata.value?.state !== "streaming" && text.val
     <button
       v-if="canCopy"
       type="button"
-      class="self-start -ml-1 px-1 text-xs text-surface-500 hover:text-surface-300 opacity-0 group-hover/message:opacity-100 transition-all duration-150 select-none"
+      class="self-start -ml-1 px-1 text-xs text-surface-500 hover:!text-surface-300 opacity-0 group-hover/message:!opacity-100 transition-all duration-150 select-none"
       title="Copy message"
       @click="copy(text)">
       <i :class="copied ? 'fas fa-check' : 'fas fa-copy'" />
