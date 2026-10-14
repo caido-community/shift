@@ -4,6 +4,7 @@ import type {
 } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
 import type { CustomAgent } from "shared";
 
+import type { AgentSession } from "@/agent/session";
 import { LaunchDialog, type LaunchDialogResult } from "@/components/LaunchDialog";
 import { useAgentStore } from "@/stores/agent";
 import { useCustomAgentsStore } from "@/stores/custom-agents/store";
@@ -16,6 +17,8 @@ const SHIFT_COLLECTION_NAME = "Shift";
 
 const sessionToCollectionId = new Map<string, string | undefined>();
 
+let pendingCollection: Promise<{ id: string; name: string } | undefined> | undefined;
+
 function findAgentsByCollectionName(collectionName: string): CustomAgent[] {
   const customAgentsStore = useCustomAgentsStore();
   return customAgentsStore.definitions.filter((agent) =>
@@ -23,7 +26,14 @@ function findAgentsByCollectionName(collectionName: string): CustomAgent[] {
   );
 }
 
-async function ensureCollection(
+function ensureCollection(sdk: FrontendSDK): Promise<{ id: string; name: string } | undefined> {
+  pendingCollection ??= findOrCreateCollection(sdk).finally(() => {
+    pendingCollection = undefined;
+  });
+  return pendingCollection;
+}
+
+async function findOrCreateCollection(
   sdk: FrontendSDK
 ): Promise<{ id: string; name: string } | undefined> {
   const settingsStore = useSettingsStore();
@@ -31,7 +41,7 @@ async function ensureCollection(
 
   if (collections.length === 0) {
     await new Promise((resolve) => setTimeout(resolve, 200));
-    return ensureCollection(sdk);
+    return findOrCreateCollection(sdk);
   }
 
   const existing = collections.find((collection) => collection.name === SHIFT_COLLECTION_NAME);
@@ -80,9 +90,13 @@ function showLaunchDialog(sdk: FrontendSDK, sessionId: string, preSelectedSkillI
   );
 }
 
-function autoLaunchWithAgent(sdk: FrontendSDK, sessionId: string, agent: CustomAgent) {
+function startAgentSession(
+  sdk: FrontendSDK,
+  sessionId: string,
+  text: string,
+  configure: (session: AgentSession) => void
+) {
   const agentStore = useAgentStore();
-  const customAgentsStore = useCustomAgentsStore();
   const uiStore = useUIStore();
 
   if (!agentStore.isReady) {
@@ -104,67 +118,55 @@ function autoLaunchWithAgent(sdk: FrontendSDK, sessionId: string, agent: CustomA
     return;
   }
 
-  const resolved = customAgentsStore.getAgentById(agent.id);
-  if (resolved !== undefined) {
-    session.store.setCustomAgent(resolved);
-  }
+  configure(session);
 
   agentStore.dispatch({ type: "SELECT_SESSION", sessionId });
   sdk.replay.openTab(sessionId);
   uiStore.setDrawerVisible(true);
 
-  session.chat.sendMessage({ text: "Proceed with testing." });
+  session.chat.sendMessage({ text });
 }
 
-function launchAgent(sdk: FrontendSDK, sessionId: string, config: LaunchDialogResult) {
-  const agentStore = useAgentStore();
+function autoLaunchWithAgent(sdk: FrontendSDK, sessionId: string, agent: CustomAgent) {
   const customAgentsStore = useCustomAgentsStore();
-  const uiStore = useUIStore();
 
-  if (!agentStore.isReady) {
-    sdk.window.showToast("Agent not ready. Please configure a model first.", { variant: "error" });
-    return;
-  }
-
-  let session;
-  try {
-    session = agentStore.getSession(sessionId);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    sdk.window.showToast(`Failed to create agent session: ${message}`, { variant: "error" });
-    return;
-  }
-
-  if (session === undefined) {
-    sdk.window.showToast("Failed to create agent session", { variant: "error" });
-    return;
-  }
-
-  if (isPresent(config.model)) {
-    session.model = config.model;
-  }
-
-  session.store.setMode(config.mode);
-
-  if (isPresent(config.customAgentId)) {
-    const resolved = customAgentsStore.getAgentById(config.customAgentId);
+  startAgentSession(sdk, sessionId, "Proceed with testing.", (session) => {
+    const resolved = customAgentsStore.getAgentById(agent.id);
     if (resolved !== undefined) {
       session.store.setCustomAgent(resolved);
     }
-  } else if (config.selectedSkillIds.length > 0) {
-    session.store.setSelectedSkillIds(config.selectedSkillIds);
-  }
-
-  agentStore.dispatch({ type: "SELECT_SESSION", sessionId });
-  sdk.replay.openTab(sessionId);
-  uiStore.setDrawerVisible(true);
-
-  const message = config.instructions === "" ? "Proceed with testing." : config.instructions;
-
-  session.chat.sendMessage({ text: message });
+  });
 }
 
-function handleSessionInCollection(sdk: FrontendSDK, sessionId: string, collectionName: string) {
+function launchAgent(sdk: FrontendSDK, sessionId: string, config: LaunchDialogResult) {
+  const customAgentsStore = useCustomAgentsStore();
+  const message = config.instructions === "" ? "Proceed with testing." : config.instructions;
+
+  startAgentSession(sdk, sessionId, message, (session) => {
+    if (isPresent(config.model)) {
+      session.model = config.model;
+    }
+
+    session.store.setMode(config.mode);
+
+    if (isPresent(config.customAgentId)) {
+      const resolved = customAgentsStore.getAgentById(config.customAgentId);
+      if (resolved !== undefined) {
+        session.store.setCustomAgent(resolved);
+      }
+    } else if (config.selectedSkillIds.length > 0) {
+      session.store.setSelectedSkillIds(config.selectedSkillIds);
+    }
+  });
+}
+
+function handleSessionInCollection(sdk: FrontendSDK, sessionId: string, collectionId: string) {
+  const collectionName = sdk.replay
+    .getCollections()
+    .find((collection) => collection.id === collectionId)?.name;
+
+  if (collectionName === undefined) return;
+
   const boundAgents = findAgentsByCollectionName(collectionName);
 
   if (boundAgents.length > 1) {
@@ -180,12 +182,10 @@ function handleSessionInCollection(sdk: FrontendSDK, sessionId: string, collecti
     return;
   }
 
-  if (boundAgents.length > 0) {
-    const agent = boundAgents[0];
-    if (agent !== undefined) {
-      autoLaunchWithAgent(sdk, sessionId, agent);
-      return;
-    }
+  const agent = boundAgents[0];
+  if (agent !== undefined) {
+    autoLaunchWithAgent(sdk, sessionId, agent);
+    return;
   }
 
   if (collectionName === SHIFT_COLLECTION_NAME) {
@@ -202,13 +202,7 @@ function handleCreatedReplaySession(sdk: FrontendSDK, result: CreatedReplaySessi
 
   if (collectionId === undefined) return;
 
-  const collections = sdk.replay.getCollections();
-  const collection = collections.find((col) => col.id === collectionId);
-  const collectionName = collection?.name;
-
-  if (collectionName === undefined) return;
-
-  handleSessionInCollection(sdk, session.id, collectionName);
+  handleSessionInCollection(sdk, session.id, collectionId);
 }
 
 function handleUpdatedReplaySession(sdk: FrontendSDK, result: UpdatedReplaySessionSubscription) {
@@ -223,19 +217,13 @@ function handleUpdatedReplaySession(sdk: FrontendSDK, result: UpdatedReplaySessi
 
   if (nextCollectionId === undefined) return;
 
-  const collections = sdk.replay.getCollections();
-  const collection = collections.find((col) => col.id === nextCollectionId);
-  const collectionName = collection?.name;
-
-  if (collectionName === undefined) return;
-
-  handleSessionInCollection(sdk, session.id, collectionName);
+  handleSessionInCollection(sdk, session.id, nextCollectionId);
 }
 
 function loadCurrentSessions(sdk: FrontendSDK) {
   const collections = sdk.replay.getCollections();
   for (const collection of collections) {
-    const { sessionIds, id } = collection ?? {};
+    const { sessionIds, id } = collection;
     for (const sessionId of sessionIds) {
       sessionToCollectionId.set(sessionId, id);
     }

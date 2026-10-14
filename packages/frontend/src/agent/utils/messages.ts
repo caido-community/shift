@@ -1,5 +1,4 @@
 import { isToolUIPart } from "ai";
-import { Result } from "shared";
 import type { ShiftMessage } from "shared";
 
 type ToolUIState = { state?: string; output?: unknown };
@@ -149,13 +148,7 @@ export function findLastUserMessageIndex(messages: ShiftMessage[]): number {
 }
 
 export function findLastUserMessageId(messages: ShiftMessage[]): string | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg?.role === "user") {
-      return msg.id;
-    }
-  }
-  return undefined;
+  return messages[findLastUserMessageIndex(messages)]?.id;
 }
 
 export function hasToolPartsSinceIndex(messages: ShiftMessage[], fromIndex: number): boolean {
@@ -173,8 +166,6 @@ export function hasToolPartsSinceIndex(messages: ShiftMessage[], fromIndex: numb
 }
 
 export function hasToolPartsSinceLastUserMessage(messages: ShiftMessage[]): boolean {
-  if (messages.length === 0) return false;
-
   const lastUserIndex = findLastUserMessageIndex(messages);
   if (lastUserIndex === -1) return false;
 
@@ -183,14 +174,11 @@ export function hasToolPartsSinceLastUserMessage(messages: ShiftMessage[]): bool
 
 /**
  * Serialize tool output to a string for storage in a blob.
- * Handles Result wrapper, plain objects, and primitives.
+ * Handles plain objects and primitives.
  */
 export function serializeToolOutput(output: unknown): string {
   if (output === undefined || output === null) {
     return "";
-  }
-  if (Result.isResult(output)) {
-    return JSON.stringify(output);
   }
   if (typeof output === "string") {
     return output;
@@ -203,12 +191,6 @@ export function serializeToolOutput(output: unknown): string {
     }
   }
   if (typeof output === "number" || typeof output === "boolean" || typeof output === "bigint") {
-    return String(output);
-  }
-  if (typeof output === "symbol") {
-    return output.toString();
-  }
-  if (typeof output === "function") {
     return String(output);
   }
   return "";
@@ -285,10 +267,6 @@ type ExtractResult = {
 };
 
 export function extractLastUserMessageText(messages: ShiftMessage[]): ExtractResult {
-  if (messages.length === 0) {
-    return { remainingMessages: [], removedText: undefined };
-  }
-
   const lastUserIndex = findLastUserMessageIndex(messages);
   if (lastUserIndex === -1) {
     return { remainingMessages: messages, removedText: undefined };

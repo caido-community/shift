@@ -2,9 +2,9 @@ import { Chat } from "@ai-sdk/vue";
 import { type Model, type ShiftMessage } from "shared";
 import { nextTick, ref, watch } from "vue";
 
+import { getTools } from "@/agent/agent";
 import { AgentContext } from "@/agent/context";
 import { buildAgentInstructions } from "@/agent/instructions";
-import { shiftAgentTools } from "@/agent/tools";
 import { LocalChatTransport } from "@/agent/transport";
 import { estimateToolsCharacters, getEstimatedContextUsage } from "@/agent/utils/contextUsage";
 import {
@@ -15,9 +15,10 @@ import {
 } from "@/agent/utils/messages";
 import { useAgentStore } from "@/stores/agent";
 import { type SessionStore, useSessionStore } from "@/stores/agent/session";
+import { useSettingsStore } from "@/stores/settings/store";
 import { type FrontendSDK } from "@/types";
 
-let toolsCharacters: number | undefined;
+const toolsCharacters: Record<string, number> = {};
 
 export class AgentSession {
   readonly id: string;
@@ -169,17 +170,21 @@ export class AgentSession {
 
     const messages = options?.messages ?? this.chat.messages;
     const model = this.model;
+    const legacyTodos = useSettingsStore().isFeatureEnabled("legacyTodos");
 
     const systemPrompt = buildAgentInstructions({
       context: this.context,
       model,
+      legacyTodos,
     });
 
     return getEstimatedContextUsage({
       model,
       systemPrompt,
       skillsPrompt: this.context.toSkillsPrompt(),
-      toolsCharacters: (toolsCharacters ??= estimateToolsCharacters(shiftAgentTools)),
+      toolsCharacters: (toolsCharacters[String(legacyTodos)] ??= estimateToolsCharacters(
+        getTools(legacyTodos)
+      )),
       messages,
     });
   }

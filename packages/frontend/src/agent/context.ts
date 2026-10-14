@@ -19,6 +19,10 @@ import {
   type LearningPreviewSnapshot,
   type SkillsPromptSnapshot,
 } from "@/agent/context.prompt";
+import type {
+  ConvertWorkflowSnapshot,
+  EnvironmentInfoSnapshot,
+} from "@/agent/context.prompt.types";
 import { truncateContextValue } from "@/agent/context.truncation";
 import type { Todo } from "@/agent/types";
 import { type SessionStore } from "@/stores/agent/session";
@@ -30,25 +34,14 @@ import { writeToRequestEditor } from "@/utils/caido";
 import { isPresent } from "@/utils/optional";
 import { truncate } from "@/utils/text";
 
-type EnvironmentInfo = {
-  id: string;
-  name: string;
-};
-
 type EnvironmentsContext = {
-  all: EnvironmentInfo[];
+  all: EnvironmentInfoSnapshot[];
   selectedId: string | undefined;
 };
 
 type EntriesContext = {
   activeEntryId: string | undefined;
   recentEntryIds: string[];
-};
-
-type ConvertWorkflowContext = {
-  id: string;
-  name: string;
-  description: string;
 };
 
 const PAYLOAD_BLOB_MAX_COUNT = 40;
@@ -62,39 +55,21 @@ type PayloadBlobMetadata = {
   preview: string;
 };
 
-type EnvironmentVariablePromptEntry = {
-  name: string;
-  kind: "PLAIN" | "SECRET";
-  preview?: string;
-  valueLength: number;
-};
-
 export class AgentContext {
-  private readonly _sdk: FrontendSDK;
-  private readonly replaySessionId: string;
+  readonly sdk: FrontendSDK;
+  readonly sessionId: string;
   private readonly store: SessionStore;
+  private readonly skillsStore = useSkillsStore();
   private readonly payloadBlobs = new Map<string, { content: string; reason: string }>();
   private readonly historicalToolOutputs = new Map<string, string>();
   private streamWriter: UIMessageStreamWriter<ShiftMessage> | undefined;
-  private skillsGetter: () => AgentSkill[];
   private environmentsContext: EnvironmentsContext | undefined;
   private entriesContext: EntriesContext | undefined;
 
-  constructor(sdk: FrontendSDK, replaySessionId: string, store: SessionStore) {
-    this._sdk = sdk;
-    this.replaySessionId = replaySessionId;
+  constructor(sdk: FrontendSDK, sessionId: string, store: SessionStore) {
+    this.sdk = sdk;
+    this.sessionId = sessionId;
     this.store = store;
-
-    const skillsStore = useSkillsStore();
-    this.skillsGetter = () => skillsStore.skills;
-  }
-
-  get sdk(): FrontendSDK {
-    return this._sdk;
-  }
-
-  get sessionId(): string {
-    return this.replaySessionId;
   }
 
   get todos(): Todo[] {
@@ -133,12 +108,7 @@ export class AgentContext {
   }
 
   get allowedBinaries(): CustomAgentBinary[] | undefined {
-    const agent = this.resolvedAgent;
-    if (agent !== undefined) {
-      return agent.allowedBinaries;
-    }
-
-    return undefined;
+    return this.resolvedAgent?.allowedBinaries;
   }
 
   get selectedSkills(): AgentSkill[] {
@@ -149,11 +119,11 @@ export class AgentContext {
 
     const selectedIds = this.store.selectedSkillIds;
     if (selectedIds.length === 0) {
-      return this.skillsGetter();
+      return this.skillsStore.skills;
     }
 
     const selectedSet = new Set(selectedIds);
-    return this.skillsGetter().filter((skill) => selectedSet.has(skill.id));
+    return this.skillsStore.skills.filter((skill) => selectedSet.has(skill.id));
   }
 
   getSkillById(skillId: string): AgentSkill | undefined {
@@ -203,7 +173,7 @@ export class AgentContext {
     }
 
     const currentSession = this.sdk.replay.getCurrentSession();
-    if (isPresent(currentSession) && currentSession.id === this.replaySessionId) {
+    if (isPresent(currentSession) && currentSession.id === this.sessionId) {
       writeToRequestEditor(raw);
     }
   }
@@ -256,11 +226,11 @@ export class AgentContext {
   }
 
   get environmentVariables(): EnvironmentVariable[] {
-    return this._sdk.env.getVars();
+    return this.sdk.env.getVars();
   }
 
   async fetchEnvironmentInfo(): Promise<void> {
-    const environmentsResult = await this._sdk.graphql.environments();
+    const environmentsResult = await this.sdk.graphql.environments();
 
     const all = environmentsResult.environments.map((env) => ({
       id: env.id,
@@ -275,8 +245,8 @@ export class AgentContext {
   }
 
   async fetchEntriesInfo(): Promise<void> {
-    const sessionResult = await this._sdk.graphql.replaySessionEntries({
-      id: this.replaySessionId,
+    const sessionResult = await this.sdk.graphql.replaySessionEntries({
+      id: this.sessionId,
     });
 
     if (!isPresent(sessionResult.replaySession)) {
@@ -292,15 +262,10 @@ export class AgentContext {
   }
 
   private getAgentInstructions(): string {
-    const instructions = this.resolvedAgent?.instructions.trim();
-    if (!isPresent(instructions)) {
-      return "";
-    }
-
-    return instructions;
+    return this.resolvedAgent?.instructions.trim() ?? "";
   }
 
-  private getRestrictedConvertWorkflows(): ConvertWorkflowContext[] | undefined {
+  private getRestrictedConvertWorkflows(): ConvertWorkflowSnapshot[] | undefined {
     const allowedIds = this.allowedWorkflowIds;
     if (allowedIds === undefined) {
       return undefined;
@@ -326,7 +291,7 @@ export class AgentContext {
 
     return [...envVars]
       .sort((a, b) => a.name.localeCompare(b.name))
-      .map((variable): EnvironmentVariablePromptEntry => {
+      .map((variable): EnvironmentVariablePreviewSnapshot => {
         if (variable.isSecret) {
           return {
             name: variable.name,
@@ -435,11 +400,6 @@ export class AgentContext {
   private buildSkillsSnapshot(): SkillsPromptSnapshot {
     const agentInstructions = this.getAgentInstructions();
     const skills = this.selectedSkills;
-
-    if (skills.length === 0 && agentInstructions === "") {
-      return {};
-    }
-
     const snapshot: SkillsPromptSnapshot = {};
     if (agentInstructions !== "") {
       snapshot.agentInstructions = agentInstructions;

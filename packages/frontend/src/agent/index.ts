@@ -11,16 +11,16 @@ export const setupAgents = (sdk: FrontendSDK) => {
   const uiStore = useUIStore();
   const agentStore = useAgentStore();
 
-  const syncSession = () => {
-    const currentReplaySession = sdk.replay.getCurrentSession();
-    if (isPresent(currentReplaySession)) {
-      agentStore.dispatch({
-        type: "SELECT_SESSION",
-        sessionId: currentReplaySession.id,
-      });
+  const selectSession = (sessionId: string | undefined) => {
+    if (isPresent(sessionId)) {
+      agentStore.dispatch({ type: "SELECT_SESSION", sessionId });
     } else {
       agentStore.dispatch({ type: "CLEAR_SESSION_SELECTION" });
     }
+  };
+
+  const syncSession = () => {
+    selectSession(sdk.replay.getCurrentSession()?.id);
   };
 
   const toggleDrawer = () => {
@@ -42,12 +42,7 @@ export const setupAgents = (sdk: FrontendSDK) => {
   sdk.shortcuts.register("shift:toggle-drawer", ["shift", "control", "i"]);
 
   sdk.replay.onCurrentSessionChange((event) => {
-    const newSessionId = event.sessionId;
-    if (isPresent(newSessionId)) {
-      agentStore.dispatch({ type: "SELECT_SESSION", sessionId: newSessionId });
-    } else {
-      agentStore.dispatch({ type: "CLEAR_SESSION_SELECTION" });
-    }
+    selectSession(event.sessionId);
   });
 
   const startDeletedReplaySessionSubscription = async () => {

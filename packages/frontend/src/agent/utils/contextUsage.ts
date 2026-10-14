@@ -3,11 +3,10 @@ import type { Model, ShiftMessage } from "shared";
 
 import {
   applyCompactionMarker,
+  CHARS_PER_TOKEN,
   getCompactionThreshold,
   getContextWindow,
 } from "@/agent/compaction";
-
-const CHARS_PER_TOKEN = 4;
 
 function estimateSerializableCharacters(value: unknown): number {
   if (value === undefined || value === null) {
@@ -25,14 +24,6 @@ function estimateSerializableCharacters(value: unknown): number {
   try {
     return JSON.stringify(value)?.length ?? 0;
   } catch {
-    if (
-      typeof value === "string" ||
-      typeof value === "number" ||
-      typeof value === "boolean" ||
-      typeof value === "bigint"
-    ) {
-      return String(value).length;
-    }
     return "[unserializable]".length;
   }
 }

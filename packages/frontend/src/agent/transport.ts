@@ -79,23 +79,21 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
     });
     writeAITrace(traceEnabled, traceRunId, "transport.input", options.messages);
 
-    const context = this.context;
-
     const stream = createUIMessageStream<ShiftMessage>({
       originalMessages: options.messages,
       execute: async ({ writer }) => {
-        context.setWriter(writer);
+        this.context.setWriter(writer);
 
         const [contentResult] = await Promise.all([
-          getSessionContent(this.sdk, context.sessionId),
-          context.fetchEnvironmentInfo(),
-          context.fetchEntriesInfo(),
+          getSessionContent(this.sdk, this.context.sessionId),
+          this.context.fetchEnvironmentInfo(),
+          this.context.fetchEntriesInfo(),
         ]);
         if (contentResult.kind === "Error") {
           console.error("Failed to get session content: ", contentResult.error);
           throw new Error(contentResult.error);
         }
-        context.setHttpRequest(contentResult.value);
+        this.context.setHttpRequest(contentResult.value);
 
         const lastUserMessageId = findLastUserMessageId(options.messages);
         if (lastUserMessageId !== undefined) {
@@ -108,8 +106,8 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
           settingsStore.openRouterPrioritizeFastProviders ?? false;
         const agent = createShiftAgent({
           sdk: this.sdk,
-          model: model,
-          context: context,
+          model,
+          context: this.context,
           maxIterations,
           reasoningEffort: this.store.reasoningEffort,
           openRouterPrioritizeFastProviders,
@@ -128,7 +126,7 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
         let messagesForModel = stripped;
         try {
           messagesForModel = replaceHistoricalToolOutputsWithBlobRefs(stripped, (content, id) =>
-            context.registerHistoricalToolOutput(id, content)
+            this.context.registerHistoricalToolOutput(id, content)
           );
         } catch (err) {
           console.warn("Historical tool output blob replacement failed, using full messages:", err);
@@ -157,10 +155,10 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
             sendStart: false,
             sendReasoning: true,
             onFinish: () => {
-              context.clearTodos();
+              this.context.clearTodos();
             },
             onError: (error) => {
-              context.clearTodos();
+              this.context.clearTodos();
               writer.write({
                 type: "message-metadata",
                 messageMetadata: {
@@ -202,15 +200,7 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
                 };
               }
 
-              if (part.type === "error") {
-                isTerminalState = true;
-                return {
-                  state: "error",
-                  reasoning_times: [...reasoningTimes],
-                };
-              }
-
-              if (part.type === "tool-error") {
+              if (part.type === "error" || part.type === "tool-error") {
                 isTerminalState = true;
                 return {
                   state: "error",

@@ -1,4 +1,4 @@
-import { type ModelMessage, stepCountIs, ToolLoopAgent } from "ai";
+import { stepCountIs, ToolLoopAgent } from "ai";
 import type { Model } from "shared";
 
 import { createCompactor } from "@/agent/compaction";
@@ -10,7 +10,7 @@ import { repairToolCall } from "@/float/toolCallRepair";
 import { type FrontendSDK } from "@/types";
 import { createModel, type ReasoningEffort } from "@/utils/ai";
 
-function getTools(legacyTodos: boolean) {
+export function getTools(legacyTodos: boolean) {
   if (legacyTodos) return shiftAgentTools;
   const { TodoAdd, TodoStart, TodoComplete, TodoRemove, ...tools } = shiftAgentTools;
   return tools;
@@ -30,14 +30,6 @@ type AgentOptions = {
   traceRunId?: string;
   abortSignal?: AbortSignal;
 };
-
-export async function prepareCacheStableStep<TOptions extends { messages: ModelMessage[] }>(
-  context: Pick<AgentContext, "fetchEntriesInfo">,
-  options: TOptions
-): Promise<TOptions> {
-  await context.fetchEntriesInfo();
-  return options;
-}
 
 export const createShiftAgent = (options: AgentOptions) => {
   const {
@@ -75,7 +67,7 @@ export const createShiftAgent = (options: AgentOptions) => {
       context.writer?.write({ type: "data-compaction", data: { summary } });
     },
   });
-  const agent = new ToolLoopAgent({
+  return new ToolLoopAgent({
     model: caidoModel,
     instructions,
     tools,
@@ -86,8 +78,9 @@ export const createShiftAgent = (options: AgentOptions) => {
     experimental_context: context,
     experimental_repairToolCall: async ({ toolCall, inputSchema, error }) =>
       (await repairToolCall(toolCall, inputSchema, error)) ?? null,
-    prepareStep: async (settings) => compact(await prepareCacheStableStep(context, settings)),
+    prepareStep: async (settings) => {
+      await context.fetchEntriesInfo();
+      return compact(settings);
+    },
   });
-
-  return agent;
 };

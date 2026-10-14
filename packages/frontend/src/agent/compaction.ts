@@ -7,7 +7,7 @@ import {
 } from "ai";
 import type { ShiftMessage } from "shared";
 
-const CHARS_PER_TOKEN = 4;
+export const CHARS_PER_TOKEN = 4;
 const DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000;
 // Models advertise up to 1M+, but quality and pricing degrade well before that (Codex caps GPT-5 at 272k)
 const RECOMMENDED_CONTEXT_WINDOW_TOKENS = 272_000;
@@ -96,6 +96,7 @@ export function createCompactor<TOOLS extends ToolSet>(options: CreateCompactorO
     steps: StepResult<TOOLS>[];
   }): Promise<{ messages: ModelMessage[] } | undefined> => {
     const current = view(messages);
+    const unchanged = compacted === undefined ? undefined : { messages: current };
     const lastUsage = steps.at(-1)?.usage;
     const usedTokens =
       lastUsage?.inputTokens !== undefined
@@ -103,7 +104,7 @@ export function createCompactor<TOOLS extends ToolSet>(options: CreateCompactorO
         : estimateTokens(system) + estimateTokens(current);
 
     if (usedTokens < threshold) {
-      return compacted === undefined ? undefined : { messages: current };
+      return unchanged;
     }
 
     // Same system and tools as the agent so the summary request reuses its prompt cache.
@@ -120,7 +121,7 @@ export function createCompactor<TOOLS extends ToolSet>(options: CreateCompactorO
     });
     const summary = (await result.text).trim();
     if (summary === "") {
-      return compacted === undefined ? undefined : { messages: current };
+      return unchanged;
     }
 
     compacted = { summary, fromIndex: messages.length };

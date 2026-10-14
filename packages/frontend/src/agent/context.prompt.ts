@@ -52,7 +52,7 @@ export function buildSkillsPrompt(snapshot: SkillsPromptSnapshot): string {
 
     if (onDemand.length > 0) {
       const catalogLines = onDemand.map((s) => {
-        const desc = s.description?.trim();
+        const desc = s.description?.trim() ?? "";
         return desc !== ""
           ? `- ${s.title} (id: ${s.id}): ${truncate(desc, 200)}`
           : `- ${s.title} (id: ${s.id})`;
