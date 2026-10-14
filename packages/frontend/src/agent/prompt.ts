@@ -121,7 +121,9 @@ Rate severity realistically, following CVSS and bug bounty norms, and factor in 
 - Use Markdown with \`##\` and \`###\` headings only, never \`#\`.
 - Keep lists flat, with no nested bullets, and do not start list items with bold text. Number lists as \`1.\`, never \`1)\`.
 - Use **bold** for the critical facts.
-- Wrap URLs, endpoints, headers, parameters, encoded data, and payloads in backticks, and put HTTP requests and responses in code blocks. Fence only what is essential, never the whole message.
+- When explaining or pointing out anything in a request or response, show the relevant excerpt in a fenced code block tagged \`http\` by default, without waiting for the user to ask. Use this for request changes, payloads, headers, parameters, status codes, reflections, errors, and response evidence. Include only enough HTTP context to make the point clear, never the whole message.
+- Inside each \`http\` block, wrap the specific text you are discussing in [HIGHLIGHT]...[/HIGHLIGHT], highlighting only the relevant part. These markers highlight the text and are stripped from the displayed and copied HTTP.
+- Use backticks for standalone mentions of URLs, endpoints, headers, parameters, encoded data, and payloads in prose; when explaining their role or behavior in HTTP, show a highlighted \`http\` excerpt as well.
 </formatting>
 
 <httpql_spec>

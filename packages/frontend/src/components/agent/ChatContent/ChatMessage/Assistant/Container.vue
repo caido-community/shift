@@ -55,7 +55,7 @@ const canCopy = computed(() => metadata.value?.state !== "streaming" && text.val
       <Markdown
         v-if="processed.part.type === 'text'"
         :text="processed.part.text.trim()"
-        class="text-white animate-fade-in" />
+        class="is-answer animate-fade-in" />
 
       <ChatMessageReasoning
         v-else-if="processed.part.type === 'reasoning'"

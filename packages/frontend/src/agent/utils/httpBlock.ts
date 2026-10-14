@@ -7,6 +7,8 @@ const CAIDO_EDITOR_COLORS = {
   headerName: "#fec418",
 };
 
+const MARKER = /\[(\/?)HIGHLIGHT\]/;
+
 type Range = { from: number; to: number };
 export type HttpSegment = { text: string; color: string | undefined; marked: boolean };
 type HttpLine = Pick<RequestDiffLine, "text" | "line" | "head">;
@@ -55,4 +57,27 @@ export function toHttpSegments(line: HttpLine, marks: Range[]): HttpSegment[] {
     }
   }
   return segments;
+}
+
+export function toHttpBlockLines(source: string): HttpSegment[][] {
+  let isMarked = false;
+  const lines = source.split("\n").map((raw) => {
+    let text = "";
+    const marks: Range[] = [];
+    // split() puts the captured slash of each marker at the odd indexes.
+    raw.split(MARKER).forEach((piece, index) => {
+      if (index % 2 === 1) {
+        isMarked = piece === "";
+        return;
+      }
+      if (isMarked) marks.push({ from: text.length, to: text.length + piece.length });
+      text += piece;
+    });
+    return { text, marks };
+  });
+
+  const headLength = getHeadLength(lines.map((line) => line.text));
+  return lines.map(({ text, marks }, index) =>
+    toHttpSegments({ text, line: index + 1, head: index < headLength }, marks)
+  );
 }

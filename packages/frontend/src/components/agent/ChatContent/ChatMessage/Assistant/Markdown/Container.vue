@@ -6,6 +6,7 @@ import { computed, useAttrs } from "vue";
 
 import "./style.css";
 
+import { toHttpBlockLines } from "@/agent/utils/httpBlock";
 import { isPresent } from "@/utils/optional";
 
 const md = new MarkdownIt({
@@ -13,9 +14,31 @@ const md = new MarkdownIt({
   linkify: false,
 });
 
+const renderHttpBlock = (source: string) => {
+  const lines = toHttpBlockLines(source.replace(/\n$/, "")).map((segments) =>
+    segments
+      .map((segment) => {
+        const text = md.utils.escapeHtml(segment.text);
+        const colored =
+          segment.color === undefined
+            ? text
+            : `<span style="color:${segment.color}">${text}</span>`;
+        return segment.marked ? `<mark>${colored}</mark>` : colored;
+      })
+      .join("")
+  );
+  return `<pre><code>${lines.join("\n")}</code></pre>`;
+};
+
 const renderFence = md.renderer.rules.fence!;
-md.renderer.rules.fence = (...args) =>
-  `<div class="code-block">${renderFence(...args)}<button type="button" class="fas fa-copy" title="Copy code" data-copy-code></button></div>`;
+md.renderer.rules.fence = (tokens, index, ...rest) => {
+  const token = tokens[index]!;
+  const code =
+    token.info.trim() === "http"
+      ? renderHttpBlock(token.content)
+      : renderFence(tokens, index, ...rest);
+  return `<div class="code-block">${code}<button type="button" class="fas fa-copy" title="Copy code" data-copy-code></button></div>`;
+};
 
 const { text } = defineProps<{ text: string }>();
 const attrs = useAttrs();
