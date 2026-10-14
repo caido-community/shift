@@ -21,6 +21,9 @@ function handleUpdateSettings(
     if (input.maxIterations !== undefined) {
       draft.maxIterations = input.maxIterations;
     }
+    if (input.chatAppearance !== undefined) {
+      draft.chatAppearance = input.chatAppearance;
+    }
     if (input.renaming !== undefined) {
       draft.renaming = { ...draft.renaming, ...input.renaming };
     }

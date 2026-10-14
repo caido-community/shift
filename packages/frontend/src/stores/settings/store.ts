@@ -24,6 +24,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const floatModel = computed(() => model.value.config?.floatModel);
   const renamingModel = computed(() => model.value.config?.renamingModel);
   const maxIterations = computed(() => model.value.config?.maxIterations);
+  const chatAppearance = computed(() => model.value.config?.chatAppearance ?? "compact");
   const renaming = computed(() => model.value.config?.renaming);
   const debugToolsEnabled = computed(() => model.value.config?.debugToolsEnabled);
   const autoCreateShiftCollection = computed(() => model.value.config?.autoCreateShiftCollection);
@@ -64,6 +65,7 @@ export const useSettingsStore = defineStore("settings", () => {
     floatModel,
     renamingModel,
     maxIterations,
+    chatAppearance,
     renaming,
     debugToolsEnabled,
     autoCreateShiftCollection,

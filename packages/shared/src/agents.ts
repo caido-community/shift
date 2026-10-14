@@ -24,9 +24,24 @@ export type MessageMetadata = {
 };
 export type PartState = UIToolInvocation<UITool>["state"];
 
+export type RequestDiffLine = {
+  op: "add" | "del";
+  line: number;
+  text: string;
+  head: boolean;
+  changedRange?: { from: number; to: number };
+};
+
+export type RequestDiff = {
+  lines: RequestDiffLine[];
+  omittedLines: number;
+};
+
 export type ShiftDataTypes = {
   /** Marks a context compaction: everything before it reaches the model only as this summary. */
   compaction: { summary: string };
+  /** Kept out of the tool output so the model never sees it. */
+  "request-diff": RequestDiff & { toolCallId: string };
 };
 
 export type ShiftMessage = UIMessage<MessageMetadata, ShiftDataTypes>;

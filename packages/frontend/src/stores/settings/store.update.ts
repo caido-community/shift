@@ -45,6 +45,9 @@ function handleUpdateSuccess(model: SettingsModel, input: UpdateSettingsInput): 
     if (input.maxIterations !== undefined) {
       draft.config.maxIterations = input.maxIterations;
     }
+    if (input.chatAppearance !== undefined) {
+      draft.config.chatAppearance = input.chatAppearance;
+    }
     if (input.debugToolsEnabled !== undefined) {
       draft.config.debugToolsEnabled = input.debugToolsEnabled;
     }

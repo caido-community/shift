@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { editRequest } from "./editRequest";
 import { createRequestModelOutput } from "./modelOutput";
 
 import type { AgentContext } from "@/agent/context";
@@ -34,14 +35,14 @@ export const RequestCookieRemove = tool({
     "Remove a cookie from the Cookie header of the current HTTP request by its name. Use this to test how the application behaves without certain cookies - for example, removing session cookies to test unauthenticated behavior, or removing CSRF tokens to test protection mechanisms. If the cookie doesn't exist, the operation succeeds silently. Removes all occurrences if the cookie appears multiple times. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
-  execute: ({ name }, { experimental_context }): RequestCookieRemoveOutput => {
+  execute: ({ name }, { experimental_context, toolCallId }): RequestCookieRemoveOutput => {
     const context = experimental_context as AgentContext;
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
     const forge = HttpForge.create(context.httpRequest).removeCookie(name);
     const after = forge.build();
-    context.setHttpRequest(after);
+    editRequest(context, toolCallId, after);
     const cookieHeader = forge.getHeader("Cookie");
     return ToolResult.ok({
       message: `Cookie "${name}" removed\nCookie: ${cookieHeader ?? "(none)"}`,

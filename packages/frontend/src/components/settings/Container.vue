@@ -3,8 +3,14 @@ import Button from "primevue/button";
 import Card from "primevue/card";
 import Checkbox from "primevue/checkbox";
 import InputNumber from "primevue/inputnumber";
+import SelectButton from "primevue/selectbutton";
 import ToggleSwitch from "primevue/toggleswitch";
-import { DEFAULT_MAX_ITERATIONS, defaultFeatureFlags, type FeatureFlagKey } from "shared";
+import {
+  type ChatAppearance,
+  DEFAULT_MAX_ITERATIONS,
+  defaultFeatureFlags,
+  type FeatureFlagKey,
+} from "shared";
 import { computed } from "vue";
 
 import { featureFlagEntries } from "@/features";
@@ -20,6 +26,20 @@ const maxIterations = computed({
   },
   set(value: number) {
     updateSettings(sdk, dispatch, { maxIterations: value });
+  },
+});
+
+const chatAppearanceOptions: { label: string; value: ChatAppearance }[] = [
+  { label: "Compact", value: "compact" },
+  { label: "Expanded", value: "expanded" },
+];
+
+const chatAppearance = computed({
+  get() {
+    return settingsStore.chatAppearance;
+  },
+  set(value: ChatAppearance) {
+    updateSettings(sdk, dispatch, { chatAppearance: value });
   },
 });
 
@@ -104,6 +124,24 @@ const updateFeatureFlag = (flag: FeatureFlagKey, value: boolean) => {
               v-model="maxIterations"
               placeholder="Enter max iterations"
               class="w-full" />
+          </div>
+
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex flex-col">
+              <label class="text-base font-medium">Chat Appearance</label>
+              <p class="text-sm text-surface-400">
+                Compact keeps request diffs and command output collapsed until you click them.
+                Expanded opens them by default.
+              </p>
+            </div>
+
+            <SelectButton
+              v-model="chatAppearance"
+              :options="chatAppearanceOptions"
+              option-label="label"
+              option-value="value"
+              :allow-empty="false"
+              class="shrink-0" />
           </div>
 
           <div class="flex items-center justify-between gap-4">

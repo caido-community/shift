@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { editRequest } from "./editRequest";
 import { createRequestModelOutput } from "./modelOutput";
 
 import type { AgentContext } from "@/agent/context";
@@ -43,7 +44,10 @@ export const RequestQueryAdd = tool({
     "Append a new query parameter to the current HTTP request. Unlike RequestQuerySet which replaces existing values, this adds a duplicate - the same key can appear multiple times (e.g. ?redirect_uri=1&redirect_uri=2). Use for testing parameter pollution, OAuth redirect_uri manipulation, or APIs that accept repeated params. The value supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Pass empty string for a param with no value (e.g. ?debug). This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
-  execute: async ({ key, value }, { experimental_context }): Promise<RequestQueryAddOutput> => {
+  execute: async (
+    { key, value },
+    { experimental_context, toolCallId }
+  ): Promise<RequestQueryAddOutput> => {
     const context = experimental_context as AgentContext;
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
@@ -55,7 +59,7 @@ export const RequestQueryAdd = tool({
     const resolvedValue = resolvedValueResult.value;
     const forge = HttpForge.create(context.httpRequest).addQueryParam(key, resolvedValue);
     const after = forge.build();
-    context.setHttpRequest(after);
+    editRequest(context, toolCallId, after);
     const query = forge.getQuery() ?? "";
     return ToolResult.ok({ message: `Query param "${key}" added\nQuery: ?${query}` });
   },

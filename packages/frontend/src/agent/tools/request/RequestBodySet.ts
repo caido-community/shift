@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { editRequest } from "./editRequest";
 import { createRequestModelOutput } from "./modelOutput";
 
 import type { AgentContext } from "@/agent/context";
@@ -49,7 +50,10 @@ export const RequestBodySet = tool({
     "Set or replace the body content of the current HTTP request. Use this when you need to modify POST/PUT/PATCH request payloads, add JSON data, form data, or any other request body content. The body parameter accepts any string content and supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Pass an empty string to remove the body entirely. This tool will fail if no HTTP request is currently loaded in the replay session. Returns the complete request before and after the modification.",
   inputSchema,
   outputSchema,
-  execute: async ({ body }, { experimental_context }): Promise<RequestBodySetOutput> => {
+  execute: async (
+    { body },
+    { experimental_context, toolCallId }
+  ): Promise<RequestBodySetOutput> => {
     const context = experimental_context as AgentContext;
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
@@ -61,7 +65,7 @@ export const RequestBodySet = tool({
     const resolvedBody = resolvedBodyResult.value;
     const forge = HttpForge.create(context.httpRequest).body(resolvedBody);
     const after = forge.build();
-    context.setHttpRequest(after);
+    editRequest(context, toolCallId, after);
     const finalBody = forge.getBody() ?? "";
     const preview = finalBody.length === 0 ? "(empty)" : truncate(finalBody, 200);
     return ToolResult.ok({

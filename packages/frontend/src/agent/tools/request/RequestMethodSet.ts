@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { editRequest } from "./editRequest";
 import { createRequestModelOutput } from "./modelOutput";
 
 import type { AgentContext } from "@/agent/context";
@@ -30,14 +31,14 @@ export const RequestMethodSet = tool({
     "Change the HTTP method of the current request. Use this to test how endpoints respond to different methods - for example, changing GET to POST to test for method-based access control issues, or trying DELETE/PUT/PATCH on REST endpoints. The method parameter accepts any valid HTTP method string (GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD, etc.). This only changes the method in the request line; you may also need to add appropriate headers (Content-Type) or body content for methods that typically include a request body. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
-  execute: ({ method }, { experimental_context }): RequestMethodSetOutput => {
+  execute: ({ method }, { experimental_context, toolCallId }): RequestMethodSetOutput => {
     const context = experimental_context as AgentContext;
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
     const forge = HttpForge.create(context.httpRequest).method(method);
     const after = forge.build();
-    context.setHttpRequest(after);
+    editRequest(context, toolCallId, after);
     const path = forge.getPath() ?? "/";
     const query = forge.getQuery();
     const fullPath = query !== null ? `${path}?${query}` : path;

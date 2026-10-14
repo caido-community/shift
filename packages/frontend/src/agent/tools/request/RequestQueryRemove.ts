@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { editRequest } from "./editRequest";
 import { createRequestModelOutput } from "./modelOutput";
 
 import type { AgentContext } from "@/agent/context";
@@ -34,14 +35,14 @@ export const RequestQueryRemove = tool({
     "Remove a URL query parameter from the current HTTP request by its key name. Use this to test how the application behaves when expected parameters are missing, or to clean up the query string before adding different test values. If the parameter doesn't exist, the operation succeeds silently (no error). Removes all occurrences if the parameter appears multiple times. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
-  execute: ({ key }, { experimental_context }): RequestQueryRemoveOutput => {
+  execute: ({ key }, { experimental_context, toolCallId }): RequestQueryRemoveOutput => {
     const context = experimental_context as AgentContext;
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
     const forge = HttpForge.create(context.httpRequest).removeQueryParam(key);
     const after = forge.build();
-    context.setHttpRequest(after);
+    editRequest(context, toolCallId, after);
     const query = forge.getQuery();
     return ToolResult.ok({
       message: `Query param "${key}" removed\nQuery: ${query !== null ? `?${query}` : "(empty)"}`,

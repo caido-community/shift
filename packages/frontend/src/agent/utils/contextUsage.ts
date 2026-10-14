@@ -39,7 +39,8 @@ function estimateSerializableCharacters(value: unknown): number {
 
 export function estimateMessagesCharacters(messages: ShiftMessage[]): number {
   return messages.reduce((total, message) => {
-    return total + message.role.length + estimateSerializableCharacters(message.parts);
+    const parts = message.parts.filter((part) => part.type !== "data-request-diff");
+    return total + message.role.length + estimateSerializableCharacters(parts);
   }, 0);
 }
 

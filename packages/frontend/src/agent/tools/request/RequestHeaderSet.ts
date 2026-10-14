@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { editRequest } from "./editRequest";
 import { createRequestModelOutput } from "./modelOutput";
 
 import type { AgentContext } from "@/agent/context";
@@ -50,7 +51,10 @@ export const RequestHeaderSet = tool({
     "Set or replace an HTTP header in the current request. If the header already exists, its value will be replaced; if it doesn't exist, it will be added. Use this for modifying authentication tokens, content types, custom headers, or any header that should have exactly one value. For headers that can have multiple values (like Accept), use RequestHeaderAdd instead. The value parameter supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Pass an empty string as the value to clear the header's value while keeping the header present. This tool will fail if no HTTP request is currently loaded. Returns the complete request before and after the modification.",
   inputSchema,
   outputSchema,
-  execute: async ({ name, value }, { experimental_context }): Promise<RequestHeaderSetOutput> => {
+  execute: async (
+    { name, value },
+    { experimental_context, toolCallId }
+  ): Promise<RequestHeaderSetOutput> => {
     const context = experimental_context as AgentContext;
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
@@ -62,7 +66,7 @@ export const RequestHeaderSet = tool({
     const resolvedValue = resolvedValueResult.value;
     const forge = HttpForge.create(context.httpRequest).setHeader(name, resolvedValue);
     const after = forge.build();
-    context.setHttpRequest(after);
+    editRequest(context, toolCallId, after);
     const headerValue = forge.getHeader(name);
     return ToolResult.ok({ message: `Header "${name}" set\n${name}: ${headerValue ?? ""}` });
   },

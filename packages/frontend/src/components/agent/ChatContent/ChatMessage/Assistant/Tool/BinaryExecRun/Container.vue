@@ -107,13 +107,16 @@ const {
 
     <template v-else-if="isExpandable">
       <button
-        class="flex items-center gap-1.5 h-5 text-surface-300 group hover:text-surface-200 transition-colors"
+        class="flex items-center gap-1.5 h-5 text-surface-300 group hover:text-surface-100 transition-colors"
         @click="toggle">
         <span class="select-none">
           <template
             v-for="(part, index) in successResult"
             :key="index">
-            <span :class="{ 'text-surface-500': part.muted }">
+            <span
+              :class="{
+                'text-surface-500 group-hover:text-surface-200 transition-colors': part.muted,
+              }">
               {{ formatToolDisplayText(part.text) }}
             </span>
           </template>

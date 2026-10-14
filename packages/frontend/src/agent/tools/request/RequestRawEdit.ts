@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { editRequest } from "./editRequest";
 import { createRequestModelOutput } from "./modelOutput";
 
 import type { AgentContext } from "@/agent/context";
@@ -55,11 +56,9 @@ export const RequestRawEdit = tool({
   outputSchema,
   execute: async (
     { oldText, newText },
-    { experimental_context }
+    { experimental_context, toolCallId }
   ): Promise<RequestRawEditOutput> => {
     const context = experimental_context as AgentContext;
-
-    const before = normalizeCRLF(context.httpRequest);
 
     const normalizedOld = normalizeCRLF(oldText);
     const resolvedNewResult = await resolveToolInputPlaceholders(context, newText);
@@ -69,13 +68,14 @@ export const RequestRawEdit = tool({
     const resolvedNew = resolvedNewResult.value;
     const normalizedNew = normalizeCRLF(resolvedNew);
 
+    const before = normalizeCRLF(context.httpRequest);
     const result = replaceUniqueText(before, normalizedOld, normalizedNew);
     if (result.kind === "Error") {
       return ToolResult.err(result.error);
     }
 
     const after = normalizeRawHttpRequest(result.value.after);
-    context.setHttpRequest(after);
+    editRequest(context, toolCallId, after);
 
     const truncated = after.length > MAX_LENGTH;
     const preview = truncated ? after.slice(0, MAX_LENGTH) : after;

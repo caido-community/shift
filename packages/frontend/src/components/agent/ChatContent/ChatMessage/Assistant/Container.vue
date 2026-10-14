@@ -17,9 +17,8 @@ const { message } = defineProps<{
   message: ShiftMessage & { role: "assistant" };
 }>();
 
-const { processedParts, metadata, calculateReasoningTime, getReasoningIndex } = useAssistantMessage(
-  () => message
-);
+const { processedParts, metadata, requestDiffs, calculateReasoningTime, getReasoningIndex } =
+  useAssistantMessage(() => message);
 
 const isWaitingForNextPart = computed(() => {
   if (metadata.value?.state !== "streaming") return false;
@@ -73,7 +72,8 @@ const canCopy = computed(() => metadata.value?.state !== "streaming" && text.val
         :message-metadata="metadata"
         :input="processed.part.input"
         :output="processed.part.output"
-        :error-text="getToolErrorText(processed.part)" />
+        :error-text="getToolErrorText(processed.part)"
+        :request-diff="requestDiffs.get(processed.part.toolCallId)" />
 
       <div
         v-else-if="processed.part.type === 'data-compaction'"

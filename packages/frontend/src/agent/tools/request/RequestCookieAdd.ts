@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { editRequest } from "./editRequest";
 import { createRequestModelOutput } from "./modelOutput";
 
 import type { AgentContext } from "@/agent/context";
@@ -45,7 +46,10 @@ export const RequestCookieAdd = tool({
     "Add a new cookie to the Cookie header of the current HTTP request. Use this to add session tokens, authentication cookies, tracking cookies, or test values. If a cookie with the same name already exists, this adds a duplicate (which may cause undefined behavior on the server). For replacing an existing cookie's value, use RequestCookieSet instead. The value supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Cookies are added to the existing Cookie header or a new one is created if none exists. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
-  execute: async ({ name, value }, { experimental_context }): Promise<RequestCookieAddOutput> => {
+  execute: async (
+    { name, value },
+    { experimental_context, toolCallId }
+  ): Promise<RequestCookieAddOutput> => {
     const context = experimental_context as AgentContext;
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
@@ -57,7 +61,7 @@ export const RequestCookieAdd = tool({
     const resolvedValue = resolvedValueResult.value;
     const forge = HttpForge.create(context.httpRequest).addCookie(name, resolvedValue);
     const after = forge.build();
-    context.setHttpRequest(after);
+    editRequest(context, toolCallId, after);
     const cookieHeader = forge.getHeader("Cookie");
     return ToolResult.ok({
       message: `Cookie "${name}" added\nCookie: ${cookieHeader ?? "(empty)"}`,

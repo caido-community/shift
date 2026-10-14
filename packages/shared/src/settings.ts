@@ -14,11 +14,15 @@ const ModelPreferenceSchema = z.object({
   ultrafast: z.boolean().optional(),
 });
 
+export const ChatAppearanceSchema = z.enum(["compact", "expanded"]);
+export type ChatAppearance = z.infer<typeof ChatAppearanceSchema>;
+
 const SettingsConfigSchema = z.object({
   agentsModel: z.string(),
   floatModel: z.string(),
   renamingModel: z.string(),
   maxIterations: z.number(),
+  chatAppearance: ChatAppearanceSchema,
   renaming: RenamingConfigSchema,
   debugToolsEnabled: z.boolean(),
   autoCreateShiftCollection: z.boolean(),
@@ -43,6 +47,7 @@ export const defaultSettingsConfig: SettingsConfig = {
   floatModel: "",
   renamingModel: "",
   maxIterations: DEFAULT_MAX_ITERATIONS,
+  chatAppearance: "compact",
   renaming: defaultRenamingConfig,
   debugToolsEnabled: false,
   autoCreateShiftCollection: true,
@@ -57,6 +62,7 @@ export const UpdateSettingsSchema = z.object({
   floatModel: z.string().optional(),
   renamingModel: z.string().optional(),
   maxIterations: z.number().optional(),
+  chatAppearance: ChatAppearanceSchema.optional(),
   renaming: RenamingConfigSchema.partial().optional(),
   debugToolsEnabled: z.boolean().optional(),
   autoCreateShiftCollection: z.boolean().optional(),

@@ -12,6 +12,7 @@ import { useTool } from "../useTool";
 
 import { clearStreamedBinaryOutput, getStreamedBinaryOutput } from "@/agent/tools/binaries";
 import { type MessageResult } from "@/agent/types";
+import { useDetailToggle } from "@/components/agent/useDetailToggle";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -186,11 +187,7 @@ export function useBinaryOutput(args: {
     () => toolState.value === "success" && binaryOutput.value !== undefined
   );
 
-  const isExpanded = ref(false);
-
-  const toggle = () => {
-    isExpanded.value = !isExpanded.value;
-  };
+  const { isOpen: isExpanded, toggle } = useDetailToggle();
 
   return {
     toolState,

@@ -50,7 +50,7 @@ watch(
       :is="!isStreaming && hasContent ? 'button' : 'div'"
       :class="[
         'flex items-center gap-1.5 h-5 text-surface-300',
-        !isStreaming && hasContent && 'group hover:text-surface-200 transition-colors',
+        !isStreaming && hasContent && 'group hover:text-surface-100 transition-colors',
       ]"
       @click="!isStreaming && hasContent ? toggleReasoning() : undefined">
       <component
@@ -59,7 +59,7 @@ watch(
         {{ reasoningLabel
         }}<span
           v-if="!isStreaming && reasoningDuration"
-          class="text-surface-500">
+          class="text-surface-500 group-hover:text-surface-200 transition-colors">
           for {{ reasoningDuration }}
         </span>
       </component>

@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { editRequest } from "./editRequest";
 import { createRequestModelOutput } from "./modelOutput";
 
 import type { AgentContext } from "@/agent/context";
@@ -44,7 +45,10 @@ export const RequestPathSet = tool({
     "Set the URL path of the current HTTP request. Use this to change which endpoint the request targets - for example, testing path traversal (../../../etc/passwd), accessing different API versions (/api/v2/users), or exploring directory structures. The path should start with a forward slash and not include the query string (use RequestQuerySet for query parameters). Supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Pass an empty string to set the path to root (/). This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
-  execute: async ({ path }, { experimental_context }): Promise<RequestPathSetOutput> => {
+  execute: async (
+    { path },
+    { experimental_context, toolCallId }
+  ): Promise<RequestPathSetOutput> => {
     const context = experimental_context as AgentContext;
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
@@ -61,7 +65,7 @@ export const RequestPathSet = tool({
     }
     const forge = HttpForge.create(context.httpRequest).path(resolvedPath);
     const after = forge.build();
-    context.setHttpRequest(after);
+    editRequest(context, toolCallId, after);
     const method = forge.getMethod() ?? "GET";
     const query = forge.getQuery();
     const fullPath = query !== null ? `${resolvedPath}?${query}` : resolvedPath;

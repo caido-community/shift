@@ -9,6 +9,7 @@ const createTestModel = (): SettingsModel => ({
   floatModel: "google/gemini-3-flash-preview",
   renamingModel: "google/gemini-3.1-pro-preview-customtools",
   maxIterations: DEFAULT_MAX_ITERATIONS,
+  chatAppearance: "compact",
   renaming: {
     enabled: false,
     renameAfterSend: false,
@@ -87,6 +88,15 @@ describe("settings update", () => {
       });
 
       expect(result.maxIterations).toBe(50);
+    });
+
+    it("updates chatAppearance", () => {
+      const result = update(createTestModel(), {
+        type: "UPDATE_SETTINGS",
+        input: { chatAppearance: "expanded" },
+      });
+
+      expect(result.chatAppearance).toBe("expanded");
     });
 
     it("updates openRouterPrioritizeFastProviders", () => {

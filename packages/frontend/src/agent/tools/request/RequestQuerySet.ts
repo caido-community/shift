@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { editRequest } from "./editRequest";
 import { createRequestModelOutput } from "./modelOutput";
 
 import type { AgentContext } from "@/agent/context";
@@ -50,7 +51,10 @@ export const RequestQuerySet = tool({
     "Add or update a URL query parameter in the current HTTP request. If the parameter already exists, its value is replaced; if it doesn't exist, it's added. Use this to modify search terms, filter values, pagination parameters, or inject test payloads into query strings. The key is the parameter name and value is its content. The value supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Pass an empty string as the value to set a parameter with no value (e.g., ?debug). For parameters that can appear multiple times, each call replaces the existing value. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
-  execute: async ({ key, value }, { experimental_context }): Promise<RequestQuerySetOutput> => {
+  execute: async (
+    { key, value },
+    { experimental_context, toolCallId }
+  ): Promise<RequestQuerySetOutput> => {
     const context = experimental_context as AgentContext;
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
@@ -62,7 +66,7 @@ export const RequestQuerySet = tool({
     const resolvedValue = resolvedValueResult.value;
     const forge = HttpForge.create(context.httpRequest).upsertQueryParam(key, resolvedValue);
     const after = forge.build();
-    context.setHttpRequest(after);
+    editRequest(context, toolCallId, after);
     const query = forge.getQuery() ?? "";
     return ToolResult.ok({ message: `Query param "${key}" set\nQuery: ?${query}` });
   },

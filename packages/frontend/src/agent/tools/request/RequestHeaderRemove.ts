@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
+import { editRequest } from "./editRequest";
 import { createRequestModelOutput } from "./modelOutput";
 
 import type { AgentContext } from "@/agent/context";
@@ -34,14 +35,14 @@ export const RequestHeaderRemove = tool({
     "Remove an HTTP header from the current request by its name. Use this to test how the application behaves without certain headers - for example, removing Authorization to test unauthenticated access, removing Content-Type to test parsing behavior, or removing custom headers to bypass security controls. The header name matching is case-insensitive. If the header doesn't exist, the operation succeeds silently. Removes all occurrences if the header appears multiple times. This tool will fail if no HTTP request is currently loaded.",
   inputSchema,
   outputSchema,
-  execute: ({ name }, { experimental_context }): RequestHeaderRemoveOutput => {
+  execute: ({ name }, { experimental_context, toolCallId }): RequestHeaderRemoveOutput => {
     const context = experimental_context as AgentContext;
     if (context.httpRequest === "") {
       return ToolResult.err("No HTTP request loaded");
     }
     const forge = HttpForge.create(context.httpRequest).removeHeader(name);
     const after = forge.build();
-    context.setHttpRequest(after);
+    editRequest(context, toolCallId, after);
     const remaining = forge.getHeader(name);
     const verification =
       remaining === null ? `${name} header is no longer present` : `${name}: ${remaining}`;

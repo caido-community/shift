@@ -1,5 +1,5 @@
 import type { UIMessagePart, UITools } from "ai";
-import type { ShiftDataTypes, ShiftMessage } from "shared";
+import type { RequestDiff, ShiftDataTypes, ShiftMessage } from "shared";
 import { computed, type MaybeRefOrGetter, toValue } from "vue";
 
 import { formatReasoningTime } from "@/agent/utils/formatting";
@@ -11,7 +11,7 @@ type ProcessedPart = {
   index: number;
 };
 
-const SKIPPED_PART_TYPES = ["step-start"];
+const SKIPPED_PART_TYPES = ["step-start", "data-request-diff"];
 
 function shouldSkipPart(partType: string): boolean {
   return SKIPPED_PART_TYPES.includes(partType);
@@ -36,6 +36,16 @@ export function useAssistantMessage(message: MaybeRefOrGetter<ShiftMessage>) {
 
   const metadata = computed(() => toValue(message).metadata);
 
+  const requestDiffs = computed(() => {
+    const diffs = new Map<string, RequestDiff>();
+    for (const part of toValue(message).parts) {
+      if (part.type === "data-request-diff") {
+        diffs.set(part.data.toolCallId, part.data);
+      }
+    }
+    return diffs;
+  });
+
   function calculateReasoningTime(reasoningIndex: number): string | undefined {
     return formatReasoningTime(metadata.value?.reasoning_times, reasoningIndex);
   }
@@ -54,6 +64,7 @@ export function useAssistantMessage(message: MaybeRefOrGetter<ShiftMessage>) {
   return {
     processedParts,
     metadata,
+    requestDiffs,
     calculateReasoningTime,
     getReasoningIndex,
   };
