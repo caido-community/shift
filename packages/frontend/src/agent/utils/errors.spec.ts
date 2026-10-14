@@ -11,12 +11,16 @@ describe("formatAgentError", () => {
       requestBodyValues: {},
       isRetryable: false,
       data: {
-        kind: "truncated-stream",
+        kind: "provider",
         message: "stream ended before a terminal event was received",
-        origin: "openai-responses",
-        model: "gpt-5.6-sol",
-        requestId: "req_safeguard_56",
-        retryable: false,
+        providerError: {
+          kind: "truncated-stream",
+          message: "stream ended before a terminal event was received",
+          origin: "openai-responses",
+          model: "gpt-5.6-sol",
+          requestId: "req_safeguard_56",
+          retryable: false,
+        },
       },
     });
 

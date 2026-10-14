@@ -74,7 +74,7 @@ export const TodoStart = tool({
   toModelOutput: ({ output }) => {
     switch (output.kind) {
       case "Ok": {
-        const value = output.value as TodoStartValue & { message: string };
+        const value = output.value;
         return {
           type: "text",
           value: withReadableTodosText(value.message, [value.todo]),
@@ -82,7 +82,7 @@ export const TodoStart = tool({
       }
       case "Error":
         return {
-          type: "text",
+          type: "error-text",
           value: `Failed to start todo: ${output.error.message}`,
         };
       default:

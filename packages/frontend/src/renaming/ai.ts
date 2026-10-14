@@ -2,6 +2,7 @@ import { generateText, Output } from "ai";
 import { Result } from "shared";
 import { z } from "zod";
 
+import { truncateContextValue } from "@/agent/context.truncation";
 import { useModelsStore } from "@/stores/models";
 import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
@@ -30,14 +31,6 @@ Now that you know your job, the user can also specify their preferences for how 
 You will be given a replay entry. Please generate a name for the entry based on the content.
 You also have access to the user's instructions for how to rename the tabs, which you should follow.
 
-Follow strictly this output schema in your response:
-"""
-${JSON.stringify(z.toJSONSchema(outputSchema))}
-"""
-
-Never include any other text in your response. ALWAYS respond with valid JSON following the schema above.
-Include the suggested tab name in the "name" field.
-
 Example:
 
 INPUT:
@@ -64,6 +57,8 @@ OUTPUT:
 
 `.trim();
 
+const MAX_RAW_CHARS = 4_000;
+
 export async function generateName(
   sdk: FrontendSDK,
   entry: ReplayEntryWithRequest
@@ -82,16 +77,14 @@ export async function generateName(
       return Result.err("No models available");
     }
 
-    const openRouterPrioritizeFastProviders =
-      settingsStore.openRouterPrioritizeFastProviders ?? false;
     const model = createModel(sdk, modelData, {
-      openRouterPrioritizeFastProviders,
+      reasoning: false,
       ...settingsStore.getRequestOptions(modelData),
     });
 
     const prompt = `
       <entry>
-      ${JSON.stringify(entry.entry)}
+      ${JSON.stringify({ ...entry.entry, raw: truncateContextValue(entry.entry.raw, MAX_RAW_CHARS) })}
       </entry>
 
       <instructions>
@@ -112,13 +105,7 @@ export async function generateName(
       }),
     });
 
-    const output = outputSchema.safeParse(result.output);
-    switch (output.success) {
-      case true:
-        return Result.ok(output.data.name);
-      case false:
-        return Result.err(output.error.message);
-    }
+    return Result.ok(result.output.name);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(error);

@@ -83,7 +83,7 @@ export const TodoAdd = tool({
   toModelOutput: ({ output }) => {
     switch (output.kind) {
       case "Ok": {
-        const value = output.value as TodoAddValue & { message: string };
+        const value = output.value;
         return {
           type: "text",
           value: withReadableTodosText(value.message, value.todos),
@@ -91,7 +91,7 @@ export const TodoAdd = tool({
       }
       case "Error":
         return {
-          type: "text",
+          type: "error-text",
           value: `Failed to create todos: ${output.error.message}`,
         };
       default:

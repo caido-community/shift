@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
+import { type FrontendSDK } from "@/types";
 import {
   type AnyReplayEntry,
   getActiveEntryRequest,
@@ -53,12 +54,12 @@ const toActiveEntryIds = (
   responseId: getActiveEntryRequest(activeEntry)?.response?.id ?? undefined,
 });
 
-const getActiveEntryIds = async (
-  sdk: AgentContext["sdk"],
-  sessionId: string
-): Promise<ActiveEntryIds> => {
+const getSessionEntries = async (sdk: FrontendSDK, sessionId: string) => {
   const result = await sdk.graphql.replaySessionEntries({ id: sessionId });
-  return toActiveEntryIds(result.replaySession?.activeEntry);
+  return {
+    active: toActiveEntryIds(result.replaySession?.activeEntry),
+    entryIds: result.replaySession?.entries.edges.map((edge) => edge.node.id) ?? [],
+  };
 };
 
 const sleep = (duration: number): Promise<void> =>
@@ -156,13 +157,17 @@ export const RequestSend = tool({
 
     const replaySession = replaySessionResult.value;
 
-    const { responseId: previousResponseId } = await getActiveEntryIds(sdk, replaySession.id);
+    const previousEntryIds = new Set((await getSessionEntries(sdk, replaySession.id)).entryIds);
 
     let responseId: string | undefined = undefined;
     let entryId: string | undefined = undefined;
 
     const captureActiveEntry = (next: ActiveEntryIds): boolean => {
-      if (next.responseId !== undefined && next.responseId !== previousResponseId) {
+      if (
+        next.responseId !== undefined &&
+        next.entryId !== undefined &&
+        !previousEntryIds.has(next.entryId)
+      ) {
         responseId = next.responseId;
         entryId = next.entryId;
         return true;
@@ -217,46 +222,57 @@ export const RequestSend = tool({
       return ToolResult.err("Failed to send request", detail);
     }
 
-    const iterator = sdk.graphql.updatedReplaySession({});
+    const subscription = sdk.graphql.updatedReplaySession({})[Symbol.asyncIterator]();
+    let isWaiting = true;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let onAbort: (() => void) | undefined;
 
     const timeout = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error("Request timeout after 30 seconds")), 30000);
+      timeoutId = setTimeout(() => reject(new Error("Request timeout after 30 seconds")), 30000);
     });
 
     const abortPromise = new Promise<never>((_, reject) => {
-      abortSignal?.addEventListener("abort", () => {
-        if (location.hash !== "#/replay") return;
+      onAbort = () => {
         const currentSession = sdk.replay.getCurrentSession();
-        if (currentSession?.id === replaySession.id) {
+        if (location.hash === "#/replay" && currentSession?.id === replaySession.id) {
           document.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')?.click();
         }
         reject(new DOMException("Request aborted", "AbortError"));
-      });
+      };
+      if (abortSignal?.aborted === true) {
+        onAbort();
+      } else {
+        abortSignal?.addEventListener("abort", onAbort, { once: true });
+      }
     });
 
     const responsePromise = (async () => {
-      for await (const event of iterator) {
-        if (event.updatedReplaySession.sessionEdge.node.id === replaySession.id) {
-          if (
-            captureActiveEntry(
-              toActiveEntryIds(event.updatedReplaySession.sessionEdge.node.activeEntry)
-            )
-          ) {
-            break;
-          }
+      while (isWaiting) {
+        const event = await subscription.next();
+        if (event.done === true) return;
+        const node = event.value.updatedReplaySession.sessionEdge.node;
+        if (
+          node.id === replaySession.id &&
+          captureActiveEntry(toActiveEntryIds(node.activeEntry))
+        ) {
+          return;
         }
       }
     })();
 
     const pollResponsePromise = (async () => {
-      while (responseId === undefined) {
-        if (captureActiveEntry(await getActiveEntryIds(sdk, replaySession.id))) {
-          break;
+      while (isWaiting && responseId === undefined) {
+        if (captureActiveEntry((await getSessionEntries(sdk, replaySession.id)).active)) {
+          return;
         }
 
         await sleep(250);
       }
     })();
+
+    // Race losers may still reject after cleanup.
+    responsePromise.catch(() => undefined);
+    pollResponsePromise.catch(() => undefined);
 
     try {
       await Promise.race([responsePromise, pollResponsePromise, timeout, abortPromise]);
@@ -265,6 +281,11 @@ export const RequestSend = tool({
         throw error;
       }
       return ToolResult.err((error as Error).message);
+    } finally {
+      isWaiting = false;
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+      if (onAbort !== undefined) abortSignal?.removeEventListener("abort", onAbort);
+      void subscription.return?.();
     }
 
     if (responseId === undefined) {
@@ -304,13 +325,11 @@ export const RequestSend = tool({
       case "Ok":
         return {
           type: "text",
-          value: formatRequestSendModelOutput(
-            output.value as RequestSendValue & { message: string }
-          ),
+          value: formatRequestSendModelOutput(output.value),
         };
       case "Error":
         return {
-          type: "text",
+          type: "error-text",
           value:
             output.error.detail !== undefined && output.error.detail !== ""
               ? `Failed to send request: ${output.error.message}\n${output.error.detail}`

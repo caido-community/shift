@@ -3,6 +3,7 @@ import { type ExecuteAgentBinaryOutput, ExecuteAgentBinaryOutputSchema } from "s
 import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
+import { truncateContextValue } from "@/agent/context.truncation";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import { isPresent } from "@/utils";
 import { truncate } from "@/utils/text";
@@ -14,6 +15,8 @@ const inputSchema = z.object({
 });
 
 const outputSchema = ToolResult.schema(ExecuteAgentBinaryOutputSchema);
+
+const MAX_MODEL_STREAM_CHARS = 8_000;
 
 type BinaryExecRunInput = z.infer<typeof inputSchema>;
 type BinaryExecRunOutput = ToolResultType<ExecuteAgentBinaryOutput>;
@@ -134,7 +137,8 @@ export const BinaryExecRun = tool({
       const onAbort = () => {
         context.sdk.backend
           .cancelAgentBinaryExecution({ executionId })
-          .finally(() => reject(new Error("Binary execution cancelled")));
+          .catch(() => undefined)
+          .then(() => reject(new Error("Binary execution cancelled")));
       };
 
       if (abortSignal.aborted) {
@@ -166,5 +170,23 @@ export const BinaryExecRun = tool({
       message,
       ...result.value,
     });
+  },
+  toModelOutput: ({ output }) => {
+    if (output.kind === "Error") {
+      const { message, detail } = output.error;
+      return {
+        type: "error-text",
+        value: detail !== undefined && detail !== "" ? `${message}\n${detail}` : message,
+      };
+    }
+    const { stdout, stderr, ...rest } = output.value;
+    return {
+      type: "json",
+      value: {
+        ...rest,
+        stdout: truncateContextValue(stdout, MAX_MODEL_STREAM_CHARS),
+        stderr: truncateContextValue(stderr, MAX_MODEL_STREAM_CHARS),
+      },
+    };
   },
 });

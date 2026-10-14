@@ -112,6 +112,10 @@ type ExtendedAIProvider = (
   settings?: ExtendedAILanguageModelSettings
 ) => LanguageModelV3;
 
+type ExtendedAISDK = {
+  createProvider: (options: { notifyErrors: boolean }) => ExtendedAIProvider;
+};
+
 export function getReasoningEfforts(model: Model): ReasoningEffort[] {
   if (!model.capabilities.reasoning) return [];
   const declared = model.reasoningEfforts;
@@ -153,7 +157,7 @@ export function createModel(
 
   const isReasoningModel = reasoning && model.capabilities.reasoning;
 
-  const provider = sdk.ai.createProvider() as ExtendedAIProvider;
+  const provider = (sdk.ai as unknown as ExtendedAISDK).createProvider({ notifyErrors: false });
 
   const modelId =
     model.provider === ModelProvider.OpenRouter && openRouterPrioritizeFastProviders

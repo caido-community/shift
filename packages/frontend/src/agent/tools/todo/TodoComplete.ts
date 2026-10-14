@@ -81,7 +81,7 @@ export const TodoComplete = tool({
   toModelOutput: ({ output }) => {
     switch (output.kind) {
       case "Ok": {
-        const value = output.value as TodoCompleteValue & { message: string };
+        const value = output.value;
         return {
           type: "text",
           value: withReadableTodosText(value.message, value.todos),
@@ -89,7 +89,7 @@ export const TodoComplete = tool({
       }
       case "Error":
         return {
-          type: "text",
+          type: "error-text",
           value: `Failed to complete todos: ${output.error.message}`,
         };
       default:

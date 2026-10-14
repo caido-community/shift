@@ -3,9 +3,14 @@ import { MockLanguageModelV3, simulateReadableStream } from "ai/test";
 import type { ShiftMessage } from "shared";
 import { describe, expect, it, vi } from "vitest";
 
-import { applyCompactionMarker, buildSummaryMessage, createCompactor } from "./compaction";
+import {
+  applyCompactionMarker,
+  buildSummaryMessage,
+  createCompactor,
+  getCompactionThreshold,
+} from "./compaction";
 
-const summaryModel = () =>
+const summaryModel = (finishReason: "stop" | "length" = "stop") =>
   new MockLanguageModelV3({
     doStream: () =>
       Promise.resolve({
@@ -17,7 +22,7 @@ const summaryModel = () =>
             { type: "text-end", id: "t" },
             {
               type: "finish",
-              finishReason: { unified: "stop", raw: "stop" },
+              finishReason: { unified: finishReason, raw: finishReason },
               usage: {
                 inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
                 outputTokens: { total: 1, text: 1, reasoning: 0 },
@@ -28,8 +33,11 @@ const summaryModel = () =>
       }),
   });
 
-const stepWithInputTokens = (inputTokens: number) =>
-  ({ usage: { inputTokens, outputTokens: 0 } }) as unknown as StepResult<ToolSet>;
+const stepWithInputTokens = (inputTokens: number, responseMessages: ModelMessage[] = []) =>
+  ({
+    usage: { inputTokens, outputTokens: 0 },
+    response: { messages: responseMessages },
+  }) as unknown as StepResult<ToolSet>;
 
 describe("applyCompactionMarker", () => {
   it("returns messages unchanged without a marker", () => {
@@ -105,5 +113,51 @@ describe("createCompactor", () => {
     });
     expect(second).toEqual({ messages: [buildSummaryMessage("the summary"), newer] });
     expect(onCompact).toHaveBeenCalledOnce();
+  });
+
+  it("counts tool results added after the last step's usage", async () => {
+    const onCompact = vi.fn();
+    const compact = createCompactor({
+      model: summaryModel(),
+      system: "",
+      tools: {},
+      contextWindow: 128_000,
+      onCompact,
+    });
+    const toolResult: ModelMessage = {
+      role: "tool",
+      content: [
+        {
+          type: "tool-result",
+          toolCallId: "tc1",
+          toolName: "Tool",
+          output: { type: "text", value: "x".repeat(400_000) },
+        },
+      ],
+    };
+
+    await compact({ messages, steps: [stepWithInputTokens(10_000, [toolResult])] });
+    expect(onCompact).toHaveBeenCalledOnce();
+  });
+
+  it("keeps history when the summary is cut off", async () => {
+    const onCompact = vi.fn();
+    const compact = createCompactor({
+      model: summaryModel("length"),
+      system: "",
+      tools: {},
+      contextWindow: 1_000_000,
+      onCompact,
+    });
+
+    expect(await compact({ messages, steps: [stepWithInputTokens(250_000)] })).toBeUndefined();
+    expect(onCompact).not.toHaveBeenCalled();
+  });
+});
+
+describe("getCompactionThreshold", () => {
+  it("leaves room for the summary in small context windows", () => {
+    expect(getCompactionThreshold(16_000)).toBe(12_000);
+    expect(getCompactionThreshold(200_000)).toBe(168_000);
   });
 });

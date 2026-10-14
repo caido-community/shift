@@ -6,9 +6,9 @@ import type { AgentContext } from "@/agent/context";
 import { buildAgentInstructions } from "@/agent/instructions";
 import { shiftAgentTools } from "@/agent/tools";
 import { AI_TRACE_RUN_ID_HEADER } from "@/agent/trace";
-import { repairToolCall } from "@/float/toolCallRepair";
 import { type FrontendSDK } from "@/types";
 import { createModel, type ReasoningEffort } from "@/utils/ai";
+import { repairToolCall } from "@/utils/toolCallRepair";
 
 export function getTools(legacyTodos: boolean) {
   if (legacyTodos) return shiftAgentTools;
@@ -76,11 +76,7 @@ export const createShiftAgent = (options: AgentOptions) => {
     maxRetries: 3,
     ...(traceRunId === undefined ? {} : { headers: { [AI_TRACE_RUN_ID_HEADER]: traceRunId } }),
     experimental_context: context,
-    experimental_repairToolCall: async ({ toolCall, inputSchema, error }) =>
-      (await repairToolCall(toolCall, inputSchema, error)) ?? null,
-    prepareStep: async (settings) => {
-      await context.fetchEntriesInfo();
-      return compact(settings);
-    },
+    experimental_repairToolCall: repairToolCall,
+    prepareStep: compact,
   });
 };

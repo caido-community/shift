@@ -18,13 +18,14 @@ import type { FrontendSDK } from "../types";
 import { createShiftAgent } from "@/agent/agent";
 import { applyCompactionMarker, buildSummaryMessage } from "@/agent/compaction";
 import type { AgentContext } from "@/agent/context";
+import { shiftAgentTools } from "@/agent/tools";
 import { isAITraceEnabled, writeAITrace } from "@/agent/trace";
 import { formatAgentError } from "@/agent/utils/errors";
 import {
   findLastUserMessageId,
+  normalizeLegacyToolStates,
   replaceHistoricalToolOutputsWithBlobRefs,
   stripReasoningParts,
-  stripUnfinishedToolCalls,
 } from "@/agent/utils/messages";
 import { type SessionStore } from "@/stores/agent/session";
 import { useSettingsStore } from "@/stores/settings/store";
@@ -84,11 +85,7 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
       execute: async ({ writer }) => {
         this.context.setWriter(writer);
 
-        const [contentResult] = await Promise.all([
-          getSessionContent(this.sdk, this.context.sessionId),
-          this.context.fetchEnvironmentInfo(),
-          this.context.fetchEntriesInfo(),
-        ]);
+        const contentResult = await getSessionContent(this.sdk, this.context.sessionId);
         if (contentResult.kind === "Error") {
           console.error("Failed to get session content: ", contentResult.error);
           throw new Error(contentResult.error);
@@ -102,15 +99,12 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
 
         const settingsStore = useSettingsStore();
         const maxIterations = settingsStore.maxIterations ?? DEFAULT_MAX_ITERATIONS;
-        const openRouterPrioritizeFastProviders =
-          settingsStore.openRouterPrioritizeFastProviders ?? false;
         const agent = createShiftAgent({
           sdk: this.sdk,
           model,
           context: this.context,
           maxIterations,
           reasoningEffort: this.store.reasoningEffort,
-          openRouterPrioritizeFastProviders,
           legacyTodos: settingsStore.isFeatureEnabled("legacyTodos"),
           ...settingsStore.getRequestOptions(model),
           ...(traceEnabled ? { traceRunId } : {}),
@@ -119,22 +113,19 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
 
         const modelKey = createModelKey(model.provider, model.id);
         const compacted = applyCompactionMarker(options.messages);
-        const stripped = stripReasoningParts(
-          stripUnfinishedToolCalls(compacted.messages),
+        const messagesForModel = stripReasoningParts(
+          normalizeLegacyToolStates(compacted.messages),
           (message) => message.metadata?.model === modelKey
         );
-        let messagesForModel = stripped;
-        try {
-          messagesForModel = replaceHistoricalToolOutputsWithBlobRefs(stripped, (content, id) =>
-            this.context.registerHistoricalToolOutput(id, content)
-          );
-        } catch (err) {
-          console.warn("Historical tool output blob replacement failed, using full messages:", err);
-        }
         writeAITrace(traceEnabled, traceRunId, "convertToModelMessages.input", messagesForModel);
-        const modelMessages = await convertToModelMessages(messagesForModel, {
-          ignoreIncompleteToolCalls: true,
-        });
+        // History may hold calls to tools that are disabled now.
+        const modelMessages = replaceHistoricalToolOutputsWithBlobRefs(
+          await convertToModelMessages(messagesForModel, {
+            tools: shiftAgentTools,
+            ignoreIncompleteToolCalls: true,
+          }),
+          (content, id) => this.context.registerHistoricalToolOutput(id, content)
+        );
         if (compacted.summary !== undefined) {
           modelMessages.unshift(buildSummaryMessage(compacted.summary));
         }
@@ -154,20 +145,7 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
           result.toUIMessageStream<ShiftMessage>({
             sendStart: false,
             sendReasoning: true,
-            onFinish: () => {
-              this.context.clearTodos();
-            },
-            onError: (error) => {
-              this.context.clearTodos();
-              writer.write({
-                type: "message-metadata",
-                messageMetadata: {
-                  state: "error",
-                  reasoning_times: [...reasoningTimes],
-                },
-              });
-              return formatAgentError(error);
-            },
+            onError: formatAgentError,
             messageMetadata: ({ part }) => {
               if (part.type === "start-step") {
                 if (isTerminalState) return;
@@ -197,14 +175,6 @@ export class LocalChatTransport implements ChatTransport<ShiftMessage> {
                   state: "done",
                   reasoning_times: [...reasoningTimes],
                   stepLimitReached: part.finishReason === "tool-calls",
-                };
-              }
-
-              if (part.type === "error" || part.type === "tool-error") {
-                isTerminalState = true;
-                return {
-                  state: "error",
-                  reasoning_times: [...reasoningTimes],
                 };
               }
 

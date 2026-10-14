@@ -35,28 +35,32 @@ const frontendErrorSchema = z.object({
   detail: z.string().optional(),
 });
 
-type MessageOnly = { message: string };
-type WithMessage<T> = T & MessageOnly;
+export type MessageOnly = { message: string };
+export type WithMessage<T> = T & MessageOnly;
+
+export const messageSchema = z.object({ message: z.string() });
+
+export const resultSchema = <T extends z.ZodTypeAny>(valueSchema: T) =>
+  z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("Ok"), value: valueSchema }),
+    z.object({ kind: z.literal("Error"), error: frontendErrorSchema }),
+  ]);
 
 export type ToolResult<TValue = undefined> = Result<
   TValue extends undefined ? MessageOnly : WithMessage<TValue>,
   FrontendError
 >;
 
+function toolResultSchema(): ReturnType<typeof resultSchema<typeof messageSchema>>;
+function toolResultSchema<T extends z.ZodTypeAny>(
+  valueSchema: T
+): ReturnType<typeof resultSchema<z.ZodIntersection<T, typeof messageSchema>>>;
+function toolResultSchema(valueSchema?: z.ZodTypeAny) {
+  return resultSchema(valueSchema ? valueSchema.and(messageSchema) : messageSchema);
+}
+
 export const ToolResult = {
-  schema: <T extends z.ZodTypeAny>(valueSchema?: T) =>
-    z.discriminatedUnion("kind", [
-      z.object({
-        kind: z.literal("Ok"),
-        value: valueSchema
-          ? valueSchema.and(z.object({ message: z.string() }))
-          : z.object({ message: z.string() }),
-      }),
-      z.object({
-        kind: z.literal("Error"),
-        error: frontendErrorSchema,
-      }),
-    ]),
+  schema: toolResultSchema,
   ok: <TValue = undefined>(
     value: TValue extends undefined ? MessageOnly : WithMessage<TValue>
   ): ToolResult<TValue> => ({

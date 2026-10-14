@@ -38,6 +38,7 @@ export const useSettingsStore = defineStore("settings", () => {
   const isFastModeEnabled = (selected: Model) => getModelPreference(selected)?.fastMode ?? false;
   const isUltrafastEnabled = (selected: Model) => getModelPreference(selected)?.ultrafast ?? false;
   const getRequestOptions = (selected: Model) => ({
+    openRouterPrioritizeFastProviders: openRouterPrioritizeFastProviders.value ?? false,
     fastMode: isFastModeEnabled(selected),
     ultrafast: isUltrafastEnabled(selected),
     daybreak: daybreak.value,

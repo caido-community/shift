@@ -104,13 +104,11 @@ export const RequestRangeRead = tool({
       case "Ok":
         return {
           type: "text",
-          value: formatRequestRangeReadModelOutput(
-            output.value as RequestRangeReadValue & { message: string }
-          ),
+          value: formatRequestRangeReadModelOutput(output.value),
         };
       case "Error":
         return {
-          type: "text",
+          type: "error-text",
           value:
             output.error.detail !== undefined && output.error.detail !== ""
               ? `Failed to read request: ${output.error.message}\n${output.error.detail}`

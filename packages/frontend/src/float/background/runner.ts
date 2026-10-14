@@ -1,3 +1,4 @@
+import { getErrorMessage } from "@ai-sdk/provider";
 import { stepCountIs, streamText } from "ai";
 import { DEFAULT_MAX_ITERATIONS } from "shared";
 
@@ -6,14 +7,9 @@ import { formatAgentError } from "@/agent/utils/errors";
 import { plainParts } from "@/backgroundAgents/logs";
 import { backgroundFloatTools } from "@/float/actions";
 import { BACKGROUND_EXECUTION_NOTE, buildBackgroundPrompt } from "@/float/background/prompt";
-import {
-  getInvalidToolCallMessage,
-  isInvalidToolCall,
-  isValidToolCall,
-} from "@/float/background/toolCalls";
+import { getInvalidToolCallMessage } from "@/float/background/toolCalls";
 import { getToolErrorMessage, getToolResultLogParts } from "@/float/background/toolResults";
 import { buildSystemPrompt } from "@/float/prompt";
-import { repairToolCall } from "@/float/toolCallRepair";
 import { type ActionContext, type FloatToolContext } from "@/float/types";
 import { useBackgroundAgentsStore } from "@/stores/backgroundAgents";
 import { useLearningsStore } from "@/stores/learnings";
@@ -21,6 +17,7 @@ import { useModelsStore } from "@/stores/models";
 import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
 import { createModel, resolveModel } from "@/utils";
+import { repairToolCall } from "@/utils/toolCallRepair";
 
 type SpawnBackgroundAgentInput = {
   sdk: FrontendSDK;
@@ -80,7 +77,6 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
 
   const model = createModel(input.sdk, modelData, {
     reasoning: true,
-    openRouterPrioritizeFastProviders: settingsStore.openRouterPrioritizeFastProviders ?? false,
     ...settingsStore.getRequestOptions(modelData),
     cacheKey: input.agentId,
   });
@@ -131,22 +127,34 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
       maxRetries: 3,
       abortSignal: input.abortSignal,
       experimental_context: toolContext,
-      experimental_repairToolCall: async ({ toolCall, inputSchema, error }) =>
-        (await repairToolCall(toolCall, inputSchema, error)) ?? null,
+      experimental_repairToolCall: repairToolCall,
       prepareStep: compact,
       onError: ({ error }) => {
         streamError = error;
       },
-      onStepFinish: ({ toolCalls, toolResults }) => {
-        hasToolCall ||= toolCalls.some(isValidToolCall);
+      onStepFinish: ({ toolCalls, toolResults, content }) => {
+        hasToolCall ||= toolCalls.some((toolCall) => toolCall.invalid !== true);
 
         let failures = 0;
+        const invalidToolCallIds = new Set<string>();
         for (const toolCall of toolCalls) {
-          if (isInvalidToolCall(toolCall)) {
+          if (toolCall.invalid === true) {
             failures++;
+            invalidToolCallIds.add(toolCall.toolCallId);
             store.appendLog(
               input.agentId,
               plainParts(getInvalidToolCallMessage(toolCall)),
+              "error"
+            );
+          }
+        }
+
+        for (const part of content) {
+          if (part.type === "tool-error" && !invalidToolCallIds.has(part.toolCallId)) {
+            failures++;
+            store.appendLog(
+              input.agentId,
+              plainParts(`${part.toolName}: ${getErrorMessage(part.error)}`),
               "error"
             );
           }

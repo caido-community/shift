@@ -1,3 +1,4 @@
+import { type ReplaySessionEntriesQuery } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
 import { EditorView } from "@codemirror/view";
 import { Result } from "shared";
 
@@ -112,13 +113,9 @@ type LegacyReplayEntryFn = (
   variables: LegacyReplayEntryVariables
 ) => Promise<LegacyReplayEntryQuery>;
 
-type ReplaySessionEntriesResult = Awaited<
-  ReturnType<FrontendSDK["graphql"]["replaySessionEntries"]>
->;
 type ReplaySessionEntry = NonNullable<
-  NonNullable<ReplaySessionEntriesResult["replaySession"]>["activeEntry"]
+  NonNullable<ReplaySessionEntriesQuery["replaySession"]>["activeEntry"]
 >;
-type ReplaySessionEntryLike = ReplaySessionEntry;
 
 type EntryRequest = { id: string; response?: { id: string } | UndefinedOrNull } | UndefinedOrNull;
 export type AnyReplayEntry =
@@ -199,7 +196,7 @@ const normalizeReplayEntryHttp = (entry: ReplayEntryHttpInput): ReplayEntryHttp 
   };
 };
 
-const toSessionReplayEntryHttp = (entry: ReplaySessionEntryLike): ReplayEntryHttp | undefined => {
+const toSessionReplayEntryHttp = (entry: ReplaySessionEntry): ReplayEntryHttp | undefined => {
   switch (entry.__typename) {
     case "ReplayEntryWs":
       return normalizeReplayEntryHttp(entry.http);

@@ -1,6 +1,14 @@
 import { Result } from "shared";
-import { z } from "zod";
+import { type z } from "zod";
 
+import {
+  type FrontendError,
+  type MessageOnly,
+  messageSchema,
+  resultSchema,
+  type ToolResult,
+  type WithMessage,
+} from "@/agent/types";
 import { type FrontendSDK } from "@/types";
 
 export type FloatToolContext = {
@@ -21,48 +29,12 @@ export type ActionQueryInput = {
   abortSignal?: AbortSignal;
 };
 
-type FrontendError = {
-  message: string;
-  detail?: string;
-};
-
-const frontendErrorSchema = z.object({
-  message: z.string(),
-  detail: z.string().optional(),
-});
-
-type MessageOnly = { message: string };
-type WithMessage<T> = T & MessageOnly;
-
-export type ActionResult<TValue = undefined> = Result<
-  TValue extends undefined ? MessageOnly : WithMessage<TValue>,
-  FrontendError
->;
-
-const defaultSchema = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("Ok"),
-    value: z.object({ message: z.string() }),
-  }),
-  z.object({
-    kind: z.literal("Error"),
-    error: frontendErrorSchema,
-  }),
-]);
+export type ActionResult<TValue = undefined> = ToolResult<TValue>;
 
 export const ActionResult = {
-  schema: defaultSchema,
+  schema: resultSchema(messageSchema),
   schemaWithValue: <T extends z.ZodTypeAny>(valueSchema: T) =>
-    z.discriminatedUnion("kind", [
-      z.object({
-        kind: z.literal("Ok"),
-        value: valueSchema.and(z.object({ message: z.string() })),
-      }),
-      z.object({
-        kind: z.literal("Error"),
-        error: frontendErrorSchema,
-      }),
-    ]),
+    resultSchema(valueSchema.and(messageSchema)),
   isOk: <TValue = undefined>(
     value: unknown
   ): value is {

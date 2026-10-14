@@ -7,7 +7,9 @@ import { normalizeEnvironmentVariable } from "@/float/utils";
 const environmentVariableSchema = z.object({
   name: z.string().describe("The name of the environment variable to set (non-empty)."),
   value: z.string().describe("The value assigned to the environment variable."),
-  kind: z.string().describe("The kind of the environment variable. Use PLAIN if not specified."),
+  kind: z
+    .enum(["PLAIN", "SECRET"])
+    .describe("The kind of the environment variable. Use PLAIN if not specified."),
 });
 
 const inputSchema = z.object({

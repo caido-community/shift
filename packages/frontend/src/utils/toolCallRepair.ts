@@ -1,5 +1,5 @@
-import { type JSONSchema7, type LanguageModelV3ToolCall } from "@ai-sdk/provider";
-import { InvalidToolInputError } from "ai";
+import { type JSONSchema7 } from "@ai-sdk/provider";
+import { InvalidToolInputError, type ToolCallRepairFunction, type ToolSet } from "ai";
 import { jsonrepair } from "jsonrepair";
 
 function schemaAllowsString(schema: JSONSchema7 | boolean | undefined): boolean {
@@ -69,33 +69,15 @@ export function repairToolInput(input: string, schema: JSONSchema7): string | un
   return JSON.stringify(data);
 }
 
-/**
- * Attempts one repair pass when the AI returns a tool call that failed input validation.
- *
- * It only runs for `InvalidToolInputError`, looks up the tool's JSON schema, and then
- * tries to normalize the input into something the SDK can validate again.
- *
- * - Malformed JSON like `{limit: 100, ordering: 'DESC',}` can be repaired into valid JSON.
- * - Optional string fields like `"scopeId": ""` can be removed when the schema allows them
- *   to be omitted, so the rest of the tool call can still run.
- */
-export async function repairToolCall(
-  toolCall: LanguageModelV3ToolCall,
-  inputSchema: (options: { toolName: string }) => PromiseLike<JSONSchema7>,
-  error: unknown
-): Promise<LanguageModelV3ToolCall | undefined> {
-  if (!(error instanceof InvalidToolInputError)) {
-    return undefined;
+export async function repairToolCall<TOOLS extends ToolSet>({
+  toolCall,
+  inputSchema,
+  error,
+}: Parameters<ToolCallRepairFunction<TOOLS>>[0]) {
+  if (!InvalidToolInputError.isInstance(error)) {
+    return null;
   }
 
-  const schema = await inputSchema({ toolName: toolCall.toolName });
-  const repairedInput = repairToolInput(toolCall.input, schema);
-  if (repairedInput === undefined) {
-    return undefined;
-  }
-
-  return {
-    ...toolCall,
-    input: repairedInput,
-  };
+  const repairedInput = repairToolInput(toolCall.input, await inputSchema(toolCall));
+  return repairedInput === undefined ? null : { ...toolCall, input: repairedInput };
 }

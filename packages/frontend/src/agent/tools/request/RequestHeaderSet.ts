@@ -48,7 +48,7 @@ export const display = {
 
 export const RequestHeaderSet = tool({
   description:
-    "Set or replace an HTTP header in the current request. If the header already exists, its value will be replaced; if it doesn't exist, it will be added. Use this for modifying authentication tokens, content types, custom headers, or any header that should have exactly one value. For headers that can have multiple values (like Accept), use RequestHeaderAdd instead. The value parameter supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Pass an empty string as the value to clear the header's value while keeping the header present. This tool will fail if no HTTP request is currently loaded. Returns the complete request before and after the modification.",
+    "Set or replace an HTTP header in the current request. If the header already exists, its value will be replaced; if it doesn't exist, it will be added. Use this for modifying authentication tokens, content types, custom headers, or any header that should have exactly one value. For headers that can have multiple values (like Accept), use RequestHeaderAdd instead. The value parameter supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Pass an empty string as the value to clear the header's value while keeping the header present. This tool will fail if no HTTP request is currently loaded. Returns a short confirmation message.",
   inputSchema,
   outputSchema,
   execute: async (

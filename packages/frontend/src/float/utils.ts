@@ -1,35 +1,15 @@
+import {
+  type EnvironmentFullFragment,
+  type EnvironmentVariableInput,
+  type EnvironmentVariableKind,
+} from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
+import { type Editor } from "@caido/sdk-frontend/src/types/types/editor";
 import { type EditorView } from "@codemirror/view";
 
 import { ConfirmationDialog } from "@/components/confirmation";
 import { ActionResult, type ActionResult as ActionResultType } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 import { isPresent } from "@/utils/optional";
-
-type ActiveEditor = NonNullable<ReturnType<FrontendSDK["window"]["getActiveEditor"]>>;
-
-type EnvironmentResult = Awaited<ReturnType<FrontendSDK["graphql"]["environment"]>>;
-
-type Environment = EnvironmentResult extends { environment?: infer T } ? NonNullable<T> : never;
-
-type EnvironmentVariable = Environment extends {
-  variables?: infer V;
-}
-  ? V extends Array<infer P>
-    ? P
-    : { name: string; value: string; kind?: string }
-  : { name: string; value: string; kind?: string };
-
-type EnvironmentVariableKindValue = EnvironmentVariable extends {
-  kind?: infer K;
-}
-  ? NonNullable<K>
-  : string;
-
-export type NormalizedEnvironmentVariable = {
-  name: string;
-  value: string;
-  kind: EnvironmentVariableKindValue;
-};
 
 type HostedFileDialogOptions = {
   fileName: string;
@@ -68,7 +48,7 @@ export const withActiveEditorView = (
 
 export const withActiveEditor = (
   sdk: FrontendSDK,
-  handler: (editor: ActiveEditor) => ActionResultType
+  handler: (editor: Editor) => ActionResultType
 ): ActionResultType => {
   const editor = sdk.window.getActiveEditor();
 
@@ -82,8 +62,8 @@ export const withActiveEditor = (
 export const resolveEnvironment = async (
   sdk: FrontendSDK,
   environmentId?: string
-): Promise<Environment | undefined> => {
-  const fetchEnvironment = async (id: string): Promise<Environment | undefined> => {
+): Promise<EnvironmentFullFragment | undefined> => {
+  const fetchEnvironment = async (id: string): Promise<EnvironmentFullFragment | undefined> => {
     const environmentResult = await sdk.graphql.environment({ id });
     return environmentResult?.environment ?? undefined;
   };
@@ -104,13 +84,13 @@ export const resolveEnvironment = async (
 };
 
 export const normalizeEnvironmentVariable = (
-  variable: Pick<EnvironmentVariable, "name" | "value"> & {
-    kind?: string;
+  variable: Pick<EnvironmentVariableInput, "name" | "value"> & {
+    kind?: EnvironmentVariableKind;
   }
-): NormalizedEnvironmentVariable => ({
+): EnvironmentVariableInput => ({
   name: variable.name,
   value: variable.value,
-  kind: (variable.kind ?? "PLAIN") as EnvironmentVariableKindValue,
+  kind: variable.kind ?? "PLAIN",
 });
 
 export const hostedFileConfirmation = (

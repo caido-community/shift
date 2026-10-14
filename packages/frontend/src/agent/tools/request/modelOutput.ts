@@ -6,7 +6,7 @@ type RequestToolOutput<T extends MessageValue> =
   | { kind: "Ok"; value: T }
   | { kind: "Error"; error: FrontendError };
 
-type TextModelOutput = { type: "text"; value: string };
+type TextModelOutput = { type: "text" | "error-text"; value: string };
 
 type CreateRequestModelOutputOptions<T extends MessageValue> = {
   errorPrefix: string;
@@ -34,7 +34,7 @@ export function createRequestModelOutput<T extends MessageValue>(
       case "Ok":
         return toTextModelOutput(options.formatValue?.(output.value) ?? output.value.message);
       case "Error":
-        return toTextModelOutput(formatErrorText(options.errorPrefix, output.error));
+        return { type: "error-text", value: formatErrorText(options.errorPrefix, output.error) };
       default:
         return toTextModelOutput("Unknown error");
     }

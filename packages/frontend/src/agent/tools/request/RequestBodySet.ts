@@ -47,7 +47,7 @@ export const display = {
 
 export const RequestBodySet = tool({
   description:
-    "Set or replace the body content of the current HTTP request. Use this when you need to modify POST/PUT/PATCH request payloads, add JSON data, form data, or any other request body content. The body parameter accepts any string content and supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Pass an empty string to remove the body entirely. This tool will fail if no HTTP request is currently loaded in the replay session. Returns the complete request before and after the modification.",
+    "Set or replace the body content of the current HTTP request. Use this when you need to modify POST/PUT/PATCH request payloads, add JSON data, form data, or any other request body content. The body parameter accepts any string content and supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Pass an empty string to remove the body entirely. This tool will fail if no HTTP request is currently loaded in the replay session. Returns a short confirmation message.",
   inputSchema,
   outputSchema,
   execute: async (

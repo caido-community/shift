@@ -20,9 +20,16 @@ export function getContextWindow(contextWindow: number | undefined): number {
   );
 }
 
+function getSummaryMaxOutputTokens(contextWindow: number | undefined): number {
+  return Math.min(SUMMARY_MAX_OUTPUT_TOKENS, Math.floor(getContextWindow(contextWindow) * 0.25));
+}
+
 export function getCompactionThreshold(contextWindow: number | undefined): number {
   const windowTokens = getContextWindow(contextWindow);
-  return Math.min(Math.floor(windowTokens * 0.9), windowTokens - SUMMARY_MAX_OUTPUT_TOKENS);
+  return Math.min(
+    Math.floor(windowTokens * 0.9),
+    windowTokens - getSummaryMaxOutputTokens(contextWindow)
+  );
 }
 
 const COMPACTION_PROMPT = `
@@ -81,6 +88,7 @@ type CreateCompactorOptions<TOOLS extends ToolSet> = {
 export function createCompactor<TOOLS extends ToolSet>(options: CreateCompactorOptions<TOOLS>) {
   const { model, system, tools, abortSignal, onCompact } = options;
   const threshold = getCompactionThreshold(options.contextWindow);
+  const summaryMaxOutputTokens = getSummaryMaxOutputTokens(options.contextWindow);
   let compacted: { summary: string; fromIndex: number } | undefined;
 
   const view = (messages: ModelMessage[]) =>
@@ -97,10 +105,12 @@ export function createCompactor<TOOLS extends ToolSet>(options: CreateCompactorO
   }): Promise<{ messages: ModelMessage[] } | undefined> => {
     const current = view(messages);
     const unchanged = compacted === undefined ? undefined : { messages: current };
-    const lastUsage = steps.at(-1)?.usage;
+    const lastStep = steps.at(-1);
     const usedTokens =
-      lastUsage?.inputTokens !== undefined
-        ? lastUsage.inputTokens + (lastUsage.outputTokens ?? 0)
+      lastStep?.usage.inputTokens !== undefined
+        ? lastStep.usage.inputTokens +
+          (lastStep.usage.outputTokens ?? 0) +
+          estimateTokens(lastStep.response.messages.filter((message) => message.role === "tool"))
         : estimateTokens(system) + estimateTokens(current);
 
     if (usedTokens < threshold) {
@@ -115,12 +125,13 @@ export function createCompactor<TOOLS extends ToolSet>(options: CreateCompactorO
       tools,
       toolChoice: "none",
       messages: [...current, { role: "user", content: COMPACTION_PROMPT }],
-      maxOutputTokens: SUMMARY_MAX_OUTPUT_TOKENS,
+      maxOutputTokens: summaryMaxOutputTokens,
       maxRetries: 3,
       abortSignal,
     });
-    const summary = (await result.text).trim();
-    if (summary === "") {
+    const [text, finishReason] = await Promise.all([result.text, result.finishReason]);
+    const summary = text.trim();
+    if (finishReason !== "stop" || summary === "") {
       return unchanged;
     }
 

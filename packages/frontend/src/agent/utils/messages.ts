@@ -1,7 +1,6 @@
-import { isToolUIPart } from "ai";
-import type { ShiftMessage } from "shared";
+import { isToolUIPart, type ModelMessage, type ToolResultPart } from "ai";
+import type { MessageState, ShiftMessage } from "shared";
 
-type ToolUIState = { state?: string; output?: unknown };
 type ReasoningPart = { type: "reasoning" };
 
 function isReasoningPart(part: { type: string }): part is ReasoningPart {
@@ -15,15 +14,18 @@ export function hasDisplayableAssistantContent(message: ShiftMessage): boolean {
   );
 }
 
-export function markUnfinishedMessagesAborted(messages: ShiftMessage[]): ShiftMessage[] {
+export function markUnfinishedMessages(
+  messages: ShiftMessage[],
+  state: Extract<MessageState, "aborted" | "error">
+): ShiftMessage[] {
   let didChange = false;
   const result = messages.map((message) => {
-    const state = message.metadata?.state;
-    if (message.role !== "assistant" || (state !== undefined && state !== "streaming")) {
+    const current = message.metadata?.state;
+    if (message.role !== "assistant" || (current !== undefined && current !== "streaming")) {
       return message;
     }
     didChange = true;
-    return { ...message, metadata: { ...message.metadata, state: "aborted" as const } };
+    return { ...message, metadata: { ...message.metadata, state } };
   });
   return didChange ? result : messages;
 }
@@ -70,27 +72,13 @@ export function stripReasoningParts(
   return didChange ? updated : messages;
 }
 
-function normalizeToolState(state: string | undefined): string | undefined {
-  switch (state) {
-    case "result":
-      return "output-available";
-    case "error":
-      return "output-error";
-    default:
-      return state;
-  }
-}
+const LEGACY_TOOL_STATES: Record<string, string> = {
+  result: "output-available",
+  error: "output-error",
+};
 
-function isIncompleteToolState(state: string | undefined): boolean {
-  return state === "input-streaming" || state === "input-available";
-}
-
-function isFinishedToolState(state: string | undefined): boolean {
-  const normalizedState = normalizeToolState(state);
-  return normalizedState !== undefined && !isIncompleteToolState(normalizedState);
-}
-
-export function stripUnfinishedToolCalls(messages: ShiftMessage[]): ShiftMessage[] {
+// convertToModelMessages drops pre-v5 states as incomplete.
+export function normalizeLegacyToolStates(messages: ShiftMessage[]): ShiftMessage[] {
   let didChange = false;
 
   const updated = messages.map((message) => {
@@ -99,40 +87,20 @@ export function stripUnfinishedToolCalls(messages: ShiftMessage[]): ShiftMessage
     }
 
     let didMessageChange = false;
-    const filteredParts = message.parts.reduce<ShiftMessage["parts"]>((parts, part) => {
-      if (!isToolUIPart(part)) {
-        parts.push(part);
-        return parts;
+    const parts = message.parts.map((part) => {
+      const state = isToolUIPart(part) ? LEGACY_TOOL_STATES[part.state] : undefined;
+      if (state === undefined) {
+        return part;
       }
-
-      const toolPart = part as ToolUIState;
-      const normalizedState = normalizeToolState(toolPart.state);
-
-      if (isIncompleteToolState(normalizedState)) {
-        didChange = true;
-        didMessageChange = true;
-        return parts;
-      }
-
-      if (normalizedState !== toolPart.state) {
-        didChange = true;
-        didMessageChange = true;
-        parts.push({ ...part, state: normalizedState } as typeof part);
-        return parts;
-      }
-
-      parts.push(part);
-      return parts;
-    }, []);
+      didMessageChange = true;
+      return { ...part, state } as typeof part;
+    });
 
     if (!didMessageChange) {
       return message;
     }
-
-    return {
-      ...message,
-      parts: filteredParts,
-    } as ShiftMessage;
+    didChange = true;
+    return { ...message, parts };
   });
 
   return didChange ? updated : messages;
@@ -172,91 +140,67 @@ export function hasToolPartsSinceLastUserMessage(messages: ShiftMessage[]): bool
   return hasToolPartsSinceIndex(messages, lastUserIndex);
 }
 
-/**
- * Serialize tool output to a string for storage in a blob.
- * Handles plain objects and primitives.
- */
-export function serializeToolOutput(output: unknown): string {
-  if (output === undefined || output === null) {
-    return "";
-  }
-  if (typeof output === "string") {
-    return output;
-  }
-  if (typeof output === "object") {
-    try {
-      return JSON.stringify(output);
-    } catch {
-      return "[unserializable tool output]";
-    }
-  }
-  if (typeof output === "number" || typeof output === "boolean" || typeof output === "bigint") {
-    return String(output);
-  }
-  return "";
-}
-
 // Blob IDs must be stable per tool call or the rewritten history breaks the prompt cache.
 type CreateBlobForHistory = (content: string, toolCallId: string) => { blobId: string };
 
 const DEFAULT_MIN_OUTPUT_LENGTH_TO_REPLACE = 500;
 
-/**
- * Replace large tool outputs in previous turns with blob-backed placeholders.
- * Only affects assistant tool-invocation parts before the last user message.
- */
+function getToolOutputText(output: ToolResultPart["output"]): string | undefined {
+  switch (output.type) {
+    case "text":
+      return output.value;
+    case "json":
+      return JSON.stringify(output.value);
+    default:
+      return undefined;
+  }
+}
+
 export function replaceHistoricalToolOutputsWithBlobRefs(
-  messages: ShiftMessage[],
+  messages: ModelMessage[],
   createBlob: CreateBlobForHistory,
   options?: { minOutputLengthToReplace?: number }
-): ShiftMessage[] {
-  const lastUserIndex = findLastUserMessageIndex(messages);
+): ModelMessage[] {
+  const lastUserIndex = messages.findLastIndex((message) => message.role === "user");
   if (lastUserIndex < 0) {
     return messages;
   }
 
   const threshold = options?.minOutputLengthToReplace ?? DEFAULT_MIN_OUTPUT_LENGTH_TO_REPLACE;
   let didChange = false;
-  const updated: ShiftMessage[] = [];
 
-  for (let i = 0; i < messages.length; i++) {
-    const message = messages[i]!;
-    if (message.role !== "assistant" || i >= lastUserIndex) {
-      updated.push(message);
-      continue;
+  const updated = messages.map((message, index): ModelMessage => {
+    if (message.role !== "tool" || index >= lastUserIndex) {
+      return message;
     }
 
     let didMessageChange = false;
-    const newParts = message.parts.map((part) => {
-      if (!isToolUIPart(part)) {
+    const content = message.content.map((part) => {
+      if (part.type !== "tool-result") {
         return part;
       }
-      const toolPart = part as ToolUIState & { toolCallId: string };
-      if (!isFinishedToolState(toolPart.state) || toolPart.output === undefined) {
-        return part;
-      }
-
-      const serialized = serializeToolOutput(toolPart.output);
-      if (serialized.length < threshold) {
+      const text = getToolOutputText(part.output);
+      if (text === undefined || text.length < threshold) {
         return part;
       }
 
-      didChange = true;
       didMessageChange = true;
-      const { blobId } = createBlob(serialized, toolPart.toolCallId);
-      const placeholder = `Read output from blob ID ${blobId} with PayloadBlobRangeRead (${serialized.length} chars).`;
+      const { blobId } = createBlob(text, part.toolCallId);
       return {
         ...part,
-        output: placeholder,
-      } as typeof part;
+        output: {
+          type: "text" as const,
+          value: `Read output from blob ID ${blobId} with PayloadBlobRangeRead (${text.length} chars).`,
+        },
+      };
     });
 
     if (!didMessageChange) {
-      updated.push(message);
-      continue;
+      return message;
     }
-    updated.push({ ...message, parts: newParts } as ShiftMessage);
-  }
+    didChange = true;
+    return { ...message, content };
+  });
 
   return didChange ? updated : messages;
 }

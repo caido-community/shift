@@ -36,7 +36,7 @@ vi.mock("@/float/background/prompt", () => ({
   buildBackgroundPrompt: () => "background prompt",
 }));
 vi.mock("@/float/prompt", () => ({ buildSystemPrompt: () => "system prompt" }));
-vi.mock("@/float/toolCallRepair", () => ({ repairToolCall: vi.fn() }));
+vi.mock("@/utils/toolCallRepair", () => ({ repairToolCall: vi.fn() }));
 vi.mock("@/stores/backgroundAgents", () => ({
   useBackgroundAgentsStore: () => ({
     createAgent: () => "agent-1",
@@ -83,7 +83,11 @@ describe("float model calls", () => {
     mocks.streamText.mockReset();
     mocks.streamText.mockImplementation((options: { onStepFinish: (step: unknown) => void }) => ({
       consumeStream: () => {
-        options.onStepFinish({ toolCalls: [{ toolName: "testTool" }], toolResults: [] });
+        options.onStepFinish({
+          toolCalls: [{ toolName: "testTool" }],
+          toolResults: [],
+          content: [],
+        });
         return Promise.resolve();
       },
       text: Promise.resolve("done"),

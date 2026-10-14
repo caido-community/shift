@@ -1,6 +1,6 @@
 import { Chat } from "@ai-sdk/vue";
 import { type Model, type ShiftMessage } from "shared";
-import { nextTick, ref, watch } from "vue";
+import { nextTick, watch } from "vue";
 
 import { getTools } from "@/agent/agent";
 import { AgentContext } from "@/agent/context";
@@ -11,7 +11,7 @@ import {
   extractLastUserMessageText,
   hasDisplayableAssistantContent,
   hasToolPartsSinceLastUserMessage,
-  markUnfinishedMessagesAborted,
+  markUnfinishedMessages,
 } from "@/agent/utils/messages";
 import { useAgentStore } from "@/stores/agent";
 import { type SessionStore, useSessionStore } from "@/stores/agent/session";
@@ -28,7 +28,6 @@ export class AgentSession {
   private sdk: FrontendSDK;
   private isStopInProgress = false;
   private isInitialized = false;
-  private contextMetadataVersion = ref(0);
 
   constructor(sdk: FrontendSDK, replaySessionId: string, model: Model | undefined) {
     this.id = replaySessionId;
@@ -41,9 +40,13 @@ export class AgentSession {
     this.chat = new Chat<ShiftMessage>({
       id: replaySessionId,
       transport: new LocalChatTransport(sdk, this.store, context),
-      onFinish: ({ isAbort }) => {
-        if (isAbort) {
-          this.chat.messages = markUnfinishedMessagesAborted(this.chat.messages);
+      onFinish: ({ isAbort, isError }) => {
+        this.store.clearTodos();
+        if (isAbort || isError) {
+          this.chat.messages = markUnfinishedMessages(
+            this.chat.messages,
+            isAbort ? "aborted" : "error"
+          );
         }
       },
     });
@@ -100,7 +103,7 @@ export class AgentSession {
 
     const result = await this.sdk.backend.getAgent(this.id);
     if (result.kind === "Ok" && result.value !== undefined) {
-      this.chat.messages = markUnfinishedMessagesAborted(result.value.messages);
+      this.chat.messages = markUnfinishedMessages(result.value.messages, "aborted");
       if (result.value.sessionState?.mode !== undefined) {
         this.store.setMode(result.value.sessionState.mode);
       }
@@ -157,17 +160,7 @@ export class AgentSession {
     this.store.setDraftMessage(value);
   }
 
-  async refreshContextMetadata(): Promise<void> {
-    await Promise.allSettled([
-      this.context.fetchEnvironmentInfo(),
-      this.context.fetchEntriesInfo(),
-    ]);
-    this.contextMetadataVersion.value++;
-  }
-
   estimateContextUsage(options?: { messages?: ShiftMessage[] }) {
-    this.contextMetadataVersion.value;
-
     const messages = options?.messages ?? this.chat.messages;
     const model = this.model;
     const legacyTodos = useSettingsStore().isFeatureEnabled("legacyTodos");

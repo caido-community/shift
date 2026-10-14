@@ -61,7 +61,7 @@ describe("createRequestModelOutput", () => {
         },
       })
     ).toEqual({
-      type: "text",
+      type: "error-text",
       value: "Failed to set header: Failed to resolve placeholders\nMissing variable API_KEY",
     });
   });
@@ -81,7 +81,7 @@ describe("createRequestModelOutput", () => {
         },
       })
     ).toEqual({
-      type: "text",
+      type: "error-text",
       value: "Failed to add cookie: No HTTP request loaded",
     });
   });

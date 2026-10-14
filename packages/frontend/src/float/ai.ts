@@ -1,16 +1,17 @@
-import { generateText, stepCountIs } from "ai";
+import { getErrorMessage } from "@ai-sdk/provider";
+import { generateText } from "ai";
 import { Result } from "shared";
 
 import { isFeatureEnabled } from "@/features";
 import { getCoreFloatTools } from "@/float/actions";
 import { buildSystemPrompt } from "@/float/prompt";
-import { repairToolCall } from "@/float/toolCallRepair";
 import { type ActionQueryInput, type ActionResult, type FloatToolContext } from "@/float/types";
 import { useLearningsStore } from "@/stores/learnings";
 import { useModelsStore } from "@/stores/models";
 import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
 import { createModel, resolveModel } from "@/utils";
+import { repairToolCall } from "@/utils/toolCallRepair";
 
 function buildPrompt(input: ActionQueryInput, learnings: string[]): string {
   return `
@@ -67,11 +68,8 @@ export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Pro
     return Result.err("No models available");
   }
 
-  const openRouterPrioritizeFastProviders =
-    settingsStore.openRouterPrioritizeFastProviders ?? false;
   const model = createModel(sdk, modelData, {
     reasoning: false,
-    openRouterPrioritizeFastProviders,
     ...settingsStore.getRequestOptions(modelData),
   });
   const learnings = learningsStore.entries;
@@ -90,21 +88,20 @@ export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Pro
       model,
       tools: getCoreFloatTools(),
       toolChoice: "required",
-      stopWhen: stepCountIs(1),
       system: buildSystemPrompt({
         backgroundAgents: backgroundAgentsEnabled,
       }),
       prompt,
       abortSignal: input.abortSignal,
       experimental_context: toolContext,
-      experimental_repairToolCall: async ({ toolCall, inputSchema, error }) =>
-        (await repairToolCall(toolCall, inputSchema, error)) ?? null,
-      onStepFinish: ({ toolResults }) => {
-        for (const { toolName, output } of toolResults) {
-          const error = processToolResult(sdk, toolName, output as ActionResult);
-          if (error !== undefined) {
-            executionError = error;
-            return;
+      experimental_repairToolCall: repairToolCall,
+      onStepFinish: ({ content }) => {
+        for (const part of content) {
+          if (part.type === "tool-result") {
+            const error = processToolResult(sdk, part.toolName, part.output as ActionResult);
+            executionError ??= error;
+          } else if (part.type === "tool-error") {
+            executionError ??= `${part.toolName}: ${getErrorMessage(part.error)}`;
           }
         }
       },
@@ -120,10 +117,8 @@ export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Pro
       return Result.err("No tool calls were made. Try to rephrase your request.");
     }
 
-    const invalidToolCall = result.toolCalls.find(
-      (call) => "invalid" in call && call.invalid === true
-    );
-    if (invalidToolCall !== undefined && "error" in invalidToolCall) {
+    const invalidToolCall = result.toolCalls.find((call) => call.invalid === true);
+    if (invalidToolCall !== undefined) {
       return Result.err(
         `Model returned invalid input for tool ${invalidToolCall.toolName}. Consider using different model or rephrase your request.`
       );

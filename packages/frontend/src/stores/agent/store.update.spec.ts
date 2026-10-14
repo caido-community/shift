@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { type AgentIndicatorState, type AgentModel, createInitialModel } from "./store.model";
 import { update } from "./store.update";
 
-const createMockSession = (id: string) =>
-  ({ id }) as AgentModel["sessions"] extends Map<string, infer T> ? T : never;
+import type { AgentSession } from "@/agent/session";
+
+const createMockSession = (id: string) => ({ id }) as AgentSession;
 
 describe("agent update", () => {
   describe("SELECT_SESSION", () => {

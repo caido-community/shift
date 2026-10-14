@@ -81,7 +81,7 @@ export const TodoRemove = tool({
   toModelOutput: ({ output }) => {
     switch (output.kind) {
       case "Ok": {
-        const value = output.value as TodoRemoveValue & { message: string };
+        const value = output.value;
         return {
           type: "text",
           value: withReadableTodosText(value.message, value.todos),
@@ -89,7 +89,7 @@ export const TodoRemove = tool({
       }
       case "Error":
         return {
-          type: "text",
+          type: "error-text",
           value: `Failed to remove todos: ${output.error.message}`,
         };
       default:
