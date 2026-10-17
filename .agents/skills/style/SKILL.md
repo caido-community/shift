@@ -7,7 +7,7 @@ description: PrimeVue and Caido plugin UI style, layout, DataTable, and icons
 
 ### PrimeVue
 
-- Prefer to use PrimeVue compontents where possible
+- Prefer to use PrimeVue components where possible
 - A custom PrimeVue theme is configured with dark mode as default, handling most color-related styles for us.
 
 ### General Theme
@@ -34,11 +34,11 @@ Example:
 >
   <template #content>
      ...
-  </template #content>
+  </template>
 </Card>
 ```
 
-### Enviroment
+### Environment
 
 - Keep in mind that we are building a plugin that's inside a Caido web app, we can modify frontend by adding sidebar pages using Caido Frontend SDK.
 - Our plugin content is rendered within a dedicated window/panel that Caido provides for our sidebar page.
