@@ -13,7 +13,7 @@ import {
   type Result as ResultType,
 } from "shared";
 
-import { getCustomAgentsStore } from "../stores";
+import { customAgentsStore } from "../stores";
 import type { BackendSDK } from "../types";
 
 import {
@@ -172,8 +172,9 @@ export async function executeAgentBinary(
 
     const { executionId, agentId, binaryPath, args, stdin } = parsed.data;
 
-    const store = getCustomAgentsStore();
-    const agent = store.getAgentDefinitions().find((candidate) => candidate.id === agentId);
+    const agent = customAgentsStore
+      .getAgentDefinitions()
+      .find((candidate) => candidate.id === agentId);
     if (agent === undefined) {
       return Result.err("Agent not found");
     }

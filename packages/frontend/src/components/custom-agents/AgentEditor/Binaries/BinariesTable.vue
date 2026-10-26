@@ -2,7 +2,6 @@
 import Button from "primevue/button";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
-import Tooltip from "primevue/tooltip";
 import { computed, ref } from "vue";
 
 import type { AgentEditorBinary } from "../useAgentEditorForm";
@@ -11,25 +10,12 @@ import BinaryDialog from "./BinaryDialog.vue";
 
 const binaries = defineModel<AgentEditorBinary[]>("binaries", { required: true });
 
-const vTooltip = Tooltip;
-
 const isDialogVisible = ref(false);
-const dialogMode = ref<"add" | "edit">("add");
-const editingBinary = ref<AgentEditorBinary | undefined>(undefined);
-const editingPath = ref<string | undefined>(undefined);
+const editingBinary = ref<AgentEditorBinary>();
 const existingPaths = computed(() => binaries.value.map((binary) => binary.path));
 
-const openAddDialog = () => {
-  dialogMode.value = "add";
-  editingBinary.value = undefined;
-  editingPath.value = undefined;
-  isDialogVisible.value = true;
-};
-
-const openEditDialog = (binary: AgentEditorBinary) => {
-  dialogMode.value = "edit";
-  editingPath.value = binary.path;
-  editingBinary.value = { ...binary };
+const openDialog = (binary?: AgentEditorBinary) => {
+  editingBinary.value = binary;
   isDialogVisible.value = true;
 };
 
@@ -38,17 +24,11 @@ const handleDeleteBinary = (path: string) => {
 };
 
 const handleSaveBinary = (binary: AgentEditorBinary) => {
-  if (dialogMode.value === "add") {
-    binaries.value = [...binaries.value, binary];
-    return;
-  }
-
-  const originalPath = editingPath.value;
-  if (originalPath === undefined) {
-    return;
-  }
-
-  binaries.value = binaries.value.map((item) => (item.path === originalPath ? binary : item));
+  const originalPath = editingBinary.value?.path;
+  binaries.value =
+    originalPath === undefined
+      ? [...binaries.value, binary]
+      : binaries.value.map((item) => (item.path === originalPath ? binary : item));
 };
 </script>
 
@@ -63,7 +43,7 @@ const handleSaveBinary = (binary: AgentEditorBinary) => {
         label="Add Binary"
         icon="fas fa-plus"
         size="small"
-        @click="openAddDialog" />
+        @click="openDialog()" />
     </div>
 
     <DataTable
@@ -107,7 +87,7 @@ const handleSaveBinary = (binary: AgentEditorBinary) => {
               severity="secondary"
               text
               size="small"
-              @click="openEditDialog(data)" />
+              @click="openDialog(data)" />
             <Button
               v-tooltip.left="'Remove binary'"
               icon="fas fa-trash"
@@ -123,9 +103,7 @@ const handleSaveBinary = (binary: AgentEditorBinary) => {
 
   <BinaryDialog
     v-model:visible="isDialogVisible"
-    :mode="dialogMode"
     :binary="editingBinary"
-    :original-path="editingPath"
     :existing-paths="existingPaths"
     @save="handleSaveBinary" />
 </template>

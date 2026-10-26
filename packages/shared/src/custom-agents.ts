@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { AgentSkillSchema, SkillScopeSchema } from "./skills";
 
-export const AgentModeSchema = z.enum(["focus", "wildcard"]);
+const AgentModeSchema = z.enum(["focus", "wildcard"]);
 export type AgentMode = z.infer<typeof AgentModeSchema>;
 
 export const CustomAgentBinarySchema = z.object({
@@ -59,3 +59,8 @@ export const UpdateCustomAgentSchema = z.object({
   boundCollections: z.array(z.string()).optional(),
 });
 export type UpdateCustomAgentInput = z.infer<typeof UpdateCustomAgentSchema>;
+
+export type CustomAgentsState = {
+  definitions: CustomAgent[];
+  agents: ResolvedCustomAgent[];
+};

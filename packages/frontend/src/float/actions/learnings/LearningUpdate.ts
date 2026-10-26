@@ -1,9 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult } from "@/float/types";
+import { ToolResult } from "@/agent/types";
 import { useLearningsStore } from "@/stores/learnings";
-import { updateLearning } from "@/stores/learnings/store.effects";
 
 const inputSchema = z.object({
   index: z.number().describe("Zero-based index of the learning entry to update (integer, >= 0)."),
@@ -20,15 +19,19 @@ export const learningUpdateTool = tool({
     When possible, specify which domain/api/etc is the subject of the learning.
     `,
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ index, content }) => {
-    const { sdk, dispatch, entries } = useLearningsStore();
+    const store = useLearningsStore();
+    const { entries } = store;
 
     if (index < 0 || index >= entries.length) {
-      return ActionResult.err(`Learning index ${index} is out of range.`);
+      return ToolResult.err(`Learning index ${index} is out of range.`);
     }
 
-    await updateLearning(sdk, dispatch, { index, content });
-    return ActionResult.ok(`Learning #${index} updated successfully.`);
+    const result = await store.update(index, content);
+    if (result.kind === "Error") {
+      return ToolResult.err("Failed to update learning", result.error);
+    }
+    return ToolResult.ok({ message: `Learning #${index} updated successfully.` });
   },
 });

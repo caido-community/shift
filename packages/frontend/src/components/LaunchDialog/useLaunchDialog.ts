@@ -1,7 +1,7 @@
 import { type AgentMode, type Model, type ResolvedCustomAgent } from "shared";
 import { computed, ref } from "vue";
 
-import type { LaunchDialogResult } from "./types";
+import type { LaunchDialogProps } from "./types";
 
 import { useSDK } from "@/plugins/sdk";
 import { useCustomAgentsStore } from "@/stores/custom-agents/store";
@@ -11,15 +11,7 @@ import { useSkillsStore } from "@/stores/skills";
 import { resolveModel } from "@/utils/ai";
 import { getReplaySession } from "@/utils/caido";
 
-type UseLaunchDialogOptions = {
-  sessionId: string;
-  onConfirm: (result: LaunchDialogResult) => void;
-  onCancel: () => void;
-  initialSkillIds?: string[];
-  initialCustomAgentId?: string;
-};
-
-export function useLaunchDialog(options: UseLaunchDialogOptions) {
+export function useLaunchDialog(options: LaunchDialogProps) {
   const sdk = useSDK();
   const settingsStore = useSettingsStore();
   const modelsStore = useModelsStore();
@@ -34,7 +26,7 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
 
   const initialModel = resolveModel({
     sdk,
-    savedModelKey: settingsStore.agentsModel,
+    savedModelKey: settingsStore.config.agentsModel,
     enabledModels: modelsStore.getEnabledModels(),
     usageType: "agent",
   });
@@ -88,10 +80,6 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
     });
   };
 
-  const handleCancel = () => {
-    options.onCancel();
-  };
-
   return {
     instructions,
     mode,
@@ -108,6 +96,5 @@ export function useLaunchDialog(options: UseLaunchDialogOptions) {
     selectAgent,
     openAgentsPage,
     handleConfirm,
-    handleCancel,
   };
 }

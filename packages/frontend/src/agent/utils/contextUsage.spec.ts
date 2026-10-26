@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   estimateMessagesCharacters,
-  estimateTokensFromCharacters,
   getCacheHitRate,
   getEstimatedContextUsage,
 } from "./contextUsage";
+
+import { estimateTokensFromCharacters } from "@/agent/compaction";
 
 function createModel(id: string, name: string, contextWindow?: number): Model {
   return {
@@ -143,6 +144,26 @@ describe("getEstimatedContextUsage", () => {
 
     expect(result.usedTokens).toBe(100);
     expect(result.segments.map((segment) => segment.label)).toEqual(["Summary"]);
+  });
+
+  it("uses the measured context size plus messages added after it", () => {
+    const messages: ShiftMessage[] = [
+      { id: "u1", role: "user", parts: [{ type: "text", text: "a".repeat(400_000) }] },
+      { id: "a1", role: "assistant", parts: [], metadata: { contextTokens: 50_000 } },
+      { id: "u2", role: "user", parts: [{ type: "text", text: "b".repeat(396) }] },
+    ];
+
+    const result = getEstimatedContextUsage({
+      model: createModel("gpt-6-sol", "GPT 6 Sol", 1_000_000),
+      systemPrompt: "",
+      skillsPrompt: "",
+      toolsCharacters: 0,
+      messages,
+    });
+
+    expect(result.usedTokens).toBe(
+      50_000 + estimateTokensFromCharacters(estimateMessagesCharacters([messages[2]!]))
+    );
   });
 });
 

@@ -2,7 +2,7 @@
 import { useClipboard } from "@vueuse/core";
 import DOMPurify from "dompurify";
 import MarkdownIt from "markdown-it";
-import { computed, useAttrs } from "vue";
+import { computed, useAttrs, useTemplateRef, watch } from "vue";
 
 import "./style.css";
 
@@ -43,9 +43,35 @@ md.renderer.rules.fence = (tokens, index, ...rest) => {
 const { text } = defineProps<{ text: string }>();
 const attrs = useAttrs();
 
-const rendered = computed(() => {
-  const html = md.render(text);
-  return DOMPurify.sanitize(html);
+const blocks = computed(() => {
+  const env = {};
+  const tokens = md.parse(text, env);
+  const starts = tokens.flatMap((token, index) =>
+    token.level === 0 && token.nesting !== -1 ? [index] : []
+  );
+  return starts.map((start, i) =>
+    md.renderer.render(tokens.slice(start, starts[i + 1]), md.options, env)
+  );
+});
+
+const root = useTemplateRef<HTMLElement>("root");
+
+// Patch per block so finished blocks keep their DOM node (hover, transitions, selection) while streaming.
+watch([root, blocks], ([element, next], [previousElement, previous]) => {
+  if (!isPresent(element)) return;
+  const rendered = element === previousElement ? previous : [];
+
+  next.forEach((html, index) => {
+    if (html === rendered[index]) return;
+    const node =
+      DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true }).firstElementChild ??
+      document.createElement("div");
+    const current = element.children[index];
+    if (isPresent(current)) current.replaceWith(node);
+    else element.append(node);
+  });
+
+  while (element.children.length > next.length) element.lastElementChild?.remove();
 });
 
 const { copy } = useClipboard();
@@ -62,12 +88,10 @@ function handleClick(event: MouseEvent) {
 </script>
 
 <template>
-  <!-- eslint-disable vue/no-v-html -->
   <div
     v-if="text.length > 0"
+    ref="root"
     v-bind="attrs"
     data-component="markdown"
-    @click="handleClick"
-    v-html="rendered"></div>
-  <!-- eslint-enable vue/no-v-html -->
+    @click="handleClick"></div>
 </template>

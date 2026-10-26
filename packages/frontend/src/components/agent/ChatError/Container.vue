@@ -3,11 +3,7 @@ import Button from "primevue/button";
 
 import { useError } from "./useError";
 
-const { error } = defineProps<{
-  error: Error;
-}>();
-
-const { message, retry, copyTrace } = useError(error);
+const { message, retry, copyTrace } = useError();
 </script>
 
 <template>

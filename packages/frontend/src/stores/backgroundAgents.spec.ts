@@ -10,94 +10,73 @@ describe("background agents store", () => {
     setActivePinia(createPinia());
   });
 
-  it("creates agents in queued state", () => {
-    const store = useBackgroundAgentsStore();
-
-    const id = store.createAgent({
-      task: "Test task",
-      title: "Test title",
-    });
-
-    const agent = store.agents.find((entry) => entry.id === id);
-    expect(agent).toBeDefined();
-    expect(agent?.status).toBe("queued");
-    expect(agent?.title).toBe("Test title");
-    expect(agent?.task).toBe("Test task");
-  });
-
-  it("transitions from running to done", () => {
-    const store = useBackgroundAgentsStore();
-    const id = store.createAgent({
+  const create = () =>
+    useBackgroundAgentsStore().createAgent({
       task: "Task",
       title: "Title",
     });
 
-    store.setRunning(id);
-    let agent = store.agents.find((entry) => entry.id === id);
-    expect(agent?.status).toBe("running");
-    expect(agent?.startedAt).toBeTypeOf("number");
+  const find = (id: string) => useBackgroundAgentsStore().agents.find((agent) => agent.id === id);
 
-    store.setDone(id);
-    agent = store.agents.find((entry) => entry.id === id);
-    expect(agent?.status).toBe("done");
-    expect(agent?.finishedAt).toBeTypeOf("number");
+  it("creates agents in queued state", () => {
+    const { id, signal } = create();
+
+    const agent = find(id);
+    expect(agent?.status).toBe("queued");
+    expect(agent?.title).toBe("Title");
+    expect(agent?.task).toBe("Task");
+    expect(signal.aborted).toBe(false);
+  });
+
+  it("transitions from running to finished states", () => {
+    const store = useBackgroundAgentsStore();
+    const { id } = create();
+
+    store.setRunning(id);
+    expect(find(id)?.status).toBe("running");
+
+    store.finishAgent(id, "error", "failed");
+    expect(find(id)).toMatchObject({ status: "error", error: "failed" });
+
+    store.setRunning(id);
+    store.finishAgent(id, "done");
+    expect(find(id)).toMatchObject({ status: "done", error: undefined });
   });
 
   it("appends logs in order", () => {
     const store = useBackgroundAgentsStore();
-    const id = store.createAgent({
-      task: "Task",
-      title: "Title",
-    });
+    const { id } = create();
 
     store.appendLog(id, plainParts("first"));
     store.appendLog(id, plainParts("second"), "success");
 
-    const agent = store.agents.find((entry) => entry.id === id);
+    const agent = find(id);
     expect(agent?.logs).toHaveLength(2);
     expect(agent?.logs[0]?.parts).toEqual([{ text: "first", muted: false }]);
     expect(agent?.logs[1]?.parts).toEqual([{ text: "second", muted: false }]);
     expect(agent?.logs[1]?.level).toBe("success");
   });
 
-  it("aborts registered controllers on cancel", () => {
+  it("aborts the agent signal on cancel until it finishes", () => {
     const store = useBackgroundAgentsStore();
-    const id = store.createAgent({
-      task: "Task",
-      title: "Title",
-    });
+    const running = create();
+    const finished = create();
 
-    const controller = new AbortController();
-    store.registerController(id, controller);
-    store.cancelAgent(id);
+    store.finishAgent(finished.id, "done");
+    store.cancelAgent(finished.id);
+    store.cancelAgent(running.id);
 
-    expect(controller.signal.aborted).toBe(true);
+    expect(finished.signal.aborted).toBe(false);
+    expect(running.signal.aborted).toBe(true);
   });
 
-  it("clears finished agents and keeps active ones", () => {
+  it("aborts and removes agents", () => {
     const store = useBackgroundAgentsStore();
+    const { id, signal } = create();
 
-    const runningId = store.createAgent({
-      task: "Running task",
-      title: "Running",
-    });
-    const doneId = store.createAgent({
-      task: "Done task",
-      title: "Done",
-    });
-    const errorId = store.createAgent({
-      task: "Error task",
-      title: "Error",
-    });
+    store.removeAgent(id);
 
-    store.setRunning(runningId);
-    store.setDone(doneId);
-    store.setError(errorId, "failed");
-
-    store.clearFinished();
-
-    expect(store.agents.find((agent) => agent.id === runningId)).toBeDefined();
-    expect(store.agents.find((agent) => agent.id === doneId)).toBeUndefined();
-    expect(store.agents.find((agent) => agent.id === errorId)).toBeUndefined();
+    expect(signal.aborted).toBe(true);
+    expect(find(id)).toBeUndefined();
   });
 });

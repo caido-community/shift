@@ -1,11 +1,6 @@
-import {
-  type Result,
-  type ShiftMessage,
-  type StoredAgent,
-  type StoredAgentSessionState,
-} from "shared";
+import { Result, type ShiftMessage, type StoredAgent, type StoredAgentSessionState } from "shared";
 
-import { getAgentsStore } from "../stores";
+import { agentsStore } from "../stores";
 import { type BackendSDK } from "../types";
 
 function normalizeMessages(messages: ShiftMessage[]): ShiftMessage[] {
@@ -26,46 +21,39 @@ function normalizeMessages(messages: ShiftMessage[]): ShiftMessage[] {
 
 export function getAgent(_sdk: BackendSDK, chatID: string): Result<StoredAgent | undefined> {
   try {
-    const store = getAgentsStore();
-    const agent = store.getAgent(chatID);
-    return { kind: "Ok", value: agent };
+    return Result.ok(agentsStore.getAgent(chatID));
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
 export function getAgents(_sdk: BackendSDK): Result<StoredAgent[]> {
   try {
-    const store = getAgentsStore();
-    const agents = store.getAgents();
-    return { kind: "Ok", value: agents };
+    return Result.ok(agentsStore.getAgents());
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
-export function writeAgent(
+export async function writeAgent(
   _sdk: BackendSDK,
   chatID: string,
   messages: ShiftMessage[],
   sessionState: StoredAgentSessionState | undefined
-): Result<void> {
+): Promise<Result<void>> {
   try {
-    const store = getAgentsStore();
-    const normalizedMessages = normalizeMessages(messages);
-    store.writeAgent(chatID, normalizedMessages, sessionState);
-    return { kind: "Ok", value: undefined };
+    await agentsStore.writeAgent(chatID, normalizeMessages(messages), sessionState);
+    return Result.ok(undefined);
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
-export function removeAgent(_sdk: BackendSDK, chatID: string): Result<void> {
+export async function removeAgent(_sdk: BackendSDK, chatID: string): Promise<Result<void>> {
   try {
-    const store = getAgentsStore();
-    store.removeAgent(chatID);
-    return { kind: "Ok", value: undefined };
+    await agentsStore.removeAgent(chatID);
+    return Result.ok(undefined);
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }

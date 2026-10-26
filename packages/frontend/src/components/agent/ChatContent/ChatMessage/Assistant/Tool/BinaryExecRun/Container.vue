@@ -2,6 +2,7 @@
 import type { MessageMetadata, PartState } from "shared";
 import { toRef } from "vue";
 
+import OutputPanel from "./OutputPanel.vue";
 import { useBinaryOutput } from "./useBinaryOutput";
 
 import { formatToolDisplayText } from "@/agent/utils/formatting";
@@ -21,16 +22,11 @@ const {
   errorMessage,
   streamingResult,
   successResult,
-  binaryOutput,
-  displayBinaryOutput,
+  streams,
   showLiveOutput,
-  hasOutput,
-  hasStdout,
-  hasStderr,
   isExpandable,
   isExpanded,
   toggle,
-  formatBytes,
 } = useBinaryOutput({
   executionId: toRef(() => toolCallId),
   partState: toRef(() => partState),
@@ -57,47 +53,9 @@ const {
       </TextShimmer>
     </div>
 
-    <div
-      v-if="showLiveOutput && binaryOutput"
-      class="mt-1.5 rounded border border-surface-700 bg-surface-900/50 overflow-hidden">
-      <div
-        v-if="hasStdout"
-        class="border-b border-surface-700/30 last:border-b-0">
-        <div
-          v-if="hasStderr"
-          class="px-2.5 pt-1.5 pb-0.5 text-[10px] text-surface-500 uppercase tracking-wider font-medium">
-          stdout
-          <span v-if="binaryOutput.stdoutTruncated">
-            (truncated, {{ formatBytes(binaryOutput.stdoutBytes) }})
-          </span>
-        </div>
-        <div
-          v-else-if="binaryOutput.stdoutTruncated"
-          class="px-2.5 pt-1.5 pb-0.5 text-[10px] text-surface-500">
-          truncated ({{ formatBytes(binaryOutput.stdoutBytes) }})
-        </div>
-        <pre
-          class="max-h-48 overflow-y-auto custom-scrollbar px-2.5 py-1.5 text-surface-300 text-xs font-mono leading-relaxed whitespace-pre-wrap break-words m-0 select-text"
-          >{{ displayBinaryOutput?.stdout }}</pre
-        >
-      </div>
-
-      <div
-        v-if="hasStderr"
-        class="border-b border-surface-700/30 last:border-b-0">
-        <div
-          class="px-2.5 pt-1.5 pb-0.5 text-[10px] text-surface-500 uppercase tracking-wider font-medium">
-          stderr
-          <span v-if="binaryOutput.stderrTruncated">
-            (truncated, {{ formatBytes(binaryOutput.stderrBytes) }})
-          </span>
-        </div>
-        <pre
-          class="max-h-48 overflow-y-auto custom-scrollbar px-2.5 py-1.5 text-surface-300 text-xs font-mono leading-relaxed whitespace-pre-wrap break-words m-0 select-text"
-          >{{ displayBinaryOutput?.stderr }}</pre
-        >
-      </div>
-    </div>
+    <OutputPanel
+      v-if="showLiveOutput"
+      :streams="streams" />
 
     <div
       v-else-if="toolState === 'error'"
@@ -107,9 +65,9 @@ const {
 
     <template v-else-if="isExpandable">
       <button
-        class="flex items-center gap-1.5 h-5 text-surface-300 group hover:!text-surface-100 transition-colors"
+        class="flex items-center gap-1.5 h-5 min-w-0 max-w-full text-surface-300 group hover:!text-surface-100 transition-colors"
         @click="toggle">
-        <span class="select-none">
+        <span class="select-none min-w-0 truncate">
           <template
             v-for="(part, index) in successResult"
             :key="index">
@@ -126,55 +84,9 @@ const {
           :class="[isExpanded ? 'rotate-90 opacity-100' : 'opacity-0 group-hover:!opacity-100']" />
       </button>
 
-      <div
-        v-if="isExpanded && binaryOutput"
-        class="mt-1.5 rounded border border-surface-700 bg-surface-900/50 overflow-hidden">
-        <div
-          v-if="!hasOutput"
-          class="text-xs text-surface-500 py-1">
-          No output captured
-        </div>
-
-        <template v-else>
-          <div
-            v-if="hasStdout"
-            class="border-b border-surface-700/30 last:border-b-0">
-            <div
-              v-if="hasStderr"
-              class="px-2.5 pt-1.5 pb-0.5 text-[10px] text-surface-500 uppercase tracking-wider font-medium">
-              stdout
-              <span v-if="binaryOutput.stdoutTruncated">
-                (truncated, {{ formatBytes(binaryOutput.stdoutBytes) }})
-              </span>
-            </div>
-            <div
-              v-else-if="binaryOutput.stdoutTruncated"
-              class="px-2.5 pt-1.5 pb-0.5 text-[10px] text-surface-500">
-              truncated ({{ formatBytes(binaryOutput.stdoutBytes) }})
-            </div>
-            <pre
-              class="max-h-48 overflow-y-auto custom-scrollbar px-2.5 py-1.5 text-surface-300 text-xs font-mono leading-relaxed whitespace-pre-wrap break-words m-0 select-text"
-              >{{ displayBinaryOutput?.stdout }}</pre
-            >
-          </div>
-
-          <div
-            v-if="hasStderr"
-            class="border-b border-surface-700/30 last:border-b-0">
-            <div
-              class="px-2.5 pt-1.5 pb-0.5 text-[10px] text-surface-500 uppercase tracking-wider font-medium">
-              stderr
-              <span v-if="binaryOutput.stderrTruncated">
-                (truncated, {{ formatBytes(binaryOutput.stderrBytes) }})
-              </span>
-            </div>
-            <pre
-              class="max-h-48 overflow-y-auto custom-scrollbar px-2.5 py-1.5 text-surface-300 text-xs font-mono leading-relaxed whitespace-pre-wrap break-words m-0 select-text"
-              >{{ displayBinaryOutput?.stderr }}</pre
-            >
-          </div>
-        </template>
-      </div>
+      <OutputPanel
+        v-if="isExpanded"
+        :streams="streams" />
     </template>
   </div>
 </template>

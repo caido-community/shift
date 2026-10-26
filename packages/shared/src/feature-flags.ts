@@ -3,7 +3,7 @@ import { z } from "zod";
 type FeatureFlagDefinition = {
   label: string;
   description: string;
-  category: "experimental" | "legacy";
+  category: "experimental";
   defaultValue: boolean;
 };
 
@@ -40,28 +40,13 @@ const registry = defineFeatureFlags({
     category: "experimental",
     defaultValue: false,
   },
-  legacyTodos: {
-    label: "(Legacy) Agent Todos",
-    description:
-      "Give the agent todo tools and instructions to plan multi-step testing. Potentially useful for older models.",
-    category: "legacy",
-    defaultValue: false,
-  },
 });
 
-export const FEATURE_FLAGS = registry.definitions;
 export const featureFlagEntries = registry.entries;
 
 export const FeatureFlagsConfigSchema = registry.schema;
 export type FeatureFlagsConfig = z.infer<typeof FeatureFlagsConfigSchema>;
 
-export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;
+export type FeatureFlagKey = keyof typeof registry.definitions;
 
 export const defaultFeatureFlags: FeatureFlagsConfig = registry.defaults;
-
-export const isFeatureFlagEnabled = (
-  flags: Partial<FeatureFlagsConfig> | FeatureFlagsConfig | undefined,
-  flag: FeatureFlagKey
-): boolean => {
-  return flags?.[flag] ?? defaultFeatureFlags[flag];
-};

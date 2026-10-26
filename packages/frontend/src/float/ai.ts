@@ -2,37 +2,21 @@ import { getErrorMessage } from "@ai-sdk/provider";
 import { generateText } from "ai";
 import { Result } from "shared";
 
-import { isFeatureEnabled } from "@/features";
+import { type ToolResult } from "@/agent/types";
 import { getCoreFloatTools } from "@/float/actions";
+import { buildUserPrompt } from "@/float/context";
+import { createFloatModel } from "@/float/model";
 import { buildSystemPrompt } from "@/float/prompt";
-import { type ActionQueryInput, type ActionResult, type FloatToolContext } from "@/float/types";
+import { type ActionQueryInput, type FloatToolContext } from "@/float/types";
 import { useLearningsStore } from "@/stores/learnings";
-import { useModelsStore } from "@/stores/models";
 import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
-import { createModel, resolveModel } from "@/utils";
 import { repairToolCall } from "@/utils/toolCallRepair";
-
-function buildPrompt(input: ActionQueryInput, learnings: string[]): string {
-  return `
-<context>
-${JSON.stringify(input.context)}
-</context>
-
-<learnings>
-${learnings.map((learning, index) => `- ${index}: ${learning}`).join("\n")}
-</learnings>
-
-<user>
-${input.content}
-</user>
-`.trim();
-}
 
 function processToolResult(
   sdk: FrontendSDK,
   toolName: string,
-  output: ActionResult
+  output: ToolResult
 ): string | undefined {
   switch (output.kind) {
     case "Error":
@@ -54,26 +38,15 @@ function processToolResult(
 }
 
 export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Promise<Result> {
-  const settingsStore = useSettingsStore();
-  const learningsStore = useLearningsStore();
-  const modelsStore = useModelsStore();
-
-  const modelData = resolveModel({
-    sdk,
-    savedModelKey: settingsStore.floatModel,
-    enabledModels: modelsStore.getEnabledModels(),
-    usageType: "float",
+  const floatModel = createFloatModel(sdk, {
+    savedModelKey: useSettingsStore().config.floatModel,
+    reasoning: false,
   });
-  if (modelData === undefined) {
+  if (floatModel === undefined) {
     return Result.err("No models available");
   }
 
-  const model = createModel(sdk, modelData, {
-    reasoning: false,
-    ...settingsStore.getRequestOptions(modelData),
-  });
-  const learnings = learningsStore.entries;
-  const prompt = buildPrompt(input, learnings);
+  const prompt = buildUserPrompt(input, useLearningsStore().entries);
 
   const toolContext: FloatToolContext = {
     sdk,
@@ -81,11 +54,11 @@ export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Pro
   };
 
   let executionError: string | undefined;
-  const backgroundAgentsEnabled = isFeatureEnabled("backgroundAgents");
+  const backgroundAgentsEnabled = useSettingsStore().isFeatureEnabled("backgroundAgents");
 
   try {
     const result = await generateText({
-      model,
+      model: floatModel.model,
       tools: getCoreFloatTools(),
       toolChoice: "required",
       system: buildSystemPrompt({
@@ -98,7 +71,7 @@ export async function queryShift(sdk: FrontendSDK, input: ActionQueryInput): Pro
       onStepFinish: ({ content }) => {
         for (const part of content) {
           if (part.type === "tool-result") {
-            const error = processToolResult(sdk, part.toolName, part.output as ActionResult);
+            const error = processToolResult(sdk, part.toolName, part.output as ToolResult);
             executionError ??= error;
           } else if (part.type === "tool-error") {
             executionError ??= `${part.toolName}: ${getErrorMessage(part.error)}`;

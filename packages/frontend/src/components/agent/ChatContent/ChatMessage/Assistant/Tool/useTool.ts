@@ -28,7 +28,10 @@ function extractOutput(output: unknown): unknown {
   return output;
 }
 
-export function useTool(options: UseToolOptions, defaultErrorMessage: string): UseTool {
+export function useTool(
+  options: UseToolOptions,
+  defaultErrorMessage: MaybeRefOrGetter<string>
+): UseTool {
   const toolState = computed<ToolState>(() => {
     const metadata = toValue(options.messageMetadata);
     const state = toValue(options.partState);
@@ -72,7 +75,7 @@ export function useTool(options: UseToolOptions, defaultErrorMessage: string): U
     if (Result.isResult(out) && out.kind === "Error") {
       return (out.error as FrontendError).message;
     }
-    return defaultErrorMessage;
+    return toValue(defaultErrorMessage);
   });
 
   const extractedOutput = computed(() => extractOutput(toValue(options.output)));

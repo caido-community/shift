@@ -106,7 +106,7 @@ export function normalizeLegacyToolStates(messages: ShiftMessage[]): ShiftMessag
   return didChange ? updated : messages;
 }
 
-export function findLastUserMessageIndex(messages: ShiftMessage[]): number {
+function findLastUserMessageIndex(messages: ShiftMessage[]): number {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i]!.role === "user") {
       return i;
@@ -119,7 +119,7 @@ export function findLastUserMessageId(messages: ShiftMessage[]): string | undefi
   return messages[findLastUserMessageIndex(messages)]?.id;
 }
 
-export function hasToolPartsSinceIndex(messages: ShiftMessage[], fromIndex: number): boolean {
+function hasToolPartsSinceIndex(messages: ShiftMessage[], fromIndex: number): boolean {
   for (let i = fromIndex + 1; i < messages.length; i++) {
     const message = messages[i]!;
     if (message.role === "assistant") {

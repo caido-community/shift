@@ -1,22 +1,21 @@
 import { getErrorMessage } from "@ai-sdk/provider";
 import { stepCountIs, streamText } from "ai";
-import { DEFAULT_MAX_ITERATIONS } from "shared";
 
 import { createCompactor } from "@/agent/compaction";
 import { formatAgentError } from "@/agent/utils/errors";
 import { plainParts } from "@/backgroundAgents/logs";
 import { backgroundFloatTools } from "@/float/actions";
-import { BACKGROUND_EXECUTION_NOTE, buildBackgroundPrompt } from "@/float/background/prompt";
+import { BACKGROUND_EXECUTION_NOTE } from "@/float/background/prompt";
 import { getInvalidToolCallMessage } from "@/float/background/toolCalls";
 import { getToolErrorMessage, getToolResultLogParts } from "@/float/background/toolResults";
+import { buildUserPrompt } from "@/float/context";
+import { createFloatModel } from "@/float/model";
 import { buildSystemPrompt } from "@/float/prompt";
 import { type ActionContext, type FloatToolContext } from "@/float/types";
 import { useBackgroundAgentsStore } from "@/stores/backgroundAgents";
 import { useLearningsStore } from "@/stores/learnings";
-import { useModelsStore } from "@/stores/models";
 import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
-import { createModel, resolveModel } from "@/utils";
 import { repairToolCall } from "@/utils/toolCallRepair";
 
 type SpawnBackgroundAgentInput = {
@@ -28,21 +27,12 @@ type SpawnBackgroundAgentInput = {
 
 export const spawnBackgroundAgent = (input: SpawnBackgroundAgentInput): string => {
   const store = useBackgroundAgentsStore();
-  const agentId = store.createAgent({
+  const { id: agentId, signal } = store.createAgent({
     task: input.task,
     title: input.title,
   });
 
-  const controller = new AbortController();
-  store.registerController(agentId, controller);
-
-  void runBackgroundAgent({
-    ...input,
-    agentId,
-    abortSignal: controller.signal,
-  }).finally(() => {
-    store.clearController(agentId);
-  });
+  void runBackgroundAgent({ ...input, agentId, abortSignal: signal });
 
   return agentId;
 };
@@ -57,62 +47,52 @@ const MAX_CONSECUTIVE_FAILED_STEPS = 5;
 const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void> => {
   const store = useBackgroundAgentsStore();
   const settingsStore = useSettingsStore();
-  const learningsStore = useLearningsStore();
-  const modelsStore = useModelsStore();
 
   store.setRunning(input.agentId);
 
-  const modelData = resolveModel({
-    sdk: input.sdk,
-    savedModelKey: settingsStore.floatModel,
-    enabledModels: modelsStore.getEnabledModels(),
-    usageType: "float",
-  });
-
-  if (modelData === undefined) {
-    store.appendLog(input.agentId, plainParts("No models available"), "error");
-    store.setError(input.agentId, "No models available");
-    return;
-  }
-
-  const model = createModel(input.sdk, modelData, {
-    reasoning: true,
-    ...settingsStore.getRequestOptions(modelData),
-    cacheKey: input.agentId,
-  });
-
-  const toolContext: FloatToolContext = {
-    sdk: input.sdk,
-    context: input.context,
-  };
-
-  const tools = backgroundFloatTools;
-  const maxSteps = settingsStore.maxIterations ?? DEFAULT_MAX_ITERATIONS;
-  const prompt = buildBackgroundPrompt(
-    {
-      content: input.task,
-      context: input.context,
-    },
-    learningsStore.entries
-  );
-  const system = `${buildSystemPrompt({ backgroundAgents: false })}\n\n${BACKGROUND_EXECUTION_NOTE}`;
-
-  let hasToolCall = false;
-  let consecutiveFailedSteps = 0;
-  let streamError: unknown;
-
-  const compact = createCompactor({
-    model,
-    system,
-    tools,
-    contextWindow: modelData.contextWindow,
-    abortSignal: input.abortSignal,
-    onCompact: () => {
-      store.appendLog(input.agentId, plainParts("Compacted context to keep going"));
-    },
-  });
-
   try {
+    const floatModel = createFloatModel(input.sdk, {
+      savedModelKey: settingsStore.config.floatModel,
+      reasoning: true,
+      cacheKey: input.agentId,
+    });
+
+    if (floatModel === undefined) {
+      store.appendLog(input.agentId, plainParts("No models available"), "error");
+      store.finishAgent(input.agentId, "error", "No models available");
+      return;
+    }
+
+    const { model, modelData } = floatModel;
+
+    const toolContext: FloatToolContext = {
+      sdk: input.sdk,
+      context: input.context,
+    };
+
+    const tools = backgroundFloatTools;
+    const maxSteps = settingsStore.config.maxIterations;
+    const prompt = buildUserPrompt(
+      { content: input.task, context: input.context },
+      useLearningsStore().entries
+    );
+    const system = `${buildSystemPrompt({ backgroundAgents: false })}\n\n${BACKGROUND_EXECUTION_NOTE}`;
+
+    let hasToolCall = false;
+    let consecutiveFailedSteps = 0;
+    let streamError: unknown;
+
+    const compactor = createCompactor({
+      model,
+      system,
+      tools,
+      contextWindow: modelData.contextWindow,
+      abortSignal: input.abortSignal,
+      onCompact: () => {
+        store.appendLog(input.agentId, plainParts("Compacted context to keep going"));
+      },
+    });
+
     // Streamed: Caido caps non-streaming completions at 5 minutes per step.
     const result = streamText({
       model,
@@ -128,11 +108,13 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
       abortSignal: input.abortSignal,
       experimental_context: toolContext,
       experimental_repairToolCall: repairToolCall,
-      prepareStep: compact,
+      prepareStep: compactor.prepareStep,
       onError: ({ error }) => {
         streamError = error;
       },
-      onStepFinish: ({ toolCalls, toolResults, content }) => {
+      onStepFinish: (step) => {
+        compactor.onStepFinish(step);
+        const { toolCalls, toolResults, content } = step;
         hasToolCall ||= toolCalls.some((toolCall) => toolCall.invalid !== true);
 
         let failures = 0;
@@ -185,14 +167,14 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
 
     if (input.abortSignal.aborted) {
       store.appendLog(input.agentId, plainParts("Background agent was cancelled"));
-      store.setAborted(input.agentId);
+      store.finishAgent(input.agentId, "aborted");
       return;
     }
 
     if (streamError !== undefined) {
       const message = formatAgentError(streamError);
       store.appendLog(input.agentId, plainParts(message), "error");
-      store.setError(input.agentId, message);
+      store.finishAgent(input.agentId, "error", message);
       return;
     }
 
@@ -202,25 +184,25 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
     }
 
     if (consecutiveFailedSteps >= MAX_CONSECUTIVE_FAILED_STEPS) {
-      store.setError(input.agentId, "Stopped after repeated tool failures");
+      store.finishAgent(input.agentId, "error", "Stopped after repeated tool failures");
       return;
     }
 
     if (!hasToolCall) {
-      store.setError(input.agentId, "No tool calls were made");
+      store.finishAgent(input.agentId, "error", "No tool calls were made");
       return;
     }
 
-    store.setDone(input.agentId);
+    store.finishAgent(input.agentId, "done");
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       store.appendLog(input.agentId, plainParts("Background agent was cancelled"));
-      store.setAborted(input.agentId);
+      store.finishAgent(input.agentId, "aborted");
       return;
     }
 
     const message = formatAgentError(error);
     store.appendLog(input.agentId, plainParts(message), "error");
-    store.setError(input.agentId, message);
+    store.finishAgent(input.agentId, "error", message);
   }
 };

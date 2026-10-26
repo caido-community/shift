@@ -11,7 +11,7 @@ type EnvironmentLookup = (envName: string, varName: string) => string | undefine
 type PayloadBlobLookup = (blobId: string) => string | undefined;
 
 const ENV_PLACEHOLDER_PATTERN = /§§§Env§([^§]+)§([^§]+)§§§/g;
-const BLOB_PLACEHOLDER_PATTERN = /§§§Blob§([^§]+)§§§/g;
+export const BLOB_PLACEHOLDER_PATTERN = /§§§Blob§([^§]+)§§§/g;
 
 export function substituteEnvironmentPlaceholders(text: string, lookup: EnvironmentLookup): string {
   return text.replace(ENV_PLACEHOLDER_PATTERN, (match, envName: string, varName: string) => {

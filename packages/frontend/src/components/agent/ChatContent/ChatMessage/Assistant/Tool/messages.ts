@@ -12,6 +12,7 @@ import { display as learningRemoveDisplay } from "@/agent/tools/learnings/Learni
 import { display as learningUpdateDisplay } from "@/agent/tools/learnings/LearningUpdate";
 import { display as payloadBlobCreateDisplay } from "@/agent/tools/payload/PayloadBlobCreate";
 import { display as payloadBlobRangeReadDisplay } from "@/agent/tools/payload/PayloadBlobRangeRead";
+import { display as replayConnectionSetDisplay } from "@/agent/tools/replay/ReplayConnectionSet";
 import { display as replayEntryNavigateDisplay } from "@/agent/tools/replay/ReplayEntryNavigate";
 import { display as requestBodySetDisplay } from "@/agent/tools/request/RequestBodySet";
 import { display as requestCookieAddDisplay } from "@/agent/tools/request/RequestCookieAdd";
@@ -32,10 +33,6 @@ import { display as requestSendDisplay } from "@/agent/tools/request/RequestSend
 import { display as responseRangeReadDisplay } from "@/agent/tools/response/ResponseRangeRead";
 import { display as responseSearchDisplay } from "@/agent/tools/response/ResponseSearch";
 import { display as readSkillDisplay } from "@/agent/tools/skills/ReadSkill";
-import { display as todoAddDisplay } from "@/agent/tools/todo/TodoAdd";
-import { display as todoCompleteDisplay } from "@/agent/tools/todo/TodoComplete";
-import { display as todoRemoveDisplay } from "@/agent/tools/todo/TodoRemove";
-import { display as todoStartDisplay } from "@/agent/tools/todo/TodoStart";
 import { display as workflowConvertListDisplay } from "@/agent/tools/workflows/WorkflowConvertList";
 import { display as workflowConvertRunDisplay } from "@/agent/tools/workflows/WorkflowConvertRun";
 import { type ToolDisplay } from "@/agent/types";
@@ -43,10 +40,6 @@ import { type ToolDisplay } from "@/agent/types";
 const configs = {
   BinaryExecRun: binaryExecRunDisplay,
   ContextRead: contextReadDisplay,
-  TodoAdd: todoAddDisplay,
-  TodoStart: todoStartDisplay,
-  TodoComplete: todoCompleteDisplay,
-  TodoRemove: todoRemoveDisplay,
   LearningAdd: learningAddDisplay,
   LearningRead: learningReadDisplay,
   LearningUpdate: learningUpdateDisplay,
@@ -79,6 +72,7 @@ const configs = {
   HistorySearch: historySearchDisplay,
   FindingsCreate: FindingsCreateDisplay,
   ReplayEntryNavigate: replayEntryNavigateDisplay,
+  ReplayConnectionSet: replayConnectionSetDisplay,
   WorkflowConvertList: workflowConvertListDisplay,
   WorkflowConvertRun: workflowConvertRunDisplay,
 } as const;

@@ -2,8 +2,9 @@ import { type CreateReplaySessionInput } from "@caido/sdk-frontend/src/types/__g
 import { tool } from "ai";
 import { z } from "zod";
 
+import { ToolResult } from "@/agent/types";
 import { normalizeRawHttpRequest } from "@/agent/utils/http";
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { type FloatToolContext } from "@/float/types";
 import { usesReplayEntryInterface } from "@/utils/caido";
 
 const inputSchema = z.object({
@@ -20,7 +21,7 @@ const inputSchema = z.object({
 export const replaySessionCreateTool = tool({
   description: "Create a new replay session with specified request and connection details",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ rawRequest, host, port, isTls, sessionName }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     const requestSource = {
@@ -51,7 +52,7 @@ export const replaySessionCreateTool = tool({
     const sessionId = result.createReplaySession.session?.id;
 
     if (sessionId === undefined) {
-      return ActionResult.err("Failed to create replay session");
+      return ToolResult.err("Failed to create replay session");
     }
 
     sdk.replay.openTab(sessionId);
@@ -63,6 +64,6 @@ export const replaySessionCreateTool = tool({
       });
     }
 
-    return ActionResult.ok("Replay session created successfully");
+    return ToolResult.ok({ message: "Replay session created successfully" });
   },
 });

@@ -10,7 +10,7 @@ const CAIDO_EDITOR_COLORS = {
 const MARKER = /\[(\/?)HIGHLIGHT\]/;
 
 type Range = { from: number; to: number };
-export type HttpSegment = { text: string; color: string | undefined; marked: boolean };
+type HttpSegment = { text: string; color: string | undefined; marked: boolean };
 type HttpLine = Pick<RequestDiffLine, "text" | "line" | "head">;
 
 export const getHeadLength = (lines: string[]) => {

@@ -32,10 +32,6 @@ export function isProviderConfigured(sdk: FrontendSDK, provider: ModelProviderId
   return listUpstreamProviders(sdk).some((s) => s.id === provider);
 }
 
-export function isAnyProviderConfigured(sdk: FrontendSDK): boolean {
-  return listUpstreamProviders(sdk).length > 0;
-}
-
 export class ProviderNotConfiguredError extends Error {
   constructor(provider: ModelProviderId) {
     super(`Provider "${provider}" is not configured. Please configure it in Caido AI settings.`);

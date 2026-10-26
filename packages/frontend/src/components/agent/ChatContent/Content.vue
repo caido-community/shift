@@ -12,18 +12,23 @@ import { useAnimatedDots } from "@/utils";
 
 const session = useSession();
 const store = useAgentStore();
+const { phase } = session;
 const messages = computed(() => session.chat.messages);
-const isSubmitted = computed(() => session.isWaitingForFirstToken());
-const isErrored = computed(() => session.isErrored());
-const errorMessage = computed(() => session.errorMessage());
+const isSubmitted = computed(() => phase.value === "waiting" || phase.value === "compacting");
+const errorMessage = computed(
+  () => session.chat.error?.message ?? "The agent stopped because of an unexpected error."
+);
 const debugMode = computed(() => store.debugMode);
-const generatingText = useAnimatedDots("Generating", isSubmitted);
+const generatingText = useAnimatedDots(
+  () => (phase.value === "compacting" ? "Compacting" : "Generating"),
+  isSubmitted
+);
 const isPaused = computed(
-  () => !session.isGenerating() && messages.value.at(-1)?.metadata?.stepLimitReached === true
+  () => phase.value === "idle" && messages.value.at(-1)?.metadata?.stepLimitReached === true
 );
 
 const continueRun = () => {
-  session.chat.sendMessage({ text: "Continue" });
+  session.send("Continue");
 };
 
 const container = ref<HTMLElement>();
@@ -70,7 +75,7 @@ watch(
         <TextShimmer class="select-none">{{ generatingText }}</TextShimmer>
       </div>
       <div
-        v-else-if="isErrored"
+        v-else-if="phase === 'error'"
         class="text-surface-500 font-mono text-sm px-2.5">
         {{ errorMessage }}
       </div>

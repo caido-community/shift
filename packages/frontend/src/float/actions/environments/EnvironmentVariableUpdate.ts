@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { normalizeEnvironmentVariable, resolveEnvironment } from "@/float/utils";
 import { isPresent } from "@/utils";
 
@@ -29,13 +30,13 @@ export const environmentVariableUpdateTool = tool({
   description:
     "Create or update a variable in an environment by id (defaults to the selected environment, or Global if none selected)",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ environmentId, variable }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     const environment = await resolveEnvironment(sdk, environmentId ?? undefined);
 
     if (!isPresent(environment)) {
-      return ActionResult.err("Unable to resolve environment to update");
+      return ToolResult.err("Unable to resolve environment to update");
     }
 
     const variables = environment.variables.map(normalizeEnvironmentVariable);
@@ -65,9 +66,9 @@ export const environmentVariableUpdateTool = tool({
         },
       });
 
-      return ActionResult.ok(`Variable ${variable.name} updated successfully`);
+      return ToolResult.ok({ message: `Variable ${variable.name} updated successfully` });
     } catch (error) {
-      return ActionResult.err(
+      return ToolResult.err(
         "Failed to update environment variable",
         error instanceof Error ? error.message : undefined
       );

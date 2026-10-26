@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 
 const inputSchema = z.object({
   path: z.string().describe("Path of the page to navigate to (non-empty)."),
@@ -10,7 +11,7 @@ const inputSchema = z.object({
 export const navigateTool = tool({
   description: "Navigate to a specific page by path",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: ({ path }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     const resolvedPath = typeof path === "string" ? path : String(path);
@@ -20,6 +21,6 @@ export const navigateTool = tool({
     }
 
     sdk.navigation.goTo(finalPath);
-    return ActionResult.ok(`Navigated to page ${finalPath}`);
+    return ToolResult.ok({ message: `Navigated to page ${finalPath}` });
   },
 });

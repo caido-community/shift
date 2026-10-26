@@ -1,6 +1,2 @@
 export { BinaryExecRun } from "./BinaryExecRun";
-export {
-  clearStreamedBinaryOutput,
-  getStreamedBinaryOutput,
-  initializeBinaryExecutionStream,
-} from "./BinaryExecRun.stream";
+export { getStreamedBinaryOutput, initializeBinaryExecutionStream } from "./BinaryExecRun.stream";

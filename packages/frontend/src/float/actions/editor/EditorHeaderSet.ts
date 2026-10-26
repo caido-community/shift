@@ -2,7 +2,8 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { withActiveEditorView } from "@/float/utils";
 
 const inputSchema = z.object({
@@ -14,7 +15,7 @@ export const editorHeaderSetTool = tool({
   description:
     "Set an HTTP header in the active editor. Replaces existing header with same name or adds it if not present.",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: ({ headerName, headerValue }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     return withActiveEditorView(sdk, ({ view, update }) => {
@@ -23,7 +24,7 @@ export const editorHeaderSetTool = tool({
         .setHeader(headerName, headerValue)
         .build();
       update(modifiedRequest);
-      return ActionResult.ok(`Header ${headerName} set in active editor`);
+      return ToolResult.ok({ message: `Header ${headerName} set in active editor` });
     });
   },
 });

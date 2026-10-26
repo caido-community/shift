@@ -10,12 +10,12 @@ const ERROR_MESSAGES: Record<string, string> = {
     "Your OpenRouter API key is probably invalid, please go to Caido settings and double check it.",
 };
 
-export function useError(error: Error) {
+export function useError() {
   const session = useSession();
   const sdk = useSDK();
   const { copy } = useClipboard();
   const modelInfo = computed(() => {
-    const model = session.model;
+    const model = session.store.model;
     if (!model) {
       return { id: "unknown", provider: "unknown" };
     }
@@ -23,7 +23,7 @@ export function useError(error: Error) {
   });
 
   const message = computed(() => {
-    const raw = error.message ?? String(error);
+    const raw = session.chat.error?.message ?? "";
     const mapped = ERROR_MESSAGES[raw] ?? raw;
     return mapped.replace(/\\n/g, "\n");
   });
@@ -34,6 +34,7 @@ export function useError(error: Error) {
   }
 
   function copyTrace() {
+    const error = session.chat.error;
     const trace = [
       "Here's the error trace for debugging purposes. Please redact sensitive information before sharing this.",
       "=== Shift Error Trace ===",
@@ -43,11 +44,11 @@ export function useError(error: Error) {
       `Chat.Status: ${session.chat.status}`,
       "",
       "=== Error ===",
-      `Name: ${error.name}`,
-      `Message: ${error.message}`,
+      `Name: ${error?.name}`,
+      `Message: ${error?.message}`,
       "",
       "=== Stack Trace ===",
-      error.stack ?? "No stack trace available",
+      error?.stack ?? "No stack trace available",
       "",
       "=== Messages ===",
       JSON.stringify(session.chat.messages, undefined, 2),

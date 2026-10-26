@@ -1,43 +1,60 @@
 import { defineStore } from "pinia";
-import { computed, readonly, ref } from "vue";
-
-import { fetchCustomAgents } from "./store.effects";
-import { type CustomAgentsMessage, type CustomAgentsModel, initialModel } from "./store.model";
-import { update } from "./store.update";
+import {
+  type CreateCustomAgentInput,
+  type CustomAgentsState,
+  Result,
+  type UpdateCustomAgentInput,
+} from "shared";
+import { computed, ref } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
 
 export const useCustomAgentsStore = defineStore("customAgents", () => {
   const sdk = useSDK();
-  const model = ref<CustomAgentsModel>(initialModel);
-
-  function dispatch(message: CustomAgentsMessage) {
-    model.value = update(model.value, message);
-  }
-
-  const definitions = computed(() => model.value.definitions);
-  const agents = computed(() => model.value.agents);
-  const isLoading = computed(() => model.value.isLoading);
-  const error = computed(() => model.value.error);
-
-  const getAgentById = (id: string) => agents.value.find((a) => a.id === id);
-
-  const getDefinitionById = (id: string) => definitions.value.find((d) => d.id === id);
+  const state = ref<CustomAgentsState>({ definitions: [], agents: [] });
+  const isLoading = ref(false);
 
   async function initialize() {
-    await fetchCustomAgents(sdk, dispatch);
+    isLoading.value = true;
+    const [definitions, agents] = await Promise.all([
+      sdk.backend.getCustomAgentDefinitions(),
+      sdk.backend.getResolvedCustomAgents(),
+    ]);
+    if (definitions.kind === "Ok" && agents.kind === "Ok") {
+      state.value = { definitions: definitions.value, agents: agents.value };
+    }
+    isLoading.value = false;
+  }
+
+  async function add(input: CreateCustomAgentInput): Promise<Result<void>> {
+    const result = await sdk.backend.addCustomAgent(input);
+    if (result.kind === "Error") return result;
+    state.value = result.value;
+    return Result.ok(undefined);
+  }
+
+  async function update(id: string, input: UpdateCustomAgentInput): Promise<Result<void>> {
+    const result = await sdk.backend.updateCustomAgent(id, input);
+    if (result.kind === "Error") return result;
+    state.value = result.value;
+    return Result.ok(undefined);
+  }
+
+  async function remove(id: string): Promise<Result<void>> {
+    const result = await sdk.backend.removeCustomAgent(id);
+    if (result.kind === "Error") return result;
+    state.value = result.value;
+    return Result.ok(undefined);
   }
 
   return {
-    state: readonly(model),
-    sdk,
-    dispatch,
-    definitions,
-    agents,
-    isLoading,
-    error,
-    getAgentById,
-    getDefinitionById,
+    definitions: computed(() => state.value.definitions),
+    agents: computed(() => state.value.agents),
+    isLoading: computed(() => isLoading.value),
+    getAgentById: (id: string) => state.value.agents.find((agent) => agent.id === id),
     initialize,
+    add,
+    update,
+    remove,
   };
 });

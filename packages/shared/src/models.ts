@@ -13,7 +13,6 @@ const ModelProviderSchema = z.string().min(1);
 const ModelCapabilitiesSchema = z.object({
   reasoning: z.boolean(),
 });
-export type ModelCapabilities = z.infer<typeof ModelCapabilitiesSchema>;
 
 export const MODEL_REASONING_EFFORTS = [
   "minimal",

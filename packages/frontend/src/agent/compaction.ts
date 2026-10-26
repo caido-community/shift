@@ -1,13 +1,15 @@
 import {
+  asSchema,
   type LanguageModel,
   type ModelMessage,
   type StepResult,
   streamText,
+  type Tool,
   type ToolSet,
 } from "ai";
 import type { ShiftMessage } from "shared";
 
-export const CHARS_PER_TOKEN = 4;
+const CHARS_PER_TOKEN = 4;
 const DEFAULT_CONTEXT_WINDOW_TOKENS = 200_000;
 // Models advertise up to 1M+, but quality and pricing degrade well before that (Codex caps GPT-5 at 272k)
 const RECOMMENDED_CONTEXT_WINDOW_TOKENS = 272_000;
@@ -71,9 +73,79 @@ export function applyCompactionMarker(messages: ShiftMessage[]): {
   return { summary: undefined, messages };
 }
 
+export function estimateSerializableCharacters(value: unknown): number {
+  if (value === undefined || value === null) {
+    return 0;
+  }
+
+  if (typeof value === "string") {
+    return value.length;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
+    return String(value).length;
+  }
+
+  try {
+    return JSON.stringify(value)?.length ?? 0;
+  } catch {
+    return "[unserializable]".length;
+  }
+}
+
+export function estimateTokensFromCharacters(characters: number): number {
+  return Math.ceil(Math.max(0, characters) / CHARS_PER_TOKEN);
+}
+
 function estimateTokens(value: unknown): number {
-  const text = typeof value === "string" ? value : (JSON.stringify(value) ?? "");
-  return Math.ceil(text.length / CHARS_PER_TOKEN);
+  return estimateTokensFromCharacters(estimateSerializableCharacters(value));
+}
+
+export function estimateToolsCharacters(tools: Record<string, Tool>): number {
+  return Object.entries(tools).reduce((total, [name, tool]) => {
+    return (
+      total +
+      name.length +
+      (tool.description?.length ?? 0) +
+      estimateSerializableCharacters(asSchema(tool.inputSchema).jsonSchema)
+    );
+  }, 0);
+}
+
+type SummarizeOptions = {
+  model: LanguageModel;
+  system: string;
+  tools: ToolSet;
+  messages: ModelMessage[];
+  maxOutputTokens: number;
+  abortSignal: AbortSignal | undefined;
+};
+
+// Same system and tools as the agent so the request reuses its prompt cache.
+// Streamed because Caido caps non-streaming completions at 5 minutes.
+async function summarize(options: SummarizeOptions): Promise<string> {
+  const result = streamText({
+    ...options,
+    toolChoice: "none",
+    messages: [...options.messages, { role: "user", content: COMPACTION_PROMPT }],
+    maxRetries: 3,
+  });
+
+  let summary = "";
+  for await (const part of result.fullStream) {
+    if (part.type === "text-delta") {
+      summary += part.text;
+    } else if (part.type === "error") {
+      const reason = part.error instanceof Error ? part.error.message : String(part.error);
+      throw new Error(`Context compaction failed: ${reason}`, { cause: part.error });
+    }
+  }
+  options.abortSignal?.throwIfAborted();
+
+  if (summary.trim() === "") {
+    throw new Error("Context compaction failed: the summary was empty");
+  }
+  return summary.trim();
 }
 
 type CreateCompactorOptions<TOOLS extends ToolSet> = {
@@ -82,61 +154,69 @@ type CreateCompactorOptions<TOOLS extends ToolSet> = {
   tools: TOOLS;
   contextWindow: number | undefined;
   abortSignal?: AbortSignal;
+  initialTokens?: number;
   onCompact: (summary: string) => void;
+  onCompacting?: (active: boolean) => void;
+  onMeasure?: (tokens: number) => void;
 };
 
 export function createCompactor<TOOLS extends ToolSet>(options: CreateCompactorOptions<TOOLS>) {
-  const { model, system, tools, abortSignal, onCompact } = options;
+  const { model, system, tools, abortSignal, onCompact, onCompacting, onMeasure } = options;
   const threshold = getCompactionThreshold(options.contextWindow);
-  const summaryMaxOutputTokens = getSummaryMaxOutputTokens(options.contextWindow);
+  const fixedTokens =
+    estimateTokens(system) + estimateTokensFromCharacters(estimateToolsCharacters(tools));
   let compacted: { summary: string; fromIndex: number } | undefined;
+  let sentMessages: ModelMessage[] = [];
+  let contextTokens = options.initialTokens;
 
-  const view = (messages: ModelMessage[]) =>
-    compacted === undefined
-      ? messages
-      : [buildSummaryMessage(compacted.summary), ...messages.slice(compacted.fromIndex)];
+  const measure = (tokens: number) => {
+    contextTokens = tokens;
+    onMeasure?.(tokens);
+  };
 
-  return async ({
-    messages,
-    steps,
-  }: {
-    messages: ModelMessage[];
-    steps: StepResult<TOOLS>[];
-  }): Promise<{ messages: ModelMessage[] } | undefined> => {
-    const current = view(messages);
-    const unchanged = compacted === undefined ? undefined : { messages: current };
-    const lastStep = steps.at(-1);
-    const usedTokens =
-      lastStep?.usage.inputTokens !== undefined
-        ? lastStep.usage.inputTokens +
-          (lastStep.usage.outputTokens ?? 0) +
-          estimateTokens(lastStep.response.messages.filter((message) => message.role === "tool"))
-        : estimateTokens(system) + estimateTokens(current);
-
-    if (usedTokens < threshold) {
-      return unchanged;
+  const prepareStep = async ({ messages }: { messages: ModelMessage[] }) => {
+    sentMessages =
+      compacted === undefined
+        ? messages
+        : [buildSummaryMessage(compacted.summary), ...messages.slice(compacted.fromIndex)];
+    if ((contextTokens ?? fixedTokens + estimateTokens(sentMessages)) < threshold) {
+      return compacted === undefined ? undefined : { messages: sentMessages };
     }
 
-    // Same system and tools as the agent so the summary request reuses its prompt cache.
-    // Streamed because Caido caps non-streaming completions at 5 minutes.
-    const result = streamText({
-      model,
-      system,
-      tools,
-      toolChoice: "none",
-      messages: [...current, { role: "user", content: COMPACTION_PROMPT }],
-      maxOutputTokens: summaryMaxOutputTokens,
-      maxRetries: 3,
-      abortSignal,
-    });
-    const [text, finishReason] = await Promise.all([result.text, result.finishReason]);
-    const summary = text.trim();
-    if (finishReason !== "stop" || summary === "") {
-      return unchanged;
+    onCompacting?.(true);
+    let summary: string;
+    try {
+      summary = await summarize({
+        model,
+        system,
+        tools,
+        messages: sentMessages,
+        maxOutputTokens: getSummaryMaxOutputTokens(options.contextWindow),
+        abortSignal,
+      });
+    } finally {
+      onCompacting?.(false);
     }
 
     compacted = { summary, fromIndex: messages.length };
+    sentMessages = [buildSummaryMessage(summary)];
     onCompact(summary);
-    return { messages: [buildSummaryMessage(summary)] };
+    measure(fixedTokens + estimateTokens(sentMessages));
+    return { messages: sentMessages };
   };
+
+  const onStepFinish = ({ usage, content }: StepResult<TOOLS>) => {
+    const inputTokens = usage.inputTokens ?? 0;
+    // Older Caido versions report 0 input tokens for streamed steps.
+    if (inputTokens > 0) {
+      const toolOutputs = content.filter(
+        (part) => part.type === "tool-result" || part.type === "tool-error"
+      );
+      measure(inputTokens + (usage.outputTokens ?? 0) + estimateTokens(toolOutputs));
+    } else {
+      measure(fixedTokens + estimateTokens(sentMessages) + estimateTokens(content));
+    }
+  };
+
+  return { prepareStep, onStepFinish };
 }

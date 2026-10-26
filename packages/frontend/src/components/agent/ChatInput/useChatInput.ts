@@ -1,34 +1,27 @@
 import { useFocus } from "@vueuse/core";
-import { storeToRefs } from "pinia";
-import { createModelKey, type Model } from "shared";
-import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from "vue";
+import { type Model } from "shared";
+import { computed, onBeforeUnmount, ref, toRef, useTemplateRef, watch } from "vue";
 
 import { useSession } from "../useSession";
 
+import { useModelSetting } from "./ModelSelector/useModelSetting";
 import { useResize } from "./useResize";
 
-import { useSDK } from "@/plugins/sdk";
 import { useModelsStore } from "@/stores/models";
-import { useSettingsStore } from "@/stores/settings";
-import { updateSettings } from "@/stores/settings/store.effects";
-import { isAnyProviderConfigured, resolveModel } from "@/utils/ai";
 
 export function useChatInput() {
-  const sdk = useSDK();
   const modelsStore = useModelsStore();
-  const settingsStore = useSettingsStore();
+  const { models: agentModels, model: savedModel } = useModelSetting("agentsModel", "agent");
   const textarea = useTemplateRef<HTMLTextAreaElement>("textarea");
   const session = useSession();
-  const { draftMessage } = storeToRefs(session.store);
+  const draftMessage = toRef(session.store, "draftMessage");
   const inputMessage = ref(draftMessage.value ?? "");
 
   onBeforeUnmount(() => {
     if (inputMessage.value.trim() !== "") {
-      session.draftMessage = inputMessage.value;
+      session.store.setDraftMessage(inputMessage.value);
     }
   });
-
-  const agentModels = computed(() => modelsStore.getEnabledModels());
 
   const { height, startResize } = useResize();
 
@@ -39,44 +32,32 @@ export function useChatInput() {
     (draft) => {
       if (draft !== "") {
         inputMessage.value = draft;
-        session.draftMessage = "";
+        session.store.setDraftMessage("");
         focused.value = true;
       }
     },
     { immediate: true }
   );
 
-  const handleModelUpdate = (value: Model | undefined) => {
-    session.model = value;
-    if (value === undefined) return;
-    const key = createModelKey(value.provider, value.id);
-    updateSettings(settingsStore.sdk, settingsStore.dispatch, { agentsModel: key });
-  };
-
   const model = computed({
-    get: () => session.model,
-    set: handleModelUpdate,
+    get: () => session.store.model,
+    set: (value: Model | undefined) => {
+      session.store.setModel(value);
+      savedModel.value = value;
+    },
   });
-  const resolvedModel = computed(() =>
-    resolveModel({
-      sdk,
-      savedModelKey: settingsStore.agentsModel,
-      enabledModels: agentModels.value,
-      usageType: "agent",
-    })
-  );
 
   watch(
-    [resolvedModel, model],
+    [savedModel, model],
     ([resolved, current]) => {
       if (current === undefined && resolved !== undefined) {
-        handleModelUpdate(resolved);
+        session.store.setModel(resolved);
       }
     },
     { immediate: true }
   );
   const isGenerating = computed(() => session.isGenerating());
-  const hasProviderConfigured = computed(() => isAnyProviderConfigured(sdk));
+  const hasProviderConfigured = computed(() => modelsStore.hasProvider);
   const reasoningEffort = computed({
     get: () => session.store.reasoningEffort,
     set: (value) => session.store.setReasoningEffort(value),
@@ -92,24 +73,14 @@ export function useChatInput() {
     const message = inputMessage.value.trim();
     inputMessage.value = "";
 
-    if (isGenerating.value) {
-      session.addToQueue(message);
-    } else {
-      session.chat.sendMessage({ text: message });
-    }
+    session.send(message);
   }
 
   async function handleStop() {
-    await session.stopAndWait();
-
-    if (!session.hasExecutedToolsSinceLastUserMessage()) {
-      const lastMessage = session.removeLastUserMessage();
-      if (lastMessage !== undefined) {
-        inputMessage.value = lastMessage;
-      }
+    const withdrawnText = await session.stop();
+    if (withdrawnText !== undefined) {
+      inputMessage.value = withdrawnText;
     }
-
-    session.resumeAfterStop();
   }
 
   function handleKeydown(event: KeyboardEvent) {

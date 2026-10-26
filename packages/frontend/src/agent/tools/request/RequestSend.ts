@@ -14,7 +14,7 @@ import {
   writeToRequestEditor,
 } from "@/utils/caido";
 import type { UndefinedOrNull } from "@/utils/optional";
-import { formatStringWithSuffix } from "@/utils/text";
+import { truncate } from "@/utils/text";
 
 const inputSchema = z.object({});
 
@@ -313,7 +313,7 @@ export const RequestSend = tool({
 
     return ToolResult.ok({
       message: `Received ${statusLine} in ${result.response.roundtripTime}ms`,
-      rawResponse: formatStringWithSuffix(filteredResponse, maxResponseLength, suffix),
+      rawResponse: truncate(filteredResponse, maxResponseLength, suffix),
       roundtripTime: result.response.roundtripTime,
       responseId,
       statusLine,

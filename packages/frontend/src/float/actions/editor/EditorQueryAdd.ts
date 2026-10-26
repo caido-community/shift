@@ -2,7 +2,8 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { withActiveEditorView } from "@/float/utils";
 
 const inputSchema = z.object({
@@ -13,14 +14,14 @@ const inputSchema = z.object({
 export const editorQueryAddTool = tool({
   description: "Add or update a query parameter in the HTTP request URL in the active editor",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: ({ paramName, value }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     return withActiveEditorView(sdk, ({ view, update }) => {
       const currentText = view.state.doc.toString();
       const modifiedRequest = HttpForge.create(currentText).addQueryParam(paramName, value).build();
       update(modifiedRequest);
-      return ActionResult.ok(`Query parameter ${paramName} added in active editor`);
+      return ToolResult.ok({ message: `Query parameter ${paramName} added in active editor` });
     });
   },
 });

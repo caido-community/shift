@@ -6,24 +6,20 @@ import {
 } from "@caido/sdk-frontend";
 import { type EditorView } from "@codemirror/view";
 
-import { type ActionContext } from "@/float/types";
+import { truncateContextValue } from "@/agent/context.truncation";
+import { type ActionContext, type ActionQueryInput } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 import { type EditorElement, isPresent } from "@/utils";
-import { resolveEditorView } from "@/utils/caido";
+import { getReplaySession, resolveEditorView } from "@/utils/caido";
 
 const MAX_CONTEXT_LENGTH = 10_000;
 
-const truncate = (value: string | undefined, maxLength = MAX_CONTEXT_LENGTH): string => {
-  if (typeof value !== "string") {
-    return "";
-  }
-  if (value.length <= maxLength) {
-    return value;
-  }
-  return `${value.slice(0, maxLength)}... [truncated, ${value.length - maxLength} more characters]`;
-};
+const truncate = (value: string) => truncateContextValue(value, MAX_CONTEXT_LENGTH);
 
-const getBaseContext = (sdk: FrontendSDK, globalContext: GlobalContext): ActionContext => {
+const getBaseContext = async (
+  sdk: FrontendSDK,
+  globalContext: GlobalContext
+): Promise<ActionContext> => {
   const getActiveProject = () => {
     const projectNameElement = document.querySelector(".c-current-project[data-project-id]") as
       | HTMLElement
@@ -162,7 +158,7 @@ const getBaseContext = (sdk: FrontendSDK, globalContext: GlobalContext): ActionC
     }
   };
 
-  const context: ActionContext = {
+  return {
     page: {
       description: "The page you are currently on",
       value: globalContext.page?.kind ?? "Unknown",
@@ -201,11 +197,9 @@ const getBaseContext = (sdk: FrontendSDK, globalContext: GlobalContext): ActionC
     },
     environments: {
       description: "Global and selected environments including their current variables",
-      value: getEnvironments(),
+      value: await getEnvironments(),
     },
   };
-
-  return context;
 };
 
 const getAutomateContext = (sdk: FrontendSDK, pageContext: AutomatePageContext): ActionContext => {
@@ -243,24 +237,37 @@ const getAutomateContext = (sdk: FrontendSDK, pageContext: AutomatePageContext):
   };
 };
 
-const getReplayContext = (sdk: FrontendSDK, pageContext: ReplayPageContext): ActionContext => {
-  const getSelectedSession = () => {
+const getReplayContext = async (
+  sdk: FrontendSDK,
+  pageContext: ReplayPageContext
+): Promise<ActionContext> => {
+  const getSelectedSession = async () => {
     if (pageContext.selection.kind === "Empty") {
       return { name: "No session selected", id: undefined };
     }
 
     const sessionId = pageContext.selection.main;
     const session = sdk.replay.getSessions().find((s) => s.id === sessionId);
+    const replaySession = await getReplaySession(sdk, sessionId);
     return {
       name: session?.name ?? "Unknown session",
       id: sessionId,
+      connection:
+        replaySession.kind === "Ok" && replaySession.value.activeEntryId !== ""
+          ? {
+              host: replaySession.value.request.host,
+              port: replaySession.value.request.port,
+              isTLS: replaySession.value.request.isTLS,
+              SNI: replaySession.value.request.SNI,
+            }
+          : undefined,
     };
   };
 
   return {
     replay: {
       description: "The current state of the Replay page",
-      value: getSelectedSession(),
+      value: await getSelectedSession(),
     },
   };
 };
@@ -290,7 +297,7 @@ const getHttpHistoryContext = (
   };
 };
 
-export const getContext = (sdk: FrontendSDK): ActionContext => {
+export const getContext = async (sdk: FrontendSDK): Promise<ActionContext> => {
   const globalContext = sdk.window.getContext();
 
   if (!isPresent(globalContext)) {
@@ -301,7 +308,7 @@ export const getContext = (sdk: FrontendSDK): ActionContext => {
 
   const context: ActionContext = {};
 
-  const baseContext = getBaseContext(sdk, globalContext);
+  const baseContext = await getBaseContext(sdk, globalContext);
   Object.assign(context, baseContext);
 
   if (pageContext?.kind === "Automate") {
@@ -310,7 +317,7 @@ export const getContext = (sdk: FrontendSDK): ActionContext => {
   }
 
   if (pageContext?.kind === "Replay") {
-    const replayContext = getReplayContext(sdk, pageContext);
+    const replayContext = await getReplayContext(sdk, pageContext);
     Object.assign(context, replayContext);
   }
 
@@ -321,3 +328,18 @@ export const getContext = (sdk: FrontendSDK): ActionContext => {
 
   return context;
 };
+
+export const buildUserPrompt = (input: ActionQueryInput, learnings: string[]): string =>
+  `
+<context>
+${JSON.stringify(input.context)}
+</context>
+
+<learnings>
+${learnings.map((learning, index) => `- ${index}: ${learning}`).join("\n")}
+</learnings>
+
+<user>
+${input.content}
+</user>
+`.trim();

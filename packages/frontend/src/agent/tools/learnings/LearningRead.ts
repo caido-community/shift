@@ -1,33 +1,12 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { readTextRange } from "@/agent/tools/utils/range";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import { useLearningsStore } from "@/stores/learnings";
 
 const DEFAULT_LIMIT = 8000;
 const MAX_LIMIT = 20000;
-
-type LearningReadValue = {
-  index: number;
-  content: string;
-  offset: number;
-  endOffset: number;
-  learningLength: number;
-  hasMore: boolean;
-};
-
-export function readLearningRange(content: string, offset: number, limit: number) {
-  const safeOffset = Math.max(0, offset);
-  const safeLimit = Math.max(1, Math.min(limit, MAX_LIMIT));
-  const endOffset = Math.min(content.length, safeOffset + safeLimit);
-
-  return {
-    content: content.slice(safeOffset, endOffset),
-    offset: safeOffset,
-    endOffset,
-    hasMore: endOffset < content.length,
-  };
-}
 
 const inputSchema = z.object({
   index: z.number().int().nonnegative().describe("Zero-based learning index to read."),
@@ -57,9 +36,8 @@ const valueSchema = z.object({
   hasMore: z.boolean(),
 });
 
-const outputSchema = ToolResult.schema(valueSchema);
-
 type LearningReadInput = z.infer<typeof inputSchema>;
+type LearningReadValue = z.infer<typeof valueSchema>;
 type LearningReadOutput = ToolResultType<LearningReadValue>;
 
 export const display = {
@@ -83,8 +61,8 @@ export const LearningRead = tool({
   description:
     "Read the full or partial content of a persistent learning entry by its zero-based index. Use this when the context only shows a preview of a learning and you need the exact stored value before relying on it. Supports pagination with offset and limit for long entries.",
   inputSchema,
-  outputSchema,
-  execute: ({ index, offset, limit }): LearningReadOutput => {
+  outputSchema: ToolResult.schema(valueSchema),
+  execute: ({ index, offset = 0, limit = DEFAULT_LIMIT }): LearningReadOutput => {
     const entries = useLearningsStore().entries;
     const learning = entries[index];
 
@@ -95,21 +73,10 @@ export const LearningRead = tool({
       );
     }
 
-    const safeOffset = offset ?? 0;
-    if (safeOffset >= learning.length) {
-      return ToolResult.err(
-        "Offset out of bounds",
-        `Offset ${safeOffset} exceeds learning length ${learning.length}`
-      );
+    const range = readTextRange(learning, `learning #${index}`, offset, limit);
+    if (range.kind === "Error") {
+      return range;
     }
-
-    const result = readLearningRange(learning, safeOffset, limit ?? DEFAULT_LIMIT);
-
-    return ToolResult.ok({
-      message: `Read ${result.content.length} chars from learning #${index}.`,
-      index,
-      ...result,
-      learningLength: learning.length,
-    });
+    return ToolResult.ok({ ...range.value, index, learningLength: learning.length });
   },
 });

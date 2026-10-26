@@ -2,7 +2,8 @@ import { tool } from "ai";
 import { HttpForge } from "ts-http-forge";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { withActiveEditorView } from "@/float/utils";
 
 const inputSchema = z.object({
@@ -13,35 +14,25 @@ const inputSchema = z.object({
 export const editorHeaderAddTool = tool({
   description: "Add or replace an HTTP header in the active editor",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: ({ header, replace }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
+    const separator = header.indexOf(":");
+    if (separator === -1) {
+      return ToolResult.err("Header must be in format 'Name: Value'");
+    }
+
+    const headerName = header.slice(0, separator).trim();
+    const headerValue = header.slice(separator + 1).trim();
     return withActiveEditorView(sdk, ({ view, update }) => {
-      const headerParts = header.split(":");
-      if (headerParts.length < 2) {
-        return ActionResult.err("Header must be in format 'Name: Value'");
-      }
-
-      const headerName = headerParts[0]?.trim();
-      if (headerName === undefined) {
-        return ActionResult.err("Header name is undefined");
-      }
-
-      const headerValue = headerParts.slice(1).join(":").trim();
-      const currentText = view.state.doc.toString();
-      let modifiedRequest: string;
-
-      if (replace === true) {
-        modifiedRequest = HttpForge.create(currentText).setHeader(headerName, headerValue).build();
-      } else {
-        modifiedRequest = HttpForge.create(currentText).addHeader(headerName, headerValue).build();
-      }
-
+      const forge = HttpForge.create(view.state.doc.toString());
+      const modifiedRequest = replace
+        ? forge.setHeader(headerName, headerValue).build()
+        : forge.addHeader(headerName, headerValue).build();
       update(modifiedRequest);
-
-      return ActionResult.ok(
-        `Header ${headerName} ${replace === true ? "set" : "added"} in active editor`
-      );
+      return ToolResult.ok({
+        message: `Header ${headerName} ${replace ? "set" : "added"} in active editor`,
+      });
     });
   },
 });

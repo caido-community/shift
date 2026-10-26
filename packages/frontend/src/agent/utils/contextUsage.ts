@@ -1,52 +1,17 @@
-import { asSchema, type Tool } from "ai";
 import type { Model, ShiftMessage } from "shared";
 
 import {
   applyCompactionMarker,
-  CHARS_PER_TOKEN,
+  estimateSerializableCharacters,
+  estimateTokensFromCharacters,
   getCompactionThreshold,
   getContextWindow,
 } from "@/agent/compaction";
-
-function estimateSerializableCharacters(value: unknown): number {
-  if (value === undefined || value === null) {
-    return 0;
-  }
-
-  if (typeof value === "string") {
-    return value.length;
-  }
-
-  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
-    return String(value).length;
-  }
-
-  try {
-    return JSON.stringify(value)?.length ?? 0;
-  } catch {
-    return "[unserializable]".length;
-  }
-}
 
 export function estimateMessagesCharacters(messages: ShiftMessage[]): number {
   return messages.reduce((total, message) => {
     const parts = message.parts.filter((part) => part.type !== "data-request-diff");
     return total + message.role.length + estimateSerializableCharacters(parts);
-  }, 0);
-}
-
-export function estimateTokensFromCharacters(characters: number): number {
-  return Math.ceil(Math.max(0, characters) / CHARS_PER_TOKEN);
-}
-
-export function estimateToolsCharacters(tools: Record<string, Tool>): number {
-  return Object.entries(tools).reduce((total, [name, tool]) => {
-    return (
-      total +
-      name.length +
-      (tool.description?.length ?? 0) +
-      estimateSerializableCharacters(asSchema(tool.inputSchema).jsonSchema)
-    );
   }, 0);
 }
 
@@ -104,10 +69,23 @@ export function getEstimatedContextUsage(args: {
 
   const contextWindowTokens = getContextWindow(model?.contextWindow);
   const availableTokens = getCompactionThreshold(model?.contextWindow);
-  const usedTokens = segments.reduce((total, segment) => total + segment.tokens, 0);
+  const estimatedTokens = segments.reduce((total, segment) => total + segment.tokens, 0);
+  const measuredIndex = messages.findLastIndex(
+    (message) => message.metadata?.contextTokens !== undefined
+  );
+  const measuredTokens = messages[measuredIndex]?.metadata?.contextTokens;
+  const usedTokens =
+    measuredTokens === undefined
+      ? estimatedTokens
+      : measuredTokens +
+        estimateTokensFromCharacters(estimateMessagesCharacters(messages.slice(measuredIndex + 1)));
+  const scale = usedTokens / estimatedTokens;
 
   return {
-    segments,
+    segments: segments.map((segment) => ({
+      ...segment,
+      tokens: Math.round(segment.tokens * scale),
+    })),
     usedTokens,
     availableTokens,
     contextWindowTokens,

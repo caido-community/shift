@@ -7,15 +7,11 @@ import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from 
 import { getActiveEntryRequest } from "@/utils/caido";
 
 const inputSchema = z.object({
-  title: z
-    .string()
-    .describe(
-      "The title of the finding. This should be a short and concise title that captures the discovered vulnerability or interesting behavior."
-    ),
+  title: z.string().describe("A concise title describing the confirmed vulnerability."),
   markdown: z
     .string()
     .describe(
-      "The markdown description of the finding. This should provide details about the vulnerability or interesting behavior discovered."
+      "Evidence, reproduction steps, demonstrated impact, and any unverified prerequisites."
     ),
 });
 
@@ -43,7 +39,7 @@ export const display = {
 
 export const FindingsCreate = tool({
   description:
-    "Create a security finding to document a discovered vulnerability, interesting behavior, or notable observation. Findings are linked to the current request in the replay session and appear in Caido's Findings panel for the user to review. Use this when you discover something the user should know about - SQL injection, XSS, authentication bypass, information disclosure, or any security-relevant behavior. The title should be concise (e.g., 'Reflected XSS in search parameter'). The markdown description should include details about the vulnerability, how to reproduce it, and potential impact. Both title and markdown support placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Returns the created finding's ID.",
+    "Document a confirmed vulnerability in Caido's Findings panel. Read builtin:findings for reporting guidance. The finding links to the current replay entry; keep that entry unchanged until this call completes. Title and markdown support §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§ placeholders. Returns the finding ID.",
   inputSchema,
   outputSchema,
   execute: async ({ title, markdown }, { experimental_context }): Promise<FindingsCreateOutput> => {

@@ -1,4 +1,4 @@
-import { computed, type MaybeRefOrGetter, toValue } from "vue";
+import { computed, type MaybeRefOrGetter, ref, toValue } from "vue";
 
 import {
   type BackgroundAgent,
@@ -31,8 +31,9 @@ export function useAgentCard(agentSource: MaybeRefOrGetter<BackgroundAgent>) {
     () => agent.value.status === "queued" || agent.value.status === "running"
   );
 
+  const expanded = ref(false);
   const toggleExpanded = () => {
-    store.toggleExpanded(agent.value.id);
+    expanded.value = !expanded.value;
   };
 
   const cancelAgent = () => {
@@ -49,6 +50,7 @@ export function useAgentCard(agentSource: MaybeRefOrGetter<BackgroundAgent>) {
     canCancel,
     isRunning,
     statusIconClass,
+    expanded,
     toggleExpanded,
     cancelAgent,
     removeAgent,

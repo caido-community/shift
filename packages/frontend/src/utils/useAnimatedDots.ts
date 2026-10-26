@@ -1,41 +1,23 @@
-import { computed, type MaybeRefOrGetter, onUnmounted, ref, toValue, watchEffect } from "vue";
+import { computed, type MaybeRefOrGetter, ref, toValue, watchEffect } from "vue";
 
 export const useAnimatedDots = (
-  baseText: string,
+  baseText: MaybeRefOrGetter<string>,
   isActive: MaybeRefOrGetter<boolean>,
   interval = 200
 ) => {
   const dotCount = ref(1);
-  let dotInterval: ReturnType<typeof setInterval> | undefined;
-
-  const text = computed(() => `${baseText}${".".repeat(dotCount.value)}`);
 
   watchEffect((onCleanup) => {
-    if (toValue(isActive)) {
-      dotInterval = setInterval(() => {
-        dotCount.value = (dotCount.value % 3) + 1;
-      }, interval);
-    } else {
-      if (dotInterval !== undefined) {
-        clearInterval(dotInterval);
-        dotInterval = undefined;
-      }
+    if (!toValue(isActive)) {
       dotCount.value = 1;
+      return;
     }
 
-    onCleanup(() => {
-      if (dotInterval !== undefined) {
-        clearInterval(dotInterval);
-        dotInterval = undefined;
-      }
-    });
+    const timer = setInterval(() => {
+      dotCount.value = (dotCount.value % 3) + 1;
+    }, interval);
+    onCleanup(() => clearInterval(timer));
   });
 
-  onUnmounted(() => {
-    if (dotInterval !== undefined) {
-      clearInterval(dotInterval);
-    }
-  });
-
-  return text;
+  return computed(() => `${toValue(baseText)}${".".repeat(dotCount.value)}`);
 };

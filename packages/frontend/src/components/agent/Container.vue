@@ -1,56 +1,27 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { useEventListener } from "@vueuse/core";
+import { computed } from "vue";
 
 import Content from "./Content.vue";
 
 import { useAgentStore } from "@/stores/agent/store";
 import { useUIStore } from "@/stores/ui";
+import { useMouseDrag } from "@/utils/useMouseDrag";
 
 const store = useAgentStore();
 const uiStore = useUIStore();
-
-const isResizing = ref(false);
 
 const drawerStyle = computed(() => ({
   width: `${uiStore.drawerWidth}px`,
 }));
 
-const onWindowResize = () => {
-  uiStore.clampDrawerWidth();
-};
+useEventListener(window, "resize", () => uiStore.clampDrawerWidth());
 
-onMounted(() => {
-  window.addEventListener("resize", onWindowResize);
-});
+const { isDragging: isResizing, start } = useMouseDrag();
 
-onUnmounted(() => {
-  window.removeEventListener("resize", onWindowResize);
-});
-
-const startResize = (e: MouseEvent) => {
-  e.preventDefault();
-  isResizing.value = true;
-
-  const startX = e.clientX;
+const startResize = (event: MouseEvent) => {
   const startWidth = uiStore.drawerWidth;
-
-  const onMouseMove = (moveEvent: MouseEvent) => {
-    const delta = startX - moveEvent.clientX;
-    uiStore.setDrawerWidth(startWidth + delta);
-  };
-
-  const onMouseUp = () => {
-    isResizing.value = false;
-    document.removeEventListener("mousemove", onMouseMove);
-    document.removeEventListener("mouseup", onMouseUp);
-    document.body.style.cursor = "";
-    document.body.style.userSelect = "";
-  };
-
-  document.addEventListener("mousemove", onMouseMove);
-  document.addEventListener("mouseup", onMouseUp);
-  document.body.style.cursor = "ew-resize";
-  document.body.style.userSelect = "none";
+  start(event, (deltaX) => uiStore.setDrawerWidth(startWidth - deltaX), "ew-resize");
 };
 </script>
 
@@ -68,8 +39,7 @@ const startResize = (e: MouseEvent) => {
         @mousedown="startResize" />
       <Content
         v-if="store.activeSession"
-        :key="store.activeSession?.id"
-        :session="store.activeSession" />
+        :key="store.activeSession.id" />
       <div
         v-else-if="!store.isReady"
         class="flex flex-col items-center justify-center h-full gap-3 text-surface-400">

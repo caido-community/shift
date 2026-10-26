@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useKeyModifier } from "@vueuse/core";
 import Textarea from "primevue/textarea";
 
 const { content, onConfirm } = defineProps<{
@@ -8,11 +7,8 @@ const { content, onConfirm } = defineProps<{
   onConfirm: (content: string) => void;
 }>();
 
-const ctrl = useKeyModifier("Control");
-const meta = useKeyModifier("Meta");
-
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === "Enter" && (ctrl.value === true || meta.value === true)) {
+  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
     event.preventDefault();
     handleConfirm();
   }

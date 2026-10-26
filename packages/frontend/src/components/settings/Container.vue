@@ -5,80 +5,44 @@ import Checkbox from "primevue/checkbox";
 import InputNumber from "primevue/inputnumber";
 import SelectButton from "primevue/selectbutton";
 import ToggleSwitch from "primevue/toggleswitch";
-import {
-  type ChatAppearance,
-  DEFAULT_MAX_ITERATIONS,
-  defaultFeatureFlags,
-  type FeatureFlagKey,
-} from "shared";
+import { type ChatAppearance, featureFlagEntries } from "shared";
 import { computed } from "vue";
 
-import { featureFlagEntries } from "@/features";
+import { useSDK } from "@/plugins/sdk";
 import { useSettingsStore } from "@/stores/settings";
-import { updateSettings } from "@/stores/settings/store.effects";
 
+const sdk = useSDK();
 const settingsStore = useSettingsStore();
-const { sdk, dispatch } = settingsStore;
 
 const maxIterations = computed({
-  get() {
-    return settingsStore.maxIterations ?? DEFAULT_MAX_ITERATIONS;
-  },
-  set(value: number) {
-    updateSettings(sdk, dispatch, { maxIterations: value });
-  },
+  get: () => settingsStore.config.maxIterations,
+  set: (value: number) => void settingsStore.update({ maxIterations: value }),
+});
+
+const chatAppearance = computed({
+  get: () => settingsStore.config.chatAppearance,
+  set: (value: ChatAppearance) => void settingsStore.update({ chatAppearance: value }),
+});
+
+const debugToolsEnabled = computed({
+  get: () => settingsStore.config.debugToolsEnabled,
+  set: (value: boolean) => void settingsStore.update({ debugToolsEnabled: value }),
+});
+
+const autoCreateShiftCollection = computed({
+  get: () => settingsStore.config.autoCreateShiftCollection,
+  set: (value: boolean) => void settingsStore.update({ autoCreateShiftCollection: value }),
+});
+
+const openRouterPrioritizeFastProviders = computed({
+  get: () => settingsStore.config.openRouterPrioritizeFastProviders,
+  set: (value: boolean) => void settingsStore.update({ openRouterPrioritizeFastProviders: value }),
 });
 
 const chatAppearanceOptions: { label: string; value: ChatAppearance }[] = [
   { label: "Compact", value: "compact" },
   { label: "Expanded", value: "expanded" },
 ];
-
-const chatAppearance = computed({
-  get() {
-    return settingsStore.chatAppearance;
-  },
-  set(value: ChatAppearance) {
-    updateSettings(sdk, dispatch, { chatAppearance: value });
-  },
-});
-
-const debugToolsEnabled = computed({
-  get() {
-    return settingsStore.debugToolsEnabled ?? false;
-  },
-  set(value: boolean) {
-    updateSettings(sdk, dispatch, { debugToolsEnabled: value });
-  },
-});
-
-const autoCreateShiftCollection = computed({
-  get() {
-    return settingsStore.autoCreateShiftCollection ?? true;
-  },
-  set(value: boolean) {
-    updateSettings(sdk, dispatch, { autoCreateShiftCollection: value });
-  },
-});
-
-const openRouterPrioritizeFastProviders = computed({
-  get() {
-    return settingsStore.openRouterPrioritizeFastProviders ?? false;
-  },
-  set(value: boolean) {
-    updateSettings(sdk, dispatch, { openRouterPrioritizeFastProviders: value });
-  },
-});
-
-const getFeatureFlagValue = (flag: FeatureFlagKey): boolean => {
-  return settingsStore.featureFlags?.[flag] ?? defaultFeatureFlags[flag];
-};
-
-const updateFeatureFlag = (flag: FeatureFlagKey, value: boolean) => {
-  updateSettings(sdk, dispatch, {
-    featureFlags: { [flag]: value },
-  });
-};
 </script>
 
 <template>
@@ -189,10 +153,12 @@ const updateFeatureFlag = (flag: FeatureFlagKey, value: boolean) => {
               :key="flag.key"
               class="flex items-start gap-3 rounded-lg border border-surface-700/60 p-3">
               <Checkbox
-                :model-value="getFeatureFlagValue(flag.key)"
+                :model-value="settingsStore.isFeatureEnabled(flag.key)"
                 binary
                 class="mt-0.5"
-                @update:model-value="updateFeatureFlag(flag.key, $event)" />
+                @update:model-value="
+                  settingsStore.update({ featureFlags: { [flag.key]: $event } })
+                " />
 
               <div class="flex flex-col">
                 <label class="text-sm font-medium">{{ flag.label }}</label>

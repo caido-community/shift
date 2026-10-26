@@ -3,10 +3,9 @@ import { Result } from "shared";
 import { z } from "zod";
 
 import { truncateContextValue } from "@/agent/context.truncation";
-import { useModelsStore } from "@/stores/models";
+import { createFloatModel } from "@/float/model";
 import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
-import { createModel, resolveModel } from "@/utils";
 import { type ReplayEntryWithRequest } from "@/utils/caido";
 
 const outputSchema = z.object({
@@ -65,22 +64,13 @@ export async function generateName(
 ): Promise<Result<string>> {
   try {
     const settingsStore = useSettingsStore();
-    const modelsStore = useModelsStore();
-
-    const modelData = resolveModel({
-      sdk,
-      savedModelKey: settingsStore.renamingModel,
-      enabledModels: modelsStore.getEnabledModels(),
-      usageType: "float",
+    const floatModel = createFloatModel(sdk, {
+      savedModelKey: settingsStore.config.renamingModel,
+      reasoning: false,
     });
-    if (modelData === undefined) {
+    if (floatModel === undefined) {
       return Result.err("No models available");
     }
-
-    const model = createModel(sdk, modelData, {
-      reasoning: false,
-      ...settingsStore.getRequestOptions(modelData),
-    });
 
     const prompt = `
       <entry>
@@ -88,7 +78,7 @@ export async function generateName(
       </entry>
 
       <instructions>
-      ${settingsStore.renaming?.instructions ?? ""}
+      ${settingsStore.config.renaming.instructions}
       </instructions>
 
       <user>
@@ -97,7 +87,7 @@ export async function generateName(
     `;
 
     const result = await generateText({
-      model,
+      model: floatModel.model,
       prompt,
       system: RENAME_SYSTEM_PROMPT,
       output: Output.object({

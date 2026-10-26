@@ -2,13 +2,9 @@ import { tool } from "ai";
 import { Result, type Result as ResultType } from "shared";
 import { z } from "zod";
 
-import {
-  getPayloadBlobCreateStreamingMessage,
-  getPayloadBlobCreateSuccessMessage,
-} from "./display";
-
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
+import { isPresent } from "@/utils";
 
 const inputSchema = z.object({
   reason: z
@@ -33,8 +29,6 @@ const valueSchema = z.object({
   length: z.number(),
   preview: z.string(),
 });
-
-const outputSchema = ToolResult.schema(valueSchema);
 
 type PayloadBlobCreateInput = z.infer<typeof inputSchema>;
 type PayloadBlobCreateValue = z.infer<typeof valueSchema>;
@@ -91,8 +85,23 @@ function normalizeScriptOutput(value: unknown): ResultType<string> {
 }
 
 export const display = {
-  streaming: ({ input }) => getPayloadBlobCreateStreamingMessage(input),
-  success: ({ input, output }) => getPayloadBlobCreateSuccessMessage({ input, output }),
+  streaming: ({ input }) => {
+    if (isPresent(input?.reason)) {
+      return [{ text: input.reason }];
+    }
+    return input
+      ? [{ text: "Generating payload blob from " }, { text: "JavaScript", muted: true }]
+      : [{ text: "Generating " }, { text: "payload blob", muted: true }];
+  },
+  success: ({ input, output }) => {
+    const reason = output?.reason ?? input?.reason;
+    if (isPresent(reason)) {
+      return [{ text: reason }];
+    }
+    return isPresent(output)
+      ? [{ text: "Created payload blob " }, { text: output.blobId, muted: true }]
+      : [{ text: "Created " }, { text: "payload blob", muted: true }];
+  },
   error: () => "Failed to create payload blob",
 } satisfies ToolDisplay<PayloadBlobCreateInput, PayloadBlobCreateValue>;
 
@@ -100,10 +109,9 @@ export const PayloadBlobCreate = tool({
   description:
     "Generate a payload blob by evaluating JavaScript. You must also provide a very brief user-visible reason describing what was generated. The result is stored in-memory for the current agent run and can be referenced with §§§Blob§blobId§§§ in env-enabled tool inputs.",
   inputSchema,
-  outputSchema,
+  outputSchema: ToolResult.schema(valueSchema),
   execute: ({ reason, jsScript }, { experimental_context }): PayloadBlobCreateOutput => {
     const context = experimental_context as AgentContext;
-
     let scriptResult: unknown;
     try {
       scriptResult = eval(jsScript);

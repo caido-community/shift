@@ -1,8 +1,3 @@
-import {
-  type CreatedReplaySessionSubscription,
-  type StartedTaskSubscription,
-} from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
-
 import { generateName } from "@/renaming/ai";
 import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
@@ -12,71 +7,56 @@ import { isPresent } from "@/utils/optional";
 export const setupRenaming = (sdk: FrontendSDK) => {
   const settingsStore = useSettingsStore();
 
-  const renameSession = async (entryId: string, sessionId: string) => {
-    const entryResult = await getReplayEntryRequest(sdk, entryId, sessionId);
-    if (entryResult.kind === "Error") {
-      sdk.window.showToast(`[Shift] Failed while fetching replay entry: ${entryResult.error}`, {
-        variant: "error",
-      });
-      return;
-    }
-
-    const nameResult = await generateName(sdk, entryResult.value);
-    if (nameResult.kind === "Error") {
-      sdk.window.showToast(`[Shift] Failed while renaming session: ${nameResult.error}`, {
-        variant: "error",
-      });
-      return;
-    }
-
-    await renameTab(sdk, sessionId, nameResult.value);
-  };
-
-  const handleStartedTask = async (result: StartedTaskSubscription) => {
-    const task = result.startedTask.task;
-    if (task.__typename !== "ReplayTask") return;
-
-    const renaming = settingsStore.renaming;
-    if (!renaming) return;
-
-    const isRenamingEnabled = renaming.enabled;
-    const isRenameAfterSend = renaming.renameAfterSend;
-    if (!isRenamingEnabled || !isRenameAfterSend) return;
-
-    const entryId = task.replayEntry?.id;
-    const sessionId = task.replayEntry?.session.id;
+  const renameSession = async (
+    entryId: string | undefined,
+    sessionId: string | undefined,
+    afterSend: boolean
+  ) => {
+    const renaming = settingsStore.config.renaming;
+    if (!renaming.enabled || (afterSend && !renaming.renameAfterSend)) return;
     if (!isPresent(entryId) || !isPresent(sessionId)) return;
 
-    await renameSession(entryId, sessionId);
-  };
-  const handleCreatedReplaySession = async (result: CreatedReplaySessionSubscription) => {
-    const renaming = settingsStore.renaming;
-    if (!renaming) return;
+    try {
+      const entryResult = await getReplayEntryRequest(sdk, entryId, sessionId);
+      if (entryResult.kind === "Error") {
+        sdk.window.showToast(`[Shift] Failed while fetching replay entry: ${entryResult.error}`, {
+          variant: "error",
+        });
+        return;
+      }
 
-    const isRenamingEnabled = renaming.enabled;
-    if (!isRenamingEnabled) return;
+      const nameResult = await generateName(sdk, entryResult.value);
+      if (nameResult.kind === "Error") {
+        sdk.window.showToast(`[Shift] Failed while renaming session: ${nameResult.error}`, {
+          variant: "error",
+        });
+        return;
+      }
 
-    const entryId = result.createdReplaySession.sessionEdge.node.activeEntry?.id;
-    const sessionId = result.createdReplaySession.sessionEdge.node.id;
-    if (!isPresent(entryId) || !isPresent(sessionId)) return;
-
-    await renameSession(entryId, sessionId);
-  };
-
-  const subscribeToStartedTask = async () => {
-    for await (const result of sdk.graphql.startedTask()) {
-      handleStartedTask(result);
+      await renameTab(sdk, sessionId, nameResult.value);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      sdk.window.showToast(`[Shift] Failed while renaming session: ${message}`, {
+        variant: "error",
+      });
     }
   };
 
-  const subscribeToCreatedReplaySession = async () => {
-    for await (const result of sdk.graphql.createdReplaySession()) {
-      handleCreatedReplaySession(result);
+  void (async () => {
+    for await (const { startedTask } of sdk.graphql.startedTask()) {
+      const task = startedTask.task;
+      if (task.__typename === "ReplayTask") {
+        void renameSession(task.replayEntry?.id, task.replayEntry?.session.id, true);
+      }
     }
-  };
+  })();
 
-  subscribeToStartedTask();
-  subscribeToCreatedReplaySession();
+  void (async () => {
+    for await (const { createdReplaySession } of sdk.graphql.createdReplaySession()) {
+      const session = createdReplaySession.sessionEdge.node;
+      void renameSession(session.activeEntry?.id, session.id, false);
+    }
+  })();
 };
 
 const isSending = () =>

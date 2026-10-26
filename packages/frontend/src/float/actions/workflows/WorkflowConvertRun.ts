@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 
 const inputSchema = z.object({
   id: z.string().describe("Workflow ID to run (non-empty)"),
@@ -11,7 +12,7 @@ const inputSchema = z.object({
 export const workflowConvertRunTool = tool({
   description: "Run a convert workflow with specified ID and input data",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ id, input }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     const result = await sdk.graphql.runConvertWorkflow({
@@ -20,9 +21,9 @@ export const workflowConvertRunTool = tool({
     });
     const output = result.runConvertWorkflow?.output;
     if (output === undefined || output === null) {
-      return ActionResult.err("Failed to run workflow");
+      return ToolResult.err("Failed to run workflow");
     }
 
-    return ActionResult.ok(`Convert workflow executed successfully. Output: ${output}`);
+    return ToolResult.ok({ message: `Convert workflow executed successfully. Output: ${output}` });
   },
 });

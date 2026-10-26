@@ -5,8 +5,9 @@ import {
 import { tool } from "ai";
 import { z } from "zod";
 
+import { ToolResult } from "@/agent/types";
 import { normalizeRawHttpRequest } from "@/agent/utils/http";
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { type FloatToolContext } from "@/float/types";
 import { isPresent } from "@/utils";
 
 const MARKER = "§§§";
@@ -132,7 +133,7 @@ const attachDefaultPreprocessors = (
 export const automateSessionCreateTool = tool({
   description: `Create a new Automate session with placeholders and payloads. Use ${MARKER} to wrap the placeholder values.`,
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async (
     { rawRequest, host, port, isTls, strategy, concurrency, payloads },
     { experimental_context }
@@ -159,7 +160,7 @@ export const automateSessionCreateTool = tool({
 
     const session = createResult.createAutomateSession.session;
     if (!isPresent(session)) {
-      return ActionResult.err("Failed to create Automate session");
+      return ToolResult.err("Failed to create Automate session");
     }
 
     const graphPayloads = attachDefaultPreprocessors((payloads ?? []).map(toGraphQLPayload));
@@ -192,6 +193,6 @@ export const automateSessionCreateTool = tool({
     });
 
     sdk.navigation.goTo("/automate");
-    return ActionResult.ok("Automate session created");
+    return ToolResult.ok({ message: "Automate session created" });
   },
 });

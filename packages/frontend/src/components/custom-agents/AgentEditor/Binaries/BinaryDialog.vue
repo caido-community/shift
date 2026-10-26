@@ -9,16 +9,9 @@ import type { AgentEditorBinary } from "../useAgentEditorForm";
 
 const visible = defineModel<boolean>("visible", { required: true });
 
-const {
-  mode,
-  existingPaths,
-  binary = undefined,
-  originalPath = undefined,
-} = defineProps<{
-  mode: "add" | "edit";
+const { existingPaths, binary = undefined } = defineProps<{
   existingPaths: string[];
   binary?: AgentEditorBinary;
-  originalPath?: string;
 }>();
 
 const emit = defineEmits<{
@@ -28,44 +21,28 @@ const emit = defineEmits<{
 const path = ref("");
 const instructions = ref("");
 
-const headerLabel = computed(() => (mode === "add" ? "Add Whitelisted Binary" : "Edit Binary"));
-const saveLabel = computed(() => (mode === "add" ? "Add" : "Save"));
+const isEditing = computed(() => binary !== undefined);
 const trimmedPath = computed(() => path.value.trim());
 const isDuplicatePath = computed(
   () =>
     trimmedPath.value !== "" &&
     existingPaths.includes(trimmedPath.value) &&
-    trimmedPath.value !== (originalPath ?? "")
+    trimmedPath.value !== binary?.path
 );
 const canSave = computed(() => trimmedPath.value !== "" && !isDuplicatePath.value);
 const hasPathError = computed(
   () => path.value !== "" && (trimmedPath.value === "" || isDuplicatePath.value)
 );
 
-const syncFromProps = () => {
-  if (mode === "add" || binary === undefined) {
-    path.value = "";
-    instructions.value = "";
-    return;
-  }
-
-  path.value = binary.path;
-  instructions.value = binary.instructions;
-};
-
 watch(
-  [() => visible.value, () => mode, () => binary],
+  [visible, () => binary],
   ([isVisible]) => {
-    if (isVisible) {
-      syncFromProps();
-    }
+    if (!isVisible) return;
+    path.value = binary?.path ?? "";
+    instructions.value = binary?.instructions ?? "";
   },
   { immediate: true }
 );
-
-const handleCancel = () => {
-  visible.value = false;
-};
 
 const handleSave = () => {
   if (!canSave.value) {
@@ -84,7 +61,7 @@ const handleSave = () => {
   <Dialog
     v-model:visible="visible"
     modal
-    :header="headerLabel"
+    :header="isEditing ? 'Edit Binary' : 'Add Whitelisted Binary'"
     :style="{ width: '38rem' }">
     <div class="flex flex-col gap-4">
       <div class="flex flex-col gap-2">
@@ -135,9 +112,9 @@ const handleSave = () => {
         label="Cancel"
         text
         severity="secondary"
-        @click="handleCancel" />
+        @click="visible = false" />
       <Button
-        :label="saveLabel"
+        :label="isEditing ? 'Save' : 'Add'"
         :disabled="!canSave"
         @click="handleSave" />
     </template>

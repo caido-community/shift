@@ -1,221 +1,153 @@
-import { defineStore } from "pinia";
 import type { AgentMode, Model, ResolvedCustomAgent, Result } from "shared";
-import { computed, readonly, shallowRef } from "vue";
+import { computed, reactive, shallowRef } from "vue";
 
-import {
-  createInitialModel,
-  type SessionMessage,
-  type SessionModel,
-  type SessionUpdateResult,
-  type SessionUpdateResultWithValue,
-} from "./store.model";
-import { update } from "./store.update";
-
-import type { Todo } from "@/agent/types";
+import type { QueuedMessage } from "@/agent/types";
 import { generateId } from "@/agent/utils/id";
 import type { ReasoningEffort } from "@/utils/ai";
 
-function isResultUpdate<T>(result: SessionUpdateResult): result is SessionUpdateResultWithValue<T> {
-  return typeof result === "object" && "result" in result && "model" in result;
-}
+type Snapshot = {
+  messageId: string;
+  httpRequest: string;
+};
 
-function createSessionStore(sessionId: string) {
-  return defineStore(`agent-session-${sessionId}`, () => {
-    const model = shallowRef<SessionModel>(createInitialModel());
+export function createSessionStore() {
+  const model = shallowRef<Model | undefined>(undefined);
+  const queuedMessages = shallowRef<QueuedMessage[]>([]);
+  const draftMessage = shallowRef("");
+  const httpRequest = shallowRef("");
+  const snapshots = shallowRef<Snapshot[]>([]);
+  const selectedSkillIds = shallowRef<string[]>([]);
+  const selectedCustomAgentId = shallowRef<string | undefined>(undefined);
+  const mode = shallowRef<AgentMode>("focus");
+  const allowedWorkflowIds = shallowRef<string[] | undefined>(undefined);
+  const reasoningEffort = shallowRef<ReasoningEffort>("low");
 
-    function dispatch(message: SessionMessage): SessionUpdateResult {
-      const result = update(model.value, message);
-      if (isResultUpdate(result)) {
-        model.value = result.model;
-        return result;
-      }
-      model.value = result;
-      return result;
+  function addToQueue(text: string): void {
+    queuedMessages.value = [
+      ...queuedMessages.value,
+      { id: generateId(), text, createdAt: Date.now() },
+    ];
+  }
+
+  function removeFromQueue(id: string): void {
+    queuedMessages.value = queuedMessages.value.filter((msg) => msg.id !== id);
+  }
+
+  function moveToFrontOfQueue(id: string): void {
+    const queue = queuedMessages.value;
+    const index = queue.findIndex((msg) => msg.id === id);
+    if (index <= 0) return;
+
+    queuedMessages.value = [queue[index]!, ...queue.slice(0, index), ...queue.slice(index + 1)];
+  }
+
+  function clearQueuedMessages(): void {
+    queuedMessages.value = [];
+  }
+
+  function setModel(value: Model | undefined): void {
+    model.value = value;
+  }
+
+  function setDraftMessage(value: string): void {
+    draftMessage.value = value;
+  }
+
+  function setHttpRequest(value: string): void {
+    httpRequest.value = value;
+  }
+
+  function createSnapshot(messageId: string): void {
+    if (hasSnapshot(messageId)) return;
+    snapshots.value = [...snapshots.value, { messageId, httpRequest: httpRequest.value }];
+  }
+
+  function restoreSnapshot(messageId: string): Result<string> {
+    const index = snapshots.value.findIndex((s) => s.messageId === messageId);
+    const snapshot = snapshots.value[index];
+    if (!snapshot) {
+      return { kind: "Error", error: `Snapshot for message "${messageId}" not found` };
     }
 
-    const currentModel = computed(() => model.value.model);
-    const todos = computed(() => model.value.todos);
-    const queuedMessages = computed(() => model.value.queuedMessages);
-    const draftMessage = computed(() => model.value.draftMessage);
-    const httpRequest = computed(() => model.value.httpRequest);
-    const snapshots = computed(() => model.value.snapshots);
-    const selectedSkillIds = computed(() => model.value.selectedSkillIds);
-    const selectedCustomAgentId = computed(() => model.value.selectedCustomAgentId);
-    const mode = computed(() => model.value.mode);
-    const allowedWorkflowIds = computed(() => model.value.allowedWorkflowIds);
-    const reasoningEffort = computed(() => model.value.reasoningEffort);
+    httpRequest.value = snapshot.httpRequest;
+    snapshots.value = snapshots.value.slice(0, index + 1);
+    return { kind: "Ok", value: snapshot.httpRequest };
+  }
 
-    function addTodo(content: string): Result<Todo> {
-      const result = dispatch({ type: "ADD_TODO", content });
-      if (isResultUpdate<Todo>(result)) {
-        return result.result;
-      }
-      return { kind: "Error", error: "Unexpected dispatch result" };
+  function clearSnapshots(): void {
+    snapshots.value = [];
+  }
+
+  function hasSnapshot(messageId: string): boolean {
+    return snapshots.value.some((s) => s.messageId === messageId);
+  }
+
+  function setSelectedSkillIds(ids: string[]): void {
+    selectedSkillIds.value = [...ids];
+  }
+
+  function toggleSkill(id: string): void {
+    const current = new Set(selectedSkillIds.value);
+    if (current.has(id)) {
+      current.delete(id);
+    } else {
+      current.add(id);
     }
+    selectedSkillIds.value = Array.from(current);
+  }
 
-    function startTodo(id: number): Result<Todo> {
-      const result = dispatch({ type: "START_TODO", id });
-      if (isResultUpdate<Todo>(result)) {
-        return result.result;
-      }
-      return { kind: "Error", error: "Unexpected dispatch result" };
-    }
+  function isSkillSelected(id: string): boolean {
+    return selectedSkillIds.value.includes(id);
+  }
 
-    function completeTodo(id: number): Result<Todo> {
-      const result = dispatch({ type: "COMPLETE_TODO", id });
-      if (isResultUpdate<Todo>(result)) {
-        return result.result;
-      }
-      return { kind: "Error", error: "Unexpected dispatch result" };
-    }
+  function setMode(value: AgentMode): void {
+    mode.value = value;
+  }
 
-    function removeTodo(id: number): Result<Todo> {
-      const result = dispatch({ type: "REMOVE_TODO", id });
-      if (isResultUpdate<Todo>(result)) {
-        return result.result;
-      }
-      return { kind: "Error", error: "Unexpected dispatch result" };
-    }
+  function setReasoningEffort(value: ReasoningEffort): void {
+    reasoningEffort.value = value;
+  }
 
-    function clearTodos(): void {
-      dispatch({ type: "CLEAR_TODOS" });
-    }
+  function setCustomAgent(agent: Pick<ResolvedCustomAgent, "id" | "allowedWorkflowIds">): void {
+    selectedCustomAgentId.value = agent.id;
+    allowedWorkflowIds.value = agent.allowedWorkflowIds;
+  }
 
-    function addToQueue(text: string): void {
-      dispatch({ type: "ADD_TO_QUEUE", id: generateId(), text, createdAt: Date.now() });
-    }
+  function clearCustomAgent(): void {
+    selectedCustomAgentId.value = undefined;
+    allowedWorkflowIds.value = undefined;
+  }
 
-    function removeFromQueue(id: string): void {
-      dispatch({ type: "REMOVE_FROM_QUEUE", id });
-    }
-
-    function moveToFrontOfQueue(id: string): void {
-      dispatch({ type: "MOVE_TO_FRONT_OF_QUEUE", id });
-    }
-
-    function clearQueuedMessages(): void {
-      dispatch({ type: "CLEAR_QUEUED_MESSAGES" });
-    }
-
-    function setModel(value: Model | undefined): void {
-      dispatch({ type: "SET_MODEL", model: value });
-    }
-
-    function setDraftMessage(value: string): void {
-      dispatch({ type: "SET_DRAFT_MESSAGE", value });
-    }
-
-    function setHttpRequest(value: string): void {
-      dispatch({ type: "SET_HTTP_REQUEST", value });
-    }
-
-    function createSnapshot(messageId: string): void {
-      dispatch({ type: "CREATE_SNAPSHOT", messageId });
-    }
-
-    function restoreSnapshot(messageId: string): Result<string> {
-      const result = dispatch({ type: "RESTORE_SNAPSHOT", messageId });
-      if (isResultUpdate<string>(result)) {
-        return result.result;
-      }
-      return { kind: "Error", error: "Unexpected dispatch result" };
-    }
-
-    function hasSnapshot(messageId: string): boolean {
-      return model.value.snapshots.some((s) => s.messageId === messageId);
-    }
-
-    function setSelectedSkillIds(ids: string[]): void {
-      dispatch({ type: "SET_SELECTED_SKILL_IDS", ids });
-    }
-
-    function toggleSkill(id: string): void {
-      dispatch({ type: "TOGGLE_SKILL", id });
-    }
-
-    function isSkillSelected(id: string): boolean {
-      return model.value.selectedSkillIds.includes(id);
-    }
-
-    function setMode(value: AgentMode): void {
-      dispatch({ type: "SET_MODE", mode: value });
-    }
-
-    function setReasoningEffort(value: ReasoningEffort): void {
-      dispatch({ type: "SET_REASONING_EFFORT", reasoningEffort: value });
-    }
-
-    function setCustomAgent(agent: ResolvedCustomAgent): void {
-      dispatch({
-        type: "SET_CUSTOM_AGENT",
-        agentId: agent.id,
-        allowedWorkflowIds: agent.allowedWorkflowIds,
-      });
-    }
-
-    function clearCustomAgent(): void {
-      dispatch({ type: "CLEAR_CUSTOM_AGENT" });
-    }
-
-    return {
-      state: readonly(model),
-      model: currentModel,
-      todos,
-      queuedMessages,
-      draftMessage,
-      httpRequest,
-      snapshots,
-      dispatch,
-      addTodo,
-      startTodo,
-      completeTodo,
-      removeTodo,
-      clearTodos,
-      addToQueue,
-      removeFromQueue,
-      moveToFrontOfQueue,
-      clearQueuedMessages,
-      setModel,
-      setDraftMessage,
-      setHttpRequest,
-      createSnapshot,
-      restoreSnapshot,
-      hasSnapshot,
-      selectedSkillIds,
-      setSelectedSkillIds,
-      toggleSkill,
-      isSkillSelected,
-      selectedCustomAgentId,
-      mode,
-      allowedWorkflowIds,
-      reasoningEffort,
-      setMode,
-      setReasoningEffort,
-      setCustomAgent,
-      clearCustomAgent,
-    };
-  })();
+  return reactive({
+    model: computed(() => model.value),
+    queuedMessages: computed(() => queuedMessages.value),
+    draftMessage: computed(() => draftMessage.value),
+    httpRequest: computed(() => httpRequest.value),
+    snapshots: computed(() => snapshots.value),
+    selectedSkillIds: computed(() => selectedSkillIds.value),
+    selectedCustomAgentId: computed(() => selectedCustomAgentId.value),
+    mode: computed(() => mode.value),
+    allowedWorkflowIds: computed(() => allowedWorkflowIds.value),
+    reasoningEffort: computed(() => reasoningEffort.value),
+    addToQueue,
+    removeFromQueue,
+    moveToFrontOfQueue,
+    clearQueuedMessages,
+    setModel,
+    setDraftMessage,
+    setHttpRequest,
+    createSnapshot,
+    restoreSnapshot,
+    clearSnapshots,
+    hasSnapshot,
+    setSelectedSkillIds,
+    toggleSkill,
+    isSkillSelected,
+    setMode,
+    setReasoningEffort,
+    setCustomAgent,
+    clearCustomAgent,
+  });
 }
 
 export type SessionStore = ReturnType<typeof createSessionStore>;
-
-const sessionStores = new Map<string, SessionStore>();
-
-export function useSessionStore(sessionId: string): SessionStore {
-  const existing = sessionStores.get(sessionId);
-  if (existing) {
-    return existing;
-  }
-
-  const store = createSessionStore(sessionId);
-  sessionStores.set(sessionId, store);
-  return store;
-}
-
-export function removeSessionStore(sessionId: string): void {
-  const store = sessionStores.get(sessionId);
-  if (store) {
-    store.$dispose();
-  }
-  sessionStores.delete(sessionId);
-}

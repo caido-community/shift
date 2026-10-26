@@ -33,11 +33,10 @@ const summaryModel = (finishReason: "stop" | "length" = "stop") =>
       }),
   });
 
-const stepWithInputTokens = (inputTokens: number, responseMessages: ModelMessage[] = []) =>
-  ({
-    usage: { inputTokens, outputTokens: 0 },
-    response: { messages: responseMessages },
-  }) as unknown as StepResult<ToolSet>;
+const step = (inputTokens: number, content: unknown[] = []) =>
+  ({ usage: { inputTokens, outputTokens: 0 }, content }) as unknown as StepResult<ToolSet>;
+
+const estimateTokens = (value: unknown) => Math.ceil(JSON.stringify(value).length / 4);
 
 describe("applyCompactionMarker", () => {
   it("returns messages unchanged without a marker", () => {
@@ -77,10 +76,16 @@ describe("createCompactor", () => {
     { role: "user", content: "task" },
     { role: "assistant", content: "working" },
   ];
+  const toolResult = (output: string) => ({
+    type: "tool-result",
+    toolCallId: "tc",
+    toolName: "Tool",
+    output,
+  });
 
   it("leaves messages alone below the threshold", async () => {
     const model = summaryModel();
-    const compact = createCompactor({
+    const compactor = createCompactor({
       model,
       system: "",
       tools: {},
@@ -88,70 +93,93 @@ describe("createCompactor", () => {
       onCompact: vi.fn(),
     });
 
-    expect(await compact({ messages, steps: [stepWithInputTokens(1_000)] })).toBeUndefined();
+    compactor.onStepFinish(step(1_000));
+    expect(await compactor.prepareStep({ messages })).toBeUndefined();
     expect(model.doStreamCalls).toHaveLength(0);
   });
 
   it("summarizes once over the threshold and keeps newer messages after it", async () => {
     const onCompact = vi.fn();
-    const compact = createCompactor({
+    const compactor = createCompactor({
       model: summaryModel(),
       system: "",
       tools: {},
       contextWindow: 1_000_000,
+      initialTokens: 250_000,
       onCompact,
     });
 
-    const first = await compact({ messages, steps: [stepWithInputTokens(250_000)] });
+    const first = await compactor.prepareStep({ messages });
     expect(onCompact).toHaveBeenCalledWith("the summary");
     expect(first).toEqual({ messages: [buildSummaryMessage("the summary")] });
 
     const newer: ModelMessage = { role: "assistant", content: "continued" };
-    const second = await compact({
-      messages: [...messages, newer],
-      steps: [stepWithInputTokens(250_000), stepWithInputTokens(5_000)],
-    });
+    compactor.onStepFinish(step(5_000));
+    const second = await compactor.prepareStep({ messages: [...messages, newer] });
     expect(second).toEqual({ messages: [buildSummaryMessage("the summary"), newer] });
     expect(onCompact).toHaveBeenCalledOnce();
   });
 
-  it("counts tool results added after the last step's usage", async () => {
+  it("adds the step's tool results to the measured input", () => {
+    const onMeasure = vi.fn();
+    const compactor = createCompactor({
+      model: summaryModel(),
+      system: "",
+      tools: {},
+      contextWindow: 1_000_000,
+      onCompact: vi.fn(),
+      onMeasure,
+    });
+    const result = toolResult("y".repeat(4_000));
+
+    compactor.onStepFinish(step(120_000, [{ type: "text", text: "done" }, result]));
+
+    expect(onMeasure).toHaveBeenLastCalledWith(120_000 + estimateTokens([result]));
+  });
+
+  it("estimates from the messages when the provider reports zero input tokens", async () => {
     const onCompact = vi.fn();
-    const compact = createCompactor({
+    const compactor = createCompactor({
       model: summaryModel(),
       system: "",
       tools: {},
       contextWindow: 128_000,
       onCompact,
     });
-    const toolResult: ModelMessage = {
-      role: "tool",
-      content: [
-        {
-          type: "tool-result",
-          toolCallId: "tc1",
-          toolName: "Tool",
-          output: { type: "text", value: "x".repeat(400_000) },
-        },
-      ],
-    };
-
-    await compact({ messages, steps: [stepWithInputTokens(10_000, [toolResult])] });
+    await compactor.prepareStep({ messages });
+    compactor.onStepFinish(step(0, [toolResult("x".repeat(500_000))]));
+    await compactor.prepareStep({ messages });
     expect(onCompact).toHaveBeenCalledOnce();
   });
 
-  it("keeps history when the summary is cut off", async () => {
+  it("keeps a summary that hit the output limit", async () => {
     const onCompact = vi.fn();
-    const compact = createCompactor({
+    const compactor = createCompactor({
       model: summaryModel("length"),
       system: "",
       tools: {},
       contextWindow: 1_000_000,
+      initialTokens: 250_000,
       onCompact,
     });
 
-    expect(await compact({ messages, steps: [stepWithInputTokens(250_000)] })).toBeUndefined();
-    expect(onCompact).not.toHaveBeenCalled();
+    await compactor.prepareStep({ messages });
+    expect(onCompact).toHaveBeenCalledWith("the summary");
+  });
+
+  it("fails with the cause when the summary request errors", async () => {
+    const compactor = createCompactor({
+      model: new MockLanguageModelV3({ doStream: () => Promise.reject(new Error("boom")) }),
+      system: "",
+      tools: {},
+      contextWindow: 1_000_000,
+      initialTokens: 250_000,
+      onCompact: vi.fn(),
+    });
+
+    await expect(compactor.prepareStep({ messages })).rejects.toThrow(
+      "Context compaction failed: boom"
+    );
   });
 });
 

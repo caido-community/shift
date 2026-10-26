@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { hostedFileConfirmation } from "@/float/utils";
 
 const inputSchema = z.object({
@@ -15,7 +16,7 @@ export const hostedFileCreateAdvancedTool = tool({
   description:
     "Create a hosted file by executing JavaScript code to generate content. Use this for generating large payloads, sequences (e.g., 100 numbers), encoded data, or complex wordlists. For simple wordlists with few lines, use the basic createHostedFile tool instead.",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: ({ file_name, js_script }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     let content: string;
@@ -24,7 +25,7 @@ export const hostedFileCreateAdvancedTool = tool({
       const result = eval(js_script);
       content = String(result);
     } catch (evalError) {
-      return ActionResult.err(
+      return ToolResult.err(
         "Failed to execute JavaScript",
         evalError instanceof Error ? evalError.message : "Unknown error"
       );
@@ -35,6 +36,6 @@ export const hostedFileCreateAdvancedTool = tool({
       content,
     });
 
-    return ActionResult.ok("");
+    return ToolResult.ok({ message: "" });
   },
 });

@@ -3,13 +3,13 @@ import Button from "primevue/button";
 import Checkbox from "primevue/checkbox";
 import Popover from "primevue/popover";
 import Select from "primevue/select";
-import type { AgentMode } from "shared";
 import { ref } from "vue";
 
 import type { LaunchDialogProps } from "./types";
 import { useLaunchDialog } from "./useLaunchDialog";
 
 import { ModelSelector } from "@/components/agent/ChatInput/ModelSelector";
+import { AGENT_MODES } from "@/components/agent/modes";
 
 const { sessionId, onConfirm, onCancel, initialSkillIds, initialCustomAgentId } =
   defineProps<LaunchDialogProps>();
@@ -30,7 +30,6 @@ const {
   selectAgent,
   openAgentsPage,
   handleConfirm,
-  handleCancel,
 } = useLaunchDialog({
   sessionId,
   onConfirm,
@@ -38,21 +37,6 @@ const {
   initialSkillIds,
   initialCustomAgentId,
 });
-
-const modes: Array<{ value: AgentMode; label: string; icon: string; description: string }> = [
-  {
-    value: "focus",
-    label: "Focus",
-    icon: "fas fa-crosshairs",
-    description: "Stays focused on the current endpoint.",
-  },
-  {
-    value: "wildcard",
-    label: "Wildcard",
-    icon: "fas fa-globe",
-    description: "Explores freely. Can test other endpoints and browse HTTP history.",
-  },
-];
 
 const launchShortcut = navigator.userAgent.includes("Mac") ? "⌘↵" : "Ctrl↵";
 
@@ -101,7 +85,7 @@ const handleKeydown = (event: KeyboardEvent) => {
         <label class="text-sm font-medium text-surface-200">Mode</label>
         <div class="flex h-[34px] rounded-md border border-surface-700 bg-surface-900 p-[3px]">
           <button
-            v-for="m in modes"
+            v-for="m in AGENT_MODES"
             :key="m.value"
             type="button"
             :title="m.description"
@@ -237,7 +221,7 @@ const handleKeydown = (event: KeyboardEvent) => {
         severity="secondary"
         text
         size="small"
-        @click="handleCancel" />
+        @click="onCancel" />
       <Button
         size="small"
         class="gap-2"

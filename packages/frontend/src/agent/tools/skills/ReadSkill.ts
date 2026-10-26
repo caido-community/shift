@@ -2,37 +2,12 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
+import { readTextRange } from "@/agent/tools/utils/range";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import { isPresent } from "@/utils";
 
 const DEFAULT_LIMIT = 15000;
 const MAX_LIMIT = 30000;
-
-type ReadSkillRangeResult = {
-  skillId: string;
-  title: string;
-  content: string;
-  offset: number;
-  endOffset: number;
-  skillLength: number;
-  hasMore: boolean;
-};
-
-export function readSkillRange(
-  content: string,
-  offset: number,
-  limit: number
-): Pick<ReadSkillRangeResult, "content" | "offset" | "endOffset" | "hasMore"> {
-  const safeOffset = Math.max(0, offset);
-  const safeLimit = Math.max(1, Math.min(limit, MAX_LIMIT));
-  const endOffset = Math.min(content.length, safeOffset + safeLimit);
-  return {
-    content: content.slice(safeOffset, endOffset),
-    offset: safeOffset,
-    endOffset,
-    hasMore: endOffset < content.length,
-  };
-}
 
 const inputSchema = z.object({
   skillId: z
@@ -67,8 +42,6 @@ const valueSchema = z.object({
   skillLength: z.number(),
   hasMore: z.boolean(),
 });
-
-const outputSchema = ToolResult.schema(valueSchema);
 
 type ReadSkillInput = z.infer<typeof inputSchema>;
 type ReadSkillValue = z.infer<typeof valueSchema>;
@@ -105,36 +78,31 @@ export const display = {
 
 export const ReadSkill = tool({
   description:
-    "Read the full or partial content of a skill that is listed in skills_available_on_demand or referenced by id. Use this when the prompt lists a skill with only a title and description but you need the detailed instructions. Only skills that are currently selected for the agent can be read. Supports pagination with offset and limit for large skills.",
+    "Read instructions from a built-in or selected user skill by its catalog id. Supports pagination with offset and limit; when hasMore is true, continue at endOffset for the remaining content.",
   inputSchema,
-  outputSchema,
-  execute: ({ skillId, offset, limit }, { experimental_context }): ReadSkillOutput => {
+  outputSchema: ToolResult.schema(valueSchema),
+  execute: (
+    { skillId, offset = 0, limit = DEFAULT_LIMIT },
+    { experimental_context }
+  ): ReadSkillOutput => {
     const context = experimental_context as AgentContext;
     const skill = context.getSkillById(skillId);
 
     if (skill === undefined) {
       return ToolResult.err(
         "Skill not found",
-        `Skill "${skillId}" was not found or is not in the currently selected skills. Use an id from the skills_available_on_demand catalog.`
+        `Skill "${skillId}" is not available to this agent. Use an id from the skills_available_on_demand catalog.`
       );
     }
 
-    const safeOffset = offset ?? 0;
-    if (safeOffset >= skill.content.length) {
-      return ToolResult.err(
-        "Offset out of bounds",
-        `Offset ${safeOffset} exceeds skill length ${skill.content.length}`
-      );
+    const range = readTextRange(skill.content, `skill "${skill.title}"`, offset, limit);
+    if (range.kind === "Error") {
+      return range;
     }
-
-    const safeLimit = limit ?? DEFAULT_LIMIT;
-    const result = readSkillRange(skill.content, safeOffset, safeLimit);
-
     return ToolResult.ok({
-      message: `Read ${result.content.length} chars from skill "${skill.title}"`,
+      ...range.value,
       skillId: skill.id,
       title: skill.title,
-      ...result,
       skillLength: skill.content.length,
     });
   },

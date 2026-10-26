@@ -24,6 +24,9 @@ function handleUpdateSettings(
     if (input.chatAppearance !== undefined) {
       draft.chatAppearance = input.chatAppearance;
     }
+    if (input.debugToolsEnabled !== undefined) {
+      draft.debugToolsEnabled = input.debugToolsEnabled;
+    }
     if (input.renaming !== undefined) {
       draft.renaming = { ...draft.renaming, ...input.renaming };
     }
@@ -45,21 +48,10 @@ function handleUpdateSettings(
   });
 }
 
-function handleUpdateRenaming(
-  model: SettingsModel,
-  message: Extract<SettingsMessage, { type: "UPDATE_RENAMING" }>
-): SettingsModel {
-  return create(model, (draft) => {
-    draft.renaming = { ...draft.renaming, ...message.input };
-  });
-}
-
 export function update(model: SettingsModel, message: SettingsMessage): SettingsModel {
   switch (message.type) {
     case "UPDATE_SETTINGS":
       return handleUpdateSettings(model, message);
-    case "UPDATE_RENAMING":
-      return handleUpdateRenaming(model, message);
     default:
       return model;
   }

@@ -44,8 +44,7 @@ Instead, actually rename the type and fix all occurrences if needed.
 
 ## Result Types
 
-- Use existing Result types from the codebase (`ToolResult`, `ActionResult`, `Result`) instead of creating custom ones.
-- Return `ToolResult.ok({ message, ...data })` or `ToolResult.err(message, detail?)` for agent tools.
-- Return `ActionResult.ok(message)` or `ActionResult.err(message, detail?)` for float actions.
+- Use existing Result types from the codebase (`ToolResult`, `Result`) instead of creating custom ones.
+- Return `ToolResult.ok({ message, ...data })` or `ToolResult.err(message, detail?)` for agent tools and float actions.
 - Return `Result.ok(value)` or `Result.err(error)` for normal functions that need proper safe error handling.
 - Never throw exceptions in tool/action implementations; always return Result types.

@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import { useLearningsStore } from "@/stores/learnings";
-import { addLearning } from "@/stores/learnings/store.effects";
 import { isPresent, truncate } from "@/utils";
 
 const inputSchema = z.object({
@@ -17,8 +16,6 @@ const inputSchema = z.object({
 const valueSchema = z.object({
   entries: z.array(z.object({ index: z.number(), value: z.string() })),
 });
-
-const outputSchema = ToolResult.schema(valueSchema);
 
 type LearningAddInput = z.infer<typeof inputSchema>;
 type LearningAddValue = z.infer<typeof valueSchema>;
@@ -40,13 +37,15 @@ export const LearningAdd = tool({
   description:
     "Store a learning entry in the project's persistent memory that will be available across agent sessions. Use this to save important discoveries that should be remembered: valid credentials, API keys, user IDs, session tokens, endpoint patterns, application behavior insights, or any information that would be valuable for future testing. The content should be self-contained and include enough context to be useful later (e.g., 'Admin API key: abc123 - grants access to /api/admin/* endpoints'). Learnings persist until explicitly removed and are included in the agent's context for future sessions. Returns the updated list of all learning entries with their indexes.",
   inputSchema,
-  outputSchema,
+  outputSchema: ToolResult.schema(valueSchema),
   execute: async ({ content }): Promise<LearningAddOutput> => {
-    const { sdk, dispatch } = useLearningsStore();
-    await addLearning(sdk, dispatch, { content });
+    const store = useLearningsStore();
+    const result = await store.add(content);
+    if (result.kind === "Error") {
+      return ToolResult.err("Failed to add learning", result.error);
+    }
 
-    const updatedEntries = useLearningsStore().entries;
-    const serialized = updatedEntries.map((value, index) => ({ index, value }));
+    const serialized = store.entries.map((value, index) => ({ index, value }));
 
     return ToolResult.ok({
       message: "Learning stored successfully.",

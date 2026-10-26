@@ -1,214 +1,157 @@
 import { Chat } from "@ai-sdk/vue";
 import { type Model, type ShiftMessage } from "shared";
-import { nextTick, watch } from "vue";
+import { computed, type ComputedRef, effectScope, ref, watch } from "vue";
 
-import { getTools } from "@/agent/agent";
+import { getAgentSetup, getToolsCharacters } from "@/agent/agent";
 import { AgentContext } from "@/agent/context";
-import { buildAgentInstructions } from "@/agent/instructions";
 import { LocalChatTransport } from "@/agent/transport";
-import { estimateToolsCharacters, getEstimatedContextUsage } from "@/agent/utils/contextUsage";
+import { getEstimatedContextUsage } from "@/agent/utils/contextUsage";
 import {
   extractLastUserMessageText,
   hasDisplayableAssistantContent,
   hasToolPartsSinceLastUserMessage,
   markUnfinishedMessages,
 } from "@/agent/utils/messages";
-import { useAgentStore } from "@/stores/agent";
-import { type SessionStore, useSessionStore } from "@/stores/agent/session";
-import { useSettingsStore } from "@/stores/settings/store";
+import { createSessionStore, type SessionStore } from "@/stores/agent/session";
 import { type FrontendSDK } from "@/types";
 
-const toolsCharacters: Record<string, number> = {};
+type SessionPhase = "idle" | "waiting" | "compacting" | "streaming" | "error";
 
 export class AgentSession {
   readonly id: string;
   readonly store: SessionStore;
   readonly chat: Chat<ShiftMessage>;
   readonly context: AgentContext;
-  private sdk: FrontendSDK;
-  private isStopInProgress = false;
-  private isInitialized = false;
+  readonly phase: ComputedRef<SessionPhase>;
+  readonly loaded: Promise<void>;
+  private readonly sdk: FrontendSDK;
+  private readonly scope = effectScope(true);
+  private readonly compacting = ref(false);
+  private disposed = false;
+  private isLoaded = false;
 
   constructor(sdk: FrontendSDK, replaySessionId: string, model: Model | undefined) {
     this.id = replaySessionId;
     this.sdk = sdk;
-    this.store = useSessionStore(replaySessionId);
+    this.store = createSessionStore();
     this.store.setModel(model);
+    this.context = new AgentContext(sdk, replaySessionId, this.store);
 
-    const context = new AgentContext(sdk, replaySessionId, this.store);
-    this.context = context;
     this.chat = new Chat<ShiftMessage>({
       id: replaySessionId,
-      transport: new LocalChatTransport(sdk, this.store, context),
+      transport: new LocalChatTransport(this.context),
+      onData: (part) => {
+        if (part.type === "data-compacting") this.compacting.value = part.data;
+      },
       onFinish: ({ isAbort, isError }) => {
-        this.store.clearTodos();
+        if (this.disposed) return;
+
+        this.compacting.value = false;
         if (isAbort || isError) {
           this.chat.messages = markUnfinishedMessages(
             this.chat.messages,
             isAbort ? "aborted" : "error"
           );
         }
+        this.persistMessages();
+
+        // After a stop the caller decides whether the queue continues.
+        if (!isAbort && !isError) {
+          this.processNextInQueue();
+        }
       },
     });
 
-    watch(
-      () => this.chat.status,
-      (status, prevStatus) => {
-        if (status === "ready" && prevStatus !== "ready") {
-          this.persistMessages();
+    this.phase = computed(() => {
+      if (this.chat.status === "error") return "error";
+      if (!this.isGenerating()) return "idle";
+      if (this.compacting.value) return "compacting";
 
-          if (!this.isStopInProgress) {
-            this.processNextInQueue();
-          }
-        } else if (status === "error" && prevStatus !== "error") {
-          this.persistMessages();
-        }
-      }
-    );
+      const lastMessage = this.chat.messages.at(-1);
+      return lastMessage !== undefined && hasDisplayableAssistantContent(lastMessage)
+        ? "streaming"
+        : "waiting";
+    });
 
-    watch(
-      () => [this.chat.messages.length > 0, this.chat.status] as const,
-      ([hasMessages, status]) => {
-        const agentStore = useAgentStore();
-        agentStore.dispatch({
-          type: "SET_SESSION_INDICATOR_STATE",
-          sessionId: this.id,
-          state: {
-            hasMessages,
-            status,
-          },
-        });
-      },
-      { immediate: true }
-    );
-
-    watch(
-      () => [this.store.mode, this.store.selectedCustomAgentId] as const,
-      ([mode, agentId], [prevMode, prevAgentId]) => {
-        if (!this.isInitialized) {
-          return;
-        }
-        if (mode === prevMode && agentId === prevAgentId) {
-          return;
-        }
-        this.persistMessages();
-      }
-    );
-
-    this.loadPersistedMessages();
+    this.loaded = this.loadPersistedMessages();
   }
 
   private async loadPersistedMessages(): Promise<void> {
-    if (this.isInitialized) return;
-
-    const result = await this.sdk.backend.getAgent(this.id);
-    if (result.kind === "Ok" && result.value !== undefined) {
-      this.chat.messages = markUnfinishedMessages(result.value.messages, "aborted");
-      if (result.value.sessionState?.mode !== undefined) {
-        this.store.setMode(result.value.sessionState.mode);
+    try {
+      const result = await this.sdk.backend.getAgent(this.id);
+      if (!this.disposed && result.kind === "Ok" && result.value !== undefined) {
+        this.chat.messages = markUnfinishedMessages(result.value.messages, "aborted");
+        if (result.value.sessionState?.mode !== undefined) {
+          this.store.setMode(result.value.sessionState.mode);
+        }
+        if (result.value.sessionState?.selectedCustomAgentId !== undefined) {
+          this.store.setCustomAgent({
+            id: result.value.sessionState.selectedCustomAgentId,
+            allowedWorkflowIds: undefined,
+          });
+        }
       }
-      if (result.value.sessionState?.selectedCustomAgentId !== undefined) {
-        this.store.dispatch({
-          type: "SET_CUSTOM_AGENT",
-          agentId: result.value.sessionState.selectedCustomAgentId,
-          allowedWorkflowIds: undefined,
-        });
-      }
+    } catch (error) {
+      console.error("Failed to load agent messages:", error);
     }
-    this.isInitialized = true;
+
+    if (this.disposed) return;
+    this.isLoaded = true;
+    this.scope.run(() => {
+      watch([() => this.store.mode, () => this.store.selectedCustomAgentId], () =>
+        this.persistMessages()
+      );
+    });
+    this.processNextInQueue();
   }
 
   async persistMessages(): Promise<void> {
+    if (this.disposed) return;
+
     const result = await this.sdk.backend.writeAgent(this.id, this.chat.messages, {
       mode: this.store.mode,
       selectedCustomAgentId: this.store.selectedCustomAgentId,
     });
     if (result.kind === "Error") {
       console.error("Failed to persist agent messages:", result.error);
+    }
+  }
+
+  // Chat status stays "ready" while history loads, so queue until then to keep runs from overlapping.
+  async send(text: string): Promise<void> {
+    if (this.disposed) return;
+    if (!this.isLoaded || this.isGenerating()) {
+      this.store.addToQueue(text);
       return;
     }
-
-    const agentStore = useAgentStore();
-    if (this.chat.messages.length > 0) {
-      agentStore.dispatch({ type: "ADD_PERSISTED_SESSION_ID", sessionId: this.id });
-    } else {
-      agentStore.dispatch({ type: "REMOVE_PERSISTED_SESSION_ID", sessionId: this.id });
-    }
-  }
-
-  get todos() {
-    return this.store.todos;
-  }
-
-  get model() {
-    return this.store.model;
-  }
-
-  set model(value: Model | undefined) {
-    this.store.setModel(value);
-  }
-
-  get queuedMessages() {
-    return this.store.queuedMessages;
-  }
-
-  get draftMessage() {
-    return this.store.draftMessage;
-  }
-
-  set draftMessage(value: string) {
-    this.store.setDraftMessage(value);
-  }
-
-  estimateContextUsage(options?: { messages?: ShiftMessage[] }) {
-    const messages = options?.messages ?? this.chat.messages;
-    const model = this.model;
-    const legacyTodos = useSettingsStore().isFeatureEnabled("legacyTodos");
-
-    const systemPrompt = buildAgentInstructions({
-      context: this.context,
-      model,
-      legacyTodos,
-    });
-
-    return getEstimatedContextUsage({
-      model,
-      systemPrompt,
-      skillsPrompt: this.context.toSkillsPrompt(),
-      toolsCharacters: (toolsCharacters[String(legacyTodos)] ??= estimateToolsCharacters(
-        getTools(legacyTodos)
-      )),
-      messages,
-    });
-  }
-
-  addToQueue(text: string): void {
-    this.store.addToQueue(text);
-  }
-
-  removeFromQueue(id: string): void {
-    this.store.removeFromQueue(id);
+    await this.chat.sendMessage({ text });
   }
 
   async sendFromQueue(id: string): Promise<void> {
-    const message = this.queuedMessages.find((msg) => msg.id === id);
-    if (!message) return;
+    if (!this.store.queuedMessages.some((msg) => msg.id === id)) return;
 
-    if (this.isGenerating()) {
-      this.store.moveToFrontOfQueue(id);
-      await this.chat.stop();
-    } else {
-      this.removeFromQueue(id);
-      this.chat.sendMessage({ text: message.text });
-    }
+    this.store.moveToFrontOfQueue(id);
+    await this.stopAndWait();
+    this.processNextInQueue();
   }
 
-  private processNextInQueue(): void {
-    const next = this.queuedMessages[0];
-    if (!next) return;
+  processNextInQueue(): void {
+    const next = this.store.queuedMessages[0];
+    if (!next || !this.isLoaded || this.isGenerating()) return;
 
-    this.removeFromQueue(next.id);
-    this.chat.sendMessage({ text: next.text });
+    this.store.removeFromQueue(next.id);
+    this.send(next.text);
+  }
+
+  estimateContextUsage() {
+    const { tools, instructions, skillsPrompt } = getAgentSetup(this.context);
+    return getEstimatedContextUsage({
+      model: this.store.model,
+      systemPrompt: instructions,
+      skillsPrompt,
+      toolsCharacters: getToolsCharacters(tools),
+      messages: this.chat.messages,
+    });
   }
 
   isGenerating(): boolean {
@@ -218,57 +161,74 @@ export class AgentSession {
   async stopAndWait(): Promise<void> {
     if (!this.isGenerating()) return;
 
-    this.isStopInProgress = true;
     await this.chat.stop();
-
-    if (this.chat.status === "ready" || this.chat.status === "error") return;
+    if (!this.isGenerating()) return;
 
     return new Promise((resolve) => {
       const unwatch = watch(
-        () => this.chat.status,
-        (status) => {
-          if (status === "ready" || status === "error") {
+        () => this.isGenerating(),
+        (generating) => {
+          if (!generating) {
             unwatch();
-            nextTick(resolve);
+            resolve();
           }
-        },
-        { immediate: true }
+        }
       );
     });
   }
 
-  resumeAfterStop(): void {
-    this.isStopInProgress = false;
+  async stop(): Promise<string | undefined> {
+    await this.stopAndWait();
+
+    let withdrawnText: string | undefined;
+    if (!hasToolPartsSinceLastUserMessage(this.chat.messages)) {
+      const result = extractLastUserMessageText(this.chat.messages);
+      this.chat.messages = result.remainingMessages;
+      this.persistMessages();
+      withdrawnText = result.removedText;
+    }
+
     this.processNextInQueue();
+    return withdrawnText;
   }
 
-  isWaitingForFirstToken(): boolean {
-    if (!this.isGenerating()) return false;
+  async clear(): Promise<void> {
+    this.store.clearQueuedMessages();
+    await this.stopAndWait();
 
-    const lastMessage = this.chat.messages.at(-1);
-    return lastMessage === undefined || !hasDisplayableAssistantContent(lastMessage);
-  }
-
-  isErrored(): boolean {
-    return this.chat.status === "error";
-  }
-
-  errorMessage(): string {
-    return this.chat.error?.message ?? "The agent stopped because of an unexpected error.";
-  }
-
-  hasExecutedToolsSinceLastUserMessage(): boolean {
-    return hasToolPartsSinceLastUserMessage(this.chat.messages);
-  }
-
-  removeLastUserMessage(): string | undefined {
-    const result = extractLastUserMessageText(this.chat.messages);
-    this.chat.messages = result.remainingMessages;
+    this.chat.messages = [];
+    this.store.clearSnapshots();
+    this.context.clearPayloadBlobs();
     this.persistMessages();
-    return result.removedText;
   }
 
-  clearTodos(): void {
-    this.store.clearTodos();
+  async truncateBefore(messageId: string): Promise<boolean> {
+    this.store.clearQueuedMessages();
+    await this.stopAndWait();
+
+    const index = this.chat.messages.findIndex((message) => message.id === messageId);
+    if (index === -1) return false;
+
+    this.chat.messages = this.chat.messages.slice(0, index);
+    this.persistMessages();
+    return true;
+  }
+
+  async revertTo(messageId: string): Promise<void> {
+    if (!this.store.hasSnapshot(messageId)) return;
+    if (!(await this.truncateBefore(messageId))) return;
+
+    const result = this.store.restoreSnapshot(messageId);
+    if (result.kind === "Ok") {
+      this.context.setHttpRequest(result.value);
+    }
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+
+    this.disposed = true;
+    this.scope.stop();
+    this.chat.stop();
   }
 }

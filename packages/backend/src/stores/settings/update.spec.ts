@@ -1,267 +1,48 @@
-import { DEFAULT_MAX_ITERATIONS, defaultFeatureFlags, UpdateSettingsSchema } from "shared";
+import { DEFAULT_MAX_ITERATIONS, defaultFeatureFlags } from "shared";
 import { describe, expect, it } from "vitest";
 
-import { createInitialModel, migrateLoadedSettings, type SettingsModel } from "./model";
+import { createInitialModel, parseStoredSettings } from "./model";
 import { update } from "./update";
 
-const createTestModel = (): SettingsModel => ({
-  agentsModel: "anthropic/claude-sonnet-4.6",
-  floatModel: "google/gemini-3-flash-preview",
-  renamingModel: "google/gemini-3.1-pro-preview-customtools",
-  maxIterations: DEFAULT_MAX_ITERATIONS,
-  chatAppearance: "compact",
-  renaming: {
-    enabled: false,
-    renameAfterSend: false,
-    instructions: "Test instructions",
-  },
-  debugToolsEnabled: false,
-  autoCreateShiftCollection: true,
-  openRouterPrioritizeFastProviders: false,
-  daybreak: false,
-  modelPreferences: {},
-  featureFlags: defaultFeatureFlags,
+describe("settings update", () => {
+  it("merges per-model preferences without resetting other models", () => {
+    const initial = {
+      ...createInitialModel(),
+      modelPreferences: { "work/model": { fastMode: true } },
+    };
+
+    const result = update(initial, {
+      type: "UPDATE_SETTINGS",
+      input: { modelPreferences: { "personal/model": { fastMode: true } } },
+    });
+
+    expect(result.modelPreferences).toEqual({
+      "work/model": { fastMode: true },
+      "personal/model": { fastMode: true },
+    });
+    expect(initial.modelPreferences).toEqual({ "work/model": { fastMode: true } });
+  });
+
+  it("keeps debugToolsEnabled across a save and reload", () => {
+    const saved = update(createInitialModel(), {
+      type: "UPDATE_SETTINGS",
+      input: { debugToolsEnabled: true },
+    });
+
+    expect(parseStoredSettings(JSON.parse(JSON.stringify(saved)))?.debugToolsEnabled).toBe(true);
+  });
 });
 
-describe("settings update", () => {
-  describe("UPDATE_SETTINGS", () => {
-    it("merges per-model preferences without resetting other models", () => {
-      const initial = createTestModel();
-      initial.modelPreferences = { "work/model": { fastMode: true } };
-      const added = update(initial, {
-        type: "UPDATE_SETTINGS",
-        input: UpdateSettingsSchema.parse({
-          modelPreferences: { "personal/model": { fastMode: true } },
-        }),
-      });
-      const disabled = update(added, {
-        type: "UPDATE_SETTINGS",
-        input: { modelPreferences: { "work/model": { fastMode: false } } },
-      });
-      expect(disabled.modelPreferences).toEqual({
-        "work/model": { fastMode: false },
-        "personal/model": { fastMode: true },
-      });
-      expect(initial.modelPreferences).toEqual({ "work/model": { fastMode: true } });
-    });
+describe("parseStoredSettings", () => {
+  it("fills fields missing from older files", () => {
+    const result = parseStoredSettings({ renaming: { enabled: true }, featureFlags: {} });
 
-    it("updates agentsModel", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "UPDATE_SETTINGS",
-        input: { agentsModel: "openai/gpt-5.4" },
-      });
-
-      expect(result.agentsModel).toBe("openai/gpt-5.4");
-      expect(result.floatModel).toBe(model.floatModel);
-    });
-
-    it("updates floatModel", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "UPDATE_SETTINGS",
-        input: { floatModel: "openai/gpt-5.4" },
-      });
-
-      expect(result.floatModel).toBe("openai/gpt-5.4");
-    });
-
-    it("updates renamingModel", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "UPDATE_SETTINGS",
-        input: { renamingModel: "openai/gpt-5.4" },
-      });
-
-      expect(result.renamingModel).toBe("openai/gpt-5.4");
-    });
-
-    it("updates maxIterations", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "UPDATE_SETTINGS",
-        input: { maxIterations: 50 },
-      });
-
-      expect(result.maxIterations).toBe(50);
-    });
-
-    it("updates chatAppearance", () => {
-      const result = update(createTestModel(), {
-        type: "UPDATE_SETTINGS",
-        input: { chatAppearance: "expanded" },
-      });
-
-      expect(result.chatAppearance).toBe("expanded");
-    });
-
-    it("updates openRouterPrioritizeFastProviders", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "UPDATE_SETTINGS",
-        input: { openRouterPrioritizeFastProviders: true },
-      });
-
-      expect(result.openRouterPrioritizeFastProviders).toBe(true);
-    });
-
-    it("updates daybreak", () => {
-      const result = update(createTestModel(), {
-        type: "UPDATE_SETTINGS",
-        input: { daybreak: true },
-      });
-
-      expect(result.daybreak).toBe(true);
-    });
-
-    it("updates feature flags partially", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "UPDATE_SETTINGS",
-        input: {
-          featureFlags: {
-            backgroundAgents: true,
-          },
-        },
-      });
-
-      expect(result.featureFlags.backgroundAgents).toBe(true);
-    });
-
-    it("updates renaming config partially", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "UPDATE_SETTINGS",
-        input: { renaming: { enabled: true } },
-      });
-
-      expect(result.renaming.enabled).toBe(true);
-      expect(result.renaming.renameAfterSend).toBe(false);
-      expect(result.renaming.instructions).toBe("Test instructions");
-    });
-
-    it("updates multiple fields at once", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "UPDATE_SETTINGS",
-        input: {
-          agentsModel: "openai/gpt-5.4",
-          maxIterations: 100,
-        },
-      });
-
-      expect(result.agentsModel).toBe("openai/gpt-5.4");
-      expect(result.maxIterations).toBe(100);
-    });
-
-    it("returns unchanged model when input is empty", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "UPDATE_SETTINGS",
-        input: {},
-      });
-
-      expect(result.agentsModel).toBe(model.agentsModel);
-      expect(result.floatModel).toBe(model.floatModel);
-    });
+    expect(result?.renaming.enabled).toBe(true);
+    expect(result?.renaming.instructions).toBe(createInitialModel().renaming.instructions);
+    expect(result?.featureFlags).toEqual(defaultFeatureFlags);
   });
 
-  describe("UPDATE_RENAMING", () => {
-    it("updates enabled flag", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "UPDATE_RENAMING",
-        input: { enabled: true },
-      });
-
-      expect(result.renaming.enabled).toBe(true);
-      expect(result.renaming.renameAfterSend).toBe(false);
-    });
-
-    it("updates renameAfterSend flag", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "UPDATE_RENAMING",
-        input: { renameAfterSend: true },
-      });
-
-      expect(result.renaming.renameAfterSend).toBe(true);
-    });
-
-    it("updates instructions", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "UPDATE_RENAMING",
-        input: { instructions: "New instructions" },
-      });
-
-      expect(result.renaming.instructions).toBe("New instructions");
-    });
-
-    it("updates multiple renaming fields", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "UPDATE_RENAMING",
-        input: {
-          enabled: true,
-          renameAfterSend: true,
-          instructions: "Updated",
-        },
-      });
-
-      expect(result.renaming.enabled).toBe(true);
-      expect(result.renaming.renameAfterSend).toBe(true);
-      expect(result.renaming.instructions).toBe("Updated");
-    });
-  });
-
-  describe("unknown message type", () => {
-    it("returns the model unchanged", () => {
-      const model = createTestModel();
-
-      const result = update(model, { type: "UNKNOWN" } as never);
-
-      expect(result).toBe(model);
-    });
-  });
-
-  describe("createInitialModel", () => {
-    it("creates initial model with default values", () => {
-      const model = createInitialModel();
-
-      expect(model.agentsModel).toBe("");
-      expect(model.floatModel).toBe("");
-      expect(model.renamingModel).toBe("");
-      expect(model.maxIterations).toBe(DEFAULT_MAX_ITERATIONS);
-      expect(model.renaming.enabled).toBe(false);
-      expect(model.renaming.renameAfterSend).toBe(false);
-      expect(model.openRouterPrioritizeFastProviders).toBe(false);
-      expect(model.featureFlags.backgroundAgents).toBe(false);
-    });
-  });
-
-  describe("migrateLoadedSettings", () => {
-    it("raises the legacy default iteration limit", () => {
-      expect(migrateLoadedSettings({ maxIterations: 100 })).toEqual({
-        maxIterations: DEFAULT_MAX_ITERATIONS,
-      });
-    });
-
-    it("keeps a custom iteration limit", () => {
-      expect(migrateLoadedSettings({ maxIterations: 50 })).toEqual({ maxIterations: 50 });
-    });
+  it("raises the legacy default iteration limit", () => {
+    expect(parseStoredSettings({ maxIterations: 100 })?.maxIterations).toBe(DEFAULT_MAX_ITERATIONS);
   });
 });

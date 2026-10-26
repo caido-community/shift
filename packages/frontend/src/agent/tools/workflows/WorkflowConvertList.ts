@@ -2,12 +2,13 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
+import type { ConvertWorkflowSnapshot } from "@/agent/context.prompt.types";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import { isPresent } from "@/utils";
 
 const inputSchema = z.object({});
 
-const workflowSchema = z.object({
+export const workflowSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
@@ -16,8 +17,6 @@ const workflowSchema = z.object({
 const valueSchema = z.object({
   workflows: z.array(workflowSchema),
 });
-
-const outputSchema = ToolResult.schema(valueSchema);
 
 type WorkflowConvertListInput = z.infer<typeof inputSchema>;
 type WorkflowConvertListValue = z.infer<typeof valueSchema>;
@@ -37,29 +36,27 @@ export const display = {
   error: () => "Failed to load convert workflows",
 } satisfies ToolDisplay<WorkflowConvertListInput, WorkflowConvertListValue>;
 
+export function getAllowedConvertWorkflows(context: AgentContext): ConvertWorkflowSnapshot[] {
+  const allowedIds = context.allowedWorkflowIds;
+  return context.sdk.workflows
+    .getWorkflows()
+    .filter(
+      (workflow) =>
+        workflow.kind === "Convert" &&
+        (allowedIds === undefined || allowedIds.includes(workflow.id))
+    )
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+    .map(({ id, name, description }) => ({ id, name, description }));
+}
+
 export const WorkflowConvertList = tool({
   description:
     "List all available convert workflows. Convert workflows take bytes as input and output a transformed string. Use this to discover available workflows and their IDs before running one.",
   inputSchema,
-  outputSchema,
+  outputSchema: ToolResult.schema(valueSchema),
   execute: (_input, { experimental_context }): WorkflowConvertListOutput => {
     const context = experimental_context as AgentContext;
-    const allowedIds = context.allowedWorkflowIds;
-
-    let convertWorkflows = context.sdk.workflows
-      .getWorkflows()
-      .filter((workflow) => workflow.kind === "Convert");
-
-    if (allowedIds !== undefined) {
-      convertWorkflows = convertWorkflows.filter((w) => allowedIds.includes(w.id));
-    }
-
-    const workflows = convertWorkflows.map((workflow) => ({
-      id: workflow.id,
-      name: workflow.name,
-      description: workflow.description,
-    }));
-
+    const workflows = getAllowedConvertWorkflows(context);
     const message =
       workflows.length === 0
         ? "No convert workflows found"

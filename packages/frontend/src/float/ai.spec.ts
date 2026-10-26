@@ -10,7 +10,7 @@ import type { FrontendSDK } from "@/types";
 const mocks = vi.hoisted(() => ({
   generateText: vi.fn(),
   streamText: vi.fn(),
-  setDone: vi.fn(),
+  finishAgent: vi.fn(),
 }));
 
 const model: Model = {
@@ -26,27 +26,21 @@ vi.mock("ai", () => ({
   stepCountIs: vi.fn(() => "stop-condition"),
 }));
 
-vi.mock("@/features", () => ({ isFeatureEnabled: () => false }));
 vi.mock("@/float/actions", () => ({
   backgroundFloatTools: {},
   getCoreFloatTools: () => ({}),
 }));
 vi.mock("@/float/background/prompt", () => ({
   BACKGROUND_EXECUTION_NOTE: "execution note",
-  buildBackgroundPrompt: () => "background prompt",
 }));
 vi.mock("@/float/prompt", () => ({ buildSystemPrompt: () => "system prompt" }));
 vi.mock("@/utils/toolCallRepair", () => ({ repairToolCall: vi.fn() }));
 vi.mock("@/stores/backgroundAgents", () => ({
   useBackgroundAgentsStore: () => ({
-    createAgent: () => "agent-1",
-    registerController: vi.fn(),
-    clearController: vi.fn(),
+    createAgent: () => ({ id: "agent-1", signal: new AbortController().signal }),
     setRunning: vi.fn(),
     appendLog: vi.fn(),
-    setError: vi.fn(),
-    setAborted: vi.fn(),
-    setDone: mocks.setDone,
+    finishAgent: mocks.finishAgent,
   }),
 }));
 vi.mock("@/stores/learnings", () => ({
@@ -57,9 +51,8 @@ vi.mock("@/stores/models", () => ({
 }));
 vi.mock("@/stores/settings", () => ({
   useSettingsStore: () => ({
-    floatModel: "openai/gpt-5.6-sol",
-    maxIterations: 4,
-    openRouterPrioritizeFastProviders: false,
+    config: { floatModel: "openai/gpt-5.6-sol", maxIterations: 4 },
+    isFeatureEnabled: () => false,
     getRequestOptions: () => ({}),
   }),
 }));
@@ -75,7 +68,7 @@ const sdk = {
 describe("float model calls", () => {
   beforeEach(() => {
     mocks.generateText.mockReset();
-    mocks.setDone.mockReset();
+    mocks.finishAgent.mockReset();
     mocks.generateText.mockResolvedValue({
       finishReason: "stop",
       toolCalls: [{ toolName: "testTool" }],
@@ -87,6 +80,8 @@ describe("float model calls", () => {
           toolCalls: [{ toolName: "testTool" }],
           toolResults: [],
           content: [],
+          usage: {},
+          response: { messages: [] },
         });
         return Promise.resolve();
       },
@@ -114,7 +109,7 @@ describe("float model calls", () => {
       context: {},
     });
 
-    await vi.waitFor(() => expect(mocks.setDone).toHaveBeenCalledWith("agent-1"));
+    await vi.waitFor(() => expect(mocks.finishAgent).toHaveBeenCalledWith("agent-1", "done"));
     expect(streamText).toHaveBeenCalledWith(
       expect.not.objectContaining({ temperature: expect.anything() })
     );

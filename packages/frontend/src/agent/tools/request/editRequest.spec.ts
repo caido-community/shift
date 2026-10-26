@@ -30,8 +30,8 @@ const edits = {
 
 type EditTool = keyof typeof edits;
 
-function setup() {
-  let request = REQUEST;
+function setup(initialRequest = REQUEST) {
+  let request = initialRequest;
   const write = vi.fn();
   const context = {
     get httpRequest() {
@@ -87,6 +87,16 @@ describe("request edit tools", () => {
     expect(first.after).not.toContain("X-B: 2");
     expect(second).toEqual({ toolCallId: "call-2", before: first.after, after: current() });
     expect(second.after).toContain("X-B: 2");
+  });
+
+  it("rejects forge edits when no request is loaded", async () => {
+    const { run, write } = setup("");
+
+    expect(await run("RequestHeaderSet", { name: "X-H", value: "2" }, "call-1")).toEqual({
+      kind: "Error",
+      error: { message: "No HTTP request loaded", detail: undefined },
+    });
+    expect(write).not.toHaveBeenCalled();
   });
 
   it("keeps both changes of two parallel raw edits", async () => {

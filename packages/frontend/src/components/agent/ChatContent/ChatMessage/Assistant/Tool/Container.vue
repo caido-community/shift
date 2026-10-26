@@ -3,7 +3,6 @@ import type { MessageMetadata, PartState, RequestDiff } from "shared";
 
 import { BinaryExecRunTool } from "./BinaryExecRun";
 import GenericTool from "./Generic.vue";
-import { TodoAddTool } from "./TodoAdd";
 
 const { toolName, toolCallId, partState, messageMetadata, input, output, errorText, requestDiff } =
   defineProps<{
@@ -19,14 +18,8 @@ const { toolName, toolCallId, partState, messageMetadata, input, output, errorTe
 </script>
 
 <template>
-  <TodoAddTool
-    v-if="toolName === 'TodoAdd'"
-    :part-state="partState"
-    :message-metadata="messageMetadata"
-    :output="output"
-    class="select-none" />
   <BinaryExecRunTool
-    v-else-if="toolName === 'BinaryExecRun'"
+    v-if="toolName === 'BinaryExecRun'"
     :tool-call-id="toolCallId"
     :part-state="partState"
     :message-metadata="messageMetadata"

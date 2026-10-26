@@ -1,9 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult } from "@/float/types";
+import { ToolResult } from "@/agent/types";
 import { useLearningsStore } from "@/stores/learnings";
-import { removeLearnings } from "@/stores/learnings/store.effects";
 
 const inputSchema = z.object({
   indexes: z
@@ -14,18 +13,20 @@ const inputSchema = z.object({
 export const learningsRemoveTool = tool({
   description: "Delete one or more project learning entries by their zero-based index.",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ indexes }) => {
-    const { sdk, dispatch } = useLearningsStore();
     const uniqueIndexes = [...new Set(indexes)].filter((index) => index >= 0);
 
     if (uniqueIndexes.length === 0) {
-      return ActionResult.err("No valid learning indexes were provided.");
+      return ToolResult.err("No valid learning indexes were provided.");
     }
 
-    await removeLearnings(sdk, dispatch, { indexes: uniqueIndexes });
-    return ActionResult.ok(
-      `Removed ${uniqueIndexes.length} learning${uniqueIndexes.length === 1 ? "" : "s"}.`
-    );
+    const result = await useLearningsStore().remove(uniqueIndexes);
+    if (result.kind === "Error") {
+      return ToolResult.err("Failed to remove learnings", result.error);
+    }
+    return ToolResult.ok({
+      message: `Removed ${uniqueIndexes.length} learning${uniqueIndexes.length === 1 ? "" : "s"}.`,
+    });
   },
 });

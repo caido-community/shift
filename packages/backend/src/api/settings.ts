@@ -1,51 +1,33 @@
 import {
-  type RenamingConfig,
-  type Result,
+  Result,
   type SettingsConfig,
   type UpdateSettingsInput,
   UpdateSettingsSchema,
 } from "shared";
 
-import { getSettingsStore } from "../stores";
+import { settingsStore } from "../stores";
 import type { BackendSDK } from "../types";
 
 export function getSettings(_sdk: BackendSDK): Result<SettingsConfig> {
   try {
-    const store = getSettingsStore();
-    const settings = store.getSettings();
-    return { kind: "Ok", value: settings };
+    return Result.ok(settingsStore.getSettings());
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
 export async function updateSettings(
   _sdk: BackendSDK,
   input: UpdateSettingsInput
-): Promise<Result<void>> {
+): Promise<Result<SettingsConfig>> {
   try {
     const parsed = UpdateSettingsSchema.safeParse(input);
-    if (parsed.success === false) {
-      return { kind: "Error", error: parsed.error.message };
+    if (!parsed.success) {
+      return Result.err(parsed.error.message);
     }
 
-    const store = getSettingsStore();
-    await store.updateSettings(parsed.data);
-    return { kind: "Ok", value: undefined };
+    return Result.ok(await settingsStore.updateSettings(parsed.data));
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
-  }
-}
-
-export async function updateRenaming(
-  _sdk: BackendSDK,
-  input: Partial<RenamingConfig>
-): Promise<Result<void>> {
-  try {
-    const store = getSettingsStore();
-    await store.updateRenaming(input);
-    return { kind: "Ok", value: undefined };
-  } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }

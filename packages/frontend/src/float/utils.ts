@@ -6,8 +6,8 @@ import {
 import { type Editor } from "@caido/sdk-frontend/src/types/types/editor";
 import { type EditorView } from "@codemirror/view";
 
+import { ToolResult } from "@/agent/types";
 import { ConfirmationDialog } from "@/components/confirmation";
-import { ActionResult, type ActionResult as ActionResultType } from "@/float/types";
 import { type FrontendSDK } from "@/types";
 import { isPresent } from "@/utils/optional";
 
@@ -23,17 +23,17 @@ type EditorContext = {
 
 export const withActiveEditorView = (
   sdk: FrontendSDK,
-  handler: (context: EditorContext) => ActionResultType | Promise<ActionResultType>
-): ActionResultType | Promise<ActionResultType> => {
+  handler: (context: EditorContext) => ToolResult | Promise<ToolResult>
+): ToolResult | Promise<ToolResult> => {
   const editor = sdk.window.getActiveEditor();
 
   if (!isPresent(editor)) {
-    return ActionResult.err("No active editor view found");
+    return ToolResult.err("No active editor view found");
   }
 
   const view = editor.getEditorView();
   if (!isPresent(view)) {
-    return ActionResult.err("No active editor view found");
+    return ToolResult.err("No active editor view found");
   }
 
   const update = (content: string): void => {
@@ -48,12 +48,12 @@ export const withActiveEditorView = (
 
 export const withActiveEditor = (
   sdk: FrontendSDK,
-  handler: (editor: Editor) => ActionResultType
-): ActionResultType => {
+  handler: (editor: Editor) => ToolResult
+): ToolResult => {
   const editor = sdk.window.getActiveEditor();
 
   if (!isPresent(editor)) {
-    return ActionResult.err("No active editor found");
+    return ToolResult.err("No active editor found");
   }
 
   return handler(editor);
@@ -144,6 +144,7 @@ const showConfirmationDialog = (
       props: {
         fileName,
         content,
+        // Caido unwraps dialog props with toValue(), which would call a bare function.
         onConfirm: () => onConfirm,
       },
     },

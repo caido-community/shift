@@ -4,34 +4,25 @@ import Card from "primevue/card";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import Tag from "primevue/tag";
-import Tooltip from "primevue/tooltip";
 
-import { AddSkillDialog } from "./AddSkillDialog";
-import { EditSkillDialog } from "./EditSkillDialog";
+import { SkillDialog } from "./SkillDialog";
 import { useSkills } from "./useSkills";
 
 const {
   definitions,
   isLoading,
   hasDynamicSkills,
-  isAddDialogVisible,
-  isEditDialogVisible,
-  editingSkill,
+  dialog,
+  isSaving,
   isRefreshing,
   openAddDialog,
   openEditDialog,
-  closeEditDialog,
-  handleAddStatic,
-  handleAddDynamic,
-  handleUpdateStatic,
-  handleUpdateDynamic,
-  handleUpdateProjectOverride,
+  closeDialog,
+  handleSave,
   handleDelete,
   handleRefresh,
   getSkillContent,
 } = useSkills();
-
-const vTooltip = Tooltip;
 
 const getTypeSeverity = (type: "static" | "dynamic") => {
   return type === "static" ? "secondary" : "info";
@@ -190,18 +181,12 @@ const getAttachModeLabel = (attachMode: "always" | "on-demand" | undefined) => {
       </template>
     </Card>
 
-    <AddSkillDialog
-      v-model:visible="isAddDialogVisible"
-      @add-static="handleAddStatic"
-      @add-dynamic="handleAddDynamic" />
-
-    <EditSkillDialog
-      v-model:visible="isEditDialogVisible"
-      :skill="editingSkill"
-      :skill-content="editingSkill !== undefined ? getSkillContent(editingSkill.id) : ''"
-      @update-static="handleUpdateStatic"
-      @update-dynamic="handleUpdateDynamic"
-      @update-project-override="handleUpdateProjectOverride"
-      @update:visible="!$event && closeEditDialog()" />
+    <SkillDialog
+      :visible="dialog !== undefined"
+      :skill="dialog?.skill"
+      :skill-content="dialog?.skill !== undefined ? getSkillContent(dialog.skill.id) : ''"
+      :saving="isSaving"
+      @update:visible="!$event && closeDialog()"
+      @save="handleSave" />
   </div>
 </template>

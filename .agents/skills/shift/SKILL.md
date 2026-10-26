@@ -24,9 +24,9 @@ description: Agent Tools and Float Actions Best Practices
 
 ## Float Actions (`packages/frontend/src/float/actions`)
 
-- Use `ActionResult` type from `@/float/types`.
-- Return `ActionResult.ok(message)` or `ActionResult.err(message, detail?)`.
-- Use `ActionResult.schema` as the output schema (no arguments needed).
+- Use `ToolResult` from `@/agent/types`, same as agent tools.
+- Return `ToolResult.ok({ message })` or `ToolResult.err(message, detail?)`.
+- Use `ToolResult.schema()` as the output schema.
 - Get SDK via `const { sdk } = experimental_context as FloatToolContext`.
 
 ## User-Facing Messages

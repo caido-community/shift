@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import Button from "primevue/button";
-import { ref } from "vue";
 
 import { TextShimmer } from "@/components/common/TextShimmer";
 import { useFloatStore } from "@/stores/float";
 import { useAnimatedDots } from "@/utils";
 
 const floatStore = useFloatStore();
-const isActive = ref(true);
-const generatingText = useAnimatedDots("Generating", isActive);
+const generatingText = useAnimatedDots("Generating", true);
 </script>
 
 <template>

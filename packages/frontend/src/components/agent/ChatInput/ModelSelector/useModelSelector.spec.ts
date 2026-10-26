@@ -23,18 +23,14 @@ vi.mock("@/plugins/sdk", () => ({
 }));
 vi.mock("@/stores/settings", () => ({
   useSettingsStore: () => ({
-    sdk: {},
-    dispatch: vi.fn(),
+    update: mocks.updateSettings,
     isFastModeEnabled: (model: Model) =>
       preferences[createModelKey(model.provider, model.id)]?.fastMode ?? false,
     isUltrafastEnabled: (model: Model) =>
       preferences[createModelKey(model.provider, model.id)]?.ultrafast ?? false,
-    get daybreak() {
-      return settings.daybreak;
-    },
+    config: settings,
   }),
 }));
-vi.mock("@/stores/settings/store.effects", () => ({ updateSettings: mocks.updateSettings }));
 
 const createModel = (provider: string, reasoning = true, id = "model", name = "Model"): Model => ({
   id,
@@ -71,7 +67,7 @@ function setup(reasoningMode: "standard" | "variant" = "variant") {
 beforeEach(() => {
   for (const key of Object.keys(preferences)) delete preferences[key];
   mocks.updateSettings.mockReset();
-  mocks.updateSettings.mockImplementation((_sdk, _dispatch, input: UpdateSettingsInput) => {
+  mocks.updateSettings.mockImplementation((input: UpdateSettingsInput) => {
     Object.assign(preferences, input.modelPreferences);
     if (input.daybreak !== undefined) settings.daybreak = input.daybreak;
   });
@@ -160,7 +156,7 @@ describe("model selector", () => {
     try {
       expect(selector.canUseFastMode.value).toBe(true);
       selector.setSpeed(1);
-      expect(mocks.updateSettings.mock.lastCall?.[2]).toEqual({
+      expect(mocks.updateSettings.mock.lastCall?.[0]).toEqual({
         modelPreferences: { "work-codex/model": { fastMode: true, ultrafast: false } },
       });
       selector.toggle();

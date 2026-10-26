@@ -1,11 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import {
-  ActionResult,
-  type ActionResult as ActionResultType,
-  type FloatToolContext,
-} from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { hostedFileConfirmation } from "@/float/utils";
 
 const inputSchema = z.object({
@@ -16,14 +13,14 @@ const inputSchema = z.object({
 export const hostedFileCreateTool = tool({
   description: "Create a new hosted file with specified name and content",
   inputSchema,
-  outputSchema: ActionResult.schema,
-  execute: ({ file_name, content }, { experimental_context }): ActionResultType => {
+  outputSchema: ToolResult.schema(),
+  execute: ({ file_name, content }, { experimental_context }): ToolResult => {
     const { sdk } = experimental_context as FloatToolContext;
     hostedFileConfirmation(sdk, {
       fileName: file_name,
       content,
     });
 
-    return ActionResult.ok("");
+    return ToolResult.ok({ message: "" });
   },
 });

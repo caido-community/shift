@@ -5,9 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractLastUserMessageText,
   findLastUserMessageId,
-  findLastUserMessageIndex,
   hasDisplayableAssistantContent,
-  hasToolPartsSinceIndex,
   hasToolPartsSinceLastUserMessage,
   markUnfinishedMessages,
   normalizeLegacyToolStates,
@@ -95,41 +93,6 @@ function createUserMessageWithMultipleParts(id = "u1"): ShiftMessage {
   } as ShiftMessage;
 }
 
-describe("findLastUserMessageIndex", () => {
-  it("returns -1 for empty messages array", () => {
-    expect(findLastUserMessageIndex([])).toBe(-1);
-  });
-
-  it("returns -1 when no user messages exist", () => {
-    const messages = [createAssistantMessage()];
-    expect(findLastUserMessageIndex(messages)).toBe(-1);
-  });
-
-  it("returns index when user message is at the end", () => {
-    const messages = [createAssistantMessage(), createUserMessage("Hi")];
-    expect(findLastUserMessageIndex(messages)).toBe(1);
-  });
-
-  it("returns index when user message is in the middle", () => {
-    const messages = [
-      createUserMessage("First"),
-      createAssistantMessage(),
-      createUserMessage("Second"),
-      createAssistantMessage("a2"),
-    ];
-    expect(findLastUserMessageIndex(messages)).toBe(2);
-  });
-
-  it("returns last user index when multiple user messages exist", () => {
-    const messages = [
-      createUserMessage("First", "u1"),
-      createUserMessage("Second", "u2"),
-      createUserMessage("Third", "u3"),
-    ];
-    expect(findLastUserMessageIndex(messages)).toBe(2);
-  });
-});
-
 describe("findLastUserMessageId", () => {
   it("returns undefined for empty messages array", () => {
     expect(findLastUserMessageId([])).toBeUndefined();
@@ -162,45 +125,6 @@ describe("findLastUserMessageId", () => {
       createUserMessage("Third", "u3"),
     ];
     expect(findLastUserMessageId(messages)).toBe("u3");
-  });
-});
-
-describe("hasToolPartsSinceIndex", () => {
-  it("returns false for empty messages array", () => {
-    expect(hasToolPartsSinceIndex([], 0)).toBe(false);
-  });
-
-  it("returns false when no messages after index", () => {
-    const messages = [createUserMessage("Hi")];
-    expect(hasToolPartsSinceIndex(messages, 0)).toBe(false);
-  });
-
-  it("returns false when assistant has no tool parts", () => {
-    const messages = [createUserMessage("Hi"), createAssistantMessage()];
-    expect(hasToolPartsSinceIndex(messages, 0)).toBe(false);
-  });
-
-  it("returns true when assistant has tool parts after index", () => {
-    const messages = [createUserMessage("Hi"), createAssistantMessageWithTool()];
-    expect(hasToolPartsSinceIndex(messages, 0)).toBe(true);
-  });
-
-  it("returns false when tool part is before the index", () => {
-    const messages = [
-      createAssistantMessageWithTool(),
-      createUserMessage("Hi"),
-      createAssistantMessage(),
-    ];
-    expect(hasToolPartsSinceIndex(messages, 1)).toBe(false);
-  });
-
-  it("ignores user messages when scanning for tool parts", () => {
-    const messages = [
-      createUserMessage("First"),
-      createUserMessage("Second"),
-      createAssistantMessage(),
-    ];
-    expect(hasToolPartsSinceIndex(messages, 0)).toBe(false);
   });
 });
 

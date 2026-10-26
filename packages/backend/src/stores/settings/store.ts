@@ -1,54 +1,31 @@
-import { type RenamingConfig, type SettingsConfig, type UpdateSettingsInput } from "shared";
+import type { SettingsConfig, UpdateSettingsInput } from "shared";
 
-import { GlobalStore } from "../global-store";
+import { Store } from "../store";
 
 import {
   createInitialModel,
-  migrateLoadedSettings,
+  parseStoredSettings,
   type SettingsMessage,
   type SettingsModel,
 } from "./model";
 import { update } from "./update";
 
-class SettingsStore extends GlobalStore<SettingsModel, SettingsMessage> {
+class SettingsStore extends Store<SettingsModel, SettingsMessage> {
   constructor() {
-    super("settings");
+    super({ filename: "settings", initialModel: createInitialModel, update });
   }
 
-  protected createInitialModel(): SettingsModel {
-    return createInitialModel();
-  }
-
-  protected update(model: SettingsModel, message: SettingsMessage): SettingsModel {
-    return update(model, message);
-  }
-
-  protected mergeLoadedModel(current: SettingsModel, loaded: unknown): SettingsModel {
-    return super.mergeLoadedModel(current, migrateLoadedSettings(loaded));
+  protected parse(loaded: unknown): SettingsModel | undefined {
+    return parseStoredSettings(loaded);
   }
 
   getSettings(): SettingsConfig {
-    return this.getModel();
+    return this.model;
   }
 
-  async updateSettings(input: UpdateSettingsInput): Promise<void> {
-    this.dispatch({ type: "UPDATE_SETTINGS", input });
-    await this.persist();
-    this.notify();
-  }
-
-  async updateRenaming(input: Partial<RenamingConfig>): Promise<void> {
-    this.dispatch({ type: "UPDATE_RENAMING", input });
-    await this.persist();
-    this.notify();
+  updateSettings(input: UpdateSettingsInput): Promise<SettingsConfig> {
+    return this.commit({ type: "UPDATE_SETTINGS", input });
   }
 }
 
-let instance: SettingsStore | undefined;
-
-export function getSettingsStore(): SettingsStore {
-  if (instance === undefined) {
-    instance = new SettingsStore();
-  }
-  return instance;
-}
+export const settingsStore = new SettingsStore();

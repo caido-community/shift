@@ -5,6 +5,10 @@ import type { AgentContext } from "@/agent/context";
 import { type ContextPromptSnapshot, ENVIRONMENT_NAME_CHARS } from "@/agent/context.prompt";
 import type { ConvertWorkflowSnapshot } from "@/agent/context.prompt.types";
 import { truncateContextValue } from "@/agent/context.truncation";
+import {
+  getAllowedConvertWorkflows,
+  workflowSchema,
+} from "@/agent/tools/workflows/WorkflowConvertList";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import { isPresent } from "@/utils";
 
@@ -14,12 +18,6 @@ const PREVIEW_CHARS = 400;
 const NAME_CHARS = 160;
 const DESCRIPTION_CHARS = 500;
 const LIST_LIMIT = 50;
-
-const todoSchema = z.object({
-  id: z.number(),
-  content: z.string(),
-  status: z.enum(["pending", "in_progress", "completed"]),
-});
 
 const requestSchema = z.object({
   loaded: z.boolean(),
@@ -50,24 +48,25 @@ const environmentVariableSchema = z.object({
   preview: z.string().optional(),
 });
 
-const workflowSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
-});
-
 const binarySchema = z.object({
   path: z.string(),
   instructions: z.string().optional(),
 });
 
 const valueSchema = z.object({
-  todos: z.array(todoSchema).optional(),
   request: requestSchema,
   replayEntries: z.object({
     activeEntryId: z.string().optional(),
     recentEntryIds: z.array(z.string()),
   }),
+  target: z
+    .object({
+      host: z.string(),
+      port: z.number(),
+      isTLS: z.boolean(),
+      SNI: z.string().optional(),
+    })
+    .optional(),
   learnings: z.object({
     count: z.number(),
     entries: z.array(learningSchema),
@@ -119,14 +118,6 @@ export const display = {
   error: () => "Failed to read context",
 } satisfies ToolDisplay<ContextReadInput, ContextReadValue>;
 
-function truncateField(value: string, maxLength = PREVIEW_CHARS): string {
-  return truncateContextValue(value, maxLength);
-}
-
-function firstItems<T>(items: T[]): T[] {
-  return items.slice(0, LIST_LIMIT);
-}
-
 export function summarizeCurrentRequest(rawRequest: string | undefined): RequestSummary {
   if (rawRequest === undefined || rawRequest === "") {
     return {
@@ -154,22 +145,22 @@ export function summarizeCurrentRequest(rawRequest: string | undefined): Request
   };
 
   if (isPresent(method) && method !== "") {
-    summary.method = truncateField(method, NAME_CHARS);
+    summary.method = truncateContextValue(method, NAME_CHARS);
   }
   if (isPresent(target) && target !== "") {
-    summary.target = truncateField(target, PREVIEW_CHARS);
+    summary.target = truncateContextValue(target, PREVIEW_CHARS);
   }
   if (isPresent(protocol) && protocol !== "") {
-    summary.protocol = truncateField(protocol, NAME_CHARS);
+    summary.protocol = truncateContextValue(protocol, NAME_CHARS);
   }
 
   return summary;
 }
 
 function buildLearningDigest(snapshot: ContextPromptSnapshot): ContextReadValue["learnings"] {
-  const entries = firstItems(snapshot.learnings ?? []).map((learning) => ({
+  const entries = (snapshot.learnings ?? []).slice(0, LIST_LIMIT).map((learning) => ({
     index: learning.index,
-    preview: truncateField(learning.preview),
+    preview: truncateContextValue(learning.preview, PREVIEW_CHARS),
     length: learning.length,
   }));
 
@@ -185,24 +176,26 @@ function buildLearningDigest(snapshot: ContextPromptSnapshot): ContextReadValue[
 
 function buildEnvironmentDigest(snapshot: ContextPromptSnapshot): ContextReadValue["environments"] {
   const environments = snapshot.environmentsContext;
-  const all = firstItems(environments?.all ?? []).map((environment) => ({
+  const all = (environments?.all ?? []).slice(0, LIST_LIMIT).map((environment) => ({
     id: environment.id,
-    name: truncateField(environment.name, ENVIRONMENT_NAME_CHARS),
+    name: truncateContextValue(environment.name, ENVIRONMENT_NAME_CHARS),
   }));
 
-  const variables = firstItems(snapshot.environmentVariables ?? []).map((variable) => ({
-    name: truncateField(variable.name, NAME_CHARS),
+  const variables = (snapshot.environmentVariables ?? []).slice(0, LIST_LIMIT).map((variable) => ({
+    name: truncateContextValue(variable.name, NAME_CHARS),
     kind: variable.kind,
     valueLength: variable.valueLength,
     preview:
-      variable.preview !== undefined ? truncateField(variable.preview, PREVIEW_CHARS) : undefined,
+      variable.preview !== undefined
+        ? truncateContextValue(variable.preview, PREVIEW_CHARS)
+        : undefined,
   }));
 
   return {
     selectedId: environments?.selectedId,
     selectedName:
       environments?.selectedName !== undefined
-        ? truncateField(environments.selectedName, ENVIRONMENT_NAME_CHARS)
+        ? truncateContextValue(environments.selectedName, ENVIRONMENT_NAME_CHARS)
         : undefined,
     all,
     totalCount: environments?.all.length ?? 0,
@@ -215,18 +208,16 @@ function buildEnvironmentDigest(snapshot: ContextPromptSnapshot): ContextReadVal
 }
 
 function buildWorkflowDigest(
-  snapshot: ContextPromptSnapshot,
   options: BuildContextReadOptions
 ): ContextReadValue["allowedConvertWorkflows"] {
-  const workflows = options.allowedConvertWorkflows ?? snapshot.allowedConvertWorkflows ?? [];
-  const restricted = options.workflowsRestricted ?? snapshot.allowedConvertWorkflows !== undefined;
+  const workflows = options.allowedConvertWorkflows ?? [];
 
   return {
-    restricted,
-    workflows: firstItems(workflows).map((workflow) => ({
+    restricted: options.workflowsRestricted ?? false,
+    workflows: workflows.slice(0, LIST_LIMIT).map((workflow) => ({
       id: workflow.id,
-      name: truncateField(workflow.name, NAME_CHARS),
-      description: truncateField(workflow.description, DESCRIPTION_CHARS),
+      name: truncateContextValue(workflow.name, NAME_CHARS),
+      description: truncateContextValue(workflow.description, DESCRIPTION_CHARS),
     })),
     totalCount: workflows.length,
     retrievalHint: "Use WorkflowConvertList to refresh available convert workflows.",
@@ -237,11 +228,11 @@ function buildBinaryDigest(snapshot: ContextPromptSnapshot): ContextReadValue["a
   const binaries = snapshot.allowedBinaries ?? [];
 
   return {
-    binaries: firstItems(binaries).map((binary) => ({
-      path: truncateField(binary.path, PREVIEW_CHARS),
+    binaries: binaries.slice(0, LIST_LIMIT).map((binary) => ({
+      path: truncateContextValue(binary.path, PREVIEW_CHARS),
       instructions:
         binary.instructions !== undefined
-          ? truncateField(binary.instructions, DESCRIPTION_CHARS)
+          ? truncateContextValue(binary.instructions, DESCRIPTION_CHARS)
           : undefined,
     })),
     totalCount: binaries.length,
@@ -261,15 +252,15 @@ export function buildContextReadValue(
   const environments = buildEnvironmentDigest(snapshot);
 
   return {
-    todos: snapshot.todos,
     request,
     replayEntries: {
       activeEntryId: snapshot.entriesContext?.activeEntryId,
       recentEntryIds: snapshot.entriesContext?.recentEntryIds ?? [],
     },
+    target: snapshot.entriesContext?.connection,
     learnings,
     environments,
-    allowedConvertWorkflows: buildWorkflowDigest(snapshot, options),
+    allowedConvertWorkflows: buildWorkflowDigest(options),
     allowedBinaries: buildBinaryDigest(snapshot),
     retrievalHints: [
       "Use ContextRead for compact live state; live runtime context is not injected into chat messages.",
@@ -279,22 +270,6 @@ export function buildContextReadValue(
       "Use PayloadBlobRangeRead for blob-backed historical tool outputs.",
     ],
   };
-}
-
-function getAllowedConvertWorkflows(context: AgentContext): ConvertWorkflowSnapshot[] {
-  const allowedIds = context.allowedWorkflowIds;
-  const allowedSet = allowedIds !== undefined ? new Set(allowedIds) : undefined;
-
-  return context.sdk.workflows
-    .getWorkflows()
-    .filter((workflow) => workflow.kind === "Convert")
-    .filter((workflow) => allowedSet === undefined || allowedSet.has(workflow.id))
-    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
-    .map((workflow) => ({
-      id: workflow.id,
-      name: workflow.name,
-      description: workflow.description,
-    }));
 }
 
 export const ContextRead = tool({

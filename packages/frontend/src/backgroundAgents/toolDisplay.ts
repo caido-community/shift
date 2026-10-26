@@ -1,6 +1,7 @@
-import { type BackgroundAgentLogPart, getCompletedToolDisplayName, plainParts } from "./logs";
+import { type BackgroundAgentLogPart, plainParts } from "./logs";
 
-import { type ActionResult } from "@/float/types";
+import { type ToolResult } from "@/agent/types";
+import { truncate } from "@/utils/text";
 
 type Args = Record<string, unknown>;
 
@@ -16,9 +17,6 @@ const str = (val: unknown): string => {
   return "";
 };
 
-const truncate = (val: string, max: number): string =>
-  val.length > max ? `${val.slice(0, max)}…` : val;
-
 const getActionValue = <TValue extends Record<string, unknown>>(
   output: unknown
 ): ({ message: string } & TValue) | undefined => {
@@ -26,7 +24,7 @@ const getActionValue = <TValue extends Record<string, unknown>>(
     return undefined;
   }
 
-  const result = output as ActionResult<TValue>;
+  const result = output as ToolResult<TValue>;
   if (result.kind !== "Ok") {
     return undefined;
   }
@@ -195,13 +193,10 @@ const displays: Record<string, ToolDisplayFn> = {
     { text: truncate(str(input.title), 40), muted: true },
   ],
 
-  replayTabSend: () => plainParts("Sent request"),
-
-  replaySessionCreate: () => plainParts("Created replay session"),
-
-  automateSessionCreate: () => plainParts("Created automate session"),
-
-  matchReplaceAdd: () => plainParts("Added match & replace rule"),
+  // These tools return an empty success message.
+  uiToast: () => plainParts("Showed toast"),
+  hostedFileCreate: () => plainParts("Created hosted file"),
+  hostedFileCreateAdvanced: () => plainParts("Created hosted file"),
 
   environmentCreate: (input) => [
     { text: "Created environment ", muted: false },
@@ -229,14 +224,4 @@ export const getToolDisplayParts = (
     return undefined;
   }
   return fn(input, output);
-};
-
-export const fallbackToolParts = (
-  toolName: string,
-  successMessage: string | undefined
-): BackgroundAgentLogPart[] => {
-  if (successMessage !== undefined) {
-    return plainParts(successMessage);
-  }
-  return plainParts(getCompletedToolDisplayName(toolName));
 };

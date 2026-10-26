@@ -7,15 +7,15 @@ import { isPresent } from "@/utils/optional";
 
 export const setupAgents = (sdk: FrontendSDK) => {
   initializeBinaryExecutionStream(sdk);
-  collection.setup(sdk);
+  const collections = collection.setup(sdk);
   const uiStore = useUIStore();
   const agentStore = useAgentStore();
 
   const selectSession = (sessionId: string | undefined) => {
     if (isPresent(sessionId)) {
-      agentStore.dispatch({ type: "SELECT_SESSION", sessionId });
+      agentStore.selectSession(sessionId);
     } else {
-      agentStore.dispatch({ type: "CLEAR_SESSION_SELECTION" });
+      agentStore.clearSessionSelection();
     }
   };
 
@@ -53,9 +53,10 @@ export const setupAgents = (sdk: FrontendSDK) => {
       }
 
       if (agentStore.selectedSessionId === deletedSessionId) {
-        agentStore.dispatch({ type: "CLEAR_SESSION_SELECTION" });
+        agentStore.clearSessionSelection();
       }
 
+      collections.onSessionDeleted(deletedSessionId);
       await agentStore.removeSession(deletedSessionId);
     }
   };
@@ -69,7 +70,8 @@ export const setupAgents = (sdk: FrontendSDK) => {
   });
 
   sdk.projects.onCurrentProjectChange(() => {
-    agentStore.dispatch({ type: "RESET" });
+    agentStore.reset();
+    collections.onProjectChange();
   });
 
   syncSession();

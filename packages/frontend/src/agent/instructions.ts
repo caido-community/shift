@@ -1,27 +1,20 @@
-import type { Model } from "shared";
+import type { AgentMode } from "shared";
 
-import type { AgentContext } from "./context";
-import { BASE_SYSTEM_PROMPT, TODOS_PROMPT, WILDCARD_MODE_PROMPT } from "./prompt";
+import { BASE_SYSTEM_PROMPT, WILDCARD_MODE_PROMPT } from "./prompt";
 
 type BuildInstructionsOptions = {
-  context: AgentContext;
-  model: Model | undefined;
-  legacyTodos?: boolean;
+  mode: AgentMode;
+  skillsPrompt: string;
 };
 
 export function buildAgentInstructions(options: BuildInstructionsOptions): string {
-  const { context, legacyTodos = false } = options;
+  const { mode, skillsPrompt } = options;
   const parts: string[] = [BASE_SYSTEM_PROMPT];
 
-  if (context.mode === "wildcard") {
+  if (mode === "wildcard") {
     parts.push(WILDCARD_MODE_PROMPT);
   }
 
-  if (legacyTodos) {
-    parts.push(TODOS_PROMPT);
-  }
-
-  const skillsPrompt = context.toSkillsPrompt();
   if (skillsPrompt !== "") {
     parts.push(skillsPrompt);
   }

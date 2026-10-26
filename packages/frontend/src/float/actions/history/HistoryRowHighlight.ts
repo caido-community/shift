@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 
 const highlightColors = ["none", "red", "green", "blue", "purple"] as const;
 
@@ -46,7 +47,7 @@ export const historyRowHighlightTool = tool({
   description:
     "Set or clear the highlight color for one or more history rows by request metadata ID. Use metadataId values returned by history tools, not request IDs.",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ metadataId, metadataIds, color }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     const ids = [
@@ -83,7 +84,7 @@ export const historyRowHighlightTool = tool({
     });
 
     if (updatedIds.length === 0) {
-      return ActionResult.err(
+      return ToolResult.err(
         "Failed to update history row highlight",
         failedIds.length > 0 ? `Failed metadata IDs: ${failedIds.join(", ")}` : undefined
       );
@@ -95,10 +96,11 @@ export const historyRowHighlightTool = tool({
         : `${values.length} history row metadata IDs`;
     const action = color === "none" ? "Cleared highlight for" : `Set ${color} highlight for`;
 
-    return ActionResult.ok(
-      failedIds.length === 0
-        ? `${action} ${describeIds(updatedIds)}`
-        : `${action} ${describeIds(updatedIds)}. Failed to update ${describeIds(failedIds)}.`
-    );
+    return ToolResult.ok({
+      message:
+        failedIds.length === 0
+          ? `${action} ${describeIds(updatedIds)}`
+          : `${action} ${describeIds(updatedIds)}. Failed to update ${describeIds(failedIds)}.`,
+    });
   },
 });

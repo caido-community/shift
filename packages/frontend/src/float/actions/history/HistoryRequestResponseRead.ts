@@ -3,7 +3,8 @@ import { z } from "zod";
 
 import { truncateMiddle } from "./utils";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { isPresent } from "@/utils";
 
 const READ_PART = ["request", "response", "both"] as const;
@@ -88,37 +89,12 @@ const valueSchema = z.object({
 type HistoryReadPart = (typeof READ_PART)[number];
 type HistoryRequestResponseReadEntry = z.infer<typeof entrySchema>;
 type HistoryRequestResponseReadFailure = z.infer<typeof failureSchema>;
-type TruncatedValue = {
-  value: string;
-  truncated: boolean;
-  truncatedCharacters: number | undefined;
-};
-
-const truncateRaw = (
-  value: string,
-  maxLength: number,
-  label: "request" | "response"
-): TruncatedValue => {
-  if (value.length <= maxLength) {
-    return {
-      value,
-      truncated: false,
-      truncatedCharacters: undefined,
-    };
-  }
-
-  let marker = `\n...[truncated ${label}. ${value.length - maxLength} characters omitted]...\n`;
-  let candidate = truncateMiddle(value, maxLength, marker);
-
-  marker = `\n...[truncated ${label}. ${candidate.omittedCharacters} characters omitted]...\n`;
-  candidate = truncateMiddle(value, maxLength, marker);
-
-  return {
-    value: candidate.value,
-    truncated: true,
-    truncatedCharacters: candidate.omittedCharacters,
-  };
-};
+const truncateRaw = (value: string, maxLength: number, label: "request" | "response") =>
+  truncateMiddle(
+    value,
+    maxLength,
+    (omitted) => `\n...[truncated ${label}. ${omitted} characters omitted]...\n`
+  );
 
 const shouldReadRequest = (part: HistoryReadPart): boolean => part === "request" || part === "both";
 const shouldReadResponse = (part: HistoryReadPart): boolean =>
@@ -133,7 +109,7 @@ export const historyRequestResponseReadTool = tool({
   description:
     "Read raw request/response content for specific request IDs or history row IDs (batch supported) with explicit truncation metadata for deep HTTP history inspection.",
   inputSchema,
-  outputSchema: ActionResult.schemaWithValue(valueSchema),
+  outputSchema: ToolResult.schema(valueSchema),
   execute: async (
     {
       requestIds,
@@ -224,7 +200,7 @@ export const historyRequestResponseReadTool = tool({
 
     const totalReturned = entries.length;
 
-    return ActionResult.okWithValue({
+    return ToolResult.ok({
       message:
         totalReturned > 0
           ? `Read ${totalReturned} request/response records.`

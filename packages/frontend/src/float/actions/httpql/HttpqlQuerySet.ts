@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 
 const inputSchema = z.object({
   query: z
@@ -13,10 +14,10 @@ export const httpqlQuerySetTool = tool({
   description:
     "Set the query for the HTTPQL filter on the HTTP History tab. This will navigate to the HTTP History tab and set the query.",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: ({ query }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     sdk.httpHistory.setQuery(query);
-    return ActionResult.ok("Query set successfully");
+    return ToolResult.ok({ message: "Query set successfully" });
   },
 });

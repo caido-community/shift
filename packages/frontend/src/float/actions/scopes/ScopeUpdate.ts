@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { isPresent } from "@/utils";
 
 const inputSchema = z.object({
@@ -16,7 +17,7 @@ const inputSchema = z.object({
 export const scopeUpdateTool = tool({
   description: "Update a scope by id",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ id, scopeName, allowlist, denylist }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     const updated = await sdk.scopes.updateScope(id, {
@@ -26,9 +27,9 @@ export const scopeUpdateTool = tool({
     });
 
     if (!isPresent(updated)) {
-      return ActionResult.err("Failed to update scope");
+      return ToolResult.err("Failed to update scope");
     }
 
-    return ActionResult.ok(`Scope ${updated.name} updated successfully`);
+    return ToolResult.ok({ message: `Scope ${updated.name} updated successfully` });
   },
 });

@@ -3,7 +3,8 @@ import { z } from "zod";
 
 import { truncateMiddle } from "./utils";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { isPresent } from "@/utils";
 
 const ORDER_DIRECTION = ["ASC", "DESC"] as const;
@@ -53,19 +54,8 @@ type HistoryRow = {
   roundtripTimeMs: number | undefined;
 };
 
-type TruncatedToon = {
-  value: string;
-  truncated: boolean;
-  truncatedCharacters: number | undefined;
-};
-
-const truncateTarget = (value: string): string => {
-  if (value.length <= MAX_TARGET_LENGTH) {
-    return value;
-  }
-
-  return truncateMiddle(value, MAX_TARGET_LENGTH, "...[truncated]...").value;
-};
+const truncateTarget = (value: string): string =>
+  truncateMiddle(value, MAX_TARGET_LENGTH, () => "...[truncated]...").value;
 
 const encodeToonCell = (value: string | number | undefined): string => {
   if (!isPresent(value)) {
@@ -112,39 +102,21 @@ const toToon = (rows: HistoryRow[]): string => {
   return lines.join("\n");
 };
 
-const truncateToon = (
-  toon: string,
-  maxLength: number,
-  nextOffset: number | undefined
-): TruncatedToon => {
-  if (toon.length <= maxLength) {
-    return {
-      value: toon,
-      truncated: false,
-      truncatedCharacters: undefined,
-    };
-  }
-
+const truncateToon = (toon: string, maxLength: number, nextOffset: number | undefined) => {
   const continuationHint =
     nextOffset !== undefined ? ` Continue with nextOffset=${nextOffset}.` : "";
-  let marker = `\n...[truncated. ${toon.length - maxLength} characters omitted.${continuationHint}]...\n`;
-  let candidate = truncateMiddle(toon, maxLength, marker);
-
-  marker = `\n...[truncated. ${candidate.omittedCharacters} characters omitted.${continuationHint}]...\n`;
-  candidate = truncateMiddle(toon, maxLength, marker);
-
-  return {
-    value: candidate.value,
-    truncated: true,
-    truncatedCharacters: candidate.omittedCharacters,
-  };
+  return truncateMiddle(
+    toon,
+    maxLength,
+    (omitted) => `\n...[truncated. ${omitted} characters omitted.${continuationHint}]...\n`
+  );
 };
 
 export const historyReadTool = tool({
   description:
     "Read HTTP history entries with offset pagination and return a compact TOON table that includes row IDs, request IDs, metadata IDs, and pagination signals.",
   inputSchema,
-  outputSchema: ActionResult.schemaWithValue(valueSchema),
+  outputSchema: ToolResult.schema(valueSchema),
   execute: async (
     { filter, limit = DEFAULT_LIMIT, offset = 0, ordering = "DESC", scopeId },
     { experimental_context }
@@ -170,7 +142,7 @@ export const historyReadTool = tool({
 
       const connection = result.interceptEntriesByOffset;
       if (!isPresent(connection)) {
-        return ActionResult.err(
+        return ToolResult.err(
           "Failed to read HTTP history",
           "No history entries connection returned"
         );
@@ -210,7 +182,7 @@ export const historyReadTool = tool({
       const toon = toToon(rows);
       const truncatedToon = truncateToon(toon, MAX_TOON_LENGTH, nextOffset);
 
-      return ActionResult.okWithValue({
+      return ToolResult.ok({
         message:
           totalReturned > 0
             ? `Read ${totalReturned} history entries.`
@@ -227,7 +199,7 @@ export const historyReadTool = tool({
         truncatedCharacters: truncatedToon.truncatedCharacters,
       });
     } catch (error) {
-      return ActionResult.err(
+      return ToolResult.err(
         "Failed to read HTTP history",
         error instanceof Error ? error.message : undefined
       );

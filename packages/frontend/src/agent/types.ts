@@ -1,24 +1,6 @@
 import { type Result } from "shared";
 import { z } from "zod";
 
-const todoStatusSchema = z.enum(["pending", "in_progress", "completed"]);
-
-export const todoSchema = z.object({
-  id: z.number().int().positive(),
-  content: z.string(),
-  status: todoStatusSchema,
-});
-
-export type Todo = z.infer<typeof todoSchema>;
-
-export function isTodoCompleted(todo: Pick<Todo, "status">): boolean {
-  return todo.status === "completed";
-}
-
-export function isTodoInProgress(todo: Pick<Todo, "status">): boolean {
-  return todo.status === "in_progress";
-}
-
 export type QueuedMessage = {
   id: string;
   text: string;
@@ -38,9 +20,9 @@ const frontendErrorSchema = z.object({
 export type MessageOnly = { message: string };
 export type WithMessage<T> = T & MessageOnly;
 
-export const messageSchema = z.object({ message: z.string() });
+const messageSchema = z.object({ message: z.string() });
 
-export const resultSchema = <T extends z.ZodTypeAny>(valueSchema: T) =>
+const resultSchema = <T extends z.ZodTypeAny>(valueSchema: T) =>
   z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("Ok"), value: valueSchema }),
     z.object({ kind: z.literal("Error"), error: frontendErrorSchema }),

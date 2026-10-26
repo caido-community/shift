@@ -14,7 +14,7 @@ const ModelPreferenceSchema = z.object({
   ultrafast: z.boolean().optional(),
 });
 
-export const ChatAppearanceSchema = z.enum(["compact", "expanded"]);
+const ChatAppearanceSchema = z.enum(["compact", "expanded"]);
 export type ChatAppearance = z.infer<typeof ChatAppearanceSchema>;
 
 const SettingsConfigSchema = z.object({
@@ -33,7 +33,7 @@ const SettingsConfigSchema = z.object({
 });
 export type SettingsConfig = z.infer<typeof SettingsConfigSchema>;
 
-export const defaultRenamingConfig: RenamingConfig = {
+const defaultRenamingConfig: RenamingConfig = {
   enabled: false,
   renameAfterSend: false,
   instructions:

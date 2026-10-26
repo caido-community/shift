@@ -3,12 +3,13 @@ import {
   computed,
   type MaybeRefOrGetter,
   nextTick,
-  onUnmounted,
   ref,
   toValue,
   useTemplateRef,
   watch,
 } from "vue";
+
+import { useMouseDrag } from "@/utils/useMouseDrag";
 
 const VIEWPORT_GUTTER = 32;
 const EXPANDED_MAX_HEIGHT_RATIO = 0.55;
@@ -38,10 +39,9 @@ export function useAgentCardResize(expanded: MaybeRefOrGetter<boolean>) {
   const minHeight = ref(0);
   const maxWidth = ref(0);
   const maxHeight = ref(0);
-  const activeHandle = ref<ResizeHandle | undefined>(undefined);
-
-  let stopMove: (() => void) | undefined;
-  let stopUp: (() => void) | undefined;
+  const drag = useMouseDrag();
+  const lastHandle = ref<ResizeHandle>();
+  const activeHandle = computed(() => (drag.isDragging.value ? lastHandle.value : undefined));
 
   const getExpandedMaxHeight = (rect?: DOMRect) => {
     const viewportCap = Math.min(
@@ -127,16 +127,6 @@ export function useAgentCardResize(expanded: MaybeRefOrGetter<boolean>) {
     updateResizeBounds();
   };
 
-  const stopResize = () => {
-    activeHandle.value = undefined;
-    stopMove?.();
-    stopUp?.();
-    stopMove = undefined;
-    stopUp = undefined;
-    document.body.style.cursor = "";
-    document.body.style.userSelect = "";
-  };
-
   const startResize = (handle: ResizeHandle, event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -159,36 +149,23 @@ export function useAgentCardResize(expanded: MaybeRefOrGetter<boolean>) {
     }
 
     updateResizeBounds();
-    activeHandle.value = handle;
+    lastHandle.value = handle;
 
-    const startX = event.clientX;
-    const startY = event.clientY;
     const startWidth = width.value;
     const startHeight = height.value ?? rect.height;
 
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      if (handle === "top-left" || handle === "bottom-left") {
-        width.value = clamp(
-          startWidth - (moveEvent.clientX - startX),
-          minWidth.value,
-          maxWidth.value
-        );
-      }
-
-      if (handle === "bottom-left" || handle === "bottom-right") {
-        height.value = clamp(
-          startHeight + (moveEvent.clientY - startY),
-          minHeight.value,
-          maxHeight.value
-        );
-      }
-    };
-
-    stopMove = useEventListener(document, "mousemove", onMouseMove);
-    stopUp = useEventListener(document, "mouseup", stopResize);
-
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = HANDLE_BODY_CURSOR[handle];
+    drag.start(
+      event,
+      (deltaX, deltaY) => {
+        if (handle === "top-left" || handle === "bottom-left") {
+          width.value = clamp(startWidth - deltaX, minWidth.value, maxWidth.value);
+        }
+        if (handle === "bottom-left" || handle === "bottom-right") {
+          height.value = clamp(startHeight + deltaY, minHeight.value, maxHeight.value);
+        }
+      },
+      HANDLE_BODY_CURSOR[handle]
+    );
   };
 
   useEventListener(window, "resize", updateResizeBounds);
@@ -209,8 +186,6 @@ export function useAgentCardResize(expanded: MaybeRefOrGetter<boolean>) {
     },
     { immediate: true, flush: "post" }
   );
-
-  onUnmounted(stopResize);
 
   return {
     activeHandle,

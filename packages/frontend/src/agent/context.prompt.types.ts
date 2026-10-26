@@ -1,9 +1,3 @@
-export type ContextTodoSnapshot = {
-  id: number;
-  content: string;
-  status: "pending" | "in_progress" | "completed";
-};
-
 export type LearningPreviewSnapshot = {
   index: number;
   preview: string;
@@ -34,14 +28,13 @@ export type EnvironmentVariablePreviewSnapshot = {
 };
 
 export type ContextPromptSnapshot = {
-  todos?: ContextTodoSnapshot[];
   learnings?: LearningPreviewSnapshot[];
   httpRequest?: string;
-  allowedConvertWorkflows?: ConvertWorkflowSnapshot[];
   allowedBinaries?: AllowedBinarySnapshot[];
   entriesContext?: {
     activeEntryId: string | undefined;
     recentEntryIds: string[];
+    connection?: { host: string; port: number; isTLS: boolean; SNI?: string };
   };
   environmentsContext?: {
     all: EnvironmentInfoSnapshot[];

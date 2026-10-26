@@ -5,7 +5,7 @@ import { useSession } from "../useSession";
 export function useQueue() {
   const session = useSession();
 
-  const queuedMessages = computed(() => session.queuedMessages);
+  const queuedMessages = computed(() => session.store.queuedMessages);
   const hasQueue = computed(() => queuedMessages.value.length > 0);
 
   function sendNow(id: string) {
@@ -13,7 +13,7 @@ export function useQueue() {
   }
 
   function remove(id: string) {
-    session.removeFromQueue(id);
+    session.store.removeFromQueue(id);
   }
 
   return {

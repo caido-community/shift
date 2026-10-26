@@ -10,6 +10,7 @@ import { ChatMessageTool } from "./Tool";
 import { useAssistantMessage } from "./useAssistantMessage";
 
 import { getToolErrorText } from "@/agent/utils/tools";
+import { useSession } from "@/components/agent/useSession";
 import { TextShimmer } from "@/components/common/TextShimmer";
 import { useAnimatedDots } from "@/utils";
 
@@ -20,8 +21,11 @@ const { message } = defineProps<{
 const { processedParts, metadata, requestDiffs, calculateReasoningTime, getReasoningIndex } =
   useAssistantMessage(() => message);
 
+const session = useSession();
+
 const isWaitingForNextPart = computed(() => {
   if (metadata.value?.state !== "streaming") return false;
+  if (session.phase.value === "compacting") return false;
   if (processedParts.value.length === 0) return false;
 
   return processedParts.value.every((processed) => {
@@ -77,7 +81,7 @@ const canCopy = computed(() => metadata.value?.state !== "streaming" && text.val
 
       <div
         v-else-if="processed.part.type === 'data-compaction'"
-        class="text-sm text-surface-400 select-none"
+        class="text-sm text-surface-400 select-none whitespace-normal"
         :title="processed.part.data.summary">
         Context compacted, continuing from a summary
       </div>

@@ -9,15 +9,20 @@ import {
   type ProjectSkillOverride,
   Result,
   type SetProjectOverrideInput,
+  type SkillsState,
   type UpdateDynamicSkillInput,
   type UpdateStaticSkillInput,
 } from "shared";
 
-import { requireSDK } from "../../sdk";
+import {
+  getCurrentProjectId,
+  isVisibleInCurrentProject,
+  projectIdForScope,
+  requireProjectId,
+} from "../../project";
 import { fetchSkillContent, validateSkillUrl } from "../../skills";
-import { generateID } from "../../utils";
-import { GlobalStore } from "../global-store";
-import { defaultMergeStrategy } from "../persistence";
+import { generateID, isRecord } from "../../utils";
+import { Store } from "../store";
 
 import {
   extractLegacyCollectionAutoRunMigration,
@@ -26,57 +31,41 @@ import {
 import { createInitialModel, type SkillsMessage, type SkillsModel } from "./model";
 import { update } from "./update";
 
-class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
-  private resolvedCache: Map<string, AgentSkill> = new Map();
-  private currentProjectId: string | undefined;
+class SkillsStore extends Store<SkillsModel, SkillsMessage> {
+  private resolvedCache = new Map<string, AgentSkill>();
   private legacyCollectionAutoRunEntries: LegacyCollectionAutoRunMigrationEntry[] = [];
-  private shouldPersistLegacyCollectionCleanup = false;
 
   constructor() {
-    super("skills");
+    super({ filename: "skills", initialModel: createInitialModel, update });
   }
 
-  protected createInitialModel(): SkillsModel {
-    return createInitialModel();
-  }
-
-  protected update(model: SkillsModel, message: SkillsMessage): SkillsModel {
-    return update(model, message);
-  }
-
-  protected mergeLoadedModel(current: SkillsModel, loaded: unknown): SkillsModel {
+  protected parse(loaded: unknown): SkillsModel | undefined {
     const migration = extractLegacyCollectionAutoRunMigration(loaded);
-    this.legacyCollectionAutoRunEntries = migration.entries;
-    this.shouldPersistLegacyCollectionCleanup = migration.mutated;
-    return defaultMergeStrategy(current, migration.cleaned);
-  }
-
-  protected async afterInitialize(): Promise<void> {
-    if (!this.shouldPersistLegacyCollectionCleanup) {
-      return;
+    if (!isRecord(migration.cleaned)) {
+      return undefined;
     }
 
-    this.shouldPersistLegacyCollectionCleanup = false;
-    await this.persist();
+    const model = { ...createInitialModel(), ...migration.cleaned };
+    if (!Array.isArray(model.skills) || !Array.isArray(model.projectOverrides)) {
+      return undefined;
+    }
+
+    this.legacyCollectionAutoRunEntries = migration.entries;
+    return model as SkillsModel;
   }
 
-  async initialize(): Promise<void> {
-    await super.initialize();
-    const sdk = requireSDK();
-    const project = await sdk.projects.getCurrent();
-    this.currentProjectId = project?.getId();
-    await this.refreshDynamicSkills();
-  }
-
-  switchProject(projectId: string | undefined): void {
-    this.currentProjectId = projectId;
-    this.notify();
+  override async load(): Promise<void> {
+    await super.load();
+    // Drop the legacy fields from the file so the migration notice is shown only once.
+    if (this.legacyCollectionAutoRunEntries.length > 0) {
+      await this.save();
+    }
   }
 
   getLegacyCollectionAutoRunMigrationSummary(): LegacyCollectionAutoRunMigrationSummary {
     const summary = summarizeLegacyCollectionAutoRunMigration(
       this.legacyCollectionAutoRunEntries,
-      this.currentProjectId
+      getCurrentProjectId()
     );
 
     // The notice should be shown only once for the migration event that happened on load.
@@ -85,26 +74,17 @@ class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
     return summary;
   }
 
-  private isSkillVisibleInCurrentProject(skill: AgentSkillDefinition): boolean {
-    if (skill.scope === "global") {
-      return true;
-    }
-    if (this.currentProjectId === undefined) {
-      return false;
-    }
-    return skill.projectId === this.currentProjectId;
-  }
-
   getSkillDefinitions(): AgentSkillDefinition[] {
-    return this.getModel().skills.filter((skill) => this.isSkillVisibleInCurrentProject(skill));
+    return this.model.skills.filter(isVisibleInCurrentProject);
   }
 
-  private getProjectOverride(skillId: string): ProjectSkillOverride | undefined {
-    if (this.currentProjectId === undefined) {
+  getProjectOverride(skillId: string): ProjectSkillOverride | undefined {
+    const projectId = getCurrentProjectId();
+    if (projectId === undefined) {
       return undefined;
     }
-    return this.getModel().projectOverrides.find(
-      (o) => o.skillId === skillId && o.projectId === this.currentProjectId
+    return this.model.projectOverrides.find(
+      (o) => o.skillId === skillId && o.projectId === projectId
     );
   }
 
@@ -122,11 +102,7 @@ class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
   getSkills(): AgentSkill[] {
     const result: AgentSkill[] = [];
 
-    for (const definition of this.getModel().skills) {
-      if (!this.isSkillVisibleInCurrentProject(definition)) {
-        continue;
-      }
-
+    for (const definition of this.getSkillDefinitions()) {
       let skill: AgentSkill;
       if (definition.type === "static") {
         skill = {
@@ -154,112 +130,87 @@ class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
     return result;
   }
 
-  getProjectOverrideForSkill(skillId: string): ProjectSkillOverride | undefined {
-    return this.getProjectOverride(skillId);
+  getState(): SkillsState {
+    return { definitions: this.getSkillDefinitions(), skills: this.getSkills() };
   }
 
-  getAllProjectOverrides(): ProjectSkillOverride[] {
-    if (this.currentProjectId === undefined) {
-      return [];
-    }
-    return this.getModel().projectOverrides.filter((o) => o.projectId === this.currentProjectId);
-  }
-
-  async addStaticSkill(input: CreateStaticSkillInput): Promise<Result<string>> {
-    if (input.scope === "project" && this.currentProjectId === undefined) {
-      return Result.err("Cannot create project-scoped skill without an active project");
+  async addStaticSkill(input: CreateStaticSkillInput): Promise<Result<SkillsState>> {
+    const projectId = projectIdForScope(input.scope);
+    if (projectId.kind === "Error") {
+      return projectId;
     }
 
-    const id = generateID("skill-");
-
-    this.dispatch({
+    await this.commit({
       type: "ADD_STATIC_SKILL",
       definition: {
         type: "static",
-        id,
+        id: generateID("skill-"),
         title: input.title,
         content: input.content,
         scope: input.scope,
-        projectId: input.scope === "project" ? this.currentProjectId : undefined,
+        projectId: projectId.value,
         description: input.description,
         attachMode: input.attachMode,
       },
     });
-
-    await this.persist();
-    this.notify();
-
-    return Result.ok(id);
+    return Result.ok(this.getState());
   }
 
-  async addDynamicSkill(input: CreateDynamicSkillInput): Promise<Result<string>> {
-    if (input.scope === "project" && this.currentProjectId === undefined) {
-      return Result.err("Cannot create project-scoped skill without an active project");
+  async addDynamicSkill(input: CreateDynamicSkillInput): Promise<Result<SkillsState>> {
+    const projectId = projectIdForScope(input.scope);
+    if (projectId.kind === "Error") {
+      return projectId;
     }
+
+    const definition: DynamicSkillDefinition = {
+      type: "dynamic",
+      id: generateID("skill-"),
+      title: input.title,
+      url: input.url,
+      scope: input.scope,
+      projectId: projectId.value,
+      description: input.description,
+      attachMode: input.attachMode,
+    };
 
     const validation = validateSkillUrl(input.url);
     if (validation.valid === false) {
       return Result.err(validation.error);
     }
 
-    const id = generateID("skill-");
-    const definition: DynamicSkillDefinition = {
-      type: "dynamic",
-      id,
-      title: input.title,
-      url: input.url,
-      scope: input.scope,
-      projectId: input.scope === "project" ? this.currentProjectId : undefined,
-      description: input.description,
-      attachMode: input.attachMode,
-    };
-
     const resolved = await fetchSkillContent(definition);
     if (resolved === undefined) {
       return Result.err("Failed to fetch skill content from URL");
     }
 
-    this.resolvedCache.set(id, resolved);
-
-    this.dispatch({ type: "ADD_DYNAMIC_SKILL", definition });
-
-    await this.persist();
-    this.notify();
-
-    return Result.ok(id);
+    this.resolvedCache.set(definition.id, resolved);
+    await this.commit({ type: "ADD_DYNAMIC_SKILL", definition });
+    return Result.ok(this.getState());
   }
 
-  async updateStaticSkill(id: string, updates: UpdateStaticSkillInput): Promise<Result<void>> {
-    const existingSkill = this.getModel().skills.find((s) => s.id === id && s.type === "static");
-    if (existingSkill === undefined) {
+  async updateStaticSkill(
+    id: string,
+    updates: UpdateStaticSkillInput
+  ): Promise<Result<SkillsState>> {
+    if (!this.model.skills.some((s) => s.id === id && s.type === "static")) {
       return Result.err("Skill not found");
     }
 
-    if (updates.scope === "project" && this.currentProjectId === undefined) {
-      return Result.err("Cannot change scope to project without an active project");
+    const projectId = projectIdForScope(updates.scope);
+    if (projectId.kind === "Error") {
+      return projectId;
     }
 
-    this.dispatch({
-      type: "UPDATE_STATIC_SKILL",
-      id,
-      updates,
-      projectId: updates.scope === "project" ? this.currentProjectId : undefined,
-    });
-
-    await this.persist();
-    this.notify();
-
-    return Result.ok(undefined);
+    await this.commit({ type: "UPDATE_STATIC_SKILL", id, updates, projectId: projectId.value });
+    return Result.ok(this.getState());
   }
 
-  async updateDynamicSkill(id: string, updates: UpdateDynamicSkillInput): Promise<Result<void>> {
-    const existingSkill = this.getModel().skills.find((s) => s.id === id && s.type === "dynamic");
-    if (existingSkill === undefined) {
+  async updateDynamicSkill(
+    id: string,
+    updates: UpdateDynamicSkillInput
+  ): Promise<Result<SkillsState>> {
+    if (!this.model.skills.some((s) => s.id === id && s.type === "dynamic")) {
       return Result.err("Skill not found");
-    }
-
-    if (updates.scope === "project" && this.currentProjectId === undefined) {
-      return Result.err("Cannot change scope to project without an active project");
     }
 
     if (updates.url !== undefined) {
@@ -269,109 +220,77 @@ class SkillsStore extends GlobalStore<SkillsModel, SkillsMessage> {
       }
     }
 
-    this.dispatch({
-      type: "UPDATE_DYNAMIC_SKILL",
-      id,
-      updates,
-      projectId: updates.scope === "project" ? this.currentProjectId : undefined,
-    });
-
-    await this.persist();
-
-    const updatedSkill = this.getModel().skills.find((s) => s.id === id && s.type === "dynamic");
-    if (updatedSkill !== undefined && updatedSkill.type === "dynamic") {
-      const resolved = await fetchSkillContent(updatedSkill);
-      if (resolved !== undefined) {
-        this.resolvedCache.set(id, resolved);
-      } else {
-        this.resolvedCache.delete(id);
-      }
+    const projectId = projectIdForScope(updates.scope);
+    if (projectId.kind === "Error") {
+      return projectId;
     }
 
-    this.notify();
+    await this.commit({ type: "UPDATE_DYNAMIC_SKILL", id, updates, projectId: projectId.value });
 
-    return Result.ok(undefined);
+    const updatedSkill = this.model.skills.find((s) => s.id === id);
+    if (updatedSkill?.type === "dynamic") {
+      await this.refreshSkill(updatedSkill);
+    }
+    return Result.ok(this.getState());
   }
 
-  async removeSkill(id: string): Promise<void> {
-    this.dispatch({ type: "REMOVE_SKILL", id });
-
+  async removeSkill(id: string): Promise<SkillsState> {
     this.resolvedCache.delete(id);
-
-    await this.persist();
-    this.notify();
+    await this.commit({ type: "REMOVE_SKILL", id });
+    return this.getState();
   }
 
-  async setProjectOverride(input: SetProjectOverrideInput): Promise<Result<void>> {
-    if (this.currentProjectId === undefined) {
-      return Result.err("Cannot set project override without an active project");
+  async setProjectOverride(input: SetProjectOverrideInput): Promise<Result<SkillsState>> {
+    const projectId = requireProjectId();
+    if (projectId.kind === "Error") {
+      return projectId;
     }
 
-    const skill = this.getModel().skills.find((s) => s.id === input.skillId);
+    const skill = this.model.skills.find((s) => s.id === input.skillId);
     if (skill === undefined) {
       return Result.err("Skill not found");
     }
-
     if (skill.scope !== "global") {
       return Result.err("Project overrides can only be set for global skills");
     }
 
-    this.dispatch({
+    await this.commit({
       type: "SET_PROJECT_OVERRIDE",
       override: {
         skillId: input.skillId,
-        projectId: this.currentProjectId,
+        projectId: projectId.value,
         additionalContent: input.additionalContent,
       },
     });
-
-    await this.persist();
-    this.notify();
-
-    return Result.ok(undefined);
+    return Result.ok(this.getState());
   }
 
-  async removeProjectOverride(skillId: string): Promise<Result<void>> {
-    if (this.currentProjectId === undefined) {
-      return Result.err("Cannot remove project override without an active project");
+  async removeProjectOverride(skillId: string): Promise<Result<SkillsState>> {
+    const projectId = requireProjectId();
+    if (projectId.kind === "Error") {
+      return projectId;
     }
 
-    this.dispatch({
-      type: "REMOVE_PROJECT_OVERRIDE",
-      skillId,
-      projectId: this.currentProjectId,
-    });
-
-    await this.persist();
-    this.notify();
-
-    return Result.ok(undefined);
+    await this.commit({ type: "REMOVE_PROJECT_OVERRIDE", skillId, projectId: projectId.value });
+    return Result.ok(this.getState());
   }
 
-  async refreshDynamicSkills(): Promise<void> {
-    const dynamicSkills = this.getModel().skills.filter(
+  private async refreshSkill(skill: DynamicSkillDefinition): Promise<void> {
+    const resolved = await fetchSkillContent(skill);
+    if (resolved !== undefined) {
+      this.resolvedCache.set(skill.id, resolved);
+    } else {
+      this.resolvedCache.delete(skill.id);
+    }
+  }
+
+  async refreshDynamicSkills(): Promise<SkillsState> {
+    const dynamicSkills = this.model.skills.filter(
       (s): s is DynamicSkillDefinition => s.type === "dynamic"
     );
-
-    const fetchPromises = dynamicSkills.map(async (skill) => {
-      const resolved = await fetchSkillContent(skill);
-      if (resolved !== undefined) {
-        this.resolvedCache.set(skill.id, resolved);
-      } else {
-        this.resolvedCache.delete(skill.id);
-      }
-    });
-
-    await Promise.all(fetchPromises);
-    this.notify();
+    await Promise.all(dynamicSkills.map((skill) => this.refreshSkill(skill)));
+    return this.getState();
   }
 }
 
-let instance: SkillsStore | undefined;
-
-export function getSkillsStore(): SkillsStore {
-  if (instance === undefined) {
-    instance = new SkillsStore();
-  }
-  return instance;
-}
+export const skillsStore = new SkillsStore();

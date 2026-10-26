@@ -1,33 +1,46 @@
-import { stepCountIs, ToolLoopAgent } from "ai";
-import type { Model } from "shared";
+import { stepCountIs, type Tool, ToolLoopAgent } from "ai";
+import type { Model, ShiftMessage } from "shared";
 
-import { createCompactor } from "@/agent/compaction";
+import { createCompactor, estimateToolsCharacters } from "@/agent/compaction";
 import type { AgentContext } from "@/agent/context";
 import { buildAgentInstructions } from "@/agent/instructions";
 import { shiftAgentTools } from "@/agent/tools";
-import { AI_TRACE_RUN_ID_HEADER } from "@/agent/trace";
+import { getEstimatedContextUsage } from "@/agent/utils/contextUsage";
 import { type FrontendSDK } from "@/types";
 import { createModel, type ReasoningEffort } from "@/utils/ai";
 import { repairToolCall } from "@/utils/toolCallRepair";
 
-export function getTools(legacyTodos: boolean) {
-  if (legacyTodos) return shiftAgentTools;
-  const { TodoAdd, TodoStart, TodoComplete, TodoRemove, ...tools } = shiftAgentTools;
-  return tools;
+const toolsCharacters = new Map<Record<string, Tool>, number>();
+
+export function getToolsCharacters(tools: Record<string, Tool>): number {
+  let characters = toolsCharacters.get(tools);
+  if (characters === undefined) {
+    characters = estimateToolsCharacters(tools);
+    toolsCharacters.set(tools, characters);
+  }
+  return characters;
+}
+
+export function getAgentSetup(context: AgentContext) {
+  const skillsPrompt = context.toSkillsPrompt();
+  return {
+    tools: shiftAgentTools,
+    skillsPrompt,
+    instructions: buildAgentInstructions({ mode: context.mode, skillsPrompt }),
+  };
 }
 
 type AgentOptions = {
   sdk: FrontendSDK;
   model: Model;
   context: AgentContext;
+  messages: ShiftMessage[];
   maxIterations: number;
   reasoningEffort: ReasoningEffort;
   openRouterPrioritizeFastProviders: boolean;
-  legacyTodos: boolean;
-  fastMode?: boolean;
-  ultrafast?: boolean;
-  daybreak?: boolean;
-  traceRunId?: string;
+  fastMode: boolean;
+  ultrafast: boolean;
+  daybreak: boolean;
   abortSignal?: AbortSignal;
 };
 
@@ -36,14 +49,13 @@ export const createShiftAgent = (options: AgentOptions) => {
     sdk,
     model,
     context,
+    messages,
     maxIterations,
     reasoningEffort,
     openRouterPrioritizeFastProviders,
-    legacyTodos,
     fastMode,
     ultrafast,
     daybreak,
-    traceRunId,
     abortSignal,
   } = options;
 
@@ -55,16 +67,28 @@ export const createShiftAgent = (options: AgentOptions) => {
     daybreak,
     cacheKey: context.sessionId,
   });
-  const tools = getTools(legacyTodos);
-  const instructions = buildAgentInstructions({ context, model, legacyTodos });
-  const compact = createCompactor({
+  const { tools, instructions, skillsPrompt } = getAgentSetup(context);
+  const compactor = createCompactor({
     model: caidoModel,
     system: instructions,
     tools,
     contextWindow: model.contextWindow,
     abortSignal,
+    initialTokens: getEstimatedContextUsage({
+      model,
+      systemPrompt: instructions,
+      skillsPrompt,
+      toolsCharacters: getToolsCharacters(tools),
+      messages,
+    }).usedTokens,
     onCompact: (summary) => {
       context.writer?.write({ type: "data-compaction", data: { summary } });
+    },
+    onCompacting: (active) => {
+      context.writer?.write({ type: "data-compacting", data: active, transient: true });
+    },
+    onMeasure: (contextTokens) => {
+      context.writer?.write({ type: "message-metadata", messageMetadata: { contextTokens } });
     },
   });
   return new ToolLoopAgent({
@@ -74,9 +98,9 @@ export const createShiftAgent = (options: AgentOptions) => {
     toolChoice: "auto",
     stopWhen: stepCountIs(maxIterations),
     maxRetries: 3,
-    ...(traceRunId === undefined ? {} : { headers: { [AI_TRACE_RUN_ID_HEADER]: traceRunId } }),
     experimental_context: context,
     experimental_repairToolCall: repairToolCall,
-    prepareStep: compact,
+    prepareStep: compactor.prepareStep,
+    onStepFinish: compactor.onStepFinish,
   });
 };

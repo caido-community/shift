@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { onKeyStroke } from "@vueuse/core";
 import { storeToRefs } from "pinia";
-import { onMounted, ref } from "vue";
+import { nextTick, onMounted, onUnmounted, ref } from "vue";
 
 import { Actions } from "@/components/float/actions";
 import { useFloat } from "@/components/float/useDrag";
+import { closeFloat } from "@/float/float";
 import { useFloatStore } from "@/stores/float";
 
 const { initialTop, initialLeft } = defineProps<{
@@ -12,9 +13,7 @@ const { initialTop, initialLeft } = defineProps<{
   initialLeft: number;
 }>();
 
-const containerRef = ref<HTMLElement | undefined>(undefined);
-
-const { style, isResizing, onDragMouseDown, onResizeMouseDown } = useFloat(containerRef, {
+const { style, isResizing, onDragMouseDown, onResizeMouseDown } = useFloat({
   initialTop,
   initialLeft,
 });
@@ -24,19 +23,46 @@ const { isRunning, query } = storeToRefs(store);
 
 const textarea = ref<HTMLTextAreaElement>();
 
-onMounted(() => {
-  store.textarea = textarea.value;
-  textarea.value?.focus();
-});
+onMounted(() => textarea.value?.focus());
+onUnmounted(store.stopQuery);
+onKeyStroke("Escape", closeFloat);
 
-onKeyStroke("Escape", () => {
-  store.closeFloat();
-});
+const isCaretOnEdge = (element: HTMLTextAreaElement, edge: "first" | "last"): boolean => {
+  const caret = element.selectionStart ?? 0;
+  const value = element.value;
+  if (edge === "first") {
+    return !value.slice(0, caret).includes("\n");
+  }
+  return caret >= value.lastIndexOf("\n") + 1;
+};
+
+const onKeydown = (event: KeyboardEvent) => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    void store.runQuery();
+    return;
+  }
+
+  const element = event.currentTarget as HTMLTextAreaElement;
+  let direction: "prev" | "next" | undefined;
+  if (event.key === "ArrowUp" && isCaretOnEdge(element, "first")) {
+    direction = "prev";
+  } else if (event.key === "ArrowDown" && isCaretOnEdge(element, "last")) {
+    direction = "next";
+  }
+  if (direction === undefined || !store.navigateHistory(direction)) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  void nextTick(() => {
+    const position = direction === "prev" ? 0 : element.value.length;
+    element.setSelectionRange(position, position);
+  });
+};
 </script>
 
 <template>
   <div
-    ref="containerRef"
     class="fixed bg-surface-800 border border-surface-700 rounded-md p-3 flex flex-col gap-2 shadow-md"
     :style="style"
     @mousedown="onDragMouseDown">
@@ -53,12 +79,12 @@ onKeyStroke("Escape", () => {
           autocapitalize="off"
           spellcheck="false"
           @mousedown.stop
-          @keydown="store.handleKeydown"></textarea>
+          @keydown="onKeydown"></textarea>
       </div>
       <div class="w-1/10 flex items-start justify-end p-1">
         <button
           class="text-surface-400 hover:text-surface-200 text-sm leading-none"
-          @click="store.closeFloat"
+          @click="closeFloat"
           @mousedown.stop>
           ✕
         </button>

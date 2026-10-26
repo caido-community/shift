@@ -24,15 +24,13 @@ const { toolName, input, partState, messageMetadata, output, errorText, requestD
     requestDiff: RequestDiff | undefined;
   }>();
 
-const defaultErrorMessage = errorText ?? `Failed to call ${toolName}`;
-
 const { toolState, extractedOutput, errorMessage } = useTool(
   {
     partState: toRef(() => partState),
     messageMetadata: toRef(() => messageMetadata),
     output: toRef(() => output),
   },
-  defaultErrorMessage
+  () => errorText ?? `Failed to call ${toolName}`
 );
 
 const messages = computed(() => getToolMessages(toolName));
@@ -81,7 +79,7 @@ const handleClick = () => {
   <div class="text-sm animate-fade-in min-w-0">
     <component
       :is="isClickable ? 'button' : 'div'"
-      class="flex items-center h-5 text-surface-300 min-w-0"
+      class="flex items-center h-5 text-surface-300 min-w-0 max-w-full"
       :class="{
         'group/entry cursor-pointer hover:!text-surface-100 transition-colors': isClickable,
       }"

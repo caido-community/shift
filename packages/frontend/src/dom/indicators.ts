@@ -2,6 +2,7 @@ import { type Indicator, type ListenerHandle } from "@caido/sdk-frontend";
 import { type ChatStatus } from "ai";
 import { watch, type WatchStopHandle } from "vue";
 
+import { watchReplayPage } from "@/dom/utils";
 import { useAgentStore } from "@/stores/agent";
 import { type FrontendSDK } from "@/types";
 
@@ -58,38 +59,24 @@ const createShiftCollectionIndicator = (container: Element): HTMLElement => {
 };
 
 export const useIndicatorManager = (sdk: FrontendSDK) => {
-  let pageChangeUnsubscribe: { stop: () => void } | undefined = undefined;
+  let stopWatchingPage: (() => void) | undefined = undefined;
   let sessionChangeUnsubscribe: ListenerHandle | undefined = undefined;
   let storeWatchUnsubscribe: WatchStopHandle | undefined = undefined;
   let tableObserver: MutationObserver | undefined = undefined;
-  let drawIndicatorsQueued = false;
+  let drawFrame: number | undefined = undefined;
+  let collectionFrame: number | undefined = undefined;
 
   const sessionIndicators = new Map<string, SessionIndicatorEntry>();
 
   const scheduleDrawIndicators = () => {
-    if (drawIndicatorsQueued) {
-      return;
-    }
-
-    drawIndicatorsQueued = true;
-    requestAnimationFrame(() => {
-      drawIndicatorsQueued = false;
+    drawFrame ??= requestAnimationFrame(() => {
+      drawFrame = undefined;
       drawIndicators();
     });
   };
 
   const start = () => {
-    if (location.hash === "#/replay") {
-      inject();
-    }
-
-    pageChangeUnsubscribe = sdk.navigation.onPageChange((event) => {
-      if (event.path === "/replay") {
-        inject();
-      } else {
-        cleanup();
-      }
-    });
+    stopWatchingPage ??= watchReplayPage(sdk, inject, cleanup);
   };
 
   const inject = () => {
@@ -99,7 +86,7 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
 
     storeWatchUnsubscribe = watch(
       () => {
-        return Array.from(agentStore.state.indicatorStates.entries())
+        return Array.from(agentStore.indicatorStates.entries())
           .map(([sessionId, state]) => `${sessionId}:${state.status}:${state.hasMessages ? 1 : 0}`)
           .sort()
           .join("|");
@@ -114,7 +101,8 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
       scheduleDrawIndicators();
     });
 
-    requestAnimationFrame(() => {
+    collectionFrame = requestAnimationFrame(() => {
+      collectionFrame = undefined;
       listenForCollectionChanges();
     });
   };
@@ -152,7 +140,7 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
 
     for (const replaySession of sessions) {
       const sessionId = replaySession.id;
-      const indicatorState = agentStore.state.indicatorStates.get(sessionId);
+      const indicatorState = agentStore.indicatorStates.get(sessionId);
       if (indicatorState === undefined || !indicatorState.hasMessages) {
         if (sessionIndicators.has(sessionId)) {
           sessionIndicators.get(sessionId)?.indicator.remove();
@@ -241,6 +229,14 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
       tableObserver.disconnect();
       tableObserver = undefined;
     }
+    if (drawFrame !== undefined) {
+      cancelAnimationFrame(drawFrame);
+      drawFrame = undefined;
+    }
+    if (collectionFrame !== undefined) {
+      cancelAnimationFrame(collectionFrame);
+      collectionFrame = undefined;
+    }
   };
 
   const cleanup = () => {
@@ -249,10 +245,8 @@ export const useIndicatorManager = (sdk: FrontendSDK) => {
   };
 
   const stop = () => {
-    if (pageChangeUnsubscribe) {
-      pageChangeUnsubscribe.stop();
-      pageChangeUnsubscribe = undefined;
-    }
+    stopWatchingPage?.();
+    stopWatchingPage = undefined;
     cleanup();
   };
 

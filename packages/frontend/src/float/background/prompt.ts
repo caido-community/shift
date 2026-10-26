@@ -1,5 +1,3 @@
-import { type ActionContext } from "@/float/types";
-
 export const BACKGROUND_EXECUTION_NOTE = `<background_execution_note>
 You are a background agent running unattended: nobody watches this run or answers questions, and the user reads only your tool actions and your final message. Unlike a normal Float run, you have a large step budget. Use it to get the task right and complete, and stop as soon as the task is done.
 
@@ -14,27 +12,3 @@ How to work:
 How your turn ends:
 In background mode you may reply with text, but only as your final message. A message without a tool call ends the run. Do not end it early with a progress summary that announces a next step, with an offer to continue, or with a list of questions or decisions for the user: take the next step instead, choosing the most reasonable option yourself. End the run only when the task is done or when nothing more can be done without the user. Your final message is the report the user sees: lead with the outcome, then list what you changed, briefly.
 </background_execution_note>`;
-
-type BuildBackgroundPromptInput = {
-  content: string;
-  context: ActionContext;
-};
-
-export const buildBackgroundPrompt = (
-  input: BuildBackgroundPromptInput,
-  learnings: string[]
-): string => {
-  return `
-<context>
-${JSON.stringify(input.context)}
-</context>
-
-<learnings>
-${learnings.map((learning, index) => `- ${index}: ${learning}`).join("\n")}
-</learnings>
-
-<user>
-${input.content}
-</user>
-`.trim();
-};

@@ -31,7 +31,7 @@ export type ExecuteAgentBinaryOutput = z.infer<typeof ExecuteAgentBinaryOutputSc
 export const AgentBinaryLogChunkStreamSchema = z.enum(["stdout", "stderr"]);
 export type AgentBinaryLogChunkStream = z.infer<typeof AgentBinaryLogChunkStreamSchema>;
 
-export const AgentBinaryLogChunkEventSchema = z.object({
+const AgentBinaryLogChunkEventSchema = z.object({
   executionId: z.string().min(1),
   stream: AgentBinaryLogChunkStreamSchema,
   delta: z.string(),

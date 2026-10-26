@@ -1,8 +1,9 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { ToolResult } from "@/agent/types";
 import { normalizeRawHttpRequest } from "@/agent/utils/http";
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { type FloatToolContext } from "@/float/types";
 import { withActiveEditorView } from "@/float/utils";
 
 const inputSchema = z.object({
@@ -12,12 +13,12 @@ const inputSchema = z.object({
 export const replayRequestReplaceTool = tool({
   description: "Replace the entire request content in the current replay tab editor",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: ({ text }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     return withActiveEditorView(sdk, (context) => {
       context.update(normalizeRawHttpRequest(text));
-      return ActionResult.ok("Request replaced in replay editor");
+      return ToolResult.ok({ message: "Request replaced in replay editor" });
     });
   },
 });
