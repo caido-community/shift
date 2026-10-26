@@ -73,7 +73,9 @@ export type API = DefineAPI<{
 
 export function init(sdk: SDK<API, BackendEvents>) {
   setSDK(sdk);
-  initializeStores(sdk.projects.getCurrent().then((project) => project?.getId()));
+  initializeStores(sdk).catch((error: unknown) =>
+    console.error(`Failed to initialize stores: ${String(error)}`)
+  );
 
   sdk.events.onProjectChange((_sdk, project) => switchProject(project?.getId()));
 

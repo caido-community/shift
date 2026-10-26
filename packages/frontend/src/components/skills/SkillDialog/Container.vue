@@ -4,12 +4,11 @@ import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import SelectButton from "primevue/selectbutton";
 import Textarea from "primevue/textarea";
-import type { AgentSkillDefinition, SkillAttachMode, SkillScope } from "shared";
-import { computed, ref, watch } from "vue";
+import type { AgentSkillDefinition } from "shared";
 
 import type { SkillForm } from "../useSkills";
 
-import { useSDK } from "@/plugins/sdk";
+import { useSkillDialog } from "./useSkillDialog";
 
 const SKILL_TYPE_OPTIONS = [
   { label: "Static", value: "static" },
@@ -40,86 +39,31 @@ const visible = defineModel<boolean>("visible", { required: true });
 
 const emit = defineEmits<{ save: [form: SkillForm] }>();
 
-const sdk = useSDK();
-
-const type = ref<"static" | "dynamic">("static");
-const title = ref("");
-const content = ref("");
-const url = ref("");
-const scope = ref<SkillScope>("project");
-const description = ref("");
-const attachMode = ref<SkillAttachMode>("on-demand");
-const projectOverride = ref("");
-const originalProjectOverride = ref("");
-
-// Snapshot on open so the dialog keeps its content while the close animation runs.
-const openedSkill = ref<AgentSkillDefinition>();
-const isEditing = computed(() => openedSkill.value !== undefined);
-const isGlobalSkill = computed(() => openedSkill.value?.scope === "global");
-
-const loadProjectOverride = async (skillId: string) => {
-  const result = await sdk.backend.getProjectOverride(skillId);
-  const value = result.kind === "Ok" ? (result.value?.additionalContent ?? "") : "";
-  projectOverride.value = value;
-  originalProjectOverride.value = value;
-};
-
-watch(
+const {
+  type,
+  title,
+  content,
+  url,
+  scope,
+  description,
+  attachMode,
+  projectOverride,
+  isEditing,
+  isGlobalSkill,
+  hasUrlError,
+  canSave,
+  buildForm,
+} = useSkillDialog(
   visible,
-  (isVisible) => {
-    if (!isVisible) return;
-
-    openedSkill.value = skill;
-    type.value = skill?.type ?? "static";
-    title.value = skill?.title ?? "";
-    description.value = skill?.description ?? "";
-    attachMode.value = skill?.attachMode ?? "on-demand";
-    scope.value = skill?.scope ?? "project";
-    content.value =
-      skill === undefined ? "" : skill.type === "static" ? skill.content : skillContent;
-    url.value = skill?.type === "dynamic" ? skill.url : "";
-    projectOverride.value = "";
-    originalProjectOverride.value = "";
-    if (skill?.scope === "global") {
-      void loadProjectOverride(skill.id);
-    }
-  },
-  { immediate: true }
+  () => skill,
+  () => skillContent
 );
 
-const isValidUrl = (value: string): boolean => {
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-};
-
-const hasUrlError = computed(() => url.value.trim() !== "" && !isValidUrl(url.value.trim()));
-
-const canSave = computed(() => {
-  if (title.value.trim() === "") return false;
-  return type.value === "static" ? content.value.trim() !== "" : isValidUrl(url.value.trim());
-});
-
 const handleSave = () => {
-  if (!canSave.value || saving) return;
+  if (saving) return;
 
-  const override = projectOverride.value.trim();
-  emit("save", {
-    type: type.value,
-    title: title.value.trim(),
-    content: content.value.trim(),
-    url: url.value.trim(),
-    scope: scope.value,
-    description: description.value.trim() || undefined,
-    attachMode: attachMode.value,
-    projectOverride:
-      isGlobalSkill.value && override !== originalProjectOverride.value.trim()
-        ? override
-        : undefined,
-  });
+  const form = buildForm();
+  if (form !== undefined) emit("save", form);
 };
 </script>
 

@@ -51,7 +51,7 @@ const MAX_LENGTH = 2000;
 
 export const RequestRawEdit = tool({
   description:
-    "Perform a precise find-and-replace edit on the raw HTTP request text. Use this for surgical modifications that other tools can't handle - editing specific parts of headers, modifying request line components, or making changes that span multiple parts of the request. The oldText must match exactly one location in the request (including whitespace, line endings, and case). If oldText matches zero times or more than once, the operation fails with an error. The newText supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Line endings are normalized to CRLF. For simpler modifications, prefer the specific tools (RequestHeaderSet, RequestBodySet, etc.) as they're less error-prone.",
+    "Edit the current raw HTTP request by replacing exact text. Use this for any change: method, path, query parameters, headers, cookies, or part of the body. To add a header, replace an existing header line with itself plus the new line; to remove something, replace it with an empty string. oldText must match exactly one location (including whitespace and case); include surrounding text to make it unique. Values are written as-is, so URL-encode query and path values yourself. Line endings are normalized to CRLF. newText supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. Use RequestBodySet to replace the whole body and RequestRawSet to rewrite the whole request.",
   inputSchema,
   outputSchema,
   execute: async (

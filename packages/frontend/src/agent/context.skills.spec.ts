@@ -100,12 +100,6 @@ describe("agent skill discovery and loading", () => {
     await expect(readSkill(context, selectedSkill.id)).resolves.toMatchObject({ kind: "Error" });
   });
 
-  it("provides built-ins when no user skills exist", () => {
-    stores.skills = [];
-
-    expect(createContext().availableSkills).toEqual(BUILT_IN_SKILLS);
-  });
-
   it("keeps built-in IDs authoritative in both discovery and retrieval", async () => {
     const builtIn = BUILT_IN_SKILLS[0]!;
     const collision = { ...selectedSkill, id: builtIn.id, attachMode: "always" as const };

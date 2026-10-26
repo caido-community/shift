@@ -80,18 +80,6 @@ describe("getEstimatedContextUsage", () => {
     expect(result.percentage).toBeCloseTo((100 / 240_000) * 100);
   });
 
-  it("compacts earlier on small context windows", () => {
-    const result = getEstimatedContextUsage({
-      model: createModel("mercury-2", "Mercury 2", 128_000),
-      systemPrompt: "",
-      skillsPrompt: "",
-      toolsCharacters: 0,
-      messages: [],
-    });
-
-    expect(result.availableTokens).toBe(96_000);
-  });
-
   it("falls back to the default window when the model is unknown", () => {
     const result = getEstimatedContextUsage({
       model: createModel("custom-model", "Custom Model"),

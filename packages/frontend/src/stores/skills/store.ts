@@ -33,7 +33,6 @@ export const useSkillsStore = defineStore("skills", () => {
   async function setState(result: Result<SkillsState>): Promise<Result<void>> {
     if (result.kind === "Error") return result;
     state.value = result.value;
-    // Resolved custom agents embed copies of their skills.
     await useCustomAgentsStore().initialize();
     return Result.ok(undefined);
   }

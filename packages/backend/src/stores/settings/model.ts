@@ -27,7 +27,6 @@ export function parseStoredSettings(loaded: unknown): SettingsModel | undefined 
   settings.renaming = { ...defaults.renaming, ...settings.renaming };
   settings.featureFlags = { ...defaults.featureFlags, ...settings.featureFlags };
 
-  // shortcut: 100 can never be kept, it is raised on every load; add a settings version if that matters.
   if (settings.maxIterations === LEGACY_DEFAULT_MAX_ITERATIONS) {
     settings.maxIterations = DEFAULT_MAX_ITERATIONS;
   }

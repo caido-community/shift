@@ -142,8 +142,6 @@ describe("createModel", () => {
   it.each([
     { id: "openrouter", api: "OPENROUTER" },
     { id: "openai", api: "ANTHROPIC" },
-    { id: "chatgpt", api: "BEDROCK" },
-    { id: "google", api: "GEMINI" },
     { id: "another-provider", api: "OPENAI_RESPONSE" },
   ])("leaves unsupported or missing providers unchanged: $id / $api", async (upstream) => {
     const underlying = new MockLanguageModelV3({

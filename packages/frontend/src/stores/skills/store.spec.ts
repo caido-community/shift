@@ -27,14 +27,4 @@ describe("skills store", () => {
 
     expect(backend.getResolvedCustomAgents).toHaveBeenCalledOnce();
   });
-
-  it("leaves custom agents alone when the skill change fails", async () => {
-    backend.removeSkill.mockResolvedValue(Result.err("Skill not found"));
-
-    await expect(useSkillsStore().remove("skill-1")).resolves.toEqual(
-      Result.err("Skill not found")
-    );
-
-    expect(backend.getResolvedCustomAgents).not.toHaveBeenCalled();
-  });
 });

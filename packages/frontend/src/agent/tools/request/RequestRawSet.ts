@@ -42,7 +42,7 @@ export const display = {
 const MAX_LENGTH = 2000;
 export const RequestRawSet = tool({
   description:
-    "Replace the entire raw HTTP request with new content. Use this when you need to completely rewrite the request or paste in a request from another source. The raw parameter should contain the complete HTTP request including the request line (e.g., 'GET /path HTTP/1.1'), headers, and body. Line endings are normalized to CRLF as required by HTTP. Supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. For partial modifications, prefer the specific tools (RequestHeaderSet, RequestBodySet, RequestPathSet, etc.) as they preserve the rest of the request structure.",
+    "Replace the entire raw HTTP request with new content. Use this when you need to completely rewrite the request or paste in a request from another source. The raw parameter should contain the complete HTTP request including the request line (e.g., 'GET /path HTTP/1.1'), headers, and body. Line endings are normalized to CRLF as required by HTTP. Supports placeholders like §§§Env§EnvironmentName§Variable_Name§§§ and §§§Blob§blobId§§§. For partial changes, use RequestRawEdit.",
   inputSchema,
   outputSchema,
   execute: async ({ raw }, { experimental_context, toolCallId }): Promise<RequestRawSetOutput> => {

@@ -30,7 +30,6 @@ export function markUnfinishedMessages(
   return didChange ? result : messages;
 }
 
-// Reasoning only replays to the model that produced it; other providers reject it.
 export function stripReasoningParts(
   messages: ShiftMessage[],
   keep: (message: ShiftMessage) => boolean = () => false
@@ -77,7 +76,6 @@ const LEGACY_TOOL_STATES: Record<string, string> = {
   error: "output-error",
 };
 
-// convertToModelMessages drops pre-v5 states as incomplete.
 export function normalizeLegacyToolStates(messages: ShiftMessage[]): ShiftMessage[] {
   let didChange = false;
 

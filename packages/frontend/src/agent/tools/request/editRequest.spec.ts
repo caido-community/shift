@@ -13,17 +13,6 @@ const REQUEST = "GET /?q=1 HTTP/1.1\r\nHost: a.test\r\nCookie: c=1\r\nX-H: 1\r\n
 
 const edits = {
   RequestBodySet: { body: "x" },
-  RequestCookieAdd: { name: "d", value: "2" },
-  RequestCookieRemove: { name: "c" },
-  RequestCookieSet: { name: "c", value: "2" },
-  RequestHeaderAdd: { name: "X-A", value: "1" },
-  RequestHeaderRemove: { name: "X-H" },
-  RequestHeaderSet: { name: "X-H", value: "2" },
-  RequestMethodSet: { method: "POST" },
-  RequestPathSet: { path: "/x" },
-  RequestQueryAdd: { key: "r", value: "2" },
-  RequestQueryRemove: { key: "q" },
-  RequestQuerySet: { key: "q", value: "2" },
   RequestRawEdit: { oldText: "a.test", newText: "b.test" },
   RequestRawSet: { raw: "GET /x HTTP/1.1\r\nHost: a.test\r\n\r\n" },
 };
@@ -77,37 +66,36 @@ describe("request edit tools", () => {
     const { run, write, current } = setup();
 
     await Promise.all([
-      run("RequestHeaderAdd", { name: "X-A", value: "1" }, "call-1"),
-      run("RequestHeaderAdd", { name: "X-B", value: "2" }, "call-2"),
+      run("RequestRawEdit", { oldText: "a.test", newText: "b.test" }, "call-1"),
+      run("RequestRawEdit", { oldText: "X-H: 1", newText: "X-H: 2" }, "call-2"),
     ]);
 
     const [first, second] = write.mock.calls.map(([part]) => part.data);
     expect(first).toEqual({ toolCallId: "call-1", before: REQUEST, after: second.before });
-    expect(first.after).toContain("X-A: 1");
-    expect(first.after).not.toContain("X-B: 2");
+    expect(first.after).toContain("Host: b.test");
+    expect(first.after).not.toContain("X-H: 2");
     expect(second).toEqual({ toolCallId: "call-2", before: first.after, after: current() });
-    expect(second.after).toContain("X-B: 2");
+    expect(second.after).toContain("X-H: 2");
   });
 
-  it("rejects forge edits when no request is loaded", async () => {
+  it("rejects body edits when no request is loaded", async () => {
     const { run, write } = setup("");
 
-    expect(await run("RequestHeaderSet", { name: "X-H", value: "2" }, "call-1")).toEqual({
+    expect(await run("RequestBodySet", { body: "x" }, "call-1")).toEqual({
       kind: "Error",
       error: { message: "No HTTP request loaded", detail: undefined },
     });
     expect(write).not.toHaveBeenCalled();
   });
 
-  it("keeps both changes of two parallel raw edits", async () => {
+  it.each([
+    ["header add", "X-H: 1\n", "X-H: 1\nX-A: 2\n", "X-H: 1\r\nX-A: 2\r\n\r\n"],
+    ["header remove", "X-H: 1\n", "", "Cookie: c=1\r\n\r\n"],
+  ])("edits the %s with a raw edit", async (_, oldText, newText, expected) => {
     const { run, current } = setup();
 
-    await Promise.all([
-      run("RequestRawEdit", { oldText: "a.test", newText: "b.test" }, "call-1"),
-      run("RequestRawEdit", { oldText: "X-H: 1", newText: "X-H: 2" }, "call-2"),
-    ]);
+    await run("RequestRawEdit", { oldText, newText }, "call-1");
 
-    expect(current()).toContain("Host: b.test");
-    expect(current()).toContain("X-H: 2");
+    expect(current()).toContain(expected);
   });
 });

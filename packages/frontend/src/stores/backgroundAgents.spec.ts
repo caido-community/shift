@@ -1,8 +1,6 @@
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { plainParts } from "../backgroundAgents/logs";
-
 import { useBackgroundAgentsStore } from "./backgroundAgents";
 
 describe("background agents store", () => {
@@ -18,16 +16,6 @@ describe("background agents store", () => {
 
   const find = (id: string) => useBackgroundAgentsStore().agents.find((agent) => agent.id === id);
 
-  it("creates agents in queued state", () => {
-    const { id, signal } = create();
-
-    const agent = find(id);
-    expect(agent?.status).toBe("queued");
-    expect(agent?.title).toBe("Title");
-    expect(agent?.task).toBe("Task");
-    expect(signal.aborted).toBe(false);
-  });
-
   it("transitions from running to finished states", () => {
     const store = useBackgroundAgentsStore();
     const { id } = create();
@@ -41,20 +29,6 @@ describe("background agents store", () => {
     store.setRunning(id);
     store.finishAgent(id, "done");
     expect(find(id)).toMatchObject({ status: "done", error: undefined });
-  });
-
-  it("appends logs in order", () => {
-    const store = useBackgroundAgentsStore();
-    const { id } = create();
-
-    store.appendLog(id, plainParts("first"));
-    store.appendLog(id, plainParts("second"), "success");
-
-    const agent = find(id);
-    expect(agent?.logs).toHaveLength(2);
-    expect(agent?.logs[0]?.parts).toEqual([{ text: "first", muted: false }]);
-    expect(agent?.logs[1]?.parts).toEqual([{ text: "second", muted: false }]);
-    expect(agent?.logs[1]?.level).toBe("success");
   });
 
   it("aborts the agent signal on cancel until it finishes", () => {

@@ -18,7 +18,6 @@ export const mountShiftApp = (
   { props, primeVue, style }: MountOptions = {}
 ): (() => void) => {
   const container = document.createElement("div");
-  // Plugin CSS is scoped to #plugin--shift.
   container.id = "plugin--shift";
   Object.assign(container.style, style);
   document.body.appendChild(container);

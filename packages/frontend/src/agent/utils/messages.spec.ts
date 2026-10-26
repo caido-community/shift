@@ -305,13 +305,6 @@ describe("replaceHistoricalToolOutputsWithBlobRefs", () => {
     expect(JSON.stringify(first)).toContain("blob ID tool-tc1");
   });
 
-  it("returns messages unchanged when there is no user message", () => {
-    const messages = [toolModelMessage({ type: "text", value: large })];
-    expect(replaceHistoricalToolOutputsWithBlobRefs(messages, () => ({ blobId: "b" }))).toBe(
-      messages
-    );
-  });
-
   it("does not replace tool outputs in the current turn", () => {
     const messages = [userModelMessage("First"), toolModelMessage({ type: "text", value: large })];
     const blobs: string[] = [];

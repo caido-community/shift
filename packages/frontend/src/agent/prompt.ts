@@ -37,8 +37,9 @@ ContextRead returns metadata and previews. Retrieve exact content with RequestRa
 </runtime_context_discovery>
 
 <request_modification>
-- Use scoped request tools for individual changes. RequestPathSet accepts a path without a query; use RequestQueryAdd for repeated parameters and RequestQuerySet to replace a value.
-- Read the exact current text with RequestRangeRead before precise raw edits.
+- Use RequestRawEdit for individual changes to the method, path, query parameters, headers, cookies, or body. oldText must match exactly one location, including whitespace and case; include surrounding text to make it unique. Values are written as-is, so URL-encode path and query values yourself.
+- ContextRead does not include the raw request. Read the exact current text with RequestRangeRead before using RequestRawEdit to obtain oldText; read additional ranges when needed.
+- Use RequestBodySet to replace the whole body and RequestRawSet to replace the whole request.
 - Request edits, target changes, and replay navigation share mutable state. Perform them sequentially. Run RequestSend on its own and wait for completion before any other tool call.
 - To compare values, edit, send, inspect the response, then edit again. Multiple edits to the same element before a send overwrite each other.
 - Independent reads can run in parallel when none depends on another's result or on changing replay state.

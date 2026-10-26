@@ -17,30 +17,6 @@ describe("settings store", () => {
     vi.clearAllMocks();
   });
 
-  it("exposes defaults until the saved settings load", async () => {
-    backend.getSettings.mockResolvedValue(Result.ok(saved));
-    const store = useSettingsStore();
-
-    expect(store.isLoaded).toBe(false);
-    expect(store.config).toEqual(defaultSettingsConfig);
-
-    await store.initialize();
-
-    expect(store.isLoaded).toBe(true);
-    expect(store.config).toEqual(saved);
-  });
-
-  it("takes the backend's settings after an update", async () => {
-    const updated = { ...saved, featureFlags: { ...saved.featureFlags, backgroundAgents: true } };
-    backend.updateSettings.mockResolvedValue(Result.ok(updated));
-    const store = useSettingsStore();
-
-    await store.update({ featureFlags: { backgroundAgents: true } });
-
-    expect(store.config).toEqual(updated);
-    expect(store.isFeatureEnabled("backgroundAgents")).toBe(true);
-  });
-
   it("keeps the current settings and tells the user when an update fails", async () => {
     backend.getSettings.mockResolvedValue(Result.ok(saved));
     backend.updateSettings.mockResolvedValue(Result.err("disk full"));

@@ -64,7 +64,6 @@ type CreateModelOptions = {
   cacheKey?: string;
 };
 
-// Without it Anthropic caps output at 8192 tokens, thinking included.
 const ANTHROPIC_MAX_OUTPUT_TOKENS = 128_000;
 
 export type ReasoningEffort = ModelReasoningEffort;
@@ -181,7 +180,6 @@ export function createModel(
     openai.service_tier = "priority";
   }
   if (supportsDaybreak(sdk, model)) {
-    // Send "standard" when off: if omitted, approved orgs get Daybreak anyway.
     openai.access_programs = { cyber: daybreak ? "daybreak_blue" : "standard" };
   }
   if (cacheKey !== undefined && isOpenAIProvider(sdk, model.provider)) {
@@ -194,7 +192,6 @@ export function createModel(
     providerOptions.openai = openai;
   }
   if (kind === "ANTHROPIC") {
-    // Caido drops per-message cache breakpoints, so use Anthropic's automatic caching.
     providerOptions.anthropic = { cache_control: { type: "ephemeral" } };
   }
 

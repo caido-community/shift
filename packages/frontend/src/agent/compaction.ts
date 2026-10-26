@@ -121,8 +121,6 @@ type SummarizeOptions = {
   abortSignal: AbortSignal | undefined;
 };
 
-// Same system and tools as the agent so the request reuses its prompt cache.
-// Streamed because Caido caps non-streaming completions at 5 minutes.
 async function summarize(options: SummarizeOptions): Promise<string> {
   const result = streamText({
     ...options,
@@ -207,7 +205,6 @@ export function createCompactor<TOOLS extends ToolSet>(options: CreateCompactorO
 
   const onStepFinish = ({ usage, content }: StepResult<TOOLS>) => {
     const inputTokens = usage.inputTokens ?? 0;
-    // Older Caido versions report 0 input tokens for streamed steps.
     if (inputTokens > 0) {
       const toolOutputs = content.filter(
         (part) => part.type === "tool-result" || part.type === "tool-error"

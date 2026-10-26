@@ -193,7 +193,6 @@ const displays: Record<string, ToolDisplayFn> = {
     { text: truncate(str(input.title), 40), muted: true },
   ],
 
-  // These tools return an empty success message.
   uiToast: () => plainParts("Showed toast"),
   hostedFileCreate: () => plainParts("Created hosted file"),
   hostedFileCreateAdvanced: () => plainParts("Created hosted file"),

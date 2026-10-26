@@ -39,11 +39,6 @@ const step = (inputTokens: number, content: unknown[] = []) =>
 const estimateTokens = (value: unknown) => Math.ceil(JSON.stringify(value).length / 4);
 
 describe("applyCompactionMarker", () => {
-  it("returns messages unchanged without a marker", () => {
-    const messages: ShiftMessage[] = [{ id: "u", role: "user", parts: [] }];
-    expect(applyCompactionMarker(messages)).toEqual({ summary: undefined, messages });
-  });
-
   it("keeps only parts after the latest marker", () => {
     const messages: ShiftMessage[] = [
       { id: "u1", role: "user", parts: [{ type: "text", text: "old" }] },

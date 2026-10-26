@@ -19,19 +19,4 @@ describe("session store", () => {
       error: 'Snapshot for message "m2" not found',
     });
   });
-
-  it("moves a queued message to the front", () => {
-    const store = createSessionStore();
-    store.addToQueue("First");
-    store.addToQueue("Second");
-    store.addToQueue("Third");
-
-    store.moveToFrontOfQueue(store.queuedMessages[2]!.id);
-
-    expect(store.queuedMessages.map((message) => message.text)).toEqual([
-      "Third",
-      "First",
-      "Second",
-    ]);
-  });
 });

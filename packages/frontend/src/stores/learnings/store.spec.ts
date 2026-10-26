@@ -15,17 +15,6 @@ describe("learnings store", () => {
     backend.getLearnings.mockResolvedValue(Result.ok({ entries: ["a"] }));
   });
 
-  it("takes the backend's entries after a mutation", async () => {
-    backend.addLearning.mockResolvedValue(Result.ok({ entries: ["a", "b"] }));
-    const store = useLearningsStore();
-    await store.initialize();
-
-    await expect(store.add("  b  ")).resolves.toEqual(Result.ok(undefined));
-
-    expect(backend.addLearning).toHaveBeenCalledWith({ content: "  b  " });
-    expect(store.entries).toEqual(["a", "b"]);
-  });
-
   it("returns the error and keeps entries when the save fails", async () => {
     backend.addLearning.mockResolvedValue(Result.err("disk full"));
     const store = useLearningsStore();

@@ -15,17 +15,6 @@ import { display as payloadBlobRangeReadDisplay } from "@/agent/tools/payload/Pa
 import { display as replayConnectionSetDisplay } from "@/agent/tools/replay/ReplayConnectionSet";
 import { display as replayEntryNavigateDisplay } from "@/agent/tools/replay/ReplayEntryNavigate";
 import { display as requestBodySetDisplay } from "@/agent/tools/request/RequestBodySet";
-import { display as requestCookieAddDisplay } from "@/agent/tools/request/RequestCookieAdd";
-import { display as requestCookieRemoveDisplay } from "@/agent/tools/request/RequestCookieRemove";
-import { display as requestCookieSetDisplay } from "@/agent/tools/request/RequestCookieSet";
-import { display as requestHeaderAddDisplay } from "@/agent/tools/request/RequestHeaderAdd";
-import { display as requestHeaderRemoveDisplay } from "@/agent/tools/request/RequestHeaderRemove";
-import { display as requestHeaderSetDisplay } from "@/agent/tools/request/RequestHeaderSet";
-import { display as requestMethodSetDisplay } from "@/agent/tools/request/RequestMethodSet";
-import { display as requestPathSetDisplay } from "@/agent/tools/request/RequestPathSet";
-import { display as requestQueryAddDisplay } from "@/agent/tools/request/RequestQueryAdd";
-import { display as requestQueryRemoveDisplay } from "@/agent/tools/request/RequestQueryRemove";
-import { display as requestQuerySetDisplay } from "@/agent/tools/request/RequestQuerySet";
 import { display as requestRangeReadDisplay } from "@/agent/tools/request/RequestRangeRead";
 import { display as requestRawEditDisplay } from "@/agent/tools/request/RequestRawEdit";
 import { display as requestRawSetDisplay } from "@/agent/tools/request/RequestRawSet";
@@ -47,17 +36,6 @@ const configs = {
   PayloadBlobCreate: payloadBlobCreateDisplay,
   PayloadBlobRangeRead: payloadBlobRangeReadDisplay,
   RequestBodySet: requestBodySetDisplay,
-  RequestCookieAdd: requestCookieAddDisplay,
-  RequestCookieRemove: requestCookieRemoveDisplay,
-  RequestCookieSet: requestCookieSetDisplay,
-  RequestHeaderAdd: requestHeaderAddDisplay,
-  RequestHeaderRemove: requestHeaderRemoveDisplay,
-  RequestHeaderSet: requestHeaderSetDisplay,
-  RequestMethodSet: requestMethodSetDisplay,
-  RequestPathSet: requestPathSetDisplay,
-  RequestQueryAdd: requestQueryAddDisplay,
-  RequestQueryRemove: requestQueryRemoveDisplay,
-  RequestQuerySet: requestQuerySetDisplay,
   RequestRangeRead: requestRangeReadDisplay,
   RequestRawEdit: requestRawEditDisplay,
   RequestRawSet: requestRawSetDisplay,
