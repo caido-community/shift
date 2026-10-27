@@ -11,7 +11,7 @@ import { isPresent, type UndefinedOrNull } from "./optional";
 
 import { type FrontendSDK } from "@/types";
 
-export const decodeBlob = (encoded: string): string => {
+const decodeBlob = (encoded: string): string => {
   if (encoded === "") {
     return "";
   }
@@ -165,6 +165,7 @@ const normalizeReplayEntryHttp = (entry: ReplayEntryHttpInput): ReplayEntryHttp 
 
   return {
     ...entry,
+    raw: decodeBlob(entry.raw),
     connection: {
       ...entry.connection,
       SNI: typeof entry.connection.SNI === "string" ? entry.connection.SNI : undefined,
@@ -428,7 +429,7 @@ export async function setReplaySessionConnection(
   let editorDoc = readOpenRequestEditorDoc(sdk, sessionId);
   while (
     editorDoc !== undefined &&
-    editorDoc !== (entryResult.value.draft ?? entryResult.value).raw &&
+    editorDoc !== decodeBlob((entryResult.value.draft ?? entryResult.value).raw) &&
     Date.now() < deadline
   ) {
     await new Promise((resolve) => setTimeout(resolve, 250));
@@ -447,7 +448,7 @@ export async function setReplaySessionConnection(
         id: entry.id,
         input: {
           http: {
-            raw: stored.raw,
+            raw: decodeBlob(stored.raw),
             connection,
             settings: { placeholders: stored.settings.placeholders.map(toPlaceholderInput) },
             editorState: entry.draft?.editorState ?? "",

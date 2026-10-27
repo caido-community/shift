@@ -9,7 +9,6 @@ describe("setReplaySessionConnection", () => {
     const updateReplayEntryDraft = vi.fn().mockResolvedValue({});
     const showEntry = vi.fn();
     const sdk = {
-      runtime: { version: "0.57.0" },
       replay: { getCurrentSession: () => ({ id: "other-session" }), showEntry },
       graphql: {
         updateReplayEntryDraft,
@@ -18,11 +17,11 @@ describe("setReplaySessionConnection", () => {
             activeEntry: {
               __typename: "ReplayEntryHttp",
               id: "entry-1",
-              raw: "GET / HTTP/1.1\r\n\r\n",
+              raw: btoa("GET / HTTP/1.1\r\n\r\n"),
               connection: { host: "old.test", port: 80, isTLS: false },
               settings: { placeholders: [] },
               draft: {
-                raw: "GET /draft HTTP/1.1\r\n\r\n",
+                raw: btoa("GET /draft HTTP/1.1\r\n\r\n"),
                 editorState: "{}",
                 connection: { host: "old.test", port: 80, isTLS: false },
                 settings: {
