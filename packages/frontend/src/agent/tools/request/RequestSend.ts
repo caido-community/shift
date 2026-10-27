@@ -10,7 +10,6 @@ import {
   getReplaySession,
   setActiveEntryDraftRaw,
   startReplayTaskDirect,
-  usesReplayEntryInterface,
   writeToRequestEditor,
 } from "@/utils/caido";
 import type { UndefinedOrNull } from "@/utils/optional";
@@ -31,19 +30,6 @@ const outputSchema = ToolResult.schema(valueSchema);
 type RequestSendInput = z.infer<typeof inputSchema>;
 type RequestSendValue = z.infer<typeof valueSchema>;
 type RequestSendOutput = ToolResultType<RequestSendValue>;
-
-type LegacySendRequestOptions = {
-  background?: boolean;
-  connectionInfo: {
-    host: string;
-    isTLS: boolean;
-    port: number;
-    SNI?: string;
-  };
-  raw: string;
-};
-
-type LegacySendRequest = (sessionId: string, options: LegacySendRequestOptions) => Promise<void>;
 
 type ActiveEntryIds = { entryId: string | undefined; responseId: string | undefined };
 
@@ -177,45 +163,27 @@ export const RequestSend = tool({
     };
 
     try {
-      if (usesReplayEntryInterface(sdk)) {
-        const currentSession = sdk.replay.getCurrentSession();
-        const onAgentTab = location.hash === "#/replay" && currentSession?.id === replaySession.id;
+      const currentSession = sdk.replay.getCurrentSession();
+      const onAgentTab = location.hash === "#/replay" && currentSession?.id === replaySession.id;
 
-        if (onAgentTab) {
-          writeToRequestEditor(context.httpRequest);
-          await sdk.replay.sendRequest(replaySession.id, {
-            background: false,
-          });
-        } else {
-          const draftSync = await setActiveEntryDraftRaw(sdk, replaySession, context.httpRequest);
-          if (draftSync.kind === "Error") {
-            return ToolResult.err(
-              "Failed to sync request into the session draft before sending",
-              draftSync.error
-            );
-          }
-
-          const taskResult = await startReplayTaskDirect(sdk, replaySession.id);
-          if (taskResult.kind === "Error") {
-            return ToolResult.err("Failed to start replay task", taskResult.error);
-          }
-        }
-      } else {
-        if (replaySession.request.host === "" || replaySession.request.port === 0) {
-          return ToolResult.err("No active replay entry to send");
-        }
-
-        const sendRequest = sdk.replay.sendRequest as unknown as LegacySendRequest;
-        await sendRequest(replaySession.id, {
+      if (onAgentTab) {
+        writeToRequestEditor(context.httpRequest);
+        await sdk.replay.sendRequest(replaySession.id, {
           background: false,
-          connectionInfo: {
-            host: replaySession.request.host,
-            isTLS: replaySession.request.isTLS,
-            port: replaySession.request.port,
-            SNI: replaySession.request.SNI || undefined,
-          },
-          raw: context.httpRequest,
         });
+      } else {
+        const draftSync = await setActiveEntryDraftRaw(sdk, replaySession, context.httpRequest);
+        if (draftSync.kind === "Error") {
+          return ToolResult.err(
+            "Failed to sync request into the session draft before sending",
+            draftSync.error
+          );
+        }
+
+        const taskResult = await startReplayTaskDirect(sdk, replaySession.id);
+        if (taskResult.kind === "Error") {
+          return ToolResult.err("Failed to start replay task", taskResult.error);
+        }
       }
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Unknown error occurred";

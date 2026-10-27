@@ -24,7 +24,7 @@ export const findingCreateTool = tool({
   outputSchema: ToolResult.schema(),
   execute: async ({ title, description }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
-    const result = await getCurrentRequestID(sdk);
+    const result = getCurrentRequestID(sdk);
 
     if (result.kind === "Error") {
       return ToolResult.err(`getCurrentRequestID error: ${result.error}`);

@@ -1,11 +1,9 @@
-import { type CreateReplaySessionInput } from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
 import { tool } from "ai";
 import { z } from "zod";
 
 import { ToolResult } from "@/agent/types";
 import { normalizeRawHttpRequest } from "@/agent/utils/http";
 import { type FloatToolContext } from "@/float/types";
-import { usesReplayEntryInterface } from "@/utils/caido";
 
 const inputSchema = z.object({
   rawRequest: z.string().describe("Raw HTTP request source (non-empty)"),
@@ -24,44 +22,16 @@ export const replaySessionCreateTool = tool({
   outputSchema: ToolResult.schema(),
   execute: async ({ rawRequest, host, port, isTls, sessionName }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
-    const requestSource = {
-      raw: {
-        raw: normalizeRawHttpRequest(rawRequest),
-        connectionInfo: {
-          host,
-          port,
-          isTLS: isTls,
-        },
-      },
-    };
-    const input = (
-      usesReplayEntryInterface(sdk)
-        ? {
-            kind: "HTTP",
-            requestSource,
-          }
-        : {
-            requestSource,
-          }
-    ) as CreateReplaySessionInput;
-
-    const result = await sdk.graphql.createReplaySession({
-      input,
+    const session = await sdk.replay.createSession({
+      type: "Raw",
+      raw: normalizeRawHttpRequest(rawRequest),
+      connectionInfo: { host, port, isTLS: isTls },
     });
 
-    const sessionId = result.createReplaySession.session?.id;
-
-    if (sessionId === undefined) {
-      return ToolResult.err("Failed to create replay session");
-    }
-
-    sdk.replay.openTab(sessionId);
+    sdk.replay.openTab(session.id);
 
     if (sessionName !== null) {
-      await sdk.graphql.renameReplaySession({
-        id: sessionId,
-        name: sessionName,
-      });
+      await sdk.replay.renameSession(session.id, sessionName);
     }
 
     return ToolResult.ok({ message: "Replay session created successfully" });

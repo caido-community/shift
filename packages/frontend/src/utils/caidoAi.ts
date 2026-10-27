@@ -1,28 +1,7 @@
-import { type Model, type ModelReasoningEffort } from "shared";
+import { type AIUpstreamModel, type AIUpstreamProvider } from "@caido/sdk-frontend";
+import { type Model } from "shared";
 
 import type { FrontendSDK } from "../types";
-
-type UpstreamProvider = {
-  id: string;
-  api: string;
-  kind: string;
-  auth: "API_KEY" | "OAUTH" | "AWS" | "NONE";
-};
-
-type UpstreamModel = {
-  id: string;
-  providerId: string;
-  displayName: string;
-  support: { reasoning: "SUPPORTED" | "UNSUPPORTED" | "UNKNOWN" };
-  reasoningEfforts: ModelReasoningEffort[];
-  contextWindow?: number;
-  outputTokenLimit?: number;
-};
-
-type ModelRegistry = {
-  getUpstreamModels?: () => UpstreamModel[];
-  onUpstreamModelsChange?: (callback: () => void) => void;
-};
 
 type UpstreamProviderStatus = {
   id: string;
@@ -41,7 +20,7 @@ const PROVIDER_PRESENTATION: Record<string, { label: string; icon: string }> = {
   XAI: { label: "xAI", icon: "xai" },
 };
 
-function getProviderPresentation(provider: UpstreamProvider) {
+function getProviderPresentation(provider: AIUpstreamProvider) {
   if (provider.kind === "XAI" && provider.auth === "OAUTH") {
     return { label: "Grok", icon: "xai" };
   }
@@ -49,9 +28,7 @@ function getProviderPresentation(provider: UpstreamProvider) {
 }
 
 export function listUpstreamProviders(sdk: FrontendSDK): UpstreamProviderStatus[] {
-  const providers = sdk.ai.getUpstreamProviders() as unknown as UpstreamProvider[];
-
-  const statuses = providers.map((provider) => ({
+  const statuses = sdk.ai.getUpstreamProviders().map((provider) => ({
     id: provider.id,
     isConfigured: true,
     ...getProviderPresentation(provider),
@@ -70,8 +47,7 @@ export function listUpstreamProviders(sdk: FrontendSDK): UpstreamProviderStatus[
 }
 
 function findUpstreamProvider(sdk: FrontendSDK, providerId: string) {
-  const providers = sdk.ai.getUpstreamProviders() as unknown as UpstreamProvider[];
-  return providers.find((candidate) => candidate.id === providerId);
+  return sdk.ai.getUpstreamProviders().find((candidate) => candidate.id === providerId);
 }
 
 export function getProviderKind(sdk: FrontendSDK, providerId: string): string | undefined {
@@ -108,7 +84,7 @@ export function supportsFastMode(sdk: FrontendSDK, providerId: string): boolean 
   );
 }
 
-const toModel = (model: UpstreamModel): Model => ({
+const toModel = (model: AIUpstreamModel): Model => ({
   id: model.id,
   name: model.displayName,
   provider: model.providerId,
@@ -121,9 +97,9 @@ const toModel = (model: UpstreamModel): Model => ({
 });
 
 export function listCaidoModels(sdk: FrontendSDK): Model[] {
-  return (sdk.ai as ModelRegistry).getUpstreamModels?.().map(toModel) ?? [];
+  return sdk.ai.getUpstreamModels().map(toModel);
 }
 
 export function onCaidoModelsChange(sdk: FrontendSDK, callback: () => void) {
-  (sdk.ai as ModelRegistry).onUpstreamModelsChange?.(callback);
+  sdk.ai.onUpstreamModelsChange(callback);
 }

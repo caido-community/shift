@@ -1,10 +1,8 @@
 import {
   type JSONObject,
-  type LanguageModelV3,
   type LanguageModelV3Middleware,
   type SharedV3ProviderOptions,
 } from "@ai-sdk/provider";
-import { type AILanguageModelSettings } from "@caido/sdk-frontend";
 import { defaultSettingsMiddleware, wrapLanguageModel } from "ai";
 import {
   createModelKey,
@@ -90,27 +88,6 @@ const wellFormedPromptMiddleware: LanguageModelV3Middleware = {
     Promise.resolve({ ...params, prompt: toWellFormed(params.prompt) }),
 };
 
-type ExtendedAILanguageModelSettings = Omit<
-  AILanguageModelSettings,
-  "reasoning" | "capabilities"
-> & {
-  // Omitted rather than disabled: models that always reason reject `disabled`.
-  reasoning?: {
-    kind: "effort";
-    effort: ReasoningEffort;
-    output: "include";
-  };
-};
-
-type ExtendedAIProvider = (
-  modelId: string,
-  settings?: ExtendedAILanguageModelSettings
-) => LanguageModelV3;
-
-type ExtendedAISDK = {
-  createProvider: (options: { notifyErrors: boolean }) => ExtendedAIProvider;
-};
-
 export function getReasoningEfforts(model: Model): ReasoningEffort[] {
   if (!model.capabilities.reasoning) return [];
   const declared = model.reasoningEfforts;
@@ -152,7 +129,7 @@ export function createModel(
 
   const isReasoningModel = reasoning && model.capabilities.reasoning;
 
-  const provider = (sdk.ai as unknown as ExtendedAISDK).createProvider({ notifyErrors: false });
+  const provider = sdk.ai.createProvider({ notifyErrors: false });
 
   const modelId =
     model.provider === ModelProvider.OpenRouter && openRouterPrioritizeFastProviders
