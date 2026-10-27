@@ -120,7 +120,7 @@ export type AnyReplayEntry =
   | { __typename: "ReplayEntryHttp"; request?: EntryRequest }
   | { __typename: "ReplayEntryWs"; http: { request?: EntryRequest } }
   | {
-      __typename: "ReplayEntryHttpOnePipeline";
+      __typename: "ReplayEntryHttpPipeline";
       activeHttpEntry?: { request?: EntryRequest } | UndefinedOrNull;
     };
 
@@ -130,7 +130,7 @@ export const getActiveEntryRequest = (entry: AnyReplayEntry | UndefinedOrNull) =
       return entry.request ?? undefined;
     case "ReplayEntryWs":
       return entry.http.request ?? undefined;
-    case "ReplayEntryHttpOnePipeline":
+    case "ReplayEntryHttpPipeline":
       return entry.activeHttpEntry?.request ?? undefined;
     default:
       return undefined;
@@ -178,7 +178,7 @@ const toSessionReplayEntryHttp = (entry: ReplaySessionEntry): ReplayEntryHttp | 
   switch (entry.__typename) {
     case "ReplayEntryWs":
       return normalizeReplayEntryHttp(entry.http);
-    case "ReplayEntryHttpOnePipeline":
+    case "ReplayEntryHttpPipeline":
       return isPresent(entry.activeHttpEntry)
         ? normalizeReplayEntryHttp(entry.activeHttpEntry)
         : undefined;

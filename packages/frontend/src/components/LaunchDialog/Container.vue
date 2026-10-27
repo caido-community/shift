@@ -79,8 +79,8 @@ const handleKeydown = (event: KeyboardEvent) => {
           <button
             v-for="m in AGENT_MODES"
             :key="m.value"
-            type="button"
             v-tooltip.top="m.description"
+            type="button"
             :class="[
               'flex flex-1 items-center justify-center gap-1.5 rounded text-[13px] transition-colors',
               mode === m.value
