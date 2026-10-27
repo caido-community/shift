@@ -17,7 +17,6 @@ const { sessionId, onConfirm, onCancel, initialSkillIds, initialCustomAgentId } 
 const {
   instructions,
   mode,
-  request,
   selectedModel,
   selectedCustomAgentId,
   hasAgent,
@@ -61,13 +60,6 @@ const handleKeydown = (event: KeyboardEvent) => {
   <div
     class="flex w-[520px] flex-col gap-5"
     @keydown="handleKeydown">
-    <div
-      v-if="request !== undefined"
-      class="-mt-2 flex min-w-0 items-center gap-2 font-mono text-xs text-surface-400">
-      <span class="font-bold text-green-400">{{ request.method }}</span>
-      <span class="truncate">{{ request.target }}</span>
-    </div>
-
     <div class="flex gap-3">
       <section class="flex w-[200px] shrink-0 flex-col gap-2">
         <label class="text-sm font-medium text-surface-200">Model</label>
@@ -88,7 +80,7 @@ const handleKeydown = (event: KeyboardEvent) => {
             v-for="m in AGENT_MODES"
             :key="m.value"
             type="button"
-            :title="m.description"
+            v-tooltip.top="m.description"
             :class="[
               'flex flex-1 items-center justify-center gap-1.5 rounded text-[13px] transition-colors',
               mode === m.value

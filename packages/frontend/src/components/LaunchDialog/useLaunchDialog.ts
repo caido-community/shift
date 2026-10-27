@@ -9,7 +9,6 @@ import { useModelsStore } from "@/stores/models";
 import { useSettingsStore } from "@/stores/settings";
 import { useSkillsStore } from "@/stores/skills";
 import { resolveModel } from "@/utils/ai";
-import { getReplaySession } from "@/utils/caido";
 
 export function useLaunchDialog(options: LaunchDialogProps) {
   const sdk = useSDK();
@@ -22,7 +21,6 @@ export function useLaunchDialog(options: LaunchDialogProps) {
   const mode = ref<AgentMode>("focus");
   const selectedSkillIds = ref<string[]>(options.initialSkillIds ?? []);
   const selectedCustomAgentId = ref<string | undefined>(options.initialCustomAgentId);
-  const request = ref<{ method: string; target: string } | undefined>(undefined);
 
   const initialModel = resolveModel({
     sdk,
@@ -53,13 +51,6 @@ export function useLaunchDialog(options: LaunchDialogProps) {
     sdk.navigation.goTo("/shift");
   };
 
-  getReplaySession(sdk, options.sessionId).then((result) => {
-    if (result.kind === "Error") return;
-    const [method, path] = result.value.request.raw.split("\n", 1)[0]?.split(" ") ?? [];
-    if (method === undefined || path === undefined) return;
-    request.value = { method, target: `${result.value.request.host}${path}` };
-  });
-
   const isSkillSelected = (id: string) => selectedSkillIds.value.includes(id);
 
   const toggleSkill = (id: string) => {
@@ -83,7 +74,6 @@ export function useLaunchDialog(options: LaunchDialogProps) {
   return {
     instructions,
     mode,
-    request,
     selectedModel,
     selectedCustomAgentId,
     hasAgent,
