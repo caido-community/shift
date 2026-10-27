@@ -1,9 +1,10 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { isFeatureEnabled } from "@/features";
+import { ToolResult } from "@/agent/types";
 import { spawnBackgroundAgent } from "@/float/background";
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { type FloatToolContext } from "@/float/types";
+import { useSettingsStore } from "@/stores/settings";
 
 const inputSchema = z.object({
   task: z
@@ -24,10 +25,10 @@ export const backgroundAgentSpawnTool = tool({
   description:
     "Spawn a background agent for complex multi-step work and return immediately with the background agent ID.",
   inputSchema,
-  outputSchema: ActionResult.schemaWithValue(valueSchema),
+  outputSchema: ToolResult.schema(valueSchema),
   execute: ({ task, title }, { experimental_context }) => {
-    if (!isFeatureEnabled("backgroundAgents")) {
-      return ActionResult.err(
+    if (!useSettingsStore().isFeatureEnabled("backgroundAgents")) {
+      return ToolResult.err(
         "Background agents are disabled. Enable '(Experimental) Background Agents for Shift Float' in Settings to use this feature."
       );
     }
@@ -40,7 +41,7 @@ export const backgroundAgentSpawnTool = tool({
       context,
     });
 
-    return ActionResult.okWithValue({
+    return ToolResult.ok({
       message: "Background agent started",
       agentId: backgroundAgentId,
     });

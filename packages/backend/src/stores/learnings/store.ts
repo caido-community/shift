@@ -1,67 +1,45 @@
 import type { LearningsConfig } from "shared";
 
-import { ProjectStore } from "../project-store";
+import { isRecord } from "../../utils";
+import { Store } from "../store";
 
 import { createInitialModel, type LearningsMessage, type LearningsModel } from "./model";
 import { update } from "./update";
 
-class LearningsStore extends ProjectStore<LearningsModel, LearningsMessage> {
+class LearningsStore extends Store<LearningsModel, LearningsMessage> {
   constructor() {
-    super("learnings");
+    super({ filename: "learnings", perProject: true, initialModel: createInitialModel, update });
   }
 
-  protected createInitialModel(): LearningsModel {
-    return createInitialModel();
-  }
-
-  protected update(model: LearningsModel, message: LearningsMessage): LearningsModel {
-    return update(model, message);
+  protected parse(loaded: unknown): LearningsModel | undefined {
+    if (!isRecord(loaded)) {
+      return undefined;
+    }
+    const model = { ...createInitialModel(), ...loaded };
+    const valid =
+      Array.isArray(model.entries) && model.entries.every((entry) => typeof entry === "string");
+    return valid ? model : undefined;
   }
 
   getLearnings(): LearningsConfig {
-    return this.getModel();
+    return this.model;
   }
 
-  getEntries(): string[] {
-    return this.getModel().entries;
+  addLearning(content: string): Promise<LearningsConfig> {
+    return this.commit({ type: "ADD_LEARNING", content });
   }
 
-  async addLearning(content: string): Promise<void> {
-    this.dispatch({ type: "ADD_LEARNING", content });
-    await this.persist();
-    this.notify();
+  updateLearning(index: number, content: string): Promise<LearningsConfig> {
+    return this.commit({ type: "UPDATE_LEARNING", index, content });
   }
 
-  async updateLearning(index: number, content: string): Promise<void> {
-    this.dispatch({ type: "UPDATE_LEARNING", index, content });
-    await this.persist();
-    this.notify();
+  removeLearnings(indexes: number[]): Promise<LearningsConfig> {
+    return this.commit({ type: "REMOVE_LEARNINGS", indexes });
   }
 
-  async removeLearnings(indexes: number[]): Promise<void> {
-    this.dispatch({ type: "REMOVE_LEARNINGS", indexes });
-    await this.persist();
-    this.notify();
-  }
-
-  async setLearnings(entries: string[]): Promise<void> {
-    this.dispatch({ type: "SET_LEARNINGS", entries });
-    await this.persist();
-    this.notify();
-  }
-
-  async clearLearnings(): Promise<void> {
-    this.dispatch({ type: "CLEAR_LEARNINGS" });
-    await this.persist();
-    this.notify();
+  clearLearnings(): Promise<LearningsConfig> {
+    return this.commit({ type: "CLEAR_LEARNINGS" });
   }
 }
 
-let instance: LearningsStore | undefined;
-
-export function getLearningsStore(): LearningsStore {
-  if (instance === undefined) {
-    instance = new LearningsStore();
-  }
-  return instance;
-}
+export const learningsStore = new LearningsStore();

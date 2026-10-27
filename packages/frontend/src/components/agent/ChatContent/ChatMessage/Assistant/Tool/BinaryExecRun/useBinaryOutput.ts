@@ -10,13 +10,16 @@ import { computed, type MaybeRefOrGetter, onBeforeUnmount, ref, toValue, watch }
 import { getToolMessages } from "../messages";
 import { useTool } from "../useTool";
 
-import { clearStreamedBinaryOutput, getStreamedBinaryOutput } from "@/agent/tools/binaries";
+import { getStreamedBinaryOutput } from "@/agent/tools/binaries";
 import { type MessageResult } from "@/agent/types";
+import { useDetailToggle } from "@/components/agent/useDetailToggle";
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  return `${(bytes / 1024).toFixed(1)} KB`;
-}
+export type BinaryStream = {
+  name: "stdout" | "stderr";
+  text: string;
+  truncated: boolean;
+  bytes: number;
+};
 
 export function useBinaryOutput(args: {
   executionId: MaybeRefOrGetter<string | undefined>;
@@ -32,7 +35,7 @@ export function useBinaryOutput(args: {
       messageMetadata: args.messageMetadata,
       output: args.output,
     },
-    toValue(args.errorText) ?? "Failed to execute binary"
+    () => toValue(args.errorText) ?? "Failed to execute binary"
   );
 
   const messages = computed(() => getToolMessages("BinaryExecRun"));
@@ -90,14 +93,27 @@ export function useBinaryOutput(args: {
     () => parsedOutput.value ?? streamedOutput.value
   );
 
-  const displayBinaryOutput = computed<ExecuteAgentBinaryOutput | undefined>(() => {
+  const streams = computed<BinaryStream[]>(() => {
     const out = binaryOutput.value;
-    if (out === undefined) return undefined;
-    return {
-      ...out,
-      stdout: stripAnsi(out.stdout),
-      stderr: stripAnsi(out.stderr),
-    };
+    if (out === undefined) return [];
+    const result: BinaryStream[] = [];
+    if (out.stdout.length > 0 || out.stdoutTruncated) {
+      result.push({
+        name: "stdout",
+        text: stripAnsi(out.stdout),
+        truncated: out.stdoutTruncated,
+        bytes: out.stdoutBytes,
+      });
+    }
+    if (out.stderr.length > 0 || out.stderrTruncated) {
+      result.push({
+        name: "stderr",
+        text: stripAnsi(out.stderr),
+        truncated: out.stderrTruncated,
+        bytes: out.stderrBytes,
+      });
+    }
+    return result;
   });
 
   const isRunning = computed(
@@ -138,74 +154,25 @@ export function useBinaryOutput(args: {
     clearLiveOutputDelayTimeout();
   });
 
-  watch(
-    () => ({
-      executionId: toValue(args.executionId),
-      partState: toValue(args.partState),
-      hasParsedOutput: parsedOutput.value !== undefined,
-    }),
-    ({ executionId, partState, hasParsedOutput }) => {
-      if (executionId === undefined) {
-        return;
-      }
-
-      if (hasParsedOutput || partState === "output-error") {
-        clearStreamedBinaryOutput(executionId);
-      }
-    },
-    { immediate: true }
-  );
-
-  const hasOutput = computed(() => {
-    const out = binaryOutput.value;
-    if (out === undefined) return false;
-    return out.stdout.length > 0 || out.stderr.length > 0;
-  });
-
   const showLiveOutput = computed(
-    () =>
-      isRunning.value &&
-      liveOutputDelayPassed.value &&
-      hasOutput.value &&
-      binaryOutput.value !== undefined
+    () => isRunning.value && liveOutputDelayPassed.value && streams.value.length > 0
   );
-
-  const hasStdout = computed(() => {
-    const out = binaryOutput.value;
-    if (out === undefined) return false;
-    return out.stdout.length > 0 || out.stdoutTruncated;
-  });
-
-  const hasStderr = computed(() => {
-    const out = binaryOutput.value;
-    if (out === undefined) return false;
-    return out.stderr.length > 0 || out.stderrTruncated;
-  });
 
   const isExpandable = computed(
     () => toolState.value === "success" && binaryOutput.value !== undefined
   );
 
-  const isExpanded = ref(false);
-
-  const toggle = () => {
-    isExpanded.value = !isExpanded.value;
-  };
+  const { isOpen: isExpanded, toggle } = useDetailToggle();
 
   return {
     toolState,
     errorMessage,
     streamingResult,
     successResult,
-    binaryOutput,
-    displayBinaryOutput,
+    streams,
     showLiveOutput,
-    hasOutput,
-    hasStdout,
-    hasStderr,
     isExpandable,
     isExpanded,
     toggle,
-    formatBytes,
   };
 }

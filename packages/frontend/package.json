@@ -17,7 +17,6 @@
     "dompurify": "3.3.3",
     "jsonrepair": "3.13.3",
     "markdown-it": "14.1.1",
-    "mutative": "1.3.0",
     "pinia": "3.0.4",
     "primevue": "4.1.0",
     "shared": "workspace:*",
@@ -27,8 +26,8 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "@caido/sdk-backend": "0.58.3",
-    "@caido/sdk-frontend": "0.58.3",
+    "@caido/sdk-backend": "0.59.0",
+    "@caido/sdk-frontend": "0.59.0",
     "@codemirror/view": "6.39.16",
     "vue-tsc": "3.2.5"
   }

@@ -10,14 +10,40 @@ export type ReasoningTime = {
 export type MessageState = "streaming" | "done" | "aborted" | "error";
 export type MessageMetadata = {
   state?: MessageState;
-  reasoning_times?: {
-    start: number;
-    end?: number;
-  }[];
+  stepLimitReached?: boolean;
+  reasoning_times?: ReasoningTime[];
+  usage?: {
+    inputTokens?: number;
+    cacheReadTokens?: number;
+  };
+  /** Context size in tokens as last measured by the compaction trigger. */
+  contextTokens?: number;
+  /** `provider/id` of the model that produced the message. */
+  model?: string;
 };
 export type PartState = UIToolInvocation<UITool>["state"];
 
-export type ShiftDataTypes = Record<string, never>;
+export type RequestDiffLine = {
+  op: "add" | "del";
+  line: number;
+  text: string;
+  head: boolean;
+  changedRange?: { from: number; to: number };
+};
+
+export type RequestDiff = {
+  lines: RequestDiffLine[];
+  omittedLines: number;
+};
+
+export type ShiftDataTypes = {
+  /** Marks a context compaction: everything before it reaches the model only as this summary. */
+  compaction: { summary: string };
+  /** Transient: whether a compaction summary is being generated. */
+  compacting: boolean;
+  /** Kept out of the tool output so the model never sees it. */
+  "request-diff": RequestDiff & { toolCallId: string };
+};
 
 export type ShiftMessage = UIMessage<MessageMetadata, ShiftDataTypes>;
 

@@ -1,67 +1,48 @@
 <script setup lang="ts">
+import Button from "primevue/button";
 import Card from "primevue/card";
 import Checkbox from "primevue/checkbox";
 import InputNumber from "primevue/inputnumber";
+import SelectButton from "primevue/selectbutton";
 import ToggleSwitch from "primevue/toggleswitch";
-import { DEFAULT_MAX_ITERATIONS, defaultFeatureFlags, type FeatureFlagKey } from "shared";
+import { type ChatAppearance, featureFlagEntries } from "shared";
 import { computed } from "vue";
 
-import { featureFlagEntries } from "@/features";
+import { useSDK } from "@/plugins/sdk";
 import { useSettingsStore } from "@/stores/settings";
-import { updateSettings } from "@/stores/settings/store.effects";
 
+const sdk = useSDK();
 const settingsStore = useSettingsStore();
-const { sdk, dispatch } = settingsStore;
 
 const maxIterations = computed({
-  get() {
-    return settingsStore.maxIterations ?? DEFAULT_MAX_ITERATIONS;
-  },
-  set(value: number) {
-    updateSettings(sdk, dispatch, { maxIterations: value });
-  },
+  get: () => settingsStore.config.maxIterations,
+  set: (value: number) => void settingsStore.update({ maxIterations: value }),
+});
+
+const chatAppearance = computed({
+  get: () => settingsStore.config.chatAppearance,
+  set: (value: ChatAppearance) => void settingsStore.update({ chatAppearance: value }),
 });
 
 const debugToolsEnabled = computed({
-  get() {
-    return settingsStore.debugToolsEnabled ?? false;
-  },
-  set(value: boolean) {
-    updateSettings(sdk, dispatch, { debugToolsEnabled: value });
-  },
+  get: () => settingsStore.config.debugToolsEnabled,
+  set: (value: boolean) => void settingsStore.update({ debugToolsEnabled: value }),
 });
 
 const autoCreateShiftCollection = computed({
-  get() {
-    return settingsStore.autoCreateShiftCollection ?? true;
-  },
-  set(value: boolean) {
-    updateSettings(sdk, dispatch, { autoCreateShiftCollection: value });
-  },
+  get: () => settingsStore.config.autoCreateShiftCollection,
+  set: (value: boolean) => void settingsStore.update({ autoCreateShiftCollection: value }),
 });
 
 const openRouterPrioritizeFastProviders = computed({
-  get() {
-    return settingsStore.openRouterPrioritizeFastProviders ?? false;
-  },
-  set(value: boolean) {
-    updateSettings(sdk, dispatch, { openRouterPrioritizeFastProviders: value });
-  },
+  get: () => settingsStore.config.openRouterPrioritizeFastProviders,
+  set: (value: boolean) => void settingsStore.update({ openRouterPrioritizeFastProviders: value }),
 });
 
-const experimentalFeatureFlags = featureFlagEntries.filter(
-  (flag) => flag.category === "experimental"
-);
-
-const getFeatureFlagValue = (flag: FeatureFlagKey): boolean => {
-  return settingsStore.featureFlags?.[flag] ?? defaultFeatureFlags[flag];
-};
-
-const updateFeatureFlag = (flag: FeatureFlagKey, value: boolean) => {
-  updateSettings(sdk, dispatch, {
-    featureFlags: { [flag]: value },
-  });
-};
+const chatAppearanceOptions: { label: string; value: ChatAppearance }[] = [
+  { label: "Compact", value: "compact" },
+  { label: "Expanded", value: "expanded" },
+];
 </script>
 
 <template>
@@ -73,8 +54,18 @@ const updateFeatureFlag = (flag: FeatureFlagKey, value: boolean) => {
         <div class="flex items-center justify-between">
           <div>
             <h2 class="text-base font-bold">Settings</h2>
-            <p class="text-sm text-surface-400">Configure global preferences for Shift.</p>
+            <p class="text-sm text-surface-400">
+              Configure global preferences for Shift. Providers and API keys live in Caido settings,
+              under AI.
+            </p>
           </div>
+          <Button
+            label="Set API keys"
+            icon="fas fa-key"
+            size="small"
+            severity="secondary"
+            class="shrink-0"
+            @click="sdk.navigation.goTo('/settings')" />
         </div>
       </template>
     </Card>
@@ -97,6 +88,24 @@ const updateFeatureFlag = (flag: FeatureFlagKey, value: boolean) => {
               v-model="maxIterations"
               placeholder="Enter max iterations"
               class="w-full" />
+          </div>
+
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex flex-col">
+              <label class="text-base font-medium">Chat Appearance</label>
+              <p class="text-sm text-surface-400">
+                Compact keeps request diffs and command output collapsed until you click them.
+                Expanded opens them by default.
+              </p>
+            </div>
+
+            <SelectButton
+              v-model="chatAppearance"
+              :options="chatAppearanceOptions"
+              option-label="label"
+              option-value="value"
+              :allow-empty="false"
+              class="shrink-0" />
           </div>
 
           <div class="flex items-center justify-between gap-4">
@@ -140,14 +149,16 @@ const updateFeatureFlag = (flag: FeatureFlagKey, value: boolean) => {
             </div>
 
             <div
-              v-for="flag in experimentalFeatureFlags"
+              v-for="flag in featureFlagEntries"
               :key="flag.key"
               class="flex items-start gap-3 rounded-lg border border-surface-700/60 p-3">
               <Checkbox
-                :model-value="getFeatureFlagValue(flag.key)"
+                :model-value="settingsStore.isFeatureEnabled(flag.key)"
                 binary
                 class="mt-0.5"
-                @update:model-value="updateFeatureFlag(flag.key, $event)" />
+                @update:model-value="
+                  settingsStore.update({ featureFlags: { [flag.key]: $event } })
+                " />
 
               <div class="flex flex-col">
                 <label class="text-sm font-medium">{{ flag.label }}</label>

@@ -15,15 +15,14 @@ const {
   canCancel,
   isRunning,
   statusIconClass,
+  expanded,
   toggleExpanded,
   cancelAgent,
   removeAgent,
   logTextClass,
 } = useAgentCard(() => agent);
 useAgentCardLogs(() => agent);
-const { activeHandle, cardStyle, resizeCursorClass, startResize } = useAgentCardResize(
-  () => agent.expanded
-);
+const { activeHandle, cardStyle, resizeCursorClass, startResize } = useAgentCardResize(expanded);
 </script>
 
 <template>
@@ -54,7 +53,7 @@ const { activeHandle, cardStyle, resizeCursorClass, startResize } = useAgentCard
           </span>
           <i
             class="fas fa-chevron-down text-[10px] text-surface-400 transition-transform duration-150"
-            :class="{ 'rotate-180': agent.expanded }" />
+            :class="{ 'rotate-180': expanded }" />
         </div>
       </button>
       <div class="flex items-center gap-1">
@@ -74,7 +73,7 @@ const { activeHandle, cardStyle, resizeCursorClass, startResize } = useAgentCard
 
     <Transition name="bg-agent-expand">
       <div
-        v-if="agent.expanded"
+        v-if="expanded"
         class="flex min-h-0 flex-1 flex-col gap-2">
         <div class="shrink-0 text-sm leading-5 text-surface-300 line-clamp-3">{{ agent.task }}</div>
         <div
@@ -103,7 +102,7 @@ const { activeHandle, cardStyle, resizeCursorClass, startResize } = useAgentCard
         </div>
       </div>
     </Transition>
-    <template v-if="agent.expanded">
+    <template v-if="expanded">
       <div
         class="absolute bottom-0 left-0 z-20 h-3 w-3 cursor-nesw-resize rounded-bl-md transition-colors hover:bg-secondary-500/50"
         :class="{ 'bg-secondary-500/50': activeHandle === 'bottom-left' }"

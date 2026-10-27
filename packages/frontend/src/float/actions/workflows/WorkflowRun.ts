@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { withActiveEditorView } from "@/float/utils";
 
 const inputSchema = z.object({
@@ -12,7 +13,7 @@ const inputSchema = z.object({
 export const workflowRunTool = tool({
   description: "Run a workflow with specified ID and input data",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ id, input }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
 
@@ -24,7 +25,7 @@ export const workflowRunTool = tool({
 
       const output = result.runConvertWorkflow?.output;
       if (output === undefined || output === null) {
-        return ActionResult.err("Failed to run workflow");
+        return ToolResult.err("Failed to run workflow");
       }
 
       const currentText = view.state.doc.toString();
@@ -33,7 +34,9 @@ export const workflowRunTool = tool({
 
       update(normalizedText);
 
-      return ActionResult.ok(`Convert workflow executed successfully. Output: ${output}`);
+      return ToolResult.ok({
+        message: `Convert workflow executed successfully. Output: ${output}`,
+      });
     });
   },
 });

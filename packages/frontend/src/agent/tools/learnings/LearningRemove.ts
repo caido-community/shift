@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import { useLearningsStore } from "@/stores/learnings";
-import { removeLearnings } from "@/stores/learnings/store.effects";
 import { pluralize } from "@/utils";
 
 const inputSchema = z.object({
@@ -16,8 +15,6 @@ const inputSchema = z.object({
 const valueSchema = z.object({
   removedIndexes: z.array(z.number()),
 });
-
-const outputSchema = ToolResult.schema(valueSchema);
 
 type LearningRemoveInput = z.infer<typeof inputSchema>;
 type LearningRemoveValue = z.infer<typeof valueSchema>;
@@ -49,16 +46,24 @@ export const LearningRemove = tool({
   description:
     "Delete one or more learning entries from the project's persistent memory by their zero-based index. Use this to remove outdated information (expired tokens, rotated credentials), incorrect learnings, or entries that are no longer relevant. Accepts an array of indexes to remove multiple entries at once. The indexes correspond to the positions shown in the learnings list - be careful as removing entries will shift the indexes of subsequent entries. Returns the list of indexes that were successfully removed.",
   inputSchema,
-  outputSchema,
+  outputSchema: ToolResult.schema(valueSchema),
   execute: async ({ indexes }): Promise<LearningRemoveOutput> => {
-    const { sdk, dispatch } = useLearningsStore();
-    const uniqueIndexes = [...new Set(indexes)].filter((index) => index >= 0);
+    const store = useLearningsStore();
+    const { entries } = store;
+    const uniqueIndexes = [...new Set(indexes)];
 
-    if (uniqueIndexes.length === 0) {
-      return ToolResult.err("No valid learning indexes were provided.");
+    const outOfRange = uniqueIndexes.filter((index) => index >= entries.length);
+    if (outOfRange.length > 0) {
+      return ToolResult.err(
+        `Learning ${pluralize(outOfRange.length, "index", "indexes")} ${outOfRange.join(", ")} out of range.`,
+        `Current learnings count: ${entries.length}`
+      );
     }
 
-    await removeLearnings(sdk, dispatch, { indexes: uniqueIndexes });
+    const result = await store.remove(uniqueIndexes);
+    if (result.kind === "Error") {
+      return ToolResult.err("Failed to remove learnings", result.error);
+    }
 
     return ToolResult.ok({
       message: `Removed ${uniqueIndexes.length} ${pluralize(uniqueIndexes.length, "learning")}.`,

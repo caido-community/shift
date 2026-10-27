@@ -1,9 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult } from "@/float/types";
+import { ToolResult } from "@/agent/types";
 import { useLearningsStore } from "@/stores/learnings";
-import { addLearning } from "@/stores/learnings/store.effects";
 
 const inputSchema = z.object({
   content: z
@@ -21,10 +20,12 @@ export const learningAddTool = tool({
   When possible, specify which domain/api/etc is the subject of the learning.
   `,
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ content }) => {
-    const { sdk, dispatch } = useLearningsStore();
-    await addLearning(sdk, dispatch, { content });
-    return ActionResult.ok("Learning added to project memory.");
+    const result = await useLearningsStore().add(content);
+    if (result.kind === "Error") {
+      return ToolResult.err("Failed to add learning", result.error);
+    }
+    return ToolResult.ok({ message: "Learning added to project memory." });
   },
 });

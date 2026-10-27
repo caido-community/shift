@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 
 const inputSchema = z.object({
   id: z
@@ -12,14 +13,14 @@ const inputSchema = z.object({
 export const scopeDeleteTool = tool({
   description: "Delete a scope by id",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ id }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     const deleted = await sdk.scopes.deleteScope(id);
     if (!deleted) {
-      return ActionResult.err("Failed to delete scope");
+      return ToolResult.err("Failed to delete scope");
     }
 
-    return ActionResult.ok(`Scope with ID ${id} deleted successfully`);
+    return ToolResult.ok({ message: `Scope with ID ${id} deleted successfully` });
   },
 });

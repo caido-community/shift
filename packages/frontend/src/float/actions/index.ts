@@ -1,4 +1,3 @@
-import { isFeatureEnabled } from "@/features";
 import { automateSessionCreateTool } from "@/float/actions/automate/AutomateSessionCreate";
 import { backgroundAgentSpawnTool } from "@/float/actions/background/BackgroundAgentSpawn";
 import { editorBodyReplaceTool } from "@/float/actions/editor/EditorBodyReplace";
@@ -34,6 +33,7 @@ import { learningsRemoveTool } from "@/float/actions/learnings/LearningsRemove";
 import { learningUpdateTool } from "@/float/actions/learnings/LearningUpdate";
 import { matchReplaceAddTool } from "@/float/actions/matchReplace/MatchReplaceAdd";
 import { navigateTool } from "@/float/actions/navigation/Navigate";
+import { replayConnectionSetTool } from "@/float/actions/replay/ReplayConnectionSet";
 import { replayRequestReplaceTool } from "@/float/actions/replay/ReplayRequestReplace";
 import { replaySessionCreateTool } from "@/float/actions/replay/ReplaySessionCreate";
 import { replayTabRenameTool } from "@/float/actions/replay/ReplayTabRename";
@@ -44,6 +44,7 @@ import { scopeUpdateTool } from "@/float/actions/scopes/ScopeUpdate";
 import { toastTool } from "@/float/actions/ui/Toast";
 import { workflowConvertRunTool } from "@/float/actions/workflows/WorkflowConvertRun";
 import { workflowRunTool } from "@/float/actions/workflows/WorkflowRun";
+import { useSettingsStore } from "@/stores/settings";
 
 const sharedFloatTools = {
   httpqlQuerySet: httpqlQuerySetTool,
@@ -67,6 +68,7 @@ const sharedFloatTools = {
   editorMethodSet: editorMethodSetTool,
   editorRawSet: editorRawSetTool,
   replayRequestReplace: replayRequestReplaceTool,
+  replayConnectionSet: replayConnectionSetTool,
   navigate: navigateTool,
   replayTabRename: replayTabRenameTool,
   replayTabSend: replayTabSendTool,
@@ -90,7 +92,7 @@ const sharedFloatTools = {
 };
 
 export const getCoreFloatTools = () => {
-  if (isFeatureEnabled("backgroundAgents")) {
+  if (useSettingsStore().isFeatureEnabled("backgroundAgents")) {
     return {
       backgroundAgentSpawn: backgroundAgentSpawnTool,
       ...sharedFloatTools,

@@ -2,7 +2,7 @@ import type { ReasoningTime } from "shared";
 
 import { isPresent } from "../../utils/optional";
 
-const BLOB_PLACEHOLDER_PATTERN = /§§§Blob§([^§]+)§§§/g;
+import { BLOB_PLACEHOLDER_PATTERN } from "./placeholders";
 
 function coerceToolDisplayText(text: unknown): string {
   if (typeof text === "string") {

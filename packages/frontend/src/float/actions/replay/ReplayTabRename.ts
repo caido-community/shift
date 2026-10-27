@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 
 const inputSchema = z.object({
   newName: z.string().describe("New name for the replay tab (non-empty)"),
@@ -16,18 +17,18 @@ const inputSchema = z.object({
 export const replayTabRenameTool = tool({
   description: "Rename a replay session tab",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ newName, sessionId }, { experimental_context }) => {
     const { sdk, context } = experimental_context as FloatToolContext;
-    const contextSessionId = (context.replay?.value as { sessionId?: string })?.sessionId;
+    const contextSessionId = (context.replay?.value as { id?: string })?.id;
 
     const targetSessionId = sessionId ?? contextSessionId;
     if (targetSessionId === undefined) {
-      return ActionResult.err("No session ID provided or the current tab is not a replay tab");
+      return ToolResult.err("No session ID provided or the current tab is not a replay tab");
     }
 
     await sdk.replay.renameSession(targetSessionId, newName);
 
-    return ActionResult.ok("Replay tab renamed successfully");
+    return ToolResult.ok({ message: "Replay tab renamed successfully" });
   },
 });

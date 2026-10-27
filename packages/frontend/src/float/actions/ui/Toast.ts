@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 
 const toastVariants = ["info", "success", "warning", "error"] as const;
 
@@ -14,7 +15,7 @@ const inputSchema = z.object({
 export const toastTool = tool({
   description: "Show a toast message to the user",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: ({ content, variant, duration }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     const finalVariant = variant === null ? "info" : variant;
@@ -27,6 +28,6 @@ export const toastTool = tool({
       });
     }
 
-    return ActionResult.ok("");
+    return ToolResult.ok({ message: "" });
   },
 });

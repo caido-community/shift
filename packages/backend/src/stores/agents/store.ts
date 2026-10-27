@@ -1,36 +1,38 @@
 import type { ShiftMessage, StoredAgent, StoredAgentSessionState } from "shared";
 
-import { ProjectStore } from "../project-store";
+import { isRecord } from "../../utils";
+import { Store } from "../store";
 
 import { type AgentsMessage, type AgentsModel, createInitialModel } from "./model";
 import { update } from "./update";
 
 const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 
-class AgentsStore extends ProjectStore<AgentsModel, AgentsMessage> {
+class AgentsStore extends Store<AgentsModel, AgentsMessage> {
   constructor() {
-    super("agents");
+    super({ filename: "agents", perProject: true, initialModel: createInitialModel, update });
   }
 
-  protected createInitialModel(): AgentsModel {
-    return createInitialModel();
+  protected parse(loaded: unknown): AgentsModel | undefined {
+    if (!Array.isArray(loaded) || !loaded.every(isRecord)) {
+      return undefined;
+    }
+    return loaded as AgentsModel;
   }
 
-  protected update(model: AgentsModel, message: AgentsMessage): AgentsModel {
-    return update(model, message);
-  }
-
-  async initialize(): Promise<void> {
-    await super.initialize();
-    await this.cleanupOldAgents();
+  async cleanupOldAgents(): Promise<void> {
+    const message = { type: "CLEANUP_OLD_AGENTS", maxAge: TWO_WEEKS_MS } as const;
+    if (update(this.model, message).length !== this.model.length) {
+      await this.commit(message);
+    }
   }
 
   getAgent(chatID: string): StoredAgent | undefined {
-    return this.getModel().find((agent) => agent.chatID === chatID);
+    return this.model.find((agent) => agent.chatID === chatID);
   }
 
   getAgents(): StoredAgent[] {
-    return this.getModel();
+    return this.model;
   }
 
   async writeAgent(
@@ -38,34 +40,18 @@ class AgentsStore extends ProjectStore<AgentsModel, AgentsMessage> {
     messages: ShiftMessage[],
     sessionState: StoredAgentSessionState | undefined
   ): Promise<void> {
-    this.dispatch({ type: "WRITE_AGENT", chatID, messages, updatedAt: Date.now(), sessionState });
-    await this.persist();
-    this.notify();
+    await this.commit({
+      type: "WRITE_AGENT",
+      chatID,
+      messages,
+      updatedAt: Date.now(),
+      sessionState,
+    });
   }
 
   async removeAgent(chatID: string): Promise<void> {
-    this.dispatch({ type: "REMOVE_AGENT", chatID });
-    await this.persist();
-    this.notify();
-  }
-
-  private async cleanupOldAgents(): Promise<void> {
-    const before = this.getModel().length;
-    this.dispatch({ type: "CLEANUP_OLD_AGENTS", maxAge: TWO_WEEKS_MS });
-    const after = this.getModel().length;
-    if (before !== after) {
-      await this.persist();
-      this.notify();
-    }
+    await this.commit({ type: "REMOVE_AGENT", chatID });
   }
 }
 
-let instance: AgentsStore | undefined;
-
-export function getAgentsStore(): AgentsStore {
-  if (instance === undefined) {
-    instance = new AgentsStore();
-  }
-
-  return instance;
-}
+export const agentsStore = new AgentsStore();

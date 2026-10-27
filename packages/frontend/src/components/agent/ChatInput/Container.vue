@@ -2,6 +2,7 @@
 import Button from "primevue/button";
 
 import { AgentSelector } from "./AgentSelector";
+import { ContextMeter } from "./ContextMeter";
 import { ModelSelector } from "./ModelSelector";
 import { ModeSelector } from "./ModeSelector";
 import { useChatInput } from "./useChatInput";
@@ -30,7 +31,7 @@ const {
       class="h-2 cursor-ns-resize flex items-center justify-center group shrink-0 transition-colors"
       @mousedown="startResize">
       <div
-        class="w-12 h-1 rounded-full bg-surface-600 group-hover:bg-surface-400 transition-colors" />
+        class="w-12 h-1 rounded-full bg-surface-600 group-hover:!bg-surface-400 transition-colors" />
     </div>
 
     <div class="flex flex-col gap-4 p-3 pt-2 flex-1 min-h-0">
@@ -66,6 +67,7 @@ const {
         </div>
 
         <div class="shrink-0 flex items-center gap-2">
+          <ContextMeter />
           <Button
             v-if="!isGenerating"
             severity="tertiary"

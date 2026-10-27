@@ -3,7 +3,7 @@ import { z } from "zod";
 export const SkillScopeSchema = z.enum(["global", "project"]);
 export type SkillScope = z.infer<typeof SkillScopeSchema>;
 
-export const SkillAttachModeSchema = z.enum(["always", "on-demand"]);
+const SkillAttachModeSchema = z.enum(["always", "on-demand"]);
 export type SkillAttachMode = z.infer<typeof SkillAttachModeSchema>;
 
 const StaticSkillDefinitionSchema = z.object({
@@ -93,3 +93,8 @@ export const SetProjectOverrideSchema = z.object({
   additionalContent: z.string(),
 });
 export type SetProjectOverrideInput = z.infer<typeof SetProjectOverrideSchema>;
+
+export type SkillsState = {
+  definitions: AgentSkillDefinition[];
+  skills: AgentSkill[];
+};

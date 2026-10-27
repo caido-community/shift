@@ -71,6 +71,14 @@ describe("buildSkillsPrompt - full coverage", () => {
     expect(result).toContain("- Generic (id: skill-1)");
   });
 
+  it("omits the separator for on-demand skill without description", () => {
+    const result = buildSkillsPrompt({
+      skills: [{ kind: "on-demand", id: "skill-1", title: "Generic" }],
+    });
+    expect(result).toContain("- Generic (id: skill-1)\n");
+    expect(result).not.toContain("(id: skill-1):");
+  });
+
   it("wraps output in additional_instructions tags", () => {
     const result = buildSkillsPrompt({ agentInstructions: "Hi" });
     expect(result).toMatch(/^<additional_instructions>\n/);

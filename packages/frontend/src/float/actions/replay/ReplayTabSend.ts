@@ -1,23 +1,23 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type ActionResult as ActionResultType } from "@/float/types";
+import { ToolResult } from "@/agent/types";
 
 const inputSchema = z.object({});
 
 export const replayTabSendTool = tool({
   description: "Send the current replay tab request",
   inputSchema,
-  outputSchema: ActionResult.schema,
-  execute: (): ActionResultType => {
+  outputSchema: ToolResult.schema(),
+  execute: (): ToolResult => {
     const sendButton = document.querySelector("[aria-label=Send]") as HTMLElement;
 
     if (sendButton === null) {
-      return ActionResult.err("Send request button not found");
+      return ToolResult.err("Send request button not found");
     }
 
     sendButton.click();
 
-    return ActionResult.ok("Replay tab request sent");
+    return ToolResult.ok({ message: "Replay tab request sent" });
   },
 });

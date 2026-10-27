@@ -1,3 +1,9 @@
+import {
+  type ConnectionInfoInput,
+  type ReplayPlaceholderInput,
+  type ReplayPreprocessorOptionsInput,
+  type ReplaySessionEntriesQuery,
+} from "@caido/sdk-frontend/src/types/__generated__/graphql-sdk";
 import { EditorView } from "@codemirror/view";
 import { Result } from "shared";
 
@@ -5,7 +11,7 @@ import { isPresent, type UndefinedOrNull } from "./optional";
 
 import { type FrontendSDK } from "@/types";
 
-export const decodeBlob = (encoded: string): string => {
+const decodeBlob = (encoded: string): string => {
   if (encoded === "") {
     return "";
   }
@@ -91,6 +97,11 @@ type ReplayEntryHttp = {
       id: string;
     };
   };
+  draft?:
+    | {
+        connection: Omit<ReplayEntryHttp["connection"], "SNI"> & { SNI?: string | UndefinedOrNull };
+      }
+    | UndefinedOrNull;
 };
 
 type ReplayEntryHttpInput = Omit<ReplayEntryHttp, "connection" | "request"> & {
@@ -100,32 +111,16 @@ type ReplayEntryHttpInput = Omit<ReplayEntryHttp, "connection" | "request"> & {
   request?: unknown;
 };
 
-type LegacyReplayEntryQuery = {
-  replayEntry?: ReplayEntryHttp;
-};
-
-type LegacyReplayEntryVariables = {
-  id: string;
-};
-
-type LegacyReplayEntryFn = (
-  variables: LegacyReplayEntryVariables
-) => Promise<LegacyReplayEntryQuery>;
-
-type ReplaySessionEntriesResult = Awaited<
-  ReturnType<FrontendSDK["graphql"]["replaySessionEntries"]>
->;
 type ReplaySessionEntry = NonNullable<
-  NonNullable<ReplaySessionEntriesResult["replaySession"]>["activeEntry"]
+  NonNullable<ReplaySessionEntriesQuery["replaySession"]>["activeEntry"]
 >;
-type ReplaySessionEntryLike = ReplaySessionEntry;
 
 type EntryRequest = { id: string; response?: { id: string } | UndefinedOrNull } | UndefinedOrNull;
-type AnyReplayEntry =
+export type AnyReplayEntry =
   | { __typename: "ReplayEntryHttp"; request?: EntryRequest }
   | { __typename: "ReplayEntryWs"; http: { request?: EntryRequest } }
   | {
-      __typename: "ReplayEntryHttpOnePipeline";
+      __typename: "ReplayEntryHttpPipeline";
       activeHttpEntry?: { request?: EntryRequest } | UndefinedOrNull;
     };
 
@@ -135,7 +130,7 @@ export const getActiveEntryRequest = (entry: AnyReplayEntry | UndefinedOrNull) =
       return entry.request ?? undefined;
     case "ReplayEntryWs":
       return entry.http.request ?? undefined;
-    case "ReplayEntryHttpOnePipeline":
+    case "ReplayEntryHttpPipeline":
       return entry.activeHttpEntry?.request ?? undefined;
     default:
       return undefined;
@@ -146,27 +141,6 @@ export type ReplayEntryWithRequest = {
   entry: ReplayEntryHttp;
   request: ReplayEntryHttp["request"];
 };
-
-const getMajorMinorPatch = (version: string): [number, number, number] => {
-  const [major = "0", minor = "0", patch = "0"] = version.split(/[.-]/);
-  return [Number(major) || 0, Number(minor) || 0, Number(patch) || 0];
-};
-
-const isVersionAtLeast = (version: string, minimum: [number, number, number]): boolean => {
-  const current = getMajorMinorPatch(version);
-
-  for (let index = 0; index < minimum.length; index++) {
-    const currentPart = current[index] ?? 0;
-    const minimumPart = minimum[index] ?? 0;
-    if (currentPart > minimumPart) return true;
-    if (currentPart < minimumPart) return false;
-  }
-
-  return true;
-};
-
-export const usesReplayEntryInterface = (sdk: FrontendSDK): boolean =>
-  isVersionAtLeast(sdk.runtime.version, [0, 57, 0]);
 
 const normalizeReplayEntryHttp = (entry: ReplayEntryHttpInput): ReplayEntryHttp => {
   let request: ReplayEntryHttp["request"] = undefined;
@@ -191,6 +165,7 @@ const normalizeReplayEntryHttp = (entry: ReplayEntryHttpInput): ReplayEntryHttp 
 
   return {
     ...entry,
+    raw: decodeBlob(entry.raw),
     connection: {
       ...entry.connection,
       SNI: typeof entry.connection.SNI === "string" ? entry.connection.SNI : undefined,
@@ -199,11 +174,11 @@ const normalizeReplayEntryHttp = (entry: ReplayEntryHttpInput): ReplayEntryHttp 
   };
 };
 
-const toSessionReplayEntryHttp = (entry: ReplaySessionEntryLike): ReplayEntryHttp | undefined => {
+const toSessionReplayEntryHttp = (entry: ReplaySessionEntry): ReplayEntryHttp | undefined => {
   switch (entry.__typename) {
     case "ReplayEntryWs":
       return normalizeReplayEntryHttp(entry.http);
-    case "ReplayEntryHttpOnePipeline":
+    case "ReplayEntryHttpPipeline":
       return isPresent(entry.activeHttpEntry)
         ? normalizeReplayEntryHttp(entry.activeHttpEntry)
         : undefined;
@@ -212,57 +187,16 @@ const toSessionReplayEntryHttp = (entry: ReplaySessionEntryLike): ReplayEntryHtt
   }
 };
 
-const getConcreteReplayEntry = async (
-  sdk: FrontendSDK,
-  entryId: string
-): Promise<Result<ReplayEntryWithRequest>> => {
-  const replayEntry = sdk.graphql.replayEntry as unknown as LegacyReplayEntryFn;
-  const result = await safeGraphQL(
-    () => replayEntry({ id: entryId }),
-    "Failed to fetch replay entry"
-  );
-
-  if (result.kind === "Error") {
-    return result;
-  }
-
-  const entry = result.value.replayEntry;
-  if (!isPresent(entry)) {
-    return Result.err("Replay entry not found");
-  }
-
-  const normalizedEntry = normalizeReplayEntryHttp(entry);
-  return Result.ok({ entry: normalizedEntry, request: normalizedEntry.request });
-};
-
-const getInterfaceReplayEntry = async (
-  sdk: FrontendSDK,
-  sessionId: string,
-  entryId: string
-): Promise<Result<ReplayEntryWithRequest>> => {
-  const result = await safeGraphQL(
+const fetchReplaySession = (sdk: FrontendSDK, sessionId: string) =>
+  safeGraphQL(
     () => sdk.graphql.replaySessionEntries({ id: sessionId }),
     "Failed to fetch replay session entries"
   );
 
-  if (result.kind === "Error") {
-    return result;
-  }
-
-  const session = result.value.replaySession;
-  if (!isPresent(session)) {
-    return Result.err("Replay session not found");
-  }
-
-  const selectedEntry =
-    (session.activeEntry?.id === entryId ? session.activeEntry : undefined) ??
-    session.entries.edges.find((e) => e.node.id === entryId)?.node;
-
-  if (!isPresent(selectedEntry)) {
-    return Result.err("Replay entry not found");
-  }
-
-  const entry = toSessionReplayEntryHttp(selectedEntry);
+const toReplayEntryWithRequest = (
+  sessionEntry: ReplaySessionEntry
+): Result<ReplayEntryWithRequest> => {
+  const entry = toSessionReplayEntryHttp(sessionEntry);
   if (entry === undefined) {
     return Result.err("Replay entry has no HTTP request");
   }
@@ -274,70 +208,71 @@ export const getReplayEntryRequest = async (
   entryId: string,
   sessionId: string
 ): Promise<Result<ReplayEntryWithRequest>> => {
-  if (usesReplayEntryInterface(sdk)) {
-    return getInterfaceReplayEntry(sdk, sessionId, entryId);
+  const sessionResult = await fetchReplaySession(sdk, sessionId);
+  if (sessionResult.kind === "Error") {
+    return sessionResult;
   }
 
-  return getConcreteReplayEntry(sdk, entryId);
+  const session = sessionResult.value.replaySession;
+  if (!isPresent(session)) {
+    return Result.err("Replay session not found");
+  }
+
+  const selectedEntry =
+    (session.activeEntry?.id === entryId ? session.activeEntry : undefined) ??
+    session.entries.edges.find((e) => e.node.id === entryId)?.node;
+
+  if (!isPresent(selectedEntry)) {
+    return Result.err("Replay entry not found");
+  }
+  return toReplayEntryWithRequest(selectedEntry);
 };
 
-const getRequestEditorRequestID = (): Result<string> => {
-  const requestEditor = document.querySelector("[data-language=http-request]") as
-    | EditorElement
-    | undefined;
-
-  if (!isPresent(requestEditor)) {
-    return { kind: "Error", error: "Request editor not found" };
+const getActiveReplayEntry = async (
+  sdk: FrontendSDK,
+  sessionId: string
+): Promise<Result<(ReplayEntryWithRequest & { activeEntryId: string }) | undefined>> => {
+  const sessionResult = await fetchReplaySession(sdk, sessionId);
+  if (sessionResult.kind === "Error") {
+    return sessionResult;
   }
 
-  const root = requestEditor.closest("[data-request-id]");
-  if (!isPresent(root)) {
-    return { kind: "Error", error: "Request editor root element not found" };
-  }
-
-  const requestId = root.getAttribute("data-request-id");
-  if (requestId === undefined || requestId === null || requestId === "") {
-    return { kind: "Error", error: "Request ID attribute not found or empty" };
-  }
-
-  return { kind: "Ok", value: requestId };
-};
-
-export const getCurrentRequestID = async (sdk: FrontendSDK): Promise<Result<string>> => {
-  const editorRequestIDResult = getRequestEditorRequestID();
-  if (editorRequestIDResult.kind === "Ok") {
-    return editorRequestIDResult;
-  }
-
-  const currSession = sdk.replay.getCurrentSession();
-  if (!isPresent(currSession)) {
-    return { kind: "Error", error: "No current replay session found" };
-  }
-
-  const sessionResult = await sdk.graphql.replaySessionEntries({
-    id: currSession.id,
-  });
-
-  if (!isPresent(sessionResult.replaySession)) {
-    return { kind: "Error", error: "Failed to fetch replay session entries" };
-  }
-
-  const activeEntry = sessionResult.replaySession.activeEntry;
+  const activeEntry = sessionResult.value.replaySession?.activeEntry;
   if (!isPresent(activeEntry)) {
-    return { kind: "Error", error: "No active entry found in replay session" };
+    return Result.ok(undefined);
   }
 
-  const entryResult = await getReplayEntryRequest(sdk, activeEntry.id, currSession.id);
+  const entryResult = toReplayEntryWithRequest(activeEntry);
   if (entryResult.kind === "Error") {
     return entryResult;
   }
+  return Result.ok({ ...entryResult.value, activeEntryId: activeEntry.id });
+};
 
-  const requestId = entryResult.value.request?.id;
-  if (requestId === undefined || requestId === null || requestId === "") {
-    return { kind: "Error", error: "Request ID not found in active entry" };
+const getSelectedRequest = (sdk: FrontendSDK) => {
+  switch (sdk.window.getContext().page?.kind) {
+    case "Replay":
+      return sdk.replay.getSelectedRequest();
+    case "HTTPHistory":
+      return sdk.httpHistory.getSelectedRequest();
+    case "Intercept":
+      return sdk.intercept.getSelectedRequest();
+    case "Sitemap":
+      return sdk.sitemap.getSelectedRequest();
+    case "Search":
+      return sdk.search.getSelectedRequest();
+    case "Automate":
+      return sdk.automate.getSelectedRequest();
+    case "Findings":
+      return sdk.findings.getSelectedRequest();
+    default:
+      return undefined;
   }
+};
 
-  return { kind: "Ok", value: requestId };
+export const getCurrentRequestID = (sdk: FrontendSDK): Result<string> => {
+  const request = getSelectedRequest(sdk);
+  return request === undefined ? Result.err("No request is selected") : Result.ok(request.id);
 };
 
 export interface EditorElement extends Element {
@@ -350,16 +285,11 @@ export async function getReplaySession(
   sdk: FrontendSDK,
   replaySessionId: string
 ): Promise<Result<ReplaySession>> {
-  if (typeof replaySessionId !== "string") {
-    return Result.err("replaySessionId must be a string");
+  const entryResult = await getActiveReplayEntry(sdk, replaySessionId);
+  if (entryResult.kind === "Error") {
+    return entryResult;
   }
-
-  const sessionResult = await sdk.graphql.replaySessionEntries({
-    id: replaySessionId,
-  });
-  const activeEntry = sessionResult.replaySession?.activeEntry;
-
-  if (activeEntry === undefined || activeEntry === null) {
+  if (entryResult.value === undefined) {
     return Result.ok({
       id: replaySessionId,
       activeEntryId: "",
@@ -373,22 +303,18 @@ export async function getReplaySession(
     });
   }
 
-  const entryResult = await getReplayEntryRequest(sdk, activeEntry.id, replaySessionId);
-  if (entryResult.kind === "Error") {
-    return entryResult;
-  }
-
   const replayEntry = entryResult.value.entry;
+  const connection = replayEntry.draft?.connection ?? replayEntry.connection;
 
   return Result.ok({
     id: replaySessionId,
-    activeEntryId: activeEntry.id,
+    activeEntryId: entryResult.value.activeEntryId,
     request: {
       raw: replayEntry.raw,
-      host: replayEntry.connection.host,
-      port: replayEntry.connection.port,
-      isTLS: replayEntry.connection.isTLS,
-      SNI: replayEntry.connection.SNI ?? "",
+      host: connection.host,
+      port: connection.port,
+      isTLS: connection.isTLS,
+      SNI: connection.SNI ?? "",
     },
   });
 }
@@ -426,6 +352,130 @@ export async function setActiveEntryDraftRaw(
   return Result.ok(undefined);
 }
 
+type ReplayPlaceholder = Extract<
+  NonNullable<NonNullable<ReplaySessionEntriesQuery["replaySession"]>["activeEntry"]>,
+  { __typename: "ReplayEntryHttp" }
+>["settings"]["placeholders"][number];
+
+const toPreprocessorOptionsInput = (
+  options: ReplayPlaceholder["preprocessors"][number]["options"]
+): ReplayPreprocessorOptionsInput => {
+  switch (options.__typename) {
+    case "ReplayEnvironmentPreprocessor":
+      return { environment: { variableName: options.variableName } };
+    case "ReplayPrefixPreprocessor":
+      return { prefix: { value: options.value } };
+    case "ReplaySuffixPreprocessor":
+      return { suffix: { value: options.value } };
+    case "ReplayUrlEncodePreprocessor":
+      return { urlEncode: { charset: options.charset, nonAscii: options.nonAscii } };
+    case "ReplayWorkflowPreprocessor":
+      return { workflow: { id: options.id } };
+  }
+};
+
+const toPlaceholderInput = (placeholder: ReplayPlaceholder): ReplayPlaceholderInput => ({
+  inputRange: { start: placeholder.inputRange.start, end: placeholder.inputRange.end },
+  outputRange: { start: placeholder.outputRange.start, end: placeholder.outputRange.end },
+  preprocessors: placeholder.preprocessors.map((preprocessor) => ({
+    options: toPreprocessorOptionsInput(preprocessor.options),
+  })),
+});
+
+const getActiveHttpEntry = async (sdk: FrontendSDK, sessionId: string) => {
+  const sessionResult = await fetchReplaySession(sdk, sessionId);
+  if (sessionResult.kind === "Error") {
+    return sessionResult;
+  }
+
+  const session = sessionResult.value.replaySession;
+  if (!isPresent(session)) {
+    return Result.err("Replay session not found");
+  }
+  if (!isPresent(session.activeEntry)) {
+    return Result.err("Replay session has no active entry");
+  }
+  if (session.activeEntry.__typename !== "ReplayEntryHttp") {
+    return Result.err("The active replay entry is not an HTTP request");
+  }
+
+  return Result.ok(session.activeEntry);
+};
+
+const readOpenRequestEditorDoc = (sdk: FrontendSDK, sessionId: string): string | undefined => {
+  if (sdk.replay.getCurrentSession()?.id !== sessionId || location.hash !== "#/replay") {
+    return undefined;
+  }
+
+  const requestEditor = document.querySelector(".cm-content[data-language='http-request']");
+  return resolveEditorView(requestEditor ?? undefined)?.state.sliceDoc();
+};
+
+const DRAFT_AUTOSAVE_WAIT_MS = 3500;
+
+export async function setReplaySessionConnection(
+  sdk: FrontendSDK,
+  sessionId: string,
+  connection: ConnectionInfoInput
+): Promise<Result<void>> {
+  let entryResult = await getActiveHttpEntry(sdk, sessionId);
+  if (entryResult.kind === "Error") {
+    return entryResult;
+  }
+
+  // The editor may show pretty-printed text, so only the saved draft has the exact request bytes.
+  // Unsaved edits reach the draft through Caido's autosave (debounced up to 3s), so wait for it.
+  const deadline = Date.now() + DRAFT_AUTOSAVE_WAIT_MS;
+  let editorDoc = readOpenRequestEditorDoc(sdk, sessionId);
+  while (
+    editorDoc !== undefined &&
+    editorDoc !== decodeBlob((entryResult.value.draft ?? entryResult.value).raw) &&
+    Date.now() < deadline
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    entryResult = await getActiveHttpEntry(sdk, sessionId);
+    if (entryResult.kind === "Error") {
+      return entryResult;
+    }
+    editorDoc = readOpenRequestEditorDoc(sdk, sessionId);
+  }
+
+  const entry = entryResult.value;
+  const stored = entry.draft ?? entry;
+  const result = await safeGraphQL(
+    () =>
+      sdk.graphql.updateReplayEntryDraft({
+        id: entry.id,
+        input: {
+          http: {
+            raw: decodeBlob(stored.raw),
+            connection,
+            settings: { placeholders: stored.settings.placeholders.map(toPlaceholderInput) },
+            editorState: entry.draft?.editorState ?? "",
+          },
+        },
+      }),
+    "Failed to update replay entry draft"
+  );
+  if (result.kind === "Error") {
+    return result;
+  }
+
+  if (sdk.replay.getCurrentSession()?.id !== sessionId) {
+    return Result.ok(undefined);
+  }
+
+  const editorDocAfter = readOpenRequestEditorDoc(sdk, sessionId);
+  if (editorDocAfter !== undefined && editorDocAfter !== editorDoc) {
+    return Result.err("The request was edited while changing the target; try again");
+  }
+
+  // Reload the open tab, otherwise Caido's next send saves its in-memory connection over the draft.
+  await sdk.replay.showEntry(sessionId, entry.id);
+
+  return Result.ok(undefined);
+}
+
 export async function startReplayTaskDirect(
   sdk: FrontendSDK,
   sessionId: string
@@ -448,9 +498,7 @@ export async function startReplayTaskDirect(
 }
 
 export const writeToRequestEditor = (raw: string) => {
-  const requestEditor = document.querySelector(".cm-content[data-language='http-request']") as
-    | EditorElement
-    | undefined;
+  const requestEditor = document.querySelector(".cm-content[data-language='http-request']");
 
   if (!isPresent(requestEditor)) {
     return;
@@ -465,9 +513,7 @@ export const writeToRequestEditor = (raw: string) => {
 };
 
 const readRequestEditor = (): Result<string> => {
-  const requestEditor = document.querySelector(".cm-content[data-language='http-request']") as
-    | EditorElement
-    | undefined;
+  const requestEditor = document.querySelector(".cm-content[data-language='http-request']");
 
   if (!isPresent(requestEditor)) {
     return Result.err("Request editor not found");
@@ -480,12 +526,7 @@ const readRequestEditor = (): Result<string> => {
     return Result.err("Unable to read request content");
   }
 
-  let fixedContent = rawContent;
-  if (rawContent !== "" && rawContent !== null) {
-    fixedContent = rawContent.replace(/\r?\n/g, "\r\n");
-  }
-
-  return Result.ok(fixedContent);
+  return Result.ok(rawContent.replace(/\r?\n/g, "\r\n"));
 };
 
 export async function getSessionContent(

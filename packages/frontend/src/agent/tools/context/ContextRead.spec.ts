@@ -36,7 +36,6 @@ describe("summarizeCurrentRequest", () => {
 describe("buildContextReadValue", () => {
   it("builds compact live context with retrieval hints", () => {
     const snapshot: ContextPromptSnapshot = {
-      todos: [{ id: 1, content: "Check auth bypass", status: "in_progress" }],
       httpRequest: "GET /account HTTP/1.1\r\nHost: example.com\r\n\r\n",
       entriesContext: {
         activeEntryId: "entry-2",
@@ -62,7 +61,6 @@ describe("buildContextReadValue", () => {
       workflowsRestricted: true,
     });
 
-    expect(result.todos).toHaveLength(1);
     expect(result.request.loaded).toBe(true);
     expect(result.request.retrievalHint).toContain("RequestRangeRead");
     expect(result.replayEntries.activeEntryId).toBe("entry-2");

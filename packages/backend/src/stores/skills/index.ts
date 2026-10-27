@@ -1,1 +1,1 @@
-export { getSkillsStore } from "./store";
+export { skillsStore } from "./store";

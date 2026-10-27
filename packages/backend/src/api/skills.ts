@@ -7,35 +7,32 @@ import {
   CreateStaticSkillSchema,
   type LegacyCollectionAutoRunMigrationSummary,
   type ProjectSkillOverride,
-  type Result,
+  Result,
   type SetProjectOverrideInput,
   SetProjectOverrideSchema,
+  type SkillsState,
   type UpdateDynamicSkillInput,
   UpdateDynamicSkillSchema,
   type UpdateStaticSkillInput,
   UpdateStaticSkillSchema,
 } from "shared";
 
-import { getSkillsStore } from "../stores";
+import { skillsStore } from "../stores";
 import type { BackendSDK } from "../types";
 
 export function getSkills(_sdk: BackendSDK): Result<AgentSkill[]> {
   try {
-    const store = getSkillsStore();
-    const skills = store.getSkills();
-    return { kind: "Ok", value: skills };
+    return Result.ok(skillsStore.getSkills());
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
 export function getSkillDefinitions(_sdk: BackendSDK): Result<AgentSkillDefinition[]> {
   try {
-    const store = getSkillsStore();
-    const definitions = store.getSkillDefinitions();
-    return { kind: "Ok", value: definitions };
+    return Result.ok(skillsStore.getSkillDefinitions());
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
@@ -43,49 +40,41 @@ export function getLegacyCollectionAutoRunMigrationSummary(
   _sdk: BackendSDK
 ): Result<LegacyCollectionAutoRunMigrationSummary> {
   try {
-    const store = getSkillsStore();
-    const summary = store.getLegacyCollectionAutoRunMigrationSummary();
-    return { kind: "Ok", value: summary };
+    return Result.ok(skillsStore.getLegacyCollectionAutoRunMigrationSummary());
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
 export async function addStaticSkill(
   _sdk: BackendSDK,
   input: CreateStaticSkillInput
-): Promise<Result<string>> {
+): Promise<Result<SkillsState>> {
   try {
     const parsed = CreateStaticSkillSchema.safeParse(input);
     if (!parsed.success) {
-      return { kind: "Error", error: parsed.error.message };
+      return Result.err(parsed.error.message);
     }
 
-    const store = getSkillsStore();
-    return await store.addStaticSkill(parsed.data);
+    return await skillsStore.addStaticSkill(parsed.data);
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
 export async function addDynamicSkill(
   _sdk: BackendSDK,
   input: CreateDynamicSkillInput
-): Promise<Result<string>> {
+): Promise<Result<SkillsState>> {
   try {
     const parsed = CreateDynamicSkillSchema.safeParse(input);
     if (!parsed.success) {
-      return { kind: "Error", error: parsed.error.message };
+      return Result.err(parsed.error.message);
     }
 
-    const store = getSkillsStore();
-    const result = await store.addDynamicSkill(parsed.data);
-    if (result.kind === "Error") {
-      return result;
-    }
-    return { kind: "Ok", value: result.value };
+    return await skillsStore.addDynamicSkill(parsed.data);
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
@@ -93,17 +82,16 @@ export async function updateStaticSkill(
   _sdk: BackendSDK,
   id: string,
   updates: UpdateStaticSkillInput
-): Promise<Result<void>> {
+): Promise<Result<SkillsState>> {
   try {
     const parsed = UpdateStaticSkillSchema.safeParse(updates);
     if (!parsed.success) {
-      return { kind: "Error", error: parsed.error.message };
+      return Result.err(parsed.error.message);
     }
 
-    const store = getSkillsStore();
-    return await store.updateStaticSkill(id, parsed.data);
+    return await skillsStore.updateStaticSkill(id, parsed.data);
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
@@ -111,41 +99,32 @@ export async function updateDynamicSkill(
   _sdk: BackendSDK,
   id: string,
   updates: UpdateDynamicSkillInput
-): Promise<Result<void>> {
+): Promise<Result<SkillsState>> {
   try {
     const parsed = UpdateDynamicSkillSchema.safeParse(updates);
     if (!parsed.success) {
-      return { kind: "Error", error: parsed.error.message };
+      return Result.err(parsed.error.message);
     }
 
-    const store = getSkillsStore();
-    const result = await store.updateDynamicSkill(id, parsed.data);
-    if (result.kind === "Error") {
-      return result;
-    }
-    return { kind: "Ok", value: undefined };
+    return await skillsStore.updateDynamicSkill(id, parsed.data);
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
-export async function removeSkill(_sdk: BackendSDK, id: string): Promise<Result<void>> {
+export async function removeSkill(_sdk: BackendSDK, id: string): Promise<Result<SkillsState>> {
   try {
-    const store = getSkillsStore();
-    await store.removeSkill(id);
-    return { kind: "Ok", value: undefined };
+    return Result.ok(await skillsStore.removeSkill(id));
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
-export async function refreshSkills(_sdk: BackendSDK): Promise<Result<void>> {
+export async function refreshSkills(_sdk: BackendSDK): Promise<Result<SkillsState>> {
   try {
-    const store = getSkillsStore();
-    await store.refreshDynamicSkills();
-    return { kind: "Ok", value: undefined };
+    return Result.ok(await skillsStore.refreshDynamicSkills());
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
@@ -154,49 +133,35 @@ export function getProjectOverride(
   skillId: string
 ): Result<ProjectSkillOverride | undefined> {
   try {
-    const store = getSkillsStore();
-    const override = store.getProjectOverrideForSkill(skillId);
-    return { kind: "Ok", value: override };
+    return Result.ok(skillsStore.getProjectOverride(skillId));
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
-  }
-}
-
-export function getProjectOverrides(_sdk: BackendSDK): Result<ProjectSkillOverride[]> {
-  try {
-    const store = getSkillsStore();
-    const overrides = store.getAllProjectOverrides();
-    return { kind: "Ok", value: overrides };
-  } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
 export async function setProjectOverride(
   _sdk: BackendSDK,
   input: SetProjectOverrideInput
-): Promise<Result<void>> {
+): Promise<Result<SkillsState>> {
   try {
     const parsed = SetProjectOverrideSchema.safeParse(input);
     if (!parsed.success) {
-      return { kind: "Error", error: parsed.error.message };
+      return Result.err(parsed.error.message);
     }
 
-    const store = getSkillsStore();
-    return await store.setProjectOverride(parsed.data);
+    return await skillsStore.setProjectOverride(parsed.data);
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }
 
 export async function removeProjectOverride(
   _sdk: BackendSDK,
   skillId: string
-): Promise<Result<void>> {
+): Promise<Result<SkillsState>> {
   try {
-    const store = getSkillsStore();
-    return await store.removeProjectOverride(skillId);
+    return await skillsStore.removeProjectOverride(skillId);
   } catch (error) {
-    return { kind: "Error", error: (error as Error).message };
+    return Result.err((error as Error).message);
   }
 }

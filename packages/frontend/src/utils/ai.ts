@@ -1,6 +1,9 @@
-import { type LanguageModelV3, type LanguageModelV3Middleware } from "@ai-sdk/provider";
-import { type AILanguageModelSettings } from "@caido/sdk-frontend";
-import { wrapLanguageModel } from "ai";
+import {
+  type JSONObject,
+  type LanguageModelV3Middleware,
+  type SharedV3ProviderOptions,
+} from "@ai-sdk/provider";
+import { defaultSettingsMiddleware, wrapLanguageModel } from "ai";
 import {
   createModelKey,
   type Model,
@@ -12,14 +15,19 @@ import {
 
 import type { FrontendSDK } from "../types";
 
-import { listCaidoModels, listUpstreamProviders } from "./caidoAi";
+import {
+  getProviderKind,
+  isDaybreakUnsupported,
+  isOpenAIProvider,
+  listCaidoModels,
+  listUpstreamProviders,
+  supportsDaybreak,
+  supportsFastMode,
+  supportsUltrafast,
+} from "./caidoAi";
 
 export function isProviderConfigured(sdk: FrontendSDK, provider: ModelProviderId): boolean {
   return listUpstreamProviders(sdk).some((s) => s.id === provider);
-}
-
-export function isAnyProviderConfigured(sdk: FrontendSDK): boolean {
-  return listUpstreamProviders(sdk).length > 0;
 }
 
 export class ProviderNotConfiguredError extends Error {
@@ -29,11 +37,32 @@ export class ProviderNotConfiguredError extends Error {
   }
 }
 
+export class DaybreakUnsupportedError extends Error {
+  constructor(model: Model) {
+    super(
+      `${model.name} does not support Daybreak. Switch to a supported model or turn Daybreak off.`
+    );
+    this.name = "DaybreakUnsupportedError";
+  }
+}
+
+export function assertDaybreakSupported(sdk: FrontendSDK, model: Model, daybreak: boolean) {
+  if (daybreak && isDaybreakUnsupported(sdk, model)) {
+    throw new DaybreakUnsupportedError(model);
+  }
+}
+
 type CreateModelOptions = {
   reasoning?: boolean;
   reasoningEffort?: ReasoningEffort;
   openRouterPrioritizeFastProviders?: boolean;
+  fastMode?: boolean;
+  ultrafast?: boolean;
+  daybreak?: boolean;
+  cacheKey?: string;
 };
+
+const ANTHROPIC_MAX_OUTPUT_TOKENS = 128_000;
 
 export type ReasoningEffort = ModelReasoningEffort;
 
@@ -58,23 +87,6 @@ const wellFormedPromptMiddleware: LanguageModelV3Middleware = {
   transformParams: ({ params }) =>
     Promise.resolve({ ...params, prompt: toWellFormed(params.prompt) }),
 };
-
-type ExtendedAILanguageModelSettings = Omit<
-  AILanguageModelSettings,
-  "reasoning" | "capabilities"
-> & {
-  // Omitted rather than disabled: models that always reason reject `disabled`.
-  reasoning?: {
-    kind: "effort";
-    effort: ReasoningEffort;
-    output: "include";
-  };
-};
-
-type ExtendedAIProvider = (
-  modelId: string,
-  settings?: ExtendedAILanguageModelSettings
-) => LanguageModelV3;
 
 export function getReasoningEfforts(model: Model): ReasoningEffort[] {
   if (!model.capabilities.reasoning) return [];
@@ -109,11 +121,15 @@ export function createModel(
     reasoning = true,
     reasoningEffort = "medium",
     openRouterPrioritizeFastProviders = false,
+    fastMode = false,
+    ultrafast = false,
+    daybreak = false,
+    cacheKey,
   } = options;
 
   const isReasoningModel = reasoning && model.capabilities.reasoning;
 
-  const provider = sdk.ai.createProvider() as ExtendedAIProvider;
+  const provider = sdk.ai.createProvider({ notifyErrors: false });
 
   const modelId =
     model.provider === ModelProvider.OpenRouter && openRouterPrioritizeFastProviders
@@ -134,7 +150,50 @@ export function createModel(
         : undefined,
   });
 
-  return wrapLanguageModel({ model: caidoModel, middleware: wellFormedPromptMiddleware });
+  const openai: JSONObject = {};
+  if (ultrafast && supportsUltrafast(sdk, model)) {
+    openai.service_tier = "ultrafast";
+  } else if (fastMode && supportsFastMode(sdk, model.provider)) {
+    openai.service_tier = "priority";
+  }
+  if (supportsDaybreak(sdk, model)) {
+    openai.access_programs = { cyber: daybreak ? "daybreak_blue" : "standard" };
+  }
+  if (cacheKey !== undefined && isOpenAIProvider(sdk, model.provider)) {
+    openai.prompt_cache_key = cacheKey;
+  }
+
+  const kind = getProviderKind(sdk, model.provider);
+  const providerOptions: SharedV3ProviderOptions = {};
+  if (Object.keys(openai).length > 0) {
+    providerOptions.openai = openai;
+  }
+  if (kind === "ANTHROPIC") {
+    providerOptions.anthropic = { cache_control: { type: "ephemeral" } };
+  }
+
+  let maxOutputTokens: number | undefined;
+  if (kind === "ANTHROPIC" || kind === "BEDROCK") {
+    maxOutputTokens = Math.min(
+      model.outputTokenLimit ?? ANTHROPIC_MAX_OUTPUT_TOKENS,
+      ANTHROPIC_MAX_OUTPUT_TOKENS
+    );
+  }
+
+  const middleware = [wellFormedPromptMiddleware];
+  const hasProviderOptions = Object.keys(providerOptions).length > 0;
+  if (hasProviderOptions || maxOutputTokens !== undefined) {
+    middleware.push(
+      defaultSettingsMiddleware({
+        settings: {
+          providerOptions: hasProviderOptions ? providerOptions : undefined,
+          maxOutputTokens,
+        },
+      })
+    );
+  }
+
+  return wrapLanguageModel({ model: caidoModel, middleware });
 }
 
 const PREFERRED_AGENT_MODELS = [

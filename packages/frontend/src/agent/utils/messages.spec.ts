@@ -1,17 +1,16 @@
-import { Result, type ShiftMessage } from "shared";
+import type { ModelMessage, ToolResultPart } from "ai";
+import type { ShiftMessage } from "shared";
 import { describe, expect, it } from "vitest";
 
 import {
   extractLastUserMessageText,
   findLastUserMessageId,
-  findLastUserMessageIndex,
   hasDisplayableAssistantContent,
-  hasToolPartsSinceIndex,
   hasToolPartsSinceLastUserMessage,
+  markUnfinishedMessages,
+  normalizeLegacyToolStates,
   replaceHistoricalToolOutputsWithBlobRefs,
-  serializeToolOutput,
   stripReasoningParts,
-  stripUnfinishedToolCalls,
 } from "./messages";
 
 describe("hasDisplayableAssistantContent", () => {
@@ -82,28 +81,6 @@ function createAssistantMessageWithToolState(state: string, id = "a1"): ShiftMes
   } as ShiftMessage;
 }
 
-function createAssistantMessageWithToolOutput(
-  output: unknown,
-  state: "output-available" | "result" | "error" = "result",
-  id = "a1"
-): ShiftMessage {
-  return {
-    id,
-    role: "assistant",
-    parts: [
-      { type: "text", text: "Using tool" },
-      {
-        type: "tool-invocation",
-        toolCallId: "tc1",
-        toolName: "TestTool",
-        args: {},
-        state,
-        output,
-      },
-    ],
-  } as ShiftMessage;
-}
-
 function createUserMessageWithMultipleParts(id = "u1"): ShiftMessage {
   return {
     id,
@@ -115,41 +92,6 @@ function createUserMessageWithMultipleParts(id = "u1"): ShiftMessage {
     ],
   } as ShiftMessage;
 }
-
-describe("findLastUserMessageIndex", () => {
-  it("returns -1 for empty messages array", () => {
-    expect(findLastUserMessageIndex([])).toBe(-1);
-  });
-
-  it("returns -1 when no user messages exist", () => {
-    const messages = [createAssistantMessage()];
-    expect(findLastUserMessageIndex(messages)).toBe(-1);
-  });
-
-  it("returns index when user message is at the end", () => {
-    const messages = [createAssistantMessage(), createUserMessage("Hi")];
-    expect(findLastUserMessageIndex(messages)).toBe(1);
-  });
-
-  it("returns index when user message is in the middle", () => {
-    const messages = [
-      createUserMessage("First"),
-      createAssistantMessage(),
-      createUserMessage("Second"),
-      createAssistantMessage("a2"),
-    ];
-    expect(findLastUserMessageIndex(messages)).toBe(2);
-  });
-
-  it("returns last user index when multiple user messages exist", () => {
-    const messages = [
-      createUserMessage("First", "u1"),
-      createUserMessage("Second", "u2"),
-      createUserMessage("Third", "u3"),
-    ];
-    expect(findLastUserMessageIndex(messages)).toBe(2);
-  });
-});
 
 describe("findLastUserMessageId", () => {
   it("returns undefined for empty messages array", () => {
@@ -183,45 +125,6 @@ describe("findLastUserMessageId", () => {
       createUserMessage("Third", "u3"),
     ];
     expect(findLastUserMessageId(messages)).toBe("u3");
-  });
-});
-
-describe("hasToolPartsSinceIndex", () => {
-  it("returns false for empty messages array", () => {
-    expect(hasToolPartsSinceIndex([], 0)).toBe(false);
-  });
-
-  it("returns false when no messages after index", () => {
-    const messages = [createUserMessage("Hi")];
-    expect(hasToolPartsSinceIndex(messages, 0)).toBe(false);
-  });
-
-  it("returns false when assistant has no tool parts", () => {
-    const messages = [createUserMessage("Hi"), createAssistantMessage()];
-    expect(hasToolPartsSinceIndex(messages, 0)).toBe(false);
-  });
-
-  it("returns true when assistant has tool parts after index", () => {
-    const messages = [createUserMessage("Hi"), createAssistantMessageWithTool()];
-    expect(hasToolPartsSinceIndex(messages, 0)).toBe(true);
-  });
-
-  it("returns false when tool part is before the index", () => {
-    const messages = [
-      createAssistantMessageWithTool(),
-      createUserMessage("Hi"),
-      createAssistantMessage(),
-    ];
-    expect(hasToolPartsSinceIndex(messages, 1)).toBe(false);
-  });
-
-  it("ignores user messages when scanning for tool parts", () => {
-    const messages = [
-      createUserMessage("First"),
-      createUserMessage("Second"),
-      createAssistantMessage(),
-    ];
-    expect(hasToolPartsSinceIndex(messages, 0)).toBe(false);
   });
 });
 
@@ -335,49 +238,21 @@ describe("extractLastUserMessageText", () => {
   });
 });
 
-describe("stripUnfinishedToolCalls", () => {
-  it("removes tool parts without finished state", () => {
+describe("normalizeLegacyToolStates", () => {
+  it("leaves current tool states untouched", () => {
     const messages = [
       createUserMessage("Hello"),
       createAssistantMessageWithToolState("input-available"),
+      createAssistantMessageWithToolState("output-available", "a2"),
     ];
 
-    const result = stripUnfinishedToolCalls(messages);
-    const assistant = result[1]!;
-
-    expect(assistant.parts).toHaveLength(1);
-    expect(assistant.parts[0]!.type).toBe("text");
-  });
-
-  it("preserves finished tool parts", () => {
-    const messages = [
-      createUserMessage("Hello"),
-      createAssistantMessageWithToolState("output-available"),
-    ];
-
-    const result = stripUnfinishedToolCalls(messages);
-    const assistant = result[1]!;
-
-    expect(assistant.parts).toHaveLength(2);
-    expect(assistant.parts[1]!.type).toBe("tool-invocation");
-  });
-
-  it("preserves tool parts with output-error state", () => {
-    const messages = [
-      createUserMessage("Hello"),
-      createAssistantMessageWithToolState("output-error"),
-    ];
-    const result = stripUnfinishedToolCalls(messages);
-    const assistant = result[1]!;
-
-    expect(assistant.parts).toHaveLength(2);
-    expect(assistant.parts[1]!.type).toBe("tool-invocation");
+    expect(normalizeLegacyToolStates(messages)).toBe(messages);
   });
 
   it("normalizes legacy result state to output-available", () => {
     const messages = [createUserMessage("Hello"), createAssistantMessageWithToolState("result")];
 
-    const result = stripUnfinishedToolCalls(messages);
+    const result = normalizeLegacyToolStates(messages);
     const assistant = result[1]!;
 
     expect(result).not.toBe(messages);
@@ -387,7 +262,7 @@ describe("stripUnfinishedToolCalls", () => {
   it("normalizes legacy error state to output-error", () => {
     const messages = [createUserMessage("Hello"), createAssistantMessageWithToolState("error")];
 
-    const result = stripUnfinishedToolCalls(messages);
+    const result = normalizeLegacyToolStates(messages);
     const assistant = result[1]!;
 
     expect(result).not.toBe(messages);
@@ -395,161 +270,154 @@ describe("stripUnfinishedToolCalls", () => {
   });
 });
 
-describe("serializeToolOutput", () => {
-  it("returns empty string for undefined", () => {
-    expect(serializeToolOutput(undefined)).toBe("");
-  });
+function userModelMessage(text: string): ModelMessage {
+  return { role: "user", content: text };
+}
 
-  it("returns empty string for null", () => {
-    expect(serializeToolOutput(null)).toBe("");
-  });
+function toolModelMessage(output: ToolResultPart["output"], toolCallId = "tc1"): ModelMessage {
+  return {
+    role: "tool",
+    content: [{ type: "tool-result", toolCallId, toolName: "TestTool", output }],
+  };
+}
 
-  it("returns string as-is", () => {
-    expect(serializeToolOutput("hello")).toBe("hello");
-  });
-
-  it("serializes plain objects to JSON", () => {
-    expect(serializeToolOutput({ a: 1, b: "x" })).toBe('{"a":1,"b":"x"}');
-  });
-
-  it("serializes Result.Ok to JSON", () => {
-    expect(serializeToolOutput(Result.ok({ message: "done" }))).toContain('"kind":"Ok"');
-  });
-
-  it("serializes Result.Error to JSON", () => {
-    expect(serializeToolOutput(Result.err("failed"))).toContain('"kind":"Error"');
-  });
-});
+function getToolOutput(message: ModelMessage | undefined): ToolResultPart["output"] | undefined {
+  if (message?.role !== "tool") return undefined;
+  const part = message.content[0];
+  return part?.type === "tool-result" ? part.output : undefined;
+}
 
 describe("replaceHistoricalToolOutputsWithBlobRefs", () => {
-  it("returns messages unchanged when no last user message", () => {
-    const messages = [createAssistantMessage()];
-    const createBlob = () => ({ blobId: "blob-1" });
-    expect(replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob)).toBe(messages);
-  });
+  const large = "x".repeat(600);
 
-  it("returns messages unchanged when last user message has no prior assistant with tool output", () => {
-    const messages = [createUserMessage("Hi"), createAssistantMessage()];
-    const createBlob = () => ({ blobId: "blob-1" });
-    expect(replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob)).toEqual(messages);
+  it("produces identical history on repeated sends", () => {
+    const messages = [
+      userModelMessage("First"),
+      toolModelMessage({ type: "text", value: large }),
+      userModelMessage("Second"),
+    ];
+    const createBlob = (_content: string, toolCallId: string) => ({ blobId: `tool-${toolCallId}` });
+
+    const first = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob);
+    const second = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob);
+
+    expect(first).toEqual(second);
+    expect(JSON.stringify(first)).toContain("blob ID tool-tc1");
   });
 
   it("does not replace tool outputs in the current turn", () => {
-    const largeOutput = "x".repeat(600);
-    const messages = [
-      createUserMessage("First"),
-      createAssistantMessageWithToolOutput("small"),
-      createUserMessage("Second"),
-      createAssistantMessageWithToolOutput(largeOutput),
-    ];
+    const messages = [userModelMessage("First"), toolModelMessage({ type: "text", value: large })];
     const blobs: string[] = [];
-    const createBlob = (content: string) => {
+    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, (content) => {
       blobs.push(content);
-      return { blobId: `blob-${blobs.length}` };
-    };
-    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob);
+      return { blobId: "b" };
+    });
+
     expect(blobs).toHaveLength(0);
-    const currentTurnAssistant = result[3]!;
-    const toolPart = currentTurnAssistant.parts.find((p) => p.type === "tool-invocation");
-    expect((toolPart as { output?: string })?.output).toBe(largeOutput);
+    expect(result).toBe(messages);
   });
 
-  it("replaces large tool outputs in previous turns with blob placeholder", () => {
-    const largeOutput = "x".repeat(600);
+  it("stores the model-facing text in the blob and leaves a placeholder", () => {
     const messages = [
-      createUserMessage("First"),
-      createAssistantMessageWithToolOutput(largeOutput),
-      createUserMessage("Second"),
-      createAssistantMessage("a2"),
+      userModelMessage("First"),
+      toolModelMessage({ type: "text", value: large }),
+      userModelMessage("Second"),
     ];
     const blobs: string[] = [];
-    const createBlob = (content: string) => {
+    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, (content) => {
       blobs.push(content);
-      return { blobId: `blob-${blobs.length}` };
-    };
-    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob);
-    expect(blobs).toHaveLength(1);
-    expect(blobs[0]).toBe(largeOutput);
-    const oldAssistant = result[1]!;
-    const toolPart = oldAssistant.parts.find((p) => p.type === "tool-invocation");
-    expect((toolPart as { output?: string })?.output).toContain("Read output from blob ID blob-1");
-    expect((toolPart as { output?: string })?.output).toContain("PayloadBlobRangeRead");
+      return { blobId: "blob-1" };
+    });
+
+    expect(blobs).toEqual([large]);
+    expect(getToolOutput(result[1])).toEqual({
+      type: "text",
+      value: "Read output from blob ID blob-1 with PayloadBlobRangeRead (600 chars).",
+    });
   });
 
-  it("preserves assistant text content", () => {
-    const largeOutput = "x".repeat(600);
+  it("serializes json outputs into the blob", () => {
+    const value = { data: "y".repeat(600) };
     const messages = [
-      createUserMessage("First"),
-      createAssistantMessageWithToolOutput(largeOutput),
-      createUserMessage("Second"),
+      userModelMessage("First"),
+      toolModelMessage({ type: "json", value }),
+      userModelMessage("Second"),
     ];
-    const createBlob = () => ({ blobId: "blob-1" });
-    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob);
-    const assistant = result[1]!;
-    const textPart = assistant.parts.find((p) => p.type === "text");
-    expect((textPart as { text?: string })?.text).toBe("Using tool");
+    const blobs: string[] = [];
+    replaceHistoricalToolOutputsWithBlobRefs(messages, (content) => {
+      blobs.push(content);
+      return { blobId: "blob-1" };
+    });
+
+    expect(blobs).toEqual([JSON.stringify(value)]);
   });
 
-  it("does not replace outputs below threshold", () => {
-    const smallOutput = "ok";
+  it("keeps error outputs and outputs below the threshold", () => {
+    const errorOutput = { type: "error-text" as const, value: large };
     const messages = [
-      createUserMessage("First"),
-      createAssistantMessageWithToolOutput(smallOutput),
-      createUserMessage("Second"),
+      userModelMessage("First"),
+      toolModelMessage({ type: "text", value: "ok" }),
+      toolModelMessage(errorOutput, "tc2"),
+      userModelMessage("Second"),
     ];
-    const createBlob = () => ({ blobId: "blob-1" });
-    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob);
-    const assistant = result[1]!;
-    const toolPart = assistant.parts.find((p) => p.type === "tool-invocation");
-    expect((toolPart as { output?: string })?.output).toBe(smallOutput);
+
+    expect(replaceHistoricalToolOutputsWithBlobRefs(messages, () => ({ blobId: "b" }))).toBe(
+      messages
+    );
   });
 
   it("respects custom minOutputLengthToReplace threshold", () => {
-    const output = "x".repeat(100);
     const messages = [
-      createUserMessage("First"),
-      createAssistantMessageWithToolOutput(output),
-      createUserMessage("Second"),
+      userModelMessage("First"),
+      toolModelMessage({ type: "text", value: "x".repeat(100) }),
+      userModelMessage("Second"),
     ];
-    const createBlob = () => ({ blobId: "blob-1" });
-    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, createBlob, {
+    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, () => ({ blobId: "b" }), {
       minOutputLengthToReplace: 50,
     });
-    const assistant = result[1]!;
-    const toolPart = assistant.parts.find((p) => p.type === "tool-invocation");
-    expect((toolPart as { output?: string })?.output).toContain("Read output from blob ID");
+
+    expect(JSON.stringify(getToolOutput(result[1]))).toContain("Read output from blob ID b");
   });
 
   it("does not mutate input messages", () => {
-    const largeOutput = "x".repeat(600);
     const messages = [
-      createUserMessage("First"),
-      createAssistantMessageWithToolOutput(largeOutput),
-      createUserMessage("Second"),
+      userModelMessage("First"),
+      toolModelMessage({ type: "text", value: large }),
+      userModelMessage("Second"),
     ];
     const original = JSON.stringify(messages);
-    replaceHistoricalToolOutputsWithBlobRefs(messages, () => ({ blobId: "blob-1" }));
+    replaceHistoricalToolOutputsWithBlobRefs(messages, () => ({ blobId: "b" }));
     expect(JSON.stringify(messages)).toBe(original);
-  });
-
-  it("preserves identity for unchanged assistant messages after an earlier replacement", () => {
-    const largeOutput = "x".repeat(600);
-    const unchangedAssistant = createAssistantMessage("a2");
-    const messages = [
-      createUserMessage("First"),
-      createAssistantMessageWithToolOutput(largeOutput),
-      unchangedAssistant,
-      createUserMessage("Second"),
-    ];
-
-    const result = replaceHistoricalToolOutputsWithBlobRefs(messages, () => ({ blobId: "blob-1" }));
-
-    expect(result[1]).not.toBe(messages[1]);
-    expect(result[2]).toBe(unchangedAssistant);
   });
 });
 
 describe("stripReasoningParts", () => {
+  it("keeps reasoning on messages accepted by the keep predicate", () => {
+    const sameModel = {
+      id: "a1",
+      role: "assistant",
+      metadata: { model: "openai/gpt-6-sol" },
+      parts: [{ type: "reasoning", text: "internal", state: "done" }],
+    } as ShiftMessage;
+    const otherModel = {
+      id: "a2",
+      role: "assistant",
+      metadata: { model: "anthropic/claude-opus-5-5" },
+      parts: [
+        { type: "reasoning", text: "internal", state: "done" },
+        { type: "text", text: "visible" },
+      ],
+    } as ShiftMessage;
+
+    const result = stripReasoningParts(
+      [sameModel, otherModel],
+      (message) => message.metadata?.model === "openai/gpt-6-sol"
+    );
+
+    expect(result[0]).toBe(sameModel);
+    expect(result[1]?.parts).toEqual([{ type: "text", text: "visible" }]);
+  });
+
   it("removes assistant reasoning-only messages", () => {
     const messages: ShiftMessage[] = [
       { id: "u1", role: "user", parts: [{ type: "text", text: "hello" }] } as ShiftMessage,
@@ -582,5 +450,32 @@ describe("stripReasoningParts", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]?.parts).toEqual([{ type: "text", text: "visible" }]);
+  });
+});
+
+describe("markUnfinishedMessages", () => {
+  it("marks streaming or stateless assistant messages as aborted", () => {
+    const user = createUserMessage("hi");
+    const done = {
+      id: "a1",
+      role: "assistant",
+      parts: [],
+      metadata: { state: "done" },
+    } as ShiftMessage;
+    const streaming = {
+      id: "a2",
+      role: "assistant",
+      parts: [],
+      metadata: { state: "streaming", usage: { inputTokens: 5 } },
+    } as ShiftMessage;
+    const stateless = { id: "a3", role: "assistant", parts: [] } as ShiftMessage;
+
+    const result = markUnfinishedMessages([user, done, streaming, stateless], "aborted");
+
+    expect(result[0]).toBe(user);
+    expect(result[1]).toBe(done);
+    expect(result[2]?.metadata).toEqual({ state: "aborted", usage: { inputTokens: 5 } });
+    expect(result[3]?.metadata?.state).toBe("aborted");
+    expect(markUnfinishedMessages([user, done], "error")).toEqual([user, done]);
   });
 });

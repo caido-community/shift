@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { withActiveEditor } from "@/float/utils";
 
 const inputSchema = z.object({
@@ -11,13 +12,13 @@ const inputSchema = z.object({
 export const editorSelectionReplaceTool = tool({
   description: "Replace current selection in the active editor and focus it",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: ({ text }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     return withActiveEditor(sdk, (editor) => {
       editor.replaceSelectedText(text);
       editor.focus();
-      return ActionResult.ok("Selection replaced in active editor");
+      return ToolResult.ok({ message: "Selection replaced in active editor" });
     });
   },
 });

@@ -223,7 +223,6 @@ export const useAgentEditorForm = (agentSource: MaybeRefOrGetter<CustomAgent | u
     allWorkflowsEnabled,
     selectedBinaries,
     selectedCollections,
-    isEditing,
     formTitle,
     saveButtonLabel,
     canSave,

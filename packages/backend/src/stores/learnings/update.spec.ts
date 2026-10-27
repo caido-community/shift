@@ -133,30 +133,6 @@ describe("learnings update", () => {
     });
   });
 
-  describe("SET_LEARNINGS", () => {
-    it("replaces all learnings", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "SET_LEARNINGS",
-        entries: ["New 1", "New 2"],
-      });
-
-      expect(result.entries).toEqual(["New 1", "New 2"]);
-    });
-
-    it("filters out empty entries", () => {
-      const model = createTestModel();
-
-      const result = update(model, {
-        type: "SET_LEARNINGS",
-        entries: ["Valid", "  ", "Also valid"],
-      });
-
-      expect(result.entries).toEqual(["Valid", "Also valid"]);
-    });
-  });
-
   describe("CLEAR_LEARNINGS", () => {
     it("clears all learnings", () => {
       const model = createTestModel();

@@ -15,7 +15,8 @@ import {
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 
 const sectionEnum = z.enum([
   "SectionRequestBody",
@@ -71,7 +72,7 @@ type MatchReplaceOperation =
 export const matchReplaceAddTool = tool({
   description: "Create a new match and replace rule with specified configuration",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async (
     { ruleName, section, operation, matcherType, matcher, replacerType, replacer, query },
     { experimental_context }
@@ -110,7 +111,7 @@ export const matchReplaceAddTool = tool({
       case null:
         break;
       default:
-        return ActionResult.err(`Invalid matcher type: ${matcherType}`);
+        return ToolResult.err(`Invalid matcher type: ${matcherType}`);
     }
     switch (replacerType) {
       case "ReplacerTerm":
@@ -129,7 +130,7 @@ export const matchReplaceAddTool = tool({
       case null:
         break;
       default:
-        return ActionResult.err(`Invalid replacer type: ${replacerType}`);
+        return ToolResult.err(`Invalid replacer type: ${replacerType}`);
     }
     const tempOperation: Record<string, unknown> = { kind: operation };
     const operationMap: Record<string, string[]> = {
@@ -152,14 +153,14 @@ export const matchReplaceAddTool = tool({
       if (matcherType !== undefined && matcherType !== null) {
         tempOperation.matcher = crMatcher!;
       } else {
-        return ActionResult.err(`Matcher is required for operation: ${operation}`);
+        return ToolResult.err(`Matcher is required for operation: ${operation}`);
       }
     }
     if (operationFields.includes("replacer")) {
       if (replacerType !== undefined && replacerType !== null) {
         tempOperation.replacer = crReplacer!;
       } else {
-        return ActionResult.err(`Replacer is required for operation: ${operation}`);
+        return ToolResult.err(`Replacer is required for operation: ${operation}`);
       }
     }
     crOperation = tempOperation as MatchReplaceOperation;
@@ -180,6 +181,6 @@ export const matchReplaceAddTool = tool({
       await sdk.matchReplace.toggleRule(res.id, true);
     }
 
-    return ActionResult.ok(`Match and replace rule ${ruleName} created successfully`);
+    return ToolResult.ok({ message: `Match and replace rule ${ruleName} created successfully` });
   },
 });

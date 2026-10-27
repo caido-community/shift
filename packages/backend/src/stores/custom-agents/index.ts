@@ -1,1 +1,1 @@
-export { getCustomAgentsStore } from "./store";
+export { customAgentsStore } from "./store";

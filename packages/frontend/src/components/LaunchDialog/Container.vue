@@ -9,17 +9,16 @@ import type { LaunchDialogProps } from "./types";
 import { useLaunchDialog } from "./useLaunchDialog";
 
 import { ModelSelector } from "@/components/agent/ChatInput/ModelSelector";
+import { AGENT_MODES } from "@/components/agent/modes";
 
-const { onConfirm, onCancel, initialSkillIds, initialCustomAgentId } =
+const { sessionId, onConfirm, onCancel, initialSkillIds, initialCustomAgentId } =
   defineProps<LaunchDialogProps>();
 
 const {
-  entries,
   instructions,
-  maxIterations,
+  mode,
   selectedModel,
   selectedCustomAgentId,
-  selectedAgent,
   hasAgent,
   hasAgentOptions,
   availableModels,
@@ -29,18 +28,16 @@ const {
   toggleSkill,
   selectAgent,
   openAgentsPage,
-  addEmptyEntry,
-  removeEntry,
   handleConfirm,
-  handleCancel,
-  handleMaxIterationsInput,
-  handleSelectionsKeydown,
 } = useLaunchDialog({
+  sessionId,
   onConfirm,
   onCancel,
   initialSkillIds,
   initialCustomAgentId,
 });
+
+const launchShortcut = navigator.userAgent.includes("Mac") ? "⌘↵" : "Ctrl↵";
 
 const skillsPopoverRef = ref<InstanceType<typeof Popover>>();
 const onToggleSkillsPopover = (event: MouseEvent) => {
@@ -50,38 +47,61 @@ const onToggleSkillsPopover = (event: MouseEvent) => {
 const handleAgentChange = (value: string | undefined) => {
   selectAgent(value === "" ? undefined : value);
 };
+
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+    event.preventDefault();
+    handleConfirm();
+  }
+};
 </script>
 
 <template>
-  <div class="flex w-[520px] flex-col gap-5">
-    <div class="grid grid-cols-[1fr_140px] gap-4">
-      <section class="flex flex-col gap-2">
+  <div
+    class="flex w-[520px] flex-col gap-5"
+    @keydown="handleKeydown">
+    <div class="flex gap-3">
+      <section class="flex w-[200px] shrink-0 flex-col gap-2">
         <label class="text-sm font-medium text-surface-200">Model</label>
-        <ModelSelector
-          v-model="selectedModel"
-          :models="availableModels"
-          direction="down"
-          class="w-full [&>button:first-child]:flex-1 [&>button:first-child]:justify-between [&>div:last-child]:!z-[3001]" />
+        <div
+          class="flex h-[34px] items-center rounded-md border border-surface-700 bg-surface-900 px-1">
+          <ModelSelector
+            v-model="selectedModel"
+            :models="availableModels"
+            direction="down"
+            class="w-full [&>button:first-child]:flex-1 [&>button:first-child]:justify-between [&>div:last-child]:!z-[3001]" />
+        </div>
       </section>
 
-      <section class="flex flex-col gap-2">
-        <label class="text-sm font-medium text-surface-200">Max iterations</label>
-        <input
-          :value="maxIterations"
-          min="1"
-          type="number"
-          class="w-full rounded-md border border-surface-700 bg-surface-800 px-3 py-1.5 text-sm text-surface-100 placeholder-surface-500 focus:outline-none focus:ring-1 focus:ring-secondary-500"
-          @input="handleMaxIterationsInput" />
+      <section class="flex flex-1 flex-col gap-2">
+        <label class="text-sm font-medium text-surface-200">Mode</label>
+        <div class="flex h-[34px] rounded-md border border-surface-700 bg-surface-900 p-[3px]">
+          <button
+            v-for="m in AGENT_MODES"
+            :key="m.value"
+            v-tooltip.top="m.description"
+            type="button"
+            :class="[
+              'flex flex-1 items-center justify-center gap-1.5 rounded text-[13px] transition-colors',
+              mode === m.value
+                ? 'bg-surface-700 text-surface-0'
+                : 'text-surface-400 hover:text-surface-200',
+            ]"
+            @click="mode = m.value">
+            <i :class="[m.icon, 'text-xs']" />
+            {{ m.label }}
+          </button>
+        </div>
       </section>
     </div>
 
     <section class="flex flex-col gap-2">
-      <label class="text-sm font-medium text-surface-200">Custom Agent</label>
+      <label class="text-sm font-medium text-surface-200">Custom agent</label>
       <Select
         v-if="hasAgentOptions"
         :model-value="selectedCustomAgentId ?? ''"
         :options="[
-          { label: 'No Custom Agent', value: '' },
+          { label: 'No custom agent', value: '' },
           ...agentOptions.map((a) => ({ label: a.name, value: a.id })),
         ]"
         option-label="label"
@@ -115,25 +135,12 @@ const handleAgentChange = (value: string | undefined) => {
             @click="openAgentsPage" />
         </div>
       </div>
-      <div
-        v-if="selectedAgent !== undefined"
-        class="flex items-center gap-2 text-xs text-surface-400">
-        <span>{{ selectedAgent.skills.length }} skills</span>
-        <span>{{
-          selectedAgent.allowedWorkflowIds === undefined
-            ? "All workflows"
-            : `${selectedAgent.allowedWorkflowIds.length} workflows`
-        }}</span>
-        <span>{{ selectedAgent.allowedBinaries?.length ?? 0 }} binaries</span>
-      </div>
     </section>
 
     <section
       v-if="!hasAgent"
       class="flex flex-col gap-2">
-      <div class="flex items-center justify-between">
-        <label class="text-sm font-medium text-surface-200">Skills</label>
-      </div>
+      <label class="text-sm font-medium text-surface-200">Skills</label>
 
       <div
         class="flex min-h-[42px] flex-wrap items-center gap-2 rounded-md border border-surface-700 bg-surface-800 px-3 py-2">
@@ -190,79 +197,32 @@ const handleAgentChange = (value: string | undefined) => {
     </section>
 
     <section class="flex flex-col gap-2">
-      <label class="text-sm font-medium text-surface-200">Additional instructions</label>
+      <label class="text-sm font-medium text-surface-200">
+        Instructions <span class="font-normal text-surface-400">(optional)</span>
+      </label>
       <textarea
         v-model="instructions"
         autofocus
-        placeholder="Add overall instructions for the agent..."
-        class="min-h-[96px] w-full rounded-md border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 focus:outline-none focus:ring-1 focus:ring-secondary-500" />
+        placeholder="Test this for IDOR"
+        class="min-h-[96px] w-full rounded-md border border-surface-700 bg-surface-900 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 focus:outline-none focus:ring-1 focus:ring-secondary-500" />
     </section>
 
-    <section class="flex flex-col gap-3">
-      <div class="flex items-center justify-between">
-        <label class="text-sm font-medium text-surface-200">Highlighted Selections</label>
-        <span class="text-xs text-surface-400">Highlight text in the Caido editor.</span>
-      </div>
-
-      <div
-        class="flex max-h-[320px] flex-col gap-3 overflow-y-auto pr-1"
-        @keydown="handleSelectionsKeydown">
-        <article
-          v-for="entry in entries"
-          :key="entry.id"
-          class="flex flex-col gap-2 rounded-md border border-surface-700 bg-surface-800/30 p-3">
-          <div class="flex items-start gap-2">
-            <div class="relative flex-1">
-              <span
-                class="pointer-events-none absolute inset-y-0 left-0 flex w-8 items-center justify-center rounded-l-md border-r border-surface-700 bg-surface-800 text-surface-400">
-                <i class="fa-solid fa-i-cursor text-sm" />
-              </span>
-              <input
-                v-model="entry.selection"
-                readonly
-                disabled
-                class="w-full rounded-md border border-surface-700 bg-surface-900/50 py-2 pl-10 pr-3 text-sm text-surface-400 focus:outline-none"
-                placeholder="Select text in the editor..." />
-            </div>
-            <button
-              class="flex h-9 w-9 items-center justify-center rounded text-surface-400 transition-colors hover:bg-surface-700 hover:text-red-400"
-              type="button"
-              title="Remove selection"
-              tabindex="-1"
-              @click="removeEntry(entry.id)">
-              <i class="fa-solid fa-trash text-sm" />
-            </button>
-          </div>
-
-          <input
-            v-model="entry.comment"
-            class="w-full rounded-md border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 focus:outline-none focus:ring-1 focus:ring-secondary-500"
-            placeholder="Add a comment about this selection..." />
-        </article>
-
-        <button
-          class="flex h-9 w-full items-center justify-center gap-2 rounded-md border border-dashed border-surface-700 text-sm text-surface-400 transition hover:border-surface-600 hover:bg-surface-800/50 hover:text-surface-300"
-          type="button"
-          @click="addEmptyEntry">
-          <i class="fas fa-plus text-xs" />
-          <span>Add selection entry</span>
-        </button>
-      </div>
-    </section>
-
-    <footer class="flex items-center justify-end gap-2 pt-2">
+    <footer class="flex items-center justify-end gap-2">
       <Button
-        icon="fas fa-times"
         label="Cancel"
         severity="secondary"
         text
         size="small"
-        @click="handleCancel" />
+        @click="onCancel" />
       <Button
-        icon="fas fa-check"
-        label="Confirm"
         size="small"
-        @click="handleConfirm" />
+        class="gap-2"
+        @click="handleConfirm">
+        <span class="font-semibold">Launch</span>
+        <kbd class="rounded bg-white/20 px-1.5 py-0.5 font-mono text-[11px] leading-none">
+          {{ launchShortcut }}
+        </kbd>
+      </Button>
     </footer>
   </div>
 </template>

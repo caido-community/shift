@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 
 const inputSchema = z.object({
   id: z.string().describe("ID of the filter to update (non-empty)"),
@@ -13,15 +14,15 @@ const inputSchema = z.object({
 export const filterUpdateTool = tool({
   description: "Update an existing filter by ID with new name, alias, and query",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ id, filterName, alias, query }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
 
     try {
       await sdk.filters.update(id, { name: filterName, alias, query });
-      return ActionResult.ok(`Filter ${id} updated successfully`);
+      return ToolResult.ok({ message: `Filter ${id} updated successfully` });
     } catch (error) {
-      return ActionResult.err(
+      return ToolResult.err(
         "Failed to update filter",
         error instanceof Error ? error.message : undefined
       );

@@ -1,3 +1,5 @@
+import { HTTPQL_REFERENCE } from "@/prompts/httpql";
+
 const HARDCODED_EXAMPLES = [
   {
     query: "change this get to a post request",
@@ -18,8 +20,12 @@ const HARDCODED_EXAMPLES = [
     },
   },
   {
-    query: "change request to POST with different host",
+    query: "change request to POST targeting different.com and update the Host header to match",
     context: {
+      page: "#/replay",
+      replay: {
+        connection: { host: "example.com", port: 443, isTLS: true, SNI: null },
+      },
       activeEditor: "request",
       request: "GET /current.json HTTP/1.1\nHost: example.com\ncookie: session=12345",
       requestSelectedText: "",
@@ -30,6 +36,15 @@ const HARDCODED_EXAMPLES = [
           name: "editorMethodSet",
           parameters: {
             method: "POST",
+          },
+        },
+        {
+          name: "replayConnectionSet",
+          parameters: {
+            host: "different.com",
+            port: 443,
+            isTLS: true,
+            SNI: null,
           },
         },
         {
@@ -437,36 +452,6 @@ const HARDCODED_EXAMPLES = [
 
 const EXAMPLES_PLACEHOLDER = "__HARDCODED_EXAMPLES__";
 
-export const HTTPQL_SPEC_FILE = `
-HTTPQL: filter HTTP requests/responses in Caido.
-
-Syntax: namespace.field.operator:"value"
-
-Namespaces: req, resp, preset, row, source
-
-Fields:
-- req: ext (file extension), host, method, path, port, raw, created_at
-- resp: code, raw, roundtrip
-- row: id
-
-Operators:
-- Numbers (port, code, roundtrip, id): eq, gt, gte, lt, lte, ne
-- Text/bytes (ext, host, method, path, raw): cont (contains, case-insensitive), eq, like (SQL LIKE), ncont, ne, nlike, regex, nregex
-- Dates (created_at): gt (after), lt (before)
-
-Logic: AND (both true, higher priority), OR (either true)
-
-Examples:
-req.method.eq:"GET"
-req.raw.cont:"Authorization: Bearer"
-resp.code.eq:200
-req.path.cont:"/api/"
-req.host.eq:"example.com" AND resp.code.gt:400
-"search term" (searches req.raw & resp.raw)
-
-Special: preset:"name"/alias, source:intercept, replay, automate, workflow
-`;
-
 const SYSTEM_PROMPT = `You are a part of Caido Shift plugin, an assistant that modifies HTTP requests and performs actions in a web proxy application based on user instructions. You should respond with one or more tool calls that achieve the user's goal.
 
 IMPORTANT: Never respond with text. Only use tool calls. Be efficient - only call tools necessary to complete the request.
@@ -477,6 +462,8 @@ Caido is a web security toolkit (like Burp Suite) with: HTTP proxy, Replay, Auto
 
 <caido:replay>
 Edit and replay HTTP requests (like Burp Repeater). Each request is called a Session tab. Path: "#/replay"
+- The URL bar target (host, port, isTLS, SNI) is stored separately from the raw request. Use replayConnectionSet to change where requests are sent; editing the Host header alone does not change the target.
+- Read the current target from context.replay.connection and preserve fields the user did not ask to change. Pass SNI as null when there is no override. Edit the Host header separately when requested; a Host-header-only change should leave the connection unchanged.
 </caido:replay>
 
 <caido:http_history>
@@ -595,17 +582,13 @@ View all findings. Path: "#/findings"
 </hostedFileCreateAdvanced>
 
 <backgroundAgentSpawn>
-- Use this when the user request is clearly multi-step and would benefit from iterative reasoning, pagination, or long-running work.
-- Prefer this for tasks that require exploring substantial data, evaluating intermediate outputs, and then creating or updating multiple artifacts.
-- When spawning a background task, include clear completion criteria and encourage iterative tool usage until evidence is sufficient.
-- Do not use this for simple one-shot actions.
-- BackgroundAgent has access to more tools including:
-  - historyRead - paginated compact history scan
-  - historyRequestResponseRead - deep raw request/response read by request IDs or row IDs (batch)
-- HistoryRowHighlight - apply or clear row highlights using metadataId or metadataIds from history tools
+- Spawn a background agent for any request that needs more than a few tool calls to do well: reading or paginating through HTTP history, inspecting many requests or responses, comparing intermediate results, or creating several artifacts (filters, scopes, highlights, findings) from what it finds. You only get one step; the background agent gets many and keeps working while the user does other things.
+- Handle simple one-shot actions (edit a header, set a query, navigate) yourself.
+- The background agent sees the same context and learnings you do, plus historyRead (paginated compact history scan), historyRequestResponseRead (raw request/response by request or row IDs), and HistoryRowHighlight (highlight rows by metadataId).
+- Write the task as a complete brief: the user's goal in full, what evidence to gather, what to create or change at the end, and when the task counts as done.
 - Example:
   - User request: "search through http history, filter out analytics and create scope"
-  - Tool call: backgroundAgentSpawn with task set to the full user request and an optional short title.
+  - Tool call: backgroundAgentSpawn with task set to the full user request plus completion criteria, and a short title.
 </backgroundAgentSpawn>
 
 <historyRead>
@@ -671,7 +654,7 @@ ${EXAMPLES_PLACEHOLDER}
 </examples>
 
 <httpql_spec>
-${HTTPQL_SPEC_FILE}
+${HTTPQL_REFERENCE}
 </httpql_spec>
 
 Important guidelines:

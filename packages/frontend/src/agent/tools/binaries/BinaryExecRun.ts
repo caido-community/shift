@@ -2,7 +2,10 @@ import { tool } from "ai";
 import { type ExecuteAgentBinaryOutput, ExecuteAgentBinaryOutputSchema } from "shared";
 import { z } from "zod";
 
+import { clearStreamedBinaryOutput, startStreamedBinaryOutput } from "./BinaryExecRun.stream";
+
 import type { AgentContext } from "@/agent/context";
+import { truncateContextValue } from "@/agent/context.truncation";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import { isPresent } from "@/utils";
 import { truncate } from "@/utils/text";
@@ -14,6 +17,8 @@ const inputSchema = z.object({
 });
 
 const outputSchema = ToolResult.schema(ExecuteAgentBinaryOutputSchema);
+
+const MAX_MODEL_STREAM_CHARS = 8_000;
 
 type BinaryExecRunInput = z.infer<typeof inputSchema>;
 type BinaryExecRunOutput = ToolResultType<ExecuteAgentBinaryOutput>;
@@ -91,7 +96,7 @@ export const BinaryExecRun = tool({
   outputSchema,
   execute: async (
     { binaryPath, args, stdin },
-    { abortSignal, experimental_context, toolCallId }
+    { abortSignal, experimental_context, toolCallId: executionId }
   ): Promise<BinaryExecRunOutput> => {
     const context = experimental_context as AgentContext;
     const agent = context.resolvedAgent;
@@ -111,60 +116,67 @@ export const BinaryExecRun = tool({
       );
     }
 
-    const executionId = toolCallId || `binary-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
     if (abortSignal?.aborted === true) {
       return ToolResult.err("Binary execution cancelled");
     }
 
-    const runPromise = context.sdk.backend.executeAgentBinary({
-      executionId,
-      agentId: agent.id,
-      binaryPath,
-      args,
-      stdin,
+    startStreamedBinaryOutput(executionId);
+    const done = new AbortController();
+    const cancelled = new Promise<never>((_, reject) => {
+      abortSignal?.addEventListener(
+        "abort",
+        () => {
+          void context.sdk.backend
+            .cancelAgentBinaryExecution({ executionId })
+            .catch(() => undefined)
+            .then(() => reject(new Error("Binary execution cancelled")));
+        },
+        { once: true, signal: done.signal }
+      );
     });
 
-    let cleanupAbortListener = () => {};
-    const abortPromise = new Promise<never>((_, reject) => {
-      if (abortSignal === undefined) {
-        return;
-      }
-
-      const onAbort = () => {
-        context.sdk.backend
-          .cancelAgentBinaryExecution({ executionId })
-          .finally(() => reject(new Error("Binary execution cancelled")));
-      };
-
-      if (abortSignal.aborted) {
-        onAbort();
-        return;
-      }
-
-      abortSignal.addEventListener("abort", onAbort, { once: true });
-      cleanupAbortListener = () => {
-        abortSignal.removeEventListener("abort", onAbort);
-      };
-    });
-
-    let result;
     try {
-      result = await Promise.race([runPromise, abortPromise]);
+      const result = await Promise.race([
+        context.sdk.backend.executeAgentBinary({
+          executionId,
+          agentId: agent.id,
+          binaryPath,
+          args,
+          stdin,
+        }),
+        cancelled,
+      ]);
+      if (result.kind === "Error") {
+        return ToolResult.err("Binary execution failed", result.error);
+      }
+
+      return ToolResult.ok({
+        message: result.value.timedOut ? "Binary execution timed out" : "Binary executed",
+        ...result.value,
+      });
     } catch (error) {
       return ToolResult.err((error as Error).message);
     } finally {
-      cleanupAbortListener();
+      done.abort();
+      clearStreamedBinaryOutput(executionId);
     }
-
-    if (result.kind === "Error") {
-      return ToolResult.err("Binary execution failed", result.error);
+  },
+  toModelOutput: ({ output }) => {
+    if (output.kind === "Error") {
+      const { message, detail } = output.error;
+      return {
+        type: "error-text",
+        value: detail !== undefined && detail !== "" ? `${message}\n${detail}` : message,
+      };
     }
-
-    const message = result.value.timedOut ? "Binary execution timed out" : "Binary executed";
-    return ToolResult.ok({
-      message,
-      ...result.value,
-    });
+    const { stdout, stderr, ...rest } = output.value;
+    return {
+      type: "json",
+      value: {
+        ...rest,
+        stdout: truncateContextValue(stdout, MAX_MODEL_STREAM_CHARS),
+        stderr: truncateContextValue(stderr, MAX_MODEL_STREAM_CHARS),
+      },
+    };
   },
 });

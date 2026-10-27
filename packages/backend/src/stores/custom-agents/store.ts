@@ -1,201 +1,144 @@
 import {
   type CreateCustomAgentInput,
   type CustomAgent,
+  type CustomAgentsState,
   type ResolvedCustomAgent,
   Result,
   type UpdateCustomAgentInput,
 } from "shared";
 
-import { requireSDK } from "../../sdk";
-import { generateID } from "../../utils";
-import { GlobalStore } from "../global-store";
-import { getSkillsStore } from "../skills";
+import { isVisibleInCurrentProject, projectIdForScope } from "../../project";
+import { generateID, isRecord } from "../../utils";
+import { skillsStore } from "../skills";
+import { Store } from "../store";
 
 import { createInitialModel, type CustomAgentsMessage, type CustomAgentsModel } from "./model";
 import { update } from "./update";
 
-class CustomAgentsStore extends GlobalStore<CustomAgentsModel, CustomAgentsMessage> {
-  private currentProjectId: string | undefined;
+const agentDefaults: Pick<
+  CustomAgent,
+  "description" | "skillIds" | "instructions" | "boundCollections"
+> = { description: "", skillIds: [], instructions: "", boundCollections: [] };
 
+class CustomAgentsStore extends Store<CustomAgentsModel, CustomAgentsMessage> {
   constructor() {
-    super("custom-agents");
+    super({ filename: "custom-agents", initialModel: createInitialModel, update });
   }
 
-  protected createInitialModel(): CustomAgentsModel {
-    return createInitialModel();
-  }
-
-  protected update(model: CustomAgentsModel, message: CustomAgentsMessage): CustomAgentsModel {
-    return update(model, message);
-  }
-
-  async initialize(): Promise<void> {
-    await super.initialize();
-    const sdk = requireSDK();
-    const project = await sdk.projects.getCurrent();
-    this.currentProjectId = project?.getId();
-  }
-
-  switchProject(projectId: string | undefined): void {
-    this.currentProjectId = projectId;
-    this.notify();
-  }
-
-  private isVisibleInCurrentProject(agent: CustomAgent): boolean {
-    if (agent.scope === "global") {
-      return true;
+  protected parse(loaded: unknown): CustomAgentsModel | undefined {
+    if (!isRecord(loaded)) {
+      return undefined;
     }
-    if (this.currentProjectId === undefined) {
-      return false;
+    const agents: unknown = loaded.agents ?? [];
+    if (!Array.isArray(agents) || !agents.every(isRecord)) {
+      return undefined;
     }
-    return agent.projectId === this.currentProjectId;
+    return {
+      ...loaded,
+      agents: agents.map((agent) => ({ ...agentDefaults, ...agent }) as CustomAgent),
+    };
   }
 
   getAgentDefinitions(): CustomAgent[] {
-    return this.getModel().agents.filter((agent) => this.isVisibleInCurrentProject(agent));
+    return this.model.agents.filter(isVisibleInCurrentProject);
   }
 
   getResolvedAgents(): ResolvedCustomAgent[] {
-    const skillsStore = getSkillsStore();
     const allSkills = skillsStore.getSkills();
 
-    return this.getAgentDefinitions().map((agent) => {
-      const skills = agent.skillIds
-        .map((id) => allSkills.find((s) => s.id === id))
-        .filter((s) => s !== undefined);
-
-      return {
-        id: agent.id,
-        name: agent.name,
-        description: agent.description,
-        skills,
-        allowedWorkflowIds: agent.allowedWorkflowIds,
-        allowedBinaries: agent.allowedBinaries,
-        instructions: agent.instructions,
-      };
-    });
+    return this.getAgentDefinitions().map((agent) => ({
+      id: agent.id,
+      name: agent.name,
+      description: agent.description,
+      skills: agent.skillIds
+        .map((id) => allSkills.find((skill) => skill.id === id))
+        .filter((skill) => skill !== undefined),
+      allowedWorkflowIds: agent.allowedWorkflowIds,
+      allowedBinaries: agent.allowedBinaries,
+      instructions: agent.instructions,
+    }));
   }
 
-  findByCollection(collectionName: string): CustomAgent[] {
-    return this.getAgentDefinitions().filter((agent) =>
-      agent.boundCollections.includes(collectionName)
-    );
+  getState(): CustomAgentsState {
+    return { definitions: this.getAgentDefinitions(), agents: this.getResolvedAgents() };
   }
 
-  private findBoundCollectionConflict(
-    boundCollections: string[],
-    excludedAgentId?: string
-  ): { collectionName: string; agentName: string } | undefined {
-    const existingBindings = new Map<string, string>();
+  private checkBoundCollections(boundCollections: string[], excludedAgentId?: string): Result {
     for (const agent of this.getAgentDefinitions()) {
-      if (excludedAgentId !== undefined && agent.id === excludedAgentId) {
+      if (agent.id === excludedAgentId) {
         continue;
       }
-      for (const collectionName of agent.boundCollections) {
-        if (!existingBindings.has(collectionName)) {
-          existingBindings.set(collectionName, agent.name);
-        }
+      const collectionName = boundCollections.find((name) => agent.boundCollections.includes(name));
+      if (collectionName !== undefined) {
+        return Result.err(`Collection "${collectionName}" is already bound to "${agent.name}"`);
       }
     }
-
-    for (const collectionName of boundCollections) {
-      const agentName = existingBindings.get(collectionName);
-      if (agentName !== undefined) {
-        return { collectionName, agentName };
-      }
-    }
-
-    return undefined;
+    return Result.ok(undefined);
   }
 
-  async addAgent(input: CreateCustomAgentInput): Promise<Result<string>> {
-    if (input.scope === "project" && this.currentProjectId === undefined) {
-      return Result.err("Cannot create project-scoped agent without an active project");
+  async addAgent(input: CreateCustomAgentInput): Promise<Result<CustomAgentsState>> {
+    const projectId = projectIdForScope(input.scope);
+    if (projectId.kind === "Error") {
+      return projectId;
     }
 
-    const boundCollections = [...new Set(input.boundCollections ?? [])];
-    const conflict = this.findBoundCollectionConflict(boundCollections);
-    if (conflict !== undefined) {
-      return Result.err(
-        `Collection "${conflict.collectionName}" is already bound to "${conflict.agentName}"`
-      );
+    const boundCollections = [...new Set(input.boundCollections)];
+    const check = this.checkBoundCollections(boundCollections);
+    if (check.kind === "Error") {
+      return check;
     }
 
-    const id = generateID("agent-");
-
-    const agent: CustomAgent = {
-      id,
-      name: input.name,
-      description: input.description ?? "",
-      skillIds: input.skillIds ?? [],
-      allowedWorkflowIds: input.allowedWorkflowIds,
-      allowedBinaries: input.allowedBinaries,
-      instructions: input.instructions ?? "",
-      scope: input.scope,
-      projectId: input.scope === "project" ? this.currentProjectId : undefined,
-      boundCollections,
-    };
-
-    this.dispatch({ type: "ADD_AGENT", agent });
-
-    await this.persist();
-    this.notify();
-
-    return Result.ok(id);
+    await this.commit({
+      type: "ADD_AGENT",
+      agent: {
+        id: generateID("agent-"),
+        name: input.name,
+        description: input.description,
+        skillIds: input.skillIds,
+        allowedWorkflowIds: input.allowedWorkflowIds,
+        allowedBinaries: input.allowedBinaries,
+        instructions: input.instructions,
+        scope: input.scope,
+        projectId: projectId.value,
+        boundCollections,
+      },
+    });
+    return Result.ok(this.getState());
   }
 
-  async updateAgent(id: string, updates: UpdateCustomAgentInput): Promise<Result<void>> {
-    const existing = this.getModel().agents.find((a) => a.id === id);
+  async updateAgent(
+    id: string,
+    updates: UpdateCustomAgentInput
+  ): Promise<Result<CustomAgentsState>> {
+    const existing = this.model.agents.find((a) => a.id === id);
     if (existing === undefined) {
       return Result.err("Agent not found");
     }
 
-    if (updates.scope === "project" && this.currentProjectId === undefined) {
-      return Result.err("Cannot change scope to project without an active project");
+    const projectId = projectIdForScope(updates.scope);
+    if (projectId.kind === "Error") {
+      return projectId;
     }
 
-    const nextBoundCollections =
-      updates.boundCollections === undefined
-        ? existing.boundCollections
-        : [...new Set(updates.boundCollections)];
-    const conflict = this.findBoundCollectionConflict(nextBoundCollections, id);
-    if (conflict !== undefined) {
-      return Result.err(
-        `Collection "${conflict.collectionName}" is already bound to "${conflict.agentName}"`
-      );
+    const boundCollections = [...new Set(updates.boundCollections ?? existing.boundCollections)];
+    const check = this.checkBoundCollections(boundCollections, id);
+    if (check.kind === "Error") {
+      return check;
     }
 
-    const sanitizedUpdates: UpdateCustomAgentInput =
-      updates.boundCollections === undefined
-        ? updates
-        : { ...updates, boundCollections: nextBoundCollections };
-
-    this.dispatch({
+    await this.commit({
       type: "UPDATE_AGENT",
       id,
-      updates: sanitizedUpdates,
-      projectId: updates.scope === "project" ? this.currentProjectId : undefined,
+      updates: { ...updates, boundCollections },
+      projectId: projectId.value,
     });
-
-    await this.persist();
-    this.notify();
-
-    return Result.ok(undefined);
+    return Result.ok(this.getState());
   }
 
-  async removeAgent(id: string): Promise<void> {
-    this.dispatch({ type: "REMOVE_AGENT", id });
-
-    await this.persist();
-    this.notify();
+  async removeAgent(id: string): Promise<CustomAgentsState> {
+    await this.commit({ type: "REMOVE_AGENT", id });
+    return this.getState();
   }
 }
 
-let instance: CustomAgentsStore | undefined;
-
-export function getCustomAgentsStore(): CustomAgentsStore {
-  if (instance === undefined) {
-    instance = new CustomAgentsStore();
-  }
-  return instance;
-}
+export const customAgentsStore = new CustomAgentsStore();

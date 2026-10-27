@@ -1,26 +1,29 @@
-import { fallbackToolParts, getToolDisplayParts } from "../../backgroundAgents/toolDisplay";
-import { ActionResult } from "../types";
+import { ToolResult } from "@/agent/types";
+import { plainParts } from "@/backgroundAgents/logs";
+import { getToolDisplayParts } from "@/backgroundAgents/toolDisplay";
+
+const parseToolResult = (output: unknown) => {
+  const parsed = ToolResult.schema().safeParse(output);
+  return parsed.success ? parsed.data : undefined;
+};
 
 export const getToolErrorMessage = (output: unknown): string | undefined => {
-  if (!ActionResult.isErr(output)) {
+  const result = parseToolResult(output);
+  if (result?.kind !== "Error") {
     return undefined;
   }
 
-  const { message, detail } = output.error;
+  const { message, detail } = result.error;
   return detail === undefined || detail === "" ? message : `${message}: ${detail}`;
 };
 
 export const getToolSuccessMessage = (output: unknown): string | undefined => {
-  if (!ActionResult.isOk(output)) {
+  const result = parseToolResult(output);
+  if (result?.kind !== "Ok" || result.value.message.trim() === "") {
     return undefined;
   }
 
-  const message = output.value.message;
-  if (message.trim() !== "") {
-    return message;
-  }
-
-  return undefined;
+  return result.value.message;
 };
 
 export const getToolResultLogParts = (toolName: string, toolInput: unknown, output: unknown) => {
@@ -28,6 +31,6 @@ export const getToolResultLogParts = (toolName: string, toolInput: unknown, outp
 
   return (
     getToolDisplayParts(toolName, args, output) ??
-    fallbackToolParts(toolName, getToolSuccessMessage(output))
+    plainParts(getToolSuccessMessage(output) ?? toolName)
   );
 };

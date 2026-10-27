@@ -3,17 +3,7 @@ import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
-import { type FrontendSDK } from "@/types";
 import { isPresent, truncate } from "@/utils";
-
-type UpdateEnvironmentResult = Awaited<ReturnType<FrontendSDK["graphql"]["updateEnvironment"]>>;
-type EnvironmentFull = NonNullable<UpdateEnvironmentResult["updateEnvironment"]["environment"]>;
-
-type EnvironmentVariableKindValue = EnvironmentFull extends {
-  variables: Array<{ kind: infer K }>;
-}
-  ? K
-  : string;
 
 const variableInputSchema = z.object({
   name: z.string().describe("The name of the environment variable"),
@@ -85,7 +75,7 @@ export const EnvironmentUpdate = tool({
         variables: variables.map((v) => ({
           name: v.name,
           value: v.value,
-          kind: v.kind as EnvironmentVariableKindValue,
+          kind: v.kind,
         })),
       },
     });

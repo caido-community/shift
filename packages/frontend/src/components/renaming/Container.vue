@@ -2,80 +2,28 @@
 import Card from "primevue/card";
 import Checkbox from "primevue/checkbox";
 import Textarea from "primevue/textarea";
-import { createModelKey, type Model } from "shared";
-import { computed, watch } from "vue";
+import { computed } from "vue";
 
-import { ModelSelector } from "@/components/agent/ChatInput/ModelSelector";
-import { useSDK } from "@/plugins/sdk";
-import { useModelsStore } from "@/stores/models";
+import { ModelSelector, useModelSetting } from "@/components/agent/ChatInput/ModelSelector";
 import { useSettingsStore } from "@/stores/settings";
-import { updateRenaming, updateSettings } from "@/stores/settings/store.effects";
-import { resolveModel } from "@/utils/ai";
 
-const sdk = useSDK();
-const modelsStore = useModelsStore();
 const settingsStore = useSettingsStore();
-const { dispatch } = settingsStore;
+const { models, model } = useModelSetting("renamingModel", "float");
 
 const enabled = computed({
-  get() {
-    return settingsStore.renaming?.enabled ?? false;
-  },
-  set(value: boolean) {
-    updateRenaming(sdk, dispatch, { enabled: value });
-  },
+  get: () => settingsStore.config.renaming.enabled,
+  set: (value: boolean) => void settingsStore.update({ renaming: { enabled: value } }),
 });
 
 const renameAfterSend = computed({
-  get() {
-    return settingsStore.renaming?.renameAfterSend ?? false;
-  },
-  set(value: boolean) {
-    updateRenaming(sdk, dispatch, { renameAfterSend: value });
-  },
+  get: () => settingsStore.config.renaming.renameAfterSend,
+  set: (value: boolean) => void settingsStore.update({ renaming: { renameAfterSend: value } }),
 });
 
 const instructions = computed({
-  get() {
-    return settingsStore.renaming?.instructions ?? "";
-  },
-  set(value: string) {
-    updateRenaming(sdk, dispatch, { instructions: value });
-  },
+  get: () => settingsStore.config.renaming.instructions,
+  set: (value: string) => void settingsStore.update({ renaming: { instructions: value } }),
 });
-
-const allModels = computed(() => modelsStore.getEnabledModels());
-
-const selectedModel = computed(() => {
-  const key = settingsStore.renamingModel;
-  if (key === undefined) return undefined;
-  return allModels.value.find((m) => createModelKey(m.provider, m.id) === key);
-});
-
-const resolvedModel = computed(() =>
-  resolveModel({
-    sdk,
-    savedModelKey: settingsStore.renamingModel,
-    enabledModels: allModels.value,
-    usageType: "float",
-  })
-);
-
-const handleModelUpdate = (model: Model | undefined) => {
-  if (model === undefined) return;
-  const key = createModelKey(model.provider, model.id);
-  updateSettings(sdk, dispatch, { renamingModel: key });
-};
-
-watch(
-  [resolvedModel, selectedModel],
-  ([resolved, current]) => {
-    if (current === undefined && resolved !== undefined) {
-      handleModelUpdate(resolved);
-    }
-  },
-  { immediate: true }
-);
 </script>
 
 <template>
@@ -153,11 +101,10 @@ watch(
             </div>
             <div class="w-full max-w-md py-2">
               <ModelSelector
-                :model-value="selectedModel"
-                :models="allModels"
+                v-model="model"
+                :models="models"
                 size="small"
-                :disabled="!enabled"
-                @update:model-value="handleModelUpdate" />
+                :disabled="!enabled" />
             </div>
           </div>
         </div>

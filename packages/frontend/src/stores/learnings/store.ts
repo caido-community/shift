@@ -1,37 +1,54 @@
 import { defineStore } from "pinia";
-import { computed, readonly, ref } from "vue";
-
-import { fetchLearnings } from "./store.effects";
-import { initialModel, type LearningsMessage, type LearningsModel } from "./store.model";
-import { update } from "./store.update";
+import { Result } from "shared";
+import { computed, ref } from "vue";
 
 import { useSDK } from "@/plugins/sdk";
 
 export const useLearningsStore = defineStore("learnings", () => {
   const sdk = useSDK();
-  const model = ref<LearningsModel>(initialModel);
+  const entries = ref<string[]>([]);
 
-  function dispatch(message: LearningsMessage) {
-    model.value = update(model.value, message);
+  async function initialize(): Promise<Result<void>> {
+    const result = await sdk.backend.getLearnings();
+    if (result.kind === "Error") return result;
+    entries.value = result.value.entries;
+    return Result.ok(undefined);
   }
 
-  const config = computed(() => model.value.config);
-  const isLoading = computed(() => model.value.isLoading);
-  const error = computed(() => model.value.error);
-  const entries = computed(() => model.value.config?.entries ?? []);
+  async function add(content: string): Promise<Result<void>> {
+    const result = await sdk.backend.addLearning({ content });
+    if (result.kind === "Error") return result;
+    entries.value = result.value.entries;
+    return Result.ok(undefined);
+  }
 
-  async function initialize() {
-    await fetchLearnings(sdk, dispatch);
+  async function update(index: number, content: string): Promise<Result<void>> {
+    const result = await sdk.backend.updateLearning({ index, content });
+    if (result.kind === "Error") return result;
+    entries.value = result.value.entries;
+    return Result.ok(undefined);
+  }
+
+  async function remove(indexes: number[]): Promise<Result<void>> {
+    const result = await sdk.backend.removeLearnings({ indexes });
+    if (result.kind === "Error") return result;
+    entries.value = result.value.entries;
+    return Result.ok(undefined);
+  }
+
+  async function clear(): Promise<Result<void>> {
+    const result = await sdk.backend.clearLearnings();
+    if (result.kind === "Error") return result;
+    entries.value = result.value.entries;
+    return Result.ok(undefined);
   }
 
   return {
-    state: readonly(model),
-    sdk,
-    dispatch,
-    config,
-    isLoading,
-    error,
-    entries,
+    entries: computed(() => entries.value),
     initialize,
+    add,
+    update,
+    remove,
+    clear,
   };
 });

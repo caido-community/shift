@@ -5,162 +5,43 @@ import Checkbox from "primevue/checkbox";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import Textarea from "primevue/textarea";
-import { computed, ref, watch } from "vue";
+import { computed } from "vue";
 
-import { useLearningsStore } from "@/stores/learnings";
-import {
+import { useLearnings } from "./useLearnings";
+
+const {
+  entries,
+  selectedIndexes,
+  newLearning,
+  isAdding,
+  allSelected,
+  draftOf,
+  setDraft,
+  isPending,
+  isSelected,
+  commitLearning,
   addLearning,
-  clearLearnings,
+  toggleSelected,
+  toggleSelectAll,
   removeLearnings,
-  updateLearning,
-} from "@/stores/learnings/store.effects";
+  clearAll,
+} = useLearnings();
 
-type LearningRow = {
-  index: number;
-  value: string;
-};
+const rows = computed(() => entries.value.map((_, index) => ({ index })));
 
-const learningsStore = useLearningsStore();
-const { sdk, dispatch } = learningsStore;
+const isSaveShortcut = (event: KeyboardEvent) =>
+  event.key === "Enter" && (event.metaKey || event.ctrlKey);
 
-const learnings = computed(() => learningsStore.entries);
-
-const drafts = ref<string[]>([]);
-watch(
-  learnings,
-  (next) => {
-    drafts.value = [...next];
-  },
-  { immediate: true }
-);
-
-const rows = computed<LearningRow[]>(() =>
-  drafts.value.map((value, index) => ({
-    index,
-    value,
-  }))
-);
-
-const selectedRows = ref<LearningRow[]>([]);
-
-const isRowSelected = (row: LearningRow) =>
-  selectedRows.value.some((selected) => selected.index === row.index);
-
-const allRowsSelected = computed(() => rows.value.length > 0 && rows.value.every(isRowSelected));
-
-const toggleRowSelection = (row: LearningRow) => {
-  if (isRowSelected(row)) {
-    selectedRows.value = selectedRows.value.filter((selected) => selected.index !== row.index);
-  } else {
-    selectedRows.value = [...selectedRows.value, row];
-  }
-};
-
-const toggleSelectAll = () => {
-  if (allRowsSelected.value) {
-    selectedRows.value = [];
-  } else {
-    selectedRows.value = [...rows.value];
-  }
-};
-const isClearDisabled = computed(() => rows.value.length === 0);
-
-const newLearning = ref("");
-const addIsPending = ref(false);
-const pendingRows = ref<number[]>([]);
-
-const resetSelection = () => {
-  selectedRows.value = [];
-};
-
-const markRowPending = (index: number) => {
-  if (!pendingRows.value.includes(index)) {
-    pendingRows.value = [...pendingRows.value, index];
-  }
-};
-
-const unmarkRowPending = (index: number) => {
-  if (pendingRows.value.includes(index)) {
-    pendingRows.value = pendingRows.value.filter((value) => value !== index);
-  }
-};
-
-const isRowPending = (index: number) => pendingRows.value.includes(index);
-
-const commitLearning = async (index: number) => {
-  const draft = drafts.value[index] ?? "";
-  const original = learnings.value[index] ?? "";
-
-  if (draft === original) {
-    return;
-  }
-
-  markRowPending(index);
-  try {
-    await updateLearning(sdk, dispatch, { index, content: draft });
-  } finally {
-    unmarkRowPending(index);
-  }
-};
-
-const handleEditorKeydown = async (event: KeyboardEvent, index: number) => {
-  if ((event.key === "Enter" && event.metaKey) || (event.key === "Enter" && event.ctrlKey)) {
-    event.preventDefault();
-    await commitLearning(index);
-  }
+const handleEditorKeydown = (event: KeyboardEvent, index: number) => {
+  if (!isSaveShortcut(event)) return;
+  event.preventDefault();
+  void commitLearning(index);
 };
 
 const handleNewLearningKeydown = (event: KeyboardEvent) => {
-  if ((event.key === "Enter" && event.ctrlKey) || (event.key === "Enter" && event.metaKey)) {
-    event.preventDefault();
-    void handleAddLearning();
-  }
-};
-
-const handleAddLearning = async () => {
-  const value = newLearning.value;
-  if (value.trim().length === 0) {
-    return;
-  }
-
-  addIsPending.value = true;
-  try {
-    await addLearning(sdk, dispatch, { content: value });
-    newLearning.value = "";
-  } finally {
-    addIsPending.value = false;
-  }
-};
-
-const handleDeleteRow = async (index: number) => {
-  await removeLearnings(sdk, dispatch, { indexes: [index] });
-  resetSelection();
-};
-
-const handleBulkDelete = async () => {
-  if (selectedRows.value.length === 0) {
-    return;
-  }
-
-  const indexes = selectedRows.value.map((row) => row.index);
-  await removeLearnings(sdk, dispatch, { indexes });
-  resetSelection();
-};
-
-const handleClearAll = async () => {
-  if (rows.value.length === 0) {
-    return;
-  }
-
-  const confirmed = window.confirm(
-    "Are you sure you want to delete all learnings? This cannot be undone."
-  );
-  if (!confirmed) {
-    return;
-  }
-
-  await clearLearnings(sdk, dispatch);
-  resetSelection();
+  if (!isSaveShortcut(event)) return;
+  event.preventDefault();
+  void addLearning();
 };
 </script>
 
@@ -185,16 +66,16 @@ const handleClearAll = async () => {
               severity="danger"
               size="small"
               outlined
-              :disabled="selectedRows.length === 0"
-              @click="handleBulkDelete" />
+              :disabled="selectedIndexes.length === 0"
+              @click="removeLearnings(selectedIndexes)" />
             <Button
               icon="fas fa-broom"
               label="Clear All"
               severity="danger"
               size="small"
               outlined
-              :disabled="isClearDisabled"
-              @click="handleClearAll" />
+              :disabled="entries.length === 0"
+              @click="clearAll" />
           </div>
         </div>
       </template>
@@ -227,10 +108,8 @@ const handleClearAll = async () => {
 
             <DataTable
               v-else
-              v-model:selection="selectedRows"
               :value="rows"
-              :data-key="'index'"
-              selection-mode="multiple"
+              data-key="index"
               scrollable
               scroll-height="100%"
               striped-rows
@@ -241,17 +120,17 @@ const handleClearAll = async () => {
                 <template #header>
                   <Checkbox
                     binary
-                    :model-value="allRowsSelected"
+                    :model-value="allSelected"
                     aria-label="Toggle select all learnings"
                     @click.stop="toggleSelectAll" />
                 </template>
                 <template #body="{ data }">
                   <Checkbox
                     binary
-                    :model-value="isRowSelected(data)"
-                    :disabled="isRowPending(data.index)"
+                    :model-value="isSelected(data.index)"
+                    :disabled="isPending(data.index)"
                     aria-label="Toggle learning selection"
-                    @click.stop="toggleRowSelection(data)" />
+                    @click.stop="toggleSelected(data.index)" />
                 </template>
               </Column>
               <Column
@@ -260,12 +139,13 @@ const handleClearAll = async () => {
                 <template #body="{ data }">
                   <div class="flex flex-col gap-1">
                     <Textarea
-                      v-model="drafts[data.index]"
+                      :model-value="draftOf(data.index)"
                       auto-resize
                       rows="3"
                       class="w-full text-sm"
                       placeholder="Update learning..."
-                      :disabled="isRowPending(data.index)"
+                      :disabled="isPending(data.index)"
+                      @update:model-value="setDraft(data.index, $event ?? '')"
                       @blur="commitLearning(data.index)"
                       @keydown="handleEditorKeydown($event, data.index)" />
                     <span class="text-xs text-surface-500">
@@ -283,8 +163,8 @@ const handleClearAll = async () => {
                     severity="danger"
                     size="small"
                     text
-                    :disabled="isRowPending(data.index)"
-                    @click="handleDeleteRow(data.index)" />
+                    :disabled="isPending(data.index)"
+                    @click="removeLearnings([data.index])" />
                 </template>
               </Column>
             </DataTable>
@@ -299,16 +179,16 @@ const handleClearAll = async () => {
                 rows="4"
                 placeholder="Paste IDs, tokens, URLs, or other durable notes here..."
                 class="w-full"
-                :disabled="addIsPending"
+                :disabled="isAdding"
                 @keydown="handleNewLearningKeydown" />
               <div class="flex justify-end">
                 <Button
                   icon="fas fa-plus"
                   label="Add Learning"
                   size="small"
-                  :loading="addIsPending"
-                  :disabled="newLearning.trim().length === 0 || addIsPending"
-                  @click="handleAddLearning" />
+                  :loading="isAdding"
+                  :disabled="newLearning.trim().length === 0 || isAdding"
+                  @click="addLearning" />
               </div>
             </div>
           </div>

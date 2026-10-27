@@ -2,10 +2,10 @@ import { generateText, Output } from "ai";
 import { Result } from "shared";
 import { z } from "zod";
 
-import { useModelsStore } from "@/stores/models";
+import { truncateContextValue } from "@/agent/context.truncation";
+import { createFloatModel } from "@/float/model";
 import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
-import { createModel, resolveModel } from "@/utils";
 import { type ReplayEntryWithRequest } from "@/utils/caido";
 
 const outputSchema = z.object({
@@ -29,14 +29,6 @@ Now that you know your job, the user can also specify their preferences for how 
 
 You will be given a replay entry. Please generate a name for the entry based on the content.
 You also have access to the user's instructions for how to rename the tabs, which you should follow.
-
-Follow strictly this output schema in your response:
-"""
-${JSON.stringify(z.toJSONSchema(outputSchema))}
-"""
-
-Never include any other text in your response. ALWAYS respond with valid JSON following the schema above.
-Include the suggested tab name in the "name" field.
 
 Example:
 
@@ -64,35 +56,29 @@ OUTPUT:
 
 `.trim();
 
+const MAX_RAW_CHARS = 4_000;
+
 export async function generateName(
   sdk: FrontendSDK,
   entry: ReplayEntryWithRequest
 ): Promise<Result<string>> {
   try {
     const settingsStore = useSettingsStore();
-    const modelsStore = useModelsStore();
-
-    const modelData = resolveModel({
-      sdk,
-      savedModelKey: settingsStore.renamingModel,
-      enabledModels: modelsStore.getEnabledModels(),
-      usageType: "float",
+    const floatModel = createFloatModel(sdk, {
+      savedModelKey: settingsStore.config.renamingModel,
+      reasoning: false,
     });
-    if (modelData === undefined) {
+    if (floatModel === undefined) {
       return Result.err("No models available");
     }
 
-    const openRouterPrioritizeFastProviders =
-      settingsStore.openRouterPrioritizeFastProviders ?? false;
-    const model = createModel(sdk, modelData, { openRouterPrioritizeFastProviders });
-
     const prompt = `
       <entry>
-      ${JSON.stringify(entry.entry)}
+      ${JSON.stringify({ ...entry.entry, raw: truncateContextValue(entry.entry.raw, MAX_RAW_CHARS) })}
       </entry>
 
       <instructions>
-      ${settingsStore.renaming?.instructions ?? ""}
+      ${settingsStore.config.renaming.instructions}
       </instructions>
 
       <user>
@@ -101,7 +87,7 @@ export async function generateName(
     `;
 
     const result = await generateText({
-      model,
+      model: floatModel.model,
       prompt,
       system: RENAME_SYSTEM_PROMPT,
       output: Output.object({
@@ -109,13 +95,7 @@ export async function generateName(
       }),
     });
 
-    const output = outputSchema.safeParse(result.output);
-    switch (output.success) {
-      case true:
-        return Result.ok(output.data.name);
-      case false:
-        return Result.err(output.error.message);
-    }
+    return Result.ok(result.output.name);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(error);

@@ -3,15 +3,17 @@ import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
+import { type FrontendSDK } from "@/types";
 import {
+  type AnyReplayEntry,
   getActiveEntryRequest,
   getReplaySession,
   setActiveEntryDraftRaw,
   startReplayTaskDirect,
-  usesReplayEntryInterface,
   writeToRequestEditor,
 } from "@/utils/caido";
-import { formatStringWithSuffix } from "@/utils/text";
+import type { UndefinedOrNull } from "@/utils/optional";
+import { truncate } from "@/utils/text";
 
 const inputSchema = z.object({});
 
@@ -20,6 +22,7 @@ const valueSchema = z.object({
   roundtripTime: z.number(),
   responseId: z.string(),
   statusLine: z.string(),
+  entryId: z.string().optional(),
 });
 
 const outputSchema = ToolResult.schema(valueSchema);
@@ -28,27 +31,21 @@ type RequestSendInput = z.infer<typeof inputSchema>;
 type RequestSendValue = z.infer<typeof valueSchema>;
 type RequestSendOutput = ToolResultType<RequestSendValue>;
 
-type LegacySendRequestOptions = {
-  background?: boolean;
-  connectionInfo: {
-    host: string;
-    isTLS: boolean;
-    port: number;
-    SNI?: string;
-  };
-  raw: string;
-};
+type ActiveEntryIds = { entryId: string | undefined; responseId: string | undefined };
 
-type LegacySendRequest = (sessionId: string, options: LegacySendRequestOptions) => Promise<void>;
+const toActiveEntryIds = (
+  activeEntry: (AnyReplayEntry & { id: string }) | UndefinedOrNull
+): ActiveEntryIds => ({
+  entryId: activeEntry?.id,
+  responseId: getActiveEntryRequest(activeEntry)?.response?.id ?? undefined,
+});
 
-const getActiveEntryResponseId = async (
-  sdk: AgentContext["sdk"],
-  sessionId: string
-): Promise<string | undefined> => {
+const getSessionEntries = async (sdk: FrontendSDK, sessionId: string) => {
   const result = await sdk.graphql.replaySessionEntries({ id: sessionId });
-  const activeEntry = result.replaySession?.activeEntry;
-
-  return getActiveEntryRequest(activeEntry)?.response?.id;
+  return {
+    active: toActiveEntryIds(result.replaySession?.activeEntry),
+    entryIds: result.replaySession?.entries.edges.map((edge) => edge.node.id) ?? [],
+  };
 };
 
 const sleep = (duration: number): Promise<void> =>
@@ -146,13 +143,19 @@ export const RequestSend = tool({
 
     const replaySession = replaySessionResult.value;
 
-    const previousResponseId = await getActiveEntryResponseId(sdk, replaySession.id);
+    const previousEntryIds = new Set((await getSessionEntries(sdk, replaySession.id)).entryIds);
 
     let responseId: string | undefined = undefined;
+    let entryId: string | undefined = undefined;
 
-    const captureResponseId = (nextResponseId: string | undefined): boolean => {
-      if (nextResponseId !== undefined && nextResponseId !== previousResponseId) {
-        responseId = nextResponseId;
+    const captureActiveEntry = (next: ActiveEntryIds): boolean => {
+      if (
+        next.responseId !== undefined &&
+        next.entryId !== undefined &&
+        !previousEntryIds.has(next.entryId)
+      ) {
+        responseId = next.responseId;
+        entryId = next.entryId;
         return true;
       }
 
@@ -160,90 +163,84 @@ export const RequestSend = tool({
     };
 
     try {
-      if (usesReplayEntryInterface(sdk)) {
-        const currentSession = sdk.replay.getCurrentSession();
-        const onAgentTab = location.hash === "#/replay" && currentSession?.id === replaySession.id;
+      const currentSession = sdk.replay.getCurrentSession();
+      const onAgentTab = location.hash === "#/replay" && currentSession?.id === replaySession.id;
 
-        if (onAgentTab) {
-          writeToRequestEditor(context.httpRequest);
-          await sdk.replay.sendRequest(replaySession.id, {
-            background: false,
-          });
-        } else {
-          const draftSync = await setActiveEntryDraftRaw(sdk, replaySession, context.httpRequest);
-          if (draftSync.kind === "Error") {
-            return ToolResult.err(
-              "Failed to sync request into the session draft before sending",
-              draftSync.error
-            );
-          }
-
-          const taskResult = await startReplayTaskDirect(sdk, replaySession.id);
-          if (taskResult.kind === "Error") {
-            return ToolResult.err("Failed to start replay task", taskResult.error);
-          }
-        }
-      } else {
-        if (replaySession.request.host === "" || replaySession.request.port === 0) {
-          return ToolResult.err("No active replay entry to send");
-        }
-
-        const sendRequest = sdk.replay.sendRequest as unknown as LegacySendRequest;
-        await sendRequest(replaySession.id, {
+      if (onAgentTab) {
+        writeToRequestEditor(context.httpRequest);
+        await sdk.replay.sendRequest(replaySession.id, {
           background: false,
-          connectionInfo: {
-            host: replaySession.request.host,
-            isTLS: replaySession.request.isTLS,
-            port: replaySession.request.port,
-            SNI: replaySession.request.SNI || undefined,
-          },
-          raw: context.httpRequest,
         });
+      } else {
+        const draftSync = await setActiveEntryDraftRaw(sdk, replaySession, context.httpRequest);
+        if (draftSync.kind === "Error") {
+          return ToolResult.err(
+            "Failed to sync request into the session draft before sending",
+            draftSync.error
+          );
+        }
+
+        const taskResult = await startReplayTaskDirect(sdk, replaySession.id);
+        if (taskResult.kind === "Error") {
+          return ToolResult.err("Failed to start replay task", taskResult.error);
+        }
       }
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Unknown error occurred";
       return ToolResult.err("Failed to send request", detail);
     }
 
-    const iterator = sdk.graphql.updatedReplaySession({});
+    const subscription = sdk.graphql.updatedReplaySession({})[Symbol.asyncIterator]();
+    let isWaiting = true;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let onAbort: (() => void) | undefined;
 
     const timeout = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error("Request timeout after 30 seconds")), 30000);
+      timeoutId = setTimeout(() => reject(new Error("Request timeout after 30 seconds")), 30000);
     });
 
     const abortPromise = new Promise<never>((_, reject) => {
-      abortSignal?.addEventListener("abort", () => {
-        if (location.hash !== "#/replay") return;
+      onAbort = () => {
         const currentSession = sdk.replay.getCurrentSession();
-        if (currentSession?.id === replaySession.id) {
+        if (location.hash === "#/replay" && currentSession?.id === replaySession.id) {
           document.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')?.click();
         }
         reject(new DOMException("Request aborted", "AbortError"));
-      });
+      };
+      if (abortSignal?.aborted === true) {
+        onAbort();
+      } else {
+        abortSignal?.addEventListener("abort", onAbort, { once: true });
+      }
     });
 
     const responsePromise = (async () => {
-      for await (const event of iterator) {
-        if (event.updatedReplaySession.sessionEdge.node.id === replaySession.id) {
-          const activeEntry = event.updatedReplaySession.sessionEdge.node.activeEntry;
-          const nextResponseId = getActiveEntryRequest(activeEntry)?.response?.id;
-
-          if (captureResponseId(nextResponseId ?? undefined)) {
-            break;
-          }
+      while (isWaiting) {
+        const event = await subscription.next();
+        if (event.done === true) return;
+        const node = event.value.updatedReplaySession.sessionEdge.node;
+        if (
+          node.id === replaySession.id &&
+          captureActiveEntry(toActiveEntryIds(node.activeEntry))
+        ) {
+          return;
         }
       }
     })();
 
     const pollResponsePromise = (async () => {
-      while (responseId === undefined) {
-        if (captureResponseId(await getActiveEntryResponseId(sdk, replaySession.id))) {
-          break;
+      while (isWaiting && responseId === undefined) {
+        if (captureActiveEntry((await getSessionEntries(sdk, replaySession.id)).active)) {
+          return;
         }
 
         await sleep(250);
       }
     })();
+
+    // Race losers may still reject after cleanup.
+    responsePromise.catch(() => undefined);
+    pollResponsePromise.catch(() => undefined);
 
     try {
       await Promise.race([responsePromise, pollResponsePromise, timeout, abortPromise]);
@@ -252,6 +249,11 @@ export const RequestSend = tool({
         throw error;
       }
       return ToolResult.err((error as Error).message);
+    } finally {
+      isWaiting = false;
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+      if (onAbort !== undefined) abortSignal?.removeEventListener("abort", onAbort);
+      void subscription.return?.();
     }
 
     if (responseId === undefined) {
@@ -279,10 +281,11 @@ export const RequestSend = tool({
 
     return ToolResult.ok({
       message: `Received ${statusLine} in ${result.response.roundtripTime}ms`,
-      rawResponse: formatStringWithSuffix(filteredResponse, maxResponseLength, suffix),
+      rawResponse: truncate(filteredResponse, maxResponseLength, suffix),
       roundtripTime: result.response.roundtripTime,
       responseId,
       statusLine,
+      entryId,
     });
   },
   toModelOutput: ({ output }) => {
@@ -290,13 +293,11 @@ export const RequestSend = tool({
       case "Ok":
         return {
           type: "text",
-          value: formatRequestSendModelOutput(
-            output.value as RequestSendValue & { message: string }
-          ),
+          value: formatRequestSendModelOutput(output.value),
         };
       case "Error":
         return {
-          type: "text",
+          type: "error-text",
           value:
             output.error.detail !== undefined && output.error.detail !== ""
               ? `Failed to send request: ${output.error.message}\n${output.error.detail}`

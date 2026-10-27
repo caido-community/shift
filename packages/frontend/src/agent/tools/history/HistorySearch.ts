@@ -35,7 +35,9 @@ const inputSchema = z.object({
   filter: z
     .string()
     .min(1)
-    .describe('HTTPQL filter string applied to HTTP history (e.g., req.host.cont:"example.com")'),
+    .describe(
+      'HTTPQL filter string. Read builtin:httpql before composing it (e.g., req.host.eq:"example.com").'
+    ),
   limit: z
     .number()
     .int()

@@ -1,27 +1,31 @@
+import type { ChatStatus } from "ai";
 import { defineStore } from "pinia";
-import { computed, readonly, shallowRef } from "vue";
-
-import { type AgentMessage, type AgentModel, createInitialModel } from "./store.model";
-import { update } from "./store.update";
+import { computed, shallowRef, watch } from "vue";
 
 import { AgentSession } from "@/agent/session";
 import { useSDK } from "@/plugins/sdk";
-import { removeSessionStore } from "@/stores/agent/session";
 import { useModelsStore } from "@/stores/models/store";
 import { useSettingsStore } from "@/stores/settings";
 import { resolveModel } from "@/utils/ai";
-import { isPresent } from "@/utils/optional";
+
+type AgentIndicatorState = {
+  hasMessages: boolean;
+  status: ChatStatus;
+};
 
 export const useAgentStore = defineStore("agent", () => {
   const sdk = useSDK();
-  const model = shallowRef<AgentModel>(createInitialModel());
+  const sessions = shallowRef(new Map<string, AgentSession>());
+  const persistedSessionIds = shallowRef(new Set<string>());
+  const selectedSessionId = shallowRef<string>();
+  const debugMode = shallowRef(false);
 
   const modelsStore = useModelsStore();
   const settingsStore = useSettingsStore();
 
   const isReady = computed(() => {
     const modelsReady = !modelsStore.isLoading;
-    const settingsReady = !settingsStore.isLoading && isPresent(settingsStore.config);
+    const settingsReady = settingsStore.isLoaded;
     return modelsReady && settingsReady;
   });
 
@@ -31,19 +35,27 @@ export const useAgentStore = defineStore("agent", () => {
       const sessionIds = result.value
         .filter((agent) => agent.messages.length > 0)
         .map((agent) => agent.chatID);
-      dispatch({ type: "SET_PERSISTED_SESSION_IDS", sessionIds });
+      persistedSessionIds.value = new Set(sessionIds);
     }
   }
 
   loadPersistedSessionIds();
 
-  function dispatch(message: AgentMessage) {
-    model.value = update(model.value, message);
+  function selectSession(sessionId: string) {
+    selectedSessionId.value = sessionId;
+  }
+
+  function clearSessionSelection() {
+    selectedSessionId.value = undefined;
+  }
+
+  function toggleDebugMode() {
+    debugMode.value = !debugMode.value;
   }
 
   function getSession(sessionId: string): AgentSession | undefined {
-    if (model.value.sessions.has(sessionId)) {
-      return model.value.sessions.get(sessionId);
+    if (sessions.value.has(sessionId)) {
+      return sessions.value.get(sessionId);
     }
 
     if (!isReady.value) {
@@ -53,46 +65,91 @@ export const useAgentStore = defineStore("agent", () => {
     return createSession(sessionId);
   }
 
+  async function openSession(sessionId: string): Promise<AgentSession | undefined> {
+    const session = getSession(sessionId);
+    await session?.loaded;
+    return session;
+  }
+
   function createSession(sessionId: string): AgentSession {
     const modelData = resolveModel({
       sdk,
-      savedModelKey: settingsStore.agentsModel,
+      savedModelKey: settingsStore.config.agentsModel,
       enabledModels: modelsStore.getEnabledModels(),
       usageType: "agent",
     });
 
     const session = new AgentSession(sdk, sessionId, modelData);
-    dispatch({ type: "ADD_SESSION", sessionId, session });
+    sessions.value = new Map(sessions.value).set(sessionId, session);
 
     return session;
   }
 
   async function removeSession(sessionId: string) {
-    dispatch({ type: "REMOVE_SESSION", sessionId });
-    removeSessionStore(sessionId);
+    sessions.value.get(sessionId)?.dispose();
+    const nextSessions = new Map(sessions.value);
+    nextSessions.delete(sessionId);
+    sessions.value = nextSessions;
+    const nextPersistedIds = new Set(persistedSessionIds.value);
+    nextPersistedIds.delete(sessionId);
+    persistedSessionIds.value = nextPersistedIds;
     await sdk.backend.removeAgent(sessionId);
   }
 
-  const activeSession = computed(() => {
-    const selectedId = model.value.selectedSessionId;
-    if (selectedId === undefined) {
-      return undefined;
+  function reset() {
+    for (const session of sessions.value.values()) {
+      session.dispose();
     }
-    return getSession(selectedId);
+    sessions.value = new Map();
+    persistedSessionIds.value = new Set();
+    selectedSessionId.value = undefined;
+    debugMode.value = false;
+    loadPersistedSessionIds();
+  }
+
+  watch(
+    [selectedSessionId, isReady],
+    ([sessionId]) => {
+      if (sessionId !== undefined) {
+        getSession(sessionId);
+      }
+    },
+    { immediate: true }
+  );
+
+  const activeSession = computed(() => {
+    const selectedId = selectedSessionId.value;
+    return selectedId === undefined ? undefined : sessions.value.get(selectedId);
   });
 
-  const debugMode = computed(() => model.value.debugMode);
-  const selectedSessionId = computed(() => model.value.selectedSessionId);
+  const indicatorStates = computed(() => {
+    const states = new Map<string, AgentIndicatorState>();
+    for (const sessionId of persistedSessionIds.value) {
+      states.set(sessionId, { hasMessages: true, status: "ready" });
+    }
+    for (const [sessionId, session] of sessions.value) {
+      states.set(sessionId, {
+        hasMessages: session.chat.messages.length > 0,
+        status: session.chat.status,
+      });
+    }
+    return states;
+  });
 
   return {
-    state: readonly(model),
     sdk,
-    dispatch,
     isReady,
+    sessions: computed(() => sessions.value),
     activeSession,
-    selectedSessionId,
-    debugMode,
+    selectedSessionId: computed(() => selectedSessionId.value),
+    debugMode: computed(() => debugMode.value),
+    indicatorStates,
+    selectSession,
+    clearSessionSelection,
+    toggleDebugMode,
     getSession,
+    openSession,
     removeSession,
+    reset,
   };
 });

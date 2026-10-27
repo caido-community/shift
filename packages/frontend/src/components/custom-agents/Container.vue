@@ -4,28 +4,12 @@ import Card from "primevue/card";
 import Column from "primevue/column";
 import DataTable from "primevue/datatable";
 import Tag from "primevue/tag";
-import Tooltip from "primevue/tooltip";
-import { computed } from "vue";
 
 import { AgentEditor } from "./AgentEditor";
 import { useCustomAgents } from "./useCustomAgents";
 
-const {
-  definitions,
-  isLoading,
-  view,
-  editingAgent,
-  openAddView,
-  openEditView,
-  closeForm,
-  handleAdd,
-  handleUpdate,
-  handleDelete,
-} = useCustomAgents();
-
-const vTooltip = Tooltip;
-const isFormVisible = computed(() => view.value !== "list");
-const activeAgent = computed(() => (view.value === "edit" ? editingAgent.value : undefined));
+const { definitions, isLoading, form, openForm, closeForm, handleAdd, handleUpdate, handleDelete } =
+  useCustomAgents();
 
 const availabilitySeverityByScope = {
   global: "success",
@@ -39,8 +23,8 @@ const getAvailabilitySeverity = (scope: "global" | "project") => {
 
 <template>
   <AgentEditor
-    v-if="isFormVisible"
-    :agent="activeAgent"
+    v-if="form !== undefined"
+    :agent="form.agent"
     @save="handleAdd"
     @update="handleUpdate"
     @cancel="closeForm" />
@@ -64,7 +48,7 @@ const getAvailabilitySeverity = (scope: "global" | "project") => {
               label="Add Agent"
               icon="fas fa-plus"
               size="small"
-              @click="openAddView" />
+              @click="openForm()" />
           </div>
         </div>
       </template>
@@ -164,7 +148,7 @@ const getAvailabilitySeverity = (scope: "global" | "project") => {
                   severity="secondary"
                   size="small"
                   text
-                  @click="openEditView(data)" />
+                  @click="openForm(data)" />
                 <Button
                   v-tooltip.left="'Delete agent'"
                   icon="fas fa-trash"

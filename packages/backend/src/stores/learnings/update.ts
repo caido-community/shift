@@ -55,15 +55,6 @@ function handleRemoveLearnings(
   });
 }
 
-function handleSetLearnings(
-  model: LearningsModel,
-  message: Extract<LearningsMessage, { type: "SET_LEARNINGS" }>
-): LearningsModel {
-  return create(model, (draft) => {
-    draft.entries = message.entries.filter((e) => e.trim().length > 0);
-  });
-}
-
 function handleClearLearnings(model: LearningsModel): LearningsModel {
   if (model.entries.length === 0) {
     return model;
@@ -82,8 +73,6 @@ export function update(model: LearningsModel, message: LearningsMessage): Learni
       return handleUpdateLearning(model, message);
     case "REMOVE_LEARNINGS":
       return handleRemoveLearnings(model, message);
-    case "SET_LEARNINGS":
-      return handleSetLearnings(model, message);
     case "CLEAR_LEARNINGS":
       return handleClearLearnings(model);
     default:

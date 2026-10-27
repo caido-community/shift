@@ -1,30 +1,20 @@
 <script setup lang="ts">
-import DOMPurify from "dompurify";
-import MarkdownIt from "markdown-it";
-import { computed, useAttrs } from "vue";
+import { useAttrs } from "vue";
 
 import "./style.css";
-
-const md = new MarkdownIt({
-  breaks: true,
-  linkify: false,
-});
+import { useMarkdown } from "./useMarkdown";
 
 const { text } = defineProps<{ text: string }>();
 const attrs = useAttrs();
 
-const rendered = computed(() => {
-  const html = md.render(text);
-  return DOMPurify.sanitize(html);
-});
+const { handleClick } = useMarkdown(() => text);
 </script>
 
 <template>
-  <!-- eslint-disable vue/no-v-html -->
   <div
     v-if="text.length > 0"
+    ref="root"
     v-bind="attrs"
     data-component="markdown"
-    v-html="rendered"></div>
-  <!-- eslint-enable vue/no-v-html -->
+    @click="handleClick"></div>
 </template>

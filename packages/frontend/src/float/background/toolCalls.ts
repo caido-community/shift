@@ -1,20 +1,7 @@
-type InvalidToolCall = {
+export const getInvalidToolCallMessage = (toolCall: {
   toolName: string;
-  invalid?: boolean;
   error?: unknown;
-};
-
-export const isInvalidToolCall = (toolCall: unknown): toolCall is InvalidToolCall => {
-  if (typeof toolCall !== "object" || toolCall === null) {
-    return false;
-  }
-
-  return "invalid" in toolCall && toolCall.invalid === true;
-};
-
-export const isValidToolCall = (toolCall: unknown): boolean => !isInvalidToolCall(toolCall);
-
-export const getInvalidToolCallMessage = (toolCall: InvalidToolCall): string => {
+}): string => {
   const detail =
     typeof toolCall.error === "string"
       ? toolCall.error

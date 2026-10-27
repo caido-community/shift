@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 
 const inputSchema = z.object({
   filterName: z.string().describe("Name of the filter (non-empty)"),
@@ -12,7 +13,7 @@ const inputSchema = z.object({
 export const filterAddTool = tool({
   description: "Create a new filter with specified name, query, and alias",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ filterName, query, alias }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
 
@@ -23,12 +24,12 @@ export const filterAddTool = tool({
         alias,
       });
       if (newFilter === undefined) {
-        return ActionResult.err("Failed to create filter");
+        return ToolResult.err("Failed to create filter");
       }
 
-      return ActionResult.ok(`Filter ${filterName} created successfully`);
+      return ToolResult.ok({ message: `Filter ${filterName} created successfully` });
     } catch (error) {
-      return ActionResult.err(
+      return ToolResult.err(
         "Failed to create filter",
         error instanceof Error ? error.message : undefined
       );

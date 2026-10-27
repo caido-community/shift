@@ -7,20 +7,20 @@ import { isPresent } from "@/utils/optional";
 
 export const setupAgents = (sdk: FrontendSDK) => {
   initializeBinaryExecutionStream(sdk);
-  collection.setup(sdk);
+  const collections = collection.setup(sdk);
   const uiStore = useUIStore();
   const agentStore = useAgentStore();
 
-  const syncSession = () => {
-    const currentReplaySession = sdk.replay.getCurrentSession();
-    if (isPresent(currentReplaySession)) {
-      agentStore.dispatch({
-        type: "SELECT_SESSION",
-        sessionId: currentReplaySession.id,
-      });
+  const selectSession = (sessionId: string | undefined) => {
+    if (isPresent(sessionId)) {
+      agentStore.selectSession(sessionId);
     } else {
-      agentStore.dispatch({ type: "CLEAR_SESSION_SELECTION" });
+      agentStore.clearSessionSelection();
     }
+  };
+
+  const syncSession = () => {
+    selectSession(sdk.replay.getCurrentSession()?.id);
   };
 
   const toggleDrawer = () => {
@@ -42,12 +42,7 @@ export const setupAgents = (sdk: FrontendSDK) => {
   sdk.shortcuts.register("shift:toggle-drawer", ["shift", "control", "i"]);
 
   sdk.replay.onCurrentSessionChange((event) => {
-    const newSessionId = event.sessionId;
-    if (isPresent(newSessionId)) {
-      agentStore.dispatch({ type: "SELECT_SESSION", sessionId: newSessionId });
-    } else {
-      agentStore.dispatch({ type: "CLEAR_SESSION_SELECTION" });
-    }
+    selectSession(event.sessionId);
   });
 
   const startDeletedReplaySessionSubscription = async () => {
@@ -58,9 +53,10 @@ export const setupAgents = (sdk: FrontendSDK) => {
       }
 
       if (agentStore.selectedSessionId === deletedSessionId) {
-        agentStore.dispatch({ type: "CLEAR_SESSION_SELECTION" });
+        agentStore.clearSessionSelection();
       }
 
+      collections.onSessionDeleted(deletedSessionId);
       await agentStore.removeSession(deletedSessionId);
     }
   };
@@ -74,7 +70,8 @@ export const setupAgents = (sdk: FrontendSDK) => {
   });
 
   sdk.projects.onCurrentProjectChange(() => {
-    agentStore.dispatch({ type: "RESET" });
+    agentStore.reset();
+    collections.onProjectChange();
   });
 
   syncSession();

@@ -1,26 +1,7 @@
-import { type Model, type ModelReasoningEffort } from "shared";
+import { type AIUpstreamModel, type AIUpstreamProvider } from "@caido/sdk-frontend";
+import { type Model } from "shared";
 
 import type { FrontendSDK } from "../types";
-
-type UpstreamProvider = {
-  id: string;
-  kind: string;
-  auth: "API_KEY" | "OAUTH" | "AWS" | "NONE";
-};
-
-type UpstreamModel = {
-  id: string;
-  providerId: string;
-  displayName: string;
-  support: { reasoning: "SUPPORTED" | "UNSUPPORTED" | "UNKNOWN" };
-  reasoningEfforts: ModelReasoningEffort[];
-  contextWindow?: number;
-};
-
-type ModelRegistry = {
-  getUpstreamModels?: () => UpstreamModel[];
-  onUpstreamModelsChange?: (callback: () => void) => void;
-};
 
 type UpstreamProviderStatus = {
   id: string;
@@ -39,7 +20,7 @@ const PROVIDER_PRESENTATION: Record<string, { label: string; icon: string }> = {
   XAI: { label: "xAI", icon: "xai" },
 };
 
-function getProviderPresentation(provider: UpstreamProvider) {
+function getProviderPresentation(provider: AIUpstreamProvider) {
   if (provider.kind === "XAI" && provider.auth === "OAUTH") {
     return { label: "Grok", icon: "xai" };
   }
@@ -47,9 +28,7 @@ function getProviderPresentation(provider: UpstreamProvider) {
 }
 
 export function listUpstreamProviders(sdk: FrontendSDK): UpstreamProviderStatus[] {
-  const providers = sdk.ai.getUpstreamProviders() as unknown as UpstreamProvider[];
-
-  const statuses = providers.map((provider) => ({
+  const statuses = sdk.ai.getUpstreamProviders().map((provider) => ({
     id: provider.id,
     isConfigured: true,
     ...getProviderPresentation(provider),
@@ -67,22 +46,60 @@ export function listUpstreamProviders(sdk: FrontendSDK): UpstreamProviderStatus[
   }));
 }
 
-const toModel = (model: UpstreamModel): Model => ({
+function findUpstreamProvider(sdk: FrontendSDK, providerId: string) {
+  return sdk.ai.getUpstreamProviders().find((candidate) => candidate.id === providerId);
+}
+
+export function getProviderKind(sdk: FrontendSDK, providerId: string): string | undefined {
+  return findUpstreamProvider(sdk, providerId)?.kind;
+}
+
+const DAYBREAK_MODELS = ["gpt-6-sol", "gpt-6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];
+const ULTRAFAST_MODELS = ["gpt-6.1-sol", "gpt-6-astra"];
+
+export function isOpenAIProvider(sdk: FrontendSDK, providerId: string): boolean {
+  const kind = getProviderKind(sdk, providerId);
+  return kind === "OPENAI" || kind === "CHATGPT";
+}
+
+export function supportsDaybreak(sdk: FrontendSDK, model: Model): boolean {
+  return isOpenAIProvider(sdk, model.provider) && DAYBREAK_MODELS.includes(model.id);
+}
+
+export function isDaybreakUnsupported(sdk: FrontendSDK, model: Model): boolean {
+  return isOpenAIProvider(sdk, model.provider) && !DAYBREAK_MODELS.includes(model.id);
+}
+
+export function supportsUltrafast(sdk: FrontendSDK, model: Model): boolean {
+  return getProviderKind(sdk, model.provider) === "OPENAI" && ULTRAFAST_MODELS.includes(model.id);
+}
+
+export function supportsFastMode(sdk: FrontendSDK, providerId: string): boolean {
+  const provider = findUpstreamProvider(sdk, providerId);
+  return (
+    provider !== undefined &&
+    (provider.api === "OPENAI_COMPLETION" ||
+      provider.api === "OPENAI_RESPONSE" ||
+      provider.api === "CHATGPT_RESPONSE")
+  );
+}
+
+const toModel = (model: AIUpstreamModel): Model => ({
   id: model.id,
   name: model.displayName,
   provider: model.providerId,
   contextWindow: model.contextWindow,
+  outputTokenLimit: model.outputTokenLimit,
   capabilities: {
-    // UNKNOWN stays permissive: Caido narrows requests server-side
     reasoning: model.support.reasoning !== "UNSUPPORTED",
   },
   reasoningEfforts: model.reasoningEfforts,
 });
 
 export function listCaidoModels(sdk: FrontendSDK): Model[] {
-  return (sdk.ai as ModelRegistry).getUpstreamModels?.().map(toModel) ?? [];
+  return sdk.ai.getUpstreamModels().map(toModel);
 }
 
 export function onCaidoModelsChange(sdk: FrontendSDK, callback: () => void) {
-  (sdk.ai as ModelRegistry).onUpstreamModelsChange?.(callback);
+  sdk.ai.onUpstreamModelsChange(callback);
 }

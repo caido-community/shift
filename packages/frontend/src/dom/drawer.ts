@@ -1,70 +1,28 @@
-import { Classic } from "@caido/primevue";
-import PrimeVue from "primevue/config";
-import Tooltip from "primevue/tooltip";
-import { type App, createApp } from "vue";
-
 import { AgentSidebar } from "@/components/agent";
-import { SDKPlugin } from "@/plugins/sdk";
+import { mountShiftApp, watchReplayPage } from "@/dom/utils";
 import { type FrontendSDK } from "@/types";
 
 export const useDrawerManager = (sdk: FrontendSDK) => {
-  let app: App | undefined = undefined;
-  let unsubscribe: { stop: () => void } | undefined = undefined;
-
-  const start = () => {
-    if (location.hash === "#/replay") {
-      inject();
-    }
-
-    unsubscribe = sdk.navigation.onPageChange((event) => {
-      if (event.path === "/replay") {
-        inject();
-      } else {
-        remove();
-      }
-    });
-  };
+  let unmount: (() => void) | undefined;
+  let stopWatching: (() => void) | undefined;
 
   const inject = () => {
-    displayDrawer(document.body);
-  };
-
-  const stop = () => {
-    if (unsubscribe) {
-      unsubscribe.stop();
-      unsubscribe = undefined;
-    }
-    remove();
+    unmount ??= mountShiftApp(sdk, AgentSidebar);
   };
 
   const remove = () => {
-    if (app) {
-      app.unmount();
-      app = undefined;
-    }
-  };
-
-  const displayDrawer = (root: Element) => {
-    const container = document.createElement("div");
-    container.className = "shift-agents-injection";
-    container.id = "plugin--shift";
-
-    root.appendChild(container);
-
-    if (!app) {
-      app = createApp(AgentSidebar, {});
-      app.use(SDKPlugin, sdk);
-      app.use(PrimeVue, {
-        unstyled: true,
-        pt: Classic,
-      });
-      app.directive("tooltip", Tooltip);
-    }
-    app.mount(container);
+    unmount?.();
+    unmount = undefined;
   };
 
   return {
-    start,
-    stop,
+    start: () => {
+      stopWatching ??= watchReplayPage(sdk, inject, remove);
+    },
+    stop: () => {
+      stopWatching?.();
+      stopWatching = undefined;
+      remove();
+    },
   };
 };

@@ -95,4 +95,17 @@ describe("getToolResultLogParts", () => {
       { text: "Showed toast", muted: false },
     ]);
   });
+
+  it("prefers real success messages and falls back to the tool name", () => {
+    expect(
+      getToolResultLogParts(
+        "replayTabSend",
+        {},
+        { kind: "Ok", value: { message: "Replay tab request sent" } }
+      )
+    ).toEqual([{ text: "Replay tab request sent", muted: false }]);
+    expect(getToolResultLogParts("customTool", {}, { kind: "Ok", value: { message: "" } })).toEqual(
+      [{ text: "customTool", muted: false }]
+    );
+  });
 });

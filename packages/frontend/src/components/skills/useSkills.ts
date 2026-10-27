@@ -1,136 +1,110 @@
-import type {
-  AgentSkillDefinition,
-  CreateDynamicSkillInput,
-  CreateStaticSkillInput,
-  UpdateDynamicSkillInput,
-  UpdateStaticSkillInput,
-} from "shared";
+import type { AgentSkillDefinition, Result, SkillAttachMode, SkillScope } from "shared";
 import { computed, ref } from "vue";
 
+import { useSDK } from "@/plugins/sdk";
 import { useSkillsStore } from "@/stores/skills";
-import {
-  addDynamicSkill,
-  addStaticSkill,
-  refreshSkills,
-  removeProjectOverride,
-  removeSkill,
-  setProjectOverride,
-  updateDynamicSkill,
-  updateStaticSkill,
-} from "@/stores/skills/store.effects";
+
+export type SkillForm = {
+  type: "static" | "dynamic";
+  title: string;
+  content: string;
+  url: string;
+  scope: SkillScope;
+  description: string | undefined;
+  attachMode: SkillAttachMode;
+  projectOverride: string | undefined;
+};
 
 export const useSkills = () => {
+  const sdk = useSDK();
   const skillsStore = useSkillsStore();
-  const { sdk, dispatch } = skillsStore;
 
-  const isAddDialogVisible = ref(false);
-  const isEditDialogVisible = ref(false);
-  const editingSkill = ref<AgentSkillDefinition | undefined>(undefined);
+  const dialog = ref<{ skill: AgentSkillDefinition | undefined }>();
+  const isSaving = ref(false);
   const isRefreshing = ref(false);
 
   const definitions = computed(() => skillsStore.definitions);
-  const skills = computed(() => skillsStore.skills);
   const isLoading = computed(() => skillsStore.isLoading);
   const hasDynamicSkills = computed(() =>
     definitions.value.some((definition) => definition.type === "dynamic")
   );
 
   const openAddDialog = () => {
-    isAddDialogVisible.value = true;
+    dialog.value = { skill: undefined };
   };
 
-  const openEditDialog = (definition: AgentSkillDefinition) => {
-    editingSkill.value = definition;
-    isEditDialogVisible.value = true;
+  const openEditDialog = (skill: AgentSkillDefinition) => {
+    dialog.value = { skill };
   };
 
-  const closeEditDialog = () => {
-    editingSkill.value = undefined;
-    isEditDialogVisible.value = false;
+  const closeDialog = () => {
+    dialog.value = undefined;
   };
 
-  const handleAddStatic = async (input: CreateStaticSkillInput) => {
-    const result = await addStaticSkill(sdk, dispatch, input);
-    if (result.kind === "Error") {
-      sdk.window.showToast(result.error, { variant: "error" });
-      return;
+  const notifyFailure = (result: Result<void>) => {
+    if (result.kind === "Error") sdk.window.showToast(result.error, { variant: "error" });
+    return result.kind === "Ok";
+  };
+
+  const saveSkill = (form: SkillForm, skill: AgentSkillDefinition | undefined) => {
+    const base = { title: form.title, description: form.description, attachMode: form.attachMode };
+    if (skill === undefined) {
+      return form.type === "static"
+        ? skillsStore.addStatic({ ...base, content: form.content, scope: form.scope })
+        : skillsStore.addDynamic({ ...base, url: form.url, scope: form.scope });
     }
-    isAddDialogVisible.value = false;
+    return skill.type === "static"
+      ? skillsStore.updateStatic(skill.id, { ...base, content: form.content })
+      : skillsStore.updateDynamic(skill.id, { ...base, url: form.url });
   };
 
-  const handleAddDynamic = async (input: CreateDynamicSkillInput) => {
-    const result = await addDynamicSkill(sdk, dispatch, input);
-    if (result.kind === "Error") {
-      sdk.window.showToast(result.error, { variant: "error" });
-      return;
-    }
-    isAddDialogVisible.value = false;
-  };
+  const saveProjectOverride = (skillId: string, additionalContent: string) =>
+    additionalContent === ""
+      ? skillsStore.removeProjectOverride(skillId)
+      : skillsStore.setProjectOverride({ skillId, additionalContent });
 
-  const handleUpdateStatic = async (id: string, input: UpdateStaticSkillInput) => {
-    const result = await updateStaticSkill(sdk, dispatch, id, input);
-    if (result.kind === "Error") {
-      sdk.window.showToast(result.error, { variant: "error" });
-      return;
-    }
-    closeEditDialog();
-  };
-
-  const handleUpdateDynamic = async (id: string, input: UpdateDynamicSkillInput) => {
-    const result = await updateDynamicSkill(sdk, dispatch, id, input);
-    if (result.kind === "Error") {
-      sdk.window.showToast(result.error, { variant: "error" });
-      return;
-    }
-    closeEditDialog();
-  };
-
-  const handleUpdateProjectOverride = async (skillId: string, additionalContent: string) => {
-    if (additionalContent === "") {
-      const result = await removeProjectOverride(sdk, dispatch, skillId);
-      if (result.kind === "Error") {
-        sdk.window.showToast(result.error, { variant: "error" });
+  const handleSave = async (form: SkillForm) => {
+    const skill = dialog.value?.skill;
+    isSaving.value = true;
+    try {
+      if (!notifyFailure(await saveSkill(form, skill))) return;
+      if (
+        skill !== undefined &&
+        form.projectOverride !== undefined &&
+        !notifyFailure(await saveProjectOverride(skill.id, form.projectOverride))
+      ) {
+        return;
       }
-    } else {
-      const result = await setProjectOverride(sdk, dispatch, { skillId, additionalContent });
-      if (result.kind === "Error") {
-        sdk.window.showToast(result.error, { variant: "error" });
-      }
+      closeDialog();
+    } finally {
+      isSaving.value = false;
     }
   };
 
   const handleDelete = async (id: string) => {
-    await removeSkill(sdk, dispatch, id);
+    notifyFailure(await skillsStore.remove(id));
   };
 
   const handleRefresh = async () => {
     isRefreshing.value = true;
-    await refreshSkills(sdk, dispatch);
+    notifyFailure(await skillsStore.refresh());
     isRefreshing.value = false;
   };
 
-  const getSkillContent = (id: string): string => {
-    const skill = skills.value.find((s) => s.id === id);
-    return skill?.content ?? "";
-  };
+  const getSkillContent = (id: string): string =>
+    skillsStore.skills.find((s) => s.id === id)?.content ?? "";
 
   return {
     definitions,
-    skills,
     isLoading,
     hasDynamicSkills,
-    isAddDialogVisible,
-    isEditDialogVisible,
-    editingSkill,
+    dialog,
+    isSaving,
     isRefreshing,
     openAddDialog,
     openEditDialog,
-    closeEditDialog,
-    handleAddStatic,
-    handleAddDynamic,
-    handleUpdateStatic,
-    handleUpdateDynamic,
-    handleUpdateProjectOverride,
+    closeDialog,
+    handleSave,
     handleDelete,
     handleRefresh,
     getSkillContent,

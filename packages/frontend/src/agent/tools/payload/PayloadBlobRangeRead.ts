@@ -2,35 +2,12 @@ import { tool } from "ai";
 import { z } from "zod";
 
 import type { AgentContext } from "@/agent/context";
+import { readTextRange } from "@/agent/tools/utils/range";
 import { type ToolDisplay, ToolResult, type ToolResult as ToolResultType } from "@/agent/types";
 import { isPresent } from "@/utils";
 
 const DEFAULT_LIMIT = 5000;
 const MAX_LIMIT = 20000;
-
-type ReadBlobRangeResult = {
-  content: string;
-  offset: number;
-  endOffset: number;
-  blobLength: number;
-  hasMore: boolean;
-};
-
-/**
- * Pure helper: read a character range from blob content. Testable without context.
- */
-function readBlobRange(content: string, offset: number, limit: number): ReadBlobRangeResult {
-  const safeOffset = Math.max(0, offset);
-  const safeLimit = Math.max(1, Math.min(limit, MAX_LIMIT));
-  const endOffset = Math.min(content.length, safeOffset + safeLimit);
-  return {
-    content: content.slice(safeOffset, endOffset),
-    offset: safeOffset,
-    endOffset,
-    blobLength: content.length,
-    hasMore: endOffset < content.length,
-  };
-}
 
 const inputSchema = z.object({
   blobId: z
@@ -61,8 +38,6 @@ const valueSchema = z.object({
   blobLength: z.number(),
   hasMore: z.boolean(),
 });
-
-const outputSchema = ToolResult.schema(valueSchema);
 
 type PayloadBlobRangeReadInput = z.infer<typeof inputSchema>;
 type PayloadBlobRangeReadValue = z.infer<typeof valueSchema>;
@@ -100,8 +75,11 @@ export const PayloadBlobRangeRead = tool({
   description:
     "Read a character range from a payload blob. Use this when tool outputs were trimmed and replaced with a message like 'Read output from blob ID blob-xyz with PayloadBlobRangeRead'. Supports pagination with offset and limit to avoid loading large blobs into context at once.",
   inputSchema,
-  outputSchema,
-  execute: ({ blobId, offset, limit }, { experimental_context }): PayloadBlobRangeReadOutput => {
+  outputSchema: ToolResult.schema(valueSchema),
+  execute: (
+    { blobId, offset = 0, limit = DEFAULT_LIMIT },
+    { experimental_context }
+  ): PayloadBlobRangeReadOutput => {
     const context = experimental_context as AgentContext;
     const content = context.getPayloadBlob(blobId);
 
@@ -112,20 +90,10 @@ export const PayloadBlobRangeRead = tool({
       );
     }
 
-    const safeOffset = offset ?? 0;
-    if (safeOffset >= content.length) {
-      return ToolResult.err(
-        "Offset out of bounds",
-        `Offset ${safeOffset} exceeds blob length ${content.length}`
-      );
+    const range = readTextRange(content, "blob", offset, limit);
+    if (range.kind === "Error") {
+      return range;
     }
-
-    const safeLimit = limit ?? DEFAULT_LIMIT;
-    const result = readBlobRange(content, safeOffset, safeLimit);
-
-    return ToolResult.ok({
-      message: `Read ${result.content.length} chars from blob`,
-      ...result,
-    });
+    return ToolResult.ok({ ...range.value, blobLength: content.length });
   },
 });

@@ -1,1 +1,1 @@
-export { getAgentsStore } from "./store";
+export { agentsStore } from "./store";

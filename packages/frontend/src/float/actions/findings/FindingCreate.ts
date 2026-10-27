@@ -1,7 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { getCurrentRequestID } from "@/utils";
 
 const inputSchema = z.object({
@@ -20,13 +21,13 @@ const inputSchema = z.object({
 export const findingCreateTool = tool({
   description: "Create a new finding",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ title, description }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
-    const result = await getCurrentRequestID(sdk);
+    const result = getCurrentRequestID(sdk);
 
     if (result.kind === "Error") {
-      return ActionResult.err(`getCurrentRequestID error: ${result.error}`);
+      return ToolResult.err(`getCurrentRequestID error: ${result.error}`);
     }
 
     const requestID = result.value;
@@ -38,9 +39,9 @@ export const findingCreateTool = tool({
     });
 
     if (finding === undefined) {
-      return ActionResult.err("Failed to create finding");
+      return ToolResult.err("Failed to create finding");
     }
 
-    return ActionResult.ok("Created finding");
+    return ToolResult.ok({ message: "Created finding" });
   },
 });

@@ -1,9 +1,9 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { normalizeEnvironmentVariable, resolveEnvironment } from "@/float/utils";
-import { type NormalizedEnvironmentVariable } from "@/float/utils";
 import { isPresent } from "@/utils";
 
 const environmentVariableSchema = z.object({
@@ -11,7 +11,9 @@ const environmentVariableSchema = z.object({
     .string()
     .describe("The name of the environment variable to create or update (non-empty)."),
   value: z.string().describe("The value assigned to the environment variable."),
-  kind: z.string().describe("The kind of the environment variable. Use PLAIN if not specified."),
+  kind: z
+    .enum(["PLAIN", "SECRET"])
+    .describe("The kind of the environment variable. Use PLAIN if not specified."),
 });
 
 const inputSchema = z.object({
@@ -28,38 +30,16 @@ export const environmentVariableUpdateTool = tool({
   description:
     "Create or update a variable in an environment by id (defaults to the selected environment, or Global if none selected)",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ environmentId, variable }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
     const environment = await resolveEnvironment(sdk, environmentId ?? undefined);
 
     if (!isPresent(environment)) {
-      return ActionResult.err("Unable to resolve environment to update");
+      return ToolResult.err("Unable to resolve environment to update");
     }
 
-    const variables = environment.variables.reduce<NormalizedEnvironmentVariable[]>(
-      (acc, existingVariable) => {
-        if (
-          existingVariable === null ||
-          existingVariable === undefined ||
-          typeof existingVariable.name !== "string" ||
-          typeof existingVariable.value !== "string"
-        ) {
-          return acc;
-        }
-
-        acc.push(
-          normalizeEnvironmentVariable({
-            name: existingVariable.name,
-            value: existingVariable.value,
-            kind: typeof existingVariable.kind === "string" ? existingVariable.kind : undefined,
-          })
-        );
-
-        return acc;
-      },
-      []
-    );
+    const variables = environment.variables.map(normalizeEnvironmentVariable);
 
     const normalizedVariable = normalizeEnvironmentVariable({
       name: variable.name,
@@ -86,9 +66,9 @@ export const environmentVariableUpdateTool = tool({
         },
       });
 
-      return ActionResult.ok(`Variable ${variable.name} updated successfully`);
+      return ToolResult.ok({ message: `Variable ${variable.name} updated successfully` });
     } catch (error) {
-      return ActionResult.err(
+      return ToolResult.err(
         "Failed to update environment variable",
         error instanceof Error ? error.message : undefined
       );

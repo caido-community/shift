@@ -1,12 +1,26 @@
 import { useLocalStorage } from "@vueuse/core";
-import { createModelKey, type Model } from "shared";
+import { createModelKey, type Model, type ModelProvider } from "shared";
 import { computed, type MaybeRefOrGetter, nextTick, type Ref, ref, toValue, watch } from "vue";
 
-import { type ProviderInfo, useSelector } from "./useSelector";
-
+import { useSDK } from "@/plugins/sdk";
+import { useSettingsStore } from "@/stores/settings";
 import { getReasoningEfforts, type ReasoningEffort, resolveReasoningEffort } from "@/utils/ai";
+import {
+  isDaybreakUnsupported as isDaybreakUnsupportedModel,
+  isOpenAIProvider,
+  listUpstreamProviders,
+  supportsFastMode,
+  supportsUltrafast,
+} from "@/utils/caidoAi";
 
 type ModelWithConfig = Model & { isConfigured: boolean };
+
+type ProviderInfo = {
+  id: ModelProvider;
+  isConfigured: boolean;
+  label: string;
+  icon: string;
+};
 
 type UseModelSelectorOptions = {
   models: MaybeRefOrGetter<Model[]>;
@@ -32,10 +46,8 @@ const keyOf = (model: Model) => createModelKey(model.provider, model.id);
 const displayName = (model: Model) => model.name.replace(/^Claude /, "");
 
 export function useModelSelector(options: UseModelSelectorOptions) {
-  const { providers, activeProvider, providerModels, selectProvider } = useSelector({
-    models: options.models,
-    selectedModel: options.selectedModel,
-  });
+  const sdk = useSDK();
+  const settingsStore = useSettingsStore();
   const openMenu = ref<"model" | "effort">();
   const isOpen = computed(() => openMenu.value === "model");
   const isEffortOpen = computed(() => openMenu.value === "effort");
@@ -48,6 +60,29 @@ export function useModelSelector(options: UseModelSelectorOptions) {
   const isSelected = (model: Model) =>
     selectedModel.value !== undefined && keyOf(model) === keyOf(selectedModel.value);
 
+  const providers = computed<ProviderInfo[]>(() => {
+    const ids = [...new Set(toValue(options.models).map((model) => model.provider))];
+    const statuses = listUpstreamProviders(sdk);
+    return ids
+      .map(
+        (id) =>
+          statuses.find((provider) => provider.id === id) ?? {
+            id,
+            label: id,
+            icon: "custom",
+            isConfigured: false,
+          }
+      )
+      .sort((a, b) => {
+        if (a.isConfigured !== b.isConfigured) return a.isConfigured ? -1 : 1;
+        return a.label.localeCompare(b.label) || a.id.localeCompare(b.id);
+      });
+  });
+  const activeProvider = ref<ModelProvider | undefined>(selectedModel.value?.provider);
+  watch(selectedModel, (model) => {
+    if (model !== undefined) activeProvider.value = model.provider;
+  });
+
   const findProvider = (id: string) => providers.value.find((provider) => provider.id === id);
   const selectedProvider = computed(() =>
     selectedModel.value === undefined ? undefined : findProvider(selectedModel.value.provider)
@@ -56,6 +91,13 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     ...model,
     isConfigured: findProvider(model.provider)?.isConfigured ?? false,
   });
+  const providerModels = computed(() =>
+    toValue(options.models)
+      .filter(
+        (model) => activeProvider.value === undefined || model.provider === activeProvider.value
+      )
+      .map(withConfig)
+  );
   const recentModels = computed(() =>
     recentKeys.value
       .map((key) => toValue(options.models).find((model) => keyOf(model) === key))
@@ -77,13 +119,6 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     return showRecent.value ? recentModels.value : providerModels.value;
   });
   const showProviderLogos = computed(() => isSearching.value || showRecent.value);
-  const providerSuffix = (model: Model) => {
-    const name = displayName(model);
-    const isAmbiguous = listedModels.value.some(
-      (other) => other.provider !== model.provider && displayName(other) === name
-    );
-    return isAmbiguous ? `via ${findProvider(model.provider)?.label ?? model.provider}` : undefined;
-  };
   const isRecentActive = computed(() => !isSearching.value && showRecent.value);
   const isProviderActive = (provider: ProviderInfo) =>
     !isSearching.value && !showRecent.value && activeProvider.value === provider.id;
@@ -104,6 +139,63 @@ export function useModelSelector(options: UseModelSelectorOptions) {
   );
   const isSelectedEffort = (effort: ReasoningEffort) => reasoningEffort.value === effort;
 
+  const canUseFastMode = computed(
+    () => selectedModel.value !== undefined && supportsFastMode(sdk, selectedModel.value.provider)
+  );
+  const fastMode = computed(
+    () =>
+      selectedModel.value !== undefined &&
+      canUseFastMode.value &&
+      settingsStore.isFastModeEnabled(selectedModel.value)
+  );
+  // The toggle acts on the selected model, so hide it while browsing another provider's tab.
+  const showFastToggle = computed(
+    () =>
+      canUseFastMode.value &&
+      (isSearching.value ||
+        showRecent.value ||
+        activeProvider.value === selectedModel.value?.provider)
+  );
+  const canUseUltrafast = computed(
+    () => selectedModel.value !== undefined && supportsUltrafast(sdk, selectedModel.value)
+  );
+  const ultrafast = computed(
+    () =>
+      selectedModel.value !== undefined &&
+      canUseUltrafast.value &&
+      settingsStore.isUltrafastEnabled(selectedModel.value)
+  );
+  const speedLevel = computed<0 | 1 | 2>(() => (ultrafast.value ? 2 : fastMode.value ? 1 : 0));
+  const setSpeed = (level: 0 | 1 | 2) => {
+    const model = selectedModel.value;
+    if (model === undefined || !canUseFastMode.value || isDisabled.value) return;
+    void settingsStore.update({
+      modelPreferences: { [keyOf(model)]: { fastMode: level === 1, ultrafast: level === 2 } },
+    });
+  };
+
+  const showDaybreak = computed(() =>
+    listedModels.value.some((model) => isOpenAIProvider(sdk, model.provider))
+  );
+  const daybreak = computed({
+    get: () => settingsStore.config.daybreak,
+    set(value: boolean) {
+      if (isDisabled.value) return;
+      void settingsStore.update({ daybreak: value });
+    },
+  });
+  const isDaybreakUnsupported = (model: Model) =>
+    daybreak.value && isDaybreakUnsupportedModel(sdk, model);
+  const isSelectedDaybreakUnsupported = computed(
+    () => selectedModel.value !== undefined && isDaybreakUnsupported(selectedModel.value)
+  );
+  const isDaybreakActive = computed(
+    () =>
+      daybreak.value &&
+      selectedModel.value !== undefined &&
+      isOpenAIProvider(sdk, selectedModel.value.provider) &&
+      !isSelectedDaybreakUnsupported.value
+  );
   const selectedModelLabel = computed(() =>
     selectedModel.value === undefined ? "Select model" : displayName(selectedModel.value)
   );
@@ -157,7 +249,7 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     openMenu.value = "effort";
   };
   const handleSelect = (model: ModelWithConfig) => {
-    if (!model.isConfigured) return;
+    if (!model.isConfigured || isDaybreakUnsupported(model)) return;
     const key = keyOf(model);
     options.selectedModel.value =
       toValue(options.models).find((candidate) => keyOf(candidate) === key) ?? model;
@@ -168,11 +260,13 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     close();
   };
   const selectFirstMatch = () => {
-    const match = listedModels.value.find((model) => model.isConfigured);
+    const match = listedModels.value.find(
+      (model) => model.isConfigured && !isDaybreakUnsupported(model)
+    );
     if (match !== undefined) handleSelect(match);
   };
   const handleProviderClick = (provider: ProviderInfo) => {
-    selectProvider(provider);
+    if (provider.isConfigured) activeProvider.value = provider.id;
     showRecent.value = false;
     query.value = "";
   };
@@ -208,7 +302,6 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     listedModels,
     recentModels,
     showProviderLogos,
-    providerSuffix,
     isRecentActive,
     isProviderActive,
     reasoningEfforts,
@@ -217,6 +310,18 @@ export function useModelSelector(options: UseModelSelectorOptions) {
     showEffortPicker,
     selectedModelLabel,
     displayName,
+    canUseFastMode,
+    showFastToggle,
+    canUseUltrafast,
+    fastMode,
+    ultrafast,
+    speedLevel,
+    setSpeed,
+    showDaybreak,
+    daybreak,
+    isDaybreakUnsupported,
+    isSelectedDaybreakUnsupported,
+    isDaybreakActive,
     isSelected,
     isSelectedEffort,
     close,

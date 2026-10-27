@@ -48,6 +48,7 @@ export const init = (sdk: FrontendSDK) => {
   app.use(PrimeVue, {
     unstyled: true,
     pt: Classic,
+    zIndex: { tooltip: 3100 },
   });
 
   app.directive("tooltip", Tooltip);

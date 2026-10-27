@@ -21,8 +21,6 @@ const valueSchema = z.object({
   truncated: z.boolean(),
 });
 
-const outputSchema = ToolResult.schema(valueSchema);
-
 type ResponseRangeReadInput = z.infer<typeof inputSchema>;
 type ResponseRangeReadValue = z.infer<typeof valueSchema>;
 type ResponseRangeReadOutput = ToolResultType<ResponseRangeReadValue>;
@@ -59,10 +57,9 @@ export const ResponseRangeRead = tool({
   description:
     "Read a specific character range from an HTTP response using the response ID from RequestSend. Use this to examine portions of large responses without loading the entire content - particularly useful after ResponseSearch identifies interesting locations. The startIndex is inclusive and endIndex is exclusive (like JavaScript's slice). Positions are character-based, not line-based, because web responses often contain minified code. The output is truncated to 5000 bytes if the requested range is larger, with a note about remaining bytes. Returns the content, actual start/end indexes, total response length, and whether truncation occurred. Will fail if startIndex is beyond the response length.",
   inputSchema,
-  outputSchema,
+  outputSchema: ToolResult.schema(valueSchema),
   execute: async (input, { experimental_context }): Promise<ResponseRangeReadOutput> => {
     const context = experimental_context as AgentContext;
-
     const result = await fetchResponse(context, input.responseId);
     if (Result.isErr(result)) {
       return ToolResult.err("Response not found", result.error);
@@ -78,13 +75,14 @@ export const ResponseRangeRead = tool({
     }
 
     const readResult = readContentRange(result.value.content, startIndex, endIndex);
+    const readLength = readResult.endIndex - readResult.startIndex;
     const requestedLength = Math.min(endIndex, result.value.length) - startIndex;
     const truncationNote = readResult.truncated
-      ? ` (truncated to 5000 bytes, ${requestedLength - 5000} bytes remaining)`
+      ? ` (truncated to ${readLength} bytes, ${requestedLength - readLength} bytes remaining)`
       : "";
 
     return ToolResult.ok({
-      message: `Read ${readResult.endIndex - readResult.startIndex} bytes from response${truncationNote}`,
+      message: `Read ${readLength} bytes from response${truncationNote}`,
       ...readResult,
       responseLength: result.value.length,
     });

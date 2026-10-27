@@ -24,9 +24,7 @@ export const useUIStore = defineStore("ui", () => {
     drawerWidth.value = Math.max(MIN_DRAWER_WIDTH, Math.min(getMaxWidth(), width));
   };
 
-  const clampDrawerWidth = () => {
-    drawerWidth.value = Math.max(MIN_DRAWER_WIDTH, Math.min(getMaxWidth(), drawerWidth.value));
-  };
+  const clampDrawerWidth = () => setDrawerWidth(drawerWidth.value);
 
   return {
     drawerVisible: readonly(drawerVisible),

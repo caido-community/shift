@@ -21,6 +21,12 @@ function handleUpdateSettings(
     if (input.maxIterations !== undefined) {
       draft.maxIterations = input.maxIterations;
     }
+    if (input.chatAppearance !== undefined) {
+      draft.chatAppearance = input.chatAppearance;
+    }
+    if (input.debugToolsEnabled !== undefined) {
+      draft.debugToolsEnabled = input.debugToolsEnabled;
+    }
     if (input.renaming !== undefined) {
       draft.renaming = { ...draft.renaming, ...input.renaming };
     }
@@ -30,18 +36,15 @@ function handleUpdateSettings(
     if (input.openRouterPrioritizeFastProviders !== undefined) {
       draft.openRouterPrioritizeFastProviders = input.openRouterPrioritizeFastProviders;
     }
+    if (input.daybreak !== undefined) {
+      draft.daybreak = input.daybreak;
+    }
+    if (input.modelPreferences !== undefined) {
+      draft.modelPreferences = { ...draft.modelPreferences, ...input.modelPreferences };
+    }
     if (input.featureFlags !== undefined) {
       draft.featureFlags = { ...draft.featureFlags, ...input.featureFlags };
     }
-  });
-}
-
-function handleUpdateRenaming(
-  model: SettingsModel,
-  message: Extract<SettingsMessage, { type: "UPDATE_RENAMING" }>
-): SettingsModel {
-  return create(model, (draft) => {
-    draft.renaming = { ...draft.renaming, ...message.input };
   });
 }
 
@@ -49,8 +52,6 @@ export function update(model: SettingsModel, message: SettingsMessage): Settings
   switch (message.type) {
     case "UPDATE_SETTINGS":
       return handleUpdateSettings(model, message);
-    case "UPDATE_RENAMING":
-      return handleUpdateRenaming(model, message);
     default:
       return model;
   }

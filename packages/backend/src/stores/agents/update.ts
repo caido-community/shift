@@ -4,30 +4,14 @@ function handleWriteAgent(
   model: AgentsModel,
   message: Extract<AgentsMessage, { type: "WRITE_AGENT" }>
 ): AgentsModel {
-  const existingIndex = model.findIndex((agent) => agent.chatID === message.chatID);
+  const { chatID, messages, updatedAt, sessionState } = message;
+  const agent = { chatID, messages, updatedAt, sessionState };
+  const existingIndex = model.findIndex((existing) => existing.chatID === chatID);
 
-  if (existingIndex !== -1) {
-    return model.map((agent, index) =>
-      index === existingIndex
-        ? {
-            chatID: message.chatID,
-            messages: message.messages,
-            updatedAt: message.updatedAt,
-            sessionState: message.sessionState,
-          }
-        : agent
-    );
+  if (existingIndex === -1) {
+    return [...model, agent];
   }
-
-  return [
-    ...model,
-    {
-      chatID: message.chatID,
-      messages: message.messages,
-      updatedAt: message.updatedAt,
-      sessionState: message.sessionState,
-    },
-  ];
+  return model.map((existing, index) => (index === existingIndex ? agent : existing));
 }
 
 function handleRemoveAgent(

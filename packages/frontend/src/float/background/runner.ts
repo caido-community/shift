@@ -1,26 +1,23 @@
-import { generateText, stepCountIs } from "ai";
+import { getErrorMessage } from "@ai-sdk/provider";
+import { stepCountIs, streamText } from "ai";
 
+import { createCompactor } from "@/agent/compaction";
 import { formatAgentError } from "@/agent/utils/errors";
 import { plainParts } from "@/backgroundAgents/logs";
 import { backgroundFloatTools } from "@/float/actions";
-import { BACKGROUND_EXECUTION_NOTE, buildBackgroundPrompt } from "@/float/background/prompt";
-import {
-  getInvalidToolCallMessage,
-  isInvalidToolCall,
-  isValidToolCall,
-} from "@/float/background/toolCalls";
+import { BACKGROUND_EXECUTION_NOTE } from "@/float/background/prompt";
+import { getInvalidToolCallMessage } from "@/float/background/toolCalls";
 import { getToolErrorMessage, getToolResultLogParts } from "@/float/background/toolResults";
+import { buildUserPrompt } from "@/float/context";
+import { createFloatModel } from "@/float/model";
 import { buildSystemPrompt } from "@/float/prompt";
-import { repairToolCall } from "@/float/toolCallRepair";
 import { type ActionContext, type FloatToolContext } from "@/float/types";
 import { useBackgroundAgentsStore } from "@/stores/backgroundAgents";
 import { useLearningsStore } from "@/stores/learnings";
-import { useModelsStore } from "@/stores/models";
 import { useSettingsStore } from "@/stores/settings";
 import { type FrontendSDK } from "@/types";
-import { createModel, resolveModel } from "@/utils";
+import { repairToolCall } from "@/utils/toolCallRepair";
 
-const DEFAULT_BACKGROUND_MAX_STEPS = 100;
 type SpawnBackgroundAgentInput = {
   sdk: FrontendSDK;
   task: string;
@@ -30,21 +27,12 @@ type SpawnBackgroundAgentInput = {
 
 export const spawnBackgroundAgent = (input: SpawnBackgroundAgentInput): string => {
   const store = useBackgroundAgentsStore();
-  const agentId = store.createAgent({
+  const { id: agentId, signal } = store.createAgent({
     task: input.task,
     title: input.title,
   });
 
-  const controller = new AbortController();
-  store.registerController(agentId, controller);
-
-  void runBackgroundAgent({
-    ...input,
-    agentId,
-    abortSignal: controller.signal,
-  }).finally(() => {
-    store.clearController(agentId);
-  });
+  void runBackgroundAgent({ ...input, agentId, abortSignal: signal });
 
   return agentId;
 };
@@ -54,80 +42,103 @@ type RunBackgroundAgentInput = SpawnBackgroundAgentInput & {
   abortSignal: AbortSignal;
 };
 
+const MAX_CONSECUTIVE_FAILED_STEPS = 5;
+
 const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void> => {
   const store = useBackgroundAgentsStore();
   const settingsStore = useSettingsStore();
-  const learningsStore = useLearningsStore();
-  const modelsStore = useModelsStore();
 
   store.setRunning(input.agentId);
 
-  const modelData = resolveModel({
-    sdk: input.sdk,
-    savedModelKey: settingsStore.floatModel,
-    enabledModels: modelsStore.getEnabledModels(),
-    usageType: "float",
-  });
-
-  if (modelData === undefined) {
-    store.appendLog(input.agentId, plainParts("No models available"), "error");
-    store.setError(input.agentId, "No models available");
-    return;
-  }
-
-  const model = createModel(input.sdk, modelData, {
-    reasoning: true,
-    openRouterPrioritizeFastProviders: settingsStore.openRouterPrioritizeFastProviders ?? false,
-  });
-
-  const toolContext: FloatToolContext = {
-    sdk: input.sdk,
-    context: input.context,
-  };
-
-  const tools = backgroundFloatTools;
-  const configuredMaxIterations = settingsStore.maxIterations;
-  const maxSteps = configuredMaxIterations ?? DEFAULT_BACKGROUND_MAX_STEPS;
-  const prompt = buildBackgroundPrompt(
-    {
-      content: input.task,
-      context: input.context,
-    },
-    learningsStore.entries
-  );
-
-  let executionError: string | undefined;
-  let hasToolCall = false;
-
-  let system = buildSystemPrompt({
-    backgroundAgents: false,
-  });
-
-  system += `\n\n<background_mode>\nYou are executing in background mode. Complete the user task with tools and keep actions concise.\n</background_mode>\n\n${BACKGROUND_EXECUTION_NOTE}`;
-
   try {
-    const result = await generateText({
+    const floatModel = createFloatModel(input.sdk, {
+      savedModelKey: settingsStore.config.floatModel,
+      reasoning: true,
+      cacheKey: input.agentId,
+    });
+
+    if (floatModel === undefined) {
+      store.appendLog(input.agentId, plainParts("No models available"), "error");
+      store.finishAgent(input.agentId, "error", "No models available");
+      return;
+    }
+
+    const { model, modelData } = floatModel;
+
+    const toolContext: FloatToolContext = {
+      sdk: input.sdk,
+      context: input.context,
+    };
+
+    const tools = backgroundFloatTools;
+    const maxSteps = settingsStore.config.maxIterations;
+    const prompt = buildUserPrompt(
+      { content: input.task, context: input.context },
+      useLearningsStore().entries
+    );
+    const system = `${buildSystemPrompt({ backgroundAgents: false })}\n\n${BACKGROUND_EXECUTION_NOTE}`;
+
+    let hasToolCall = false;
+    let consecutiveFailedSteps = 0;
+    let streamError: unknown;
+
+    const compactor = createCompactor({
+      model,
+      system,
+      tools,
+      contextWindow: modelData.contextWindow,
+      abortSignal: input.abortSignal,
+      onCompact: () => {
+        store.appendLog(input.agentId, plainParts("Compacted context to keep going"));
+      },
+    });
+
+    // Streamed: Caido caps non-streaming completions at 5 minutes per step.
+    const result = streamText({
       model,
       tools,
       toolChoice: "auto",
-      stopWhen: stepCountIs(maxSteps),
+      stopWhen: [
+        stepCountIs(maxSteps),
+        () => consecutiveFailedSteps >= MAX_CONSECUTIVE_FAILED_STEPS,
+      ],
       system,
       prompt,
+      maxRetries: 3,
       abortSignal: input.abortSignal,
       experimental_context: toolContext,
-      experimental_repairToolCall: async ({ toolCall, inputSchema, error }) =>
-        (await repairToolCall(toolCall, inputSchema, error)) ?? null,
-      onStepFinish: ({ toolCalls, toolResults }) => {
-        hasToolCall = toolCalls.some(isValidToolCall);
+      experimental_repairToolCall: repairToolCall,
+      prepareStep: compactor.prepareStep,
+      onError: ({ error }) => {
+        streamError = error;
+      },
+      onStepFinish: (step) => {
+        compactor.onStepFinish(step);
+        const { toolCalls, toolResults, content } = step;
+        hasToolCall ||= toolCalls.some((toolCall) => toolCall.invalid !== true);
 
+        let failures = 0;
+        const invalidToolCallIds = new Set<string>();
         for (const toolCall of toolCalls) {
-          // Tool failures should normally be returned as ActionResult so the agent can
-          // see the feedback and continue. This handles malformed tool calls that still
-          // throw errors, logs the failure, and stops the run.
-          if (isInvalidToolCall(toolCall)) {
-            executionError = getInvalidToolCallMessage(toolCall);
-            store.appendLog(input.agentId, plainParts(executionError), "error");
-            throw new Error(executionError);
+          if (toolCall.invalid === true) {
+            failures++;
+            invalidToolCallIds.add(toolCall.toolCallId);
+            store.appendLog(
+              input.agentId,
+              plainParts(getInvalidToolCallMessage(toolCall)),
+              "error"
+            );
+          }
+        }
+
+        for (const part of content) {
+          if (part.type === "tool-error" && !invalidToolCallIds.has(part.toolCallId)) {
+            failures++;
+            store.appendLog(
+              input.agentId,
+              plainParts(`${part.toolName}: ${getErrorMessage(part.error)}`),
+              "error"
+            );
           }
         }
 
@@ -135,9 +146,9 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
           const { toolName, output } = toolResult;
           const errorMessage = getToolErrorMessage(output);
           if (errorMessage !== undefined) {
-            executionError = `${toolName}: ${errorMessage}`;
-            store.appendLog(input.agentId, plainParts(executionError), "error");
-            throw new Error(executionError);
+            failures++;
+            store.appendLog(input.agentId, plainParts(`${toolName}: ${errorMessage}`), "error");
+            continue;
           }
 
           store.appendLog(
@@ -146,40 +157,52 @@ const runBackgroundAgent = async (input: RunBackgroundAgentInput): Promise<void>
             "success"
           );
         }
+
+        const allFailed = toolCalls.length > 0 && failures >= toolCalls.length;
+        consecutiveFailedSteps = allFailed ? consecutiveFailedSteps + 1 : 0;
       },
     });
 
-    if (executionError !== undefined) {
-      store.setError(input.agentId, executionError);
+    await result.consumeStream();
+
+    if (input.abortSignal.aborted) {
+      store.appendLog(input.agentId, plainParts("Background agent was cancelled"));
+      store.finishAgent(input.agentId, "aborted");
       return;
     }
 
-    const hasAnyToolExecution = hasToolCall || result.toolCalls.some(isValidToolCall);
-    if (!hasAnyToolExecution) {
-      store.setError(input.agentId, "No tool calls were made");
+    if (streamError !== undefined) {
+      const message = formatAgentError(streamError);
+      store.appendLog(input.agentId, plainParts(message), "error");
+      store.finishAgent(input.agentId, "error", message);
       return;
     }
 
-    if (result.finishReason === "error") {
-      store.setError(input.agentId, "Background agent failed before completing the task");
+    const summary = (await result.text).trim();
+    if (summary !== "") {
+      store.appendLog(input.agentId, plainParts(summary));
+    }
+
+    if (consecutiveFailedSteps >= MAX_CONSECUTIVE_FAILED_STEPS) {
+      store.finishAgent(input.agentId, "error", "Stopped after repeated tool failures");
       return;
     }
 
-    store.setDone(input.agentId);
+    if (!hasToolCall) {
+      store.finishAgent(input.agentId, "error", "No tool calls were made");
+      return;
+    }
+
+    store.finishAgent(input.agentId, "done");
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       store.appendLog(input.agentId, plainParts("Background agent was cancelled"));
-      store.setAborted(input.agentId);
+      store.finishAgent(input.agentId, "aborted");
       return;
     }
 
     const message = formatAgentError(error);
-    if (executionError === message) {
-      store.setError(input.agentId, message);
-      return;
-    }
-
     store.appendLog(input.agentId, plainParts(message), "error");
-    store.setError(input.agentId, message);
+    store.finishAgent(input.agentId, "error", message);
   }
 };

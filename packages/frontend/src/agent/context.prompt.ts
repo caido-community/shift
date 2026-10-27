@@ -52,14 +52,14 @@ export function buildSkillsPrompt(snapshot: SkillsPromptSnapshot): string {
 
     if (onDemand.length > 0) {
       const catalogLines = onDemand.map((s) => {
-        const desc = s.description?.trim();
+        const desc = s.description?.trim() ?? "";
         return desc !== ""
           ? `- ${s.title} (id: ${s.id}): ${truncate(desc, 200)}`
           : `- ${s.title} (id: ${s.id})`;
       });
       skillParts.push(
         `<skills_available_on_demand>\n${catalogLines.join("\n")}\n</skills_available_on_demand>\n\n` +
-          `These on-demand skills are knowledge books that contain instructions, testing guidance, and reusable context for particular tasks, workflows, or areas of expertise. When a skill looks relevant to what you are about to do, use the ReadSkill tool with its id to load and follow that skill's instructions. Prefer reading the relevant skill early rather than guessing from memory.`
+          `Use ReadSkill with the listed id when its description matches the task. Follow the loaded instructions; do not load unrelated skills. Reuse content already in context, and read further pages when hasMore is true and the remaining instructions are needed.`
       );
     }
 

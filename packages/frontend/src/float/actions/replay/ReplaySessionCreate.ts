@@ -1,10 +1,9 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+import { ToolResult } from "@/agent/types";
 import { normalizeRawHttpRequest } from "@/agent/utils/http";
-import { ActionResult, type FloatToolContext } from "@/float/types";
-import { type FrontendSDK } from "@/types";
-import { usesReplayEntryInterface } from "@/utils/caido";
+import { type FloatToolContext } from "@/float/types";
 
 const inputSchema = z.object({
   rawRequest: z.string().describe("Raw HTTP request source (non-empty)"),
@@ -20,52 +19,21 @@ const inputSchema = z.object({
 export const replaySessionCreateTool = tool({
   description: "Create a new replay session with specified request and connection details",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ rawRequest, host, port, isTls, sessionName }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
-    type CreateReplaySessionVariables = Parameters<
-      FrontendSDK["graphql"]["createReplaySession"]
-    >[0];
-    const requestSource = {
-      raw: {
-        raw: normalizeRawHttpRequest(rawRequest),
-        connectionInfo: {
-          host,
-          port,
-          isTLS: isTls,
-        },
-      },
-    };
-    const input = (
-      usesReplayEntryInterface(sdk)
-        ? {
-            kind: "HTTP",
-            requestSource,
-          }
-        : {
-            requestSource,
-          }
-    ) as CreateReplaySessionVariables["input"];
-
-    const result = await sdk.graphql.createReplaySession({
-      input,
+    const session = await sdk.replay.createSession({
+      type: "Raw",
+      raw: normalizeRawHttpRequest(rawRequest),
+      connectionInfo: { host, port, isTLS: isTls },
     });
 
-    const sessionId = result.createReplaySession.session?.id;
-
-    if (sessionId === undefined) {
-      return ActionResult.err("Failed to create replay session");
-    }
-
-    sdk.replay.openTab(sessionId);
+    sdk.replay.openTab(session.id);
 
     if (sessionName !== null) {
-      await sdk.graphql.renameReplaySession({
-        id: sessionId,
-        name: sessionName,
-      });
+      await sdk.replay.renameSession(session.id, sessionName);
     }
 
-    return ActionResult.ok("Replay session created successfully");
+    return ToolResult.ok({ message: "Replay session created successfully" });
   },
 });

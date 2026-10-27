@@ -14,7 +14,6 @@ import {
   getLearnings,
   getLegacyCollectionAutoRunMigrationSummary,
   getProjectOverride,
-  getProjectOverrides,
   getResolvedCustomAgents,
   getSettings,
   getSkillDefinitions,
@@ -25,24 +24,16 @@ import {
   removeLearnings,
   removeProjectOverride,
   removeSkill,
-  setLearnings,
   setProjectOverride,
   updateCustomAgent,
   updateDynamicSkill,
   updateLearning,
-  updateRenaming,
   updateSettings,
   updateStaticSkill,
   writeAgent,
 } from "./api";
 import { setSDK } from "./sdk";
-import {
-  getAgentsStore,
-  getCustomAgentsStore,
-  getLearningsStore,
-  getSettingsStore,
-  getSkillsStore,
-} from "./stores";
+import { initializeStores, switchProject } from "./stores";
 import type { BackendEvents } from "./types";
 
 export * from "./types";
@@ -62,7 +53,6 @@ export type API = DefineAPI<{
   removeSkill: typeof removeSkill;
   refreshSkills: typeof refreshSkills;
   getProjectOverride: typeof getProjectOverride;
-  getProjectOverrides: typeof getProjectOverrides;
   setProjectOverride: typeof setProjectOverride;
   removeProjectOverride: typeof removeProjectOverride;
   getResolvedCustomAgents: typeof getResolvedCustomAgents;
@@ -74,35 +64,20 @@ export type API = DefineAPI<{
   cancelAgentBinaryExecution: typeof cancelAgentBinaryExecution;
   getSettings: typeof getSettings;
   updateSettings: typeof updateSettings;
-  updateRenaming: typeof updateRenaming;
   getLearnings: typeof getLearnings;
   addLearning: typeof addLearning;
   updateLearning: typeof updateLearning;
   removeLearnings: typeof removeLearnings;
-  setLearnings: typeof setLearnings;
   clearLearnings: typeof clearLearnings;
 }>;
 
 export function init(sdk: SDK<API, BackendEvents>) {
   setSDK(sdk);
-  const agentsStore = getAgentsStore();
-  const skillsStore = getSkillsStore();
-  const customAgentsStore = getCustomAgentsStore();
-  const settingsStore = getSettingsStore();
-  const learningsStore = getLearningsStore();
+  initializeStores(sdk).catch((error: unknown) =>
+    console.error(`Failed to initialize stores: ${String(error)}`)
+  );
 
-  agentsStore.initialize();
-  skillsStore.initialize();
-  customAgentsStore.initialize();
-  settingsStore.initialize();
-  learningsStore.initialize();
-
-  sdk.events.onProjectChange(async (_sdk, project) => {
-    await agentsStore.switchProject(project?.getId());
-    await learningsStore.switchProject(project?.getId());
-    skillsStore.switchProject(project?.getId());
-    customAgentsStore.switchProject(project?.getId());
-  });
+  sdk.events.onProjectChange((_sdk, project) => switchProject(project?.getId()));
 
   sdk.api.register("getAgent", getAgent);
   sdk.api.register("getAgents", getAgents);
@@ -122,7 +97,6 @@ export function init(sdk: SDK<API, BackendEvents>) {
   sdk.api.register("removeSkill", removeSkill);
   sdk.api.register("refreshSkills", refreshSkills);
   sdk.api.register("getProjectOverride", getProjectOverride);
-  sdk.api.register("getProjectOverrides", getProjectOverrides);
   sdk.api.register("setProjectOverride", setProjectOverride);
   sdk.api.register("removeProjectOverride", removeProjectOverride);
 
@@ -136,12 +110,10 @@ export function init(sdk: SDK<API, BackendEvents>) {
 
   sdk.api.register("getSettings", getSettings);
   sdk.api.register("updateSettings", updateSettings);
-  sdk.api.register("updateRenaming", updateRenaming);
 
   sdk.api.register("getLearnings", getLearnings);
   sdk.api.register("addLearning", addLearning);
   sdk.api.register("updateLearning", updateLearning);
   sdk.api.register("removeLearnings", removeLearnings);
-  sdk.api.register("setLearnings", setLearnings);
   sdk.api.register("clearLearnings", clearLearnings);
 }

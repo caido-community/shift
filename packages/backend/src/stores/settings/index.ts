@@ -1,1 +1,1 @@
-export { getSettingsStore } from "./store";
+export { settingsStore } from "./store";

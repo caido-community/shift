@@ -10,20 +10,9 @@ import { FindingsCreate } from "./findings";
 import { HistorySearch } from "./history";
 import { LearningAdd, LearningRead, LearningRemove, LearningUpdate } from "./learnings";
 import { PayloadBlobCreate, PayloadBlobRangeRead } from "./payload";
-import { ReplayEntryNavigate } from "./replay";
+import { ReplayConnectionSet, ReplayEntryNavigate } from "./replay";
 import {
   RequestBodySet,
-  RequestCookieAdd,
-  RequestCookieRemove,
-  RequestCookieSet,
-  RequestHeaderAdd,
-  RequestHeaderRemove,
-  RequestHeaderSet,
-  RequestMethodSet,
-  RequestPathSet,
-  RequestQueryAdd,
-  RequestQueryRemove,
-  RequestQuerySet,
   RequestRangeRead,
   RequestRawEdit,
   RequestRawSet,
@@ -31,7 +20,6 @@ import {
 } from "./request";
 import { ResponseRangeRead, ResponseSearch } from "./response";
 import { ReadSkill } from "./skills";
-import { TodoAdd, TodoComplete, TodoRemove, TodoStart } from "./todo";
 import { WorkflowConvertList, WorkflowConvertRun } from "./workflows";
 
 export const shiftAgentTools = {
@@ -39,26 +27,11 @@ export const shiftAgentTools = {
   BinaryExecRun,
   PayloadBlobCreate,
   PayloadBlobRangeRead,
-  TodoAdd,
-  TodoStart,
-  TodoComplete,
-  TodoRemove,
   LearningAdd,
   LearningRead,
   LearningUpdate,
   LearningRemove,
   RequestBodySet,
-  RequestCookieAdd,
-  RequestCookieRemove,
-  RequestCookieSet,
-  RequestHeaderAdd,
-  RequestHeaderRemove,
-  RequestHeaderSet,
-  RequestMethodSet,
-  RequestPathSet,
-  RequestQueryAdd,
-  RequestQueryRemove,
-  RequestQuerySet,
   RequestRangeRead,
   RequestRawEdit,
   RequestRawSet,
@@ -73,6 +46,7 @@ export const shiftAgentTools = {
   HistorySearch,
   FindingsCreate,
   ReplayEntryNavigate,
+  ReplayConnectionSet,
   WorkflowConvertList,
   WorkflowConvertRun,
 };

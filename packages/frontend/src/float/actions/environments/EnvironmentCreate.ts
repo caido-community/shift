@@ -1,13 +1,16 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-import { ActionResult, type FloatToolContext } from "@/float/types";
+import { ToolResult } from "@/agent/types";
+import { type FloatToolContext } from "@/float/types";
 import { normalizeEnvironmentVariable } from "@/float/utils";
 
 const environmentVariableSchema = z.object({
   name: z.string().describe("The name of the environment variable to set (non-empty)."),
   value: z.string().describe("The value assigned to the environment variable."),
-  kind: z.string().describe("The kind of the environment variable. Use PLAIN if not specified."),
+  kind: z
+    .enum(["PLAIN", "SECRET"])
+    .describe("The kind of the environment variable. Use PLAIN if not specified."),
 });
 
 const inputSchema = z.object({
@@ -22,7 +25,7 @@ const inputSchema = z.object({
 export const environmentCreateTool = tool({
   description: "Create a new environment optionally pre-populated with variables",
   inputSchema,
-  outputSchema: ActionResult.schema,
+  outputSchema: ToolResult.schema(),
   execute: async ({ environmentName, variables }, { experimental_context }) => {
     const { sdk } = experimental_context as FloatToolContext;
 
@@ -37,12 +40,12 @@ export const environmentCreateTool = tool({
       const environment = result?.createEnvironment?.environment;
 
       if (environment === undefined || environment === null) {
-        return ActionResult.err("Failed to create environment");
+        return ToolResult.err("Failed to create environment");
       }
 
-      return ActionResult.ok(`Environment ${environment.name} created successfully`);
+      return ToolResult.ok({ message: `Environment ${environment.name} created successfully` });
     } catch (error) {
-      return ActionResult.err(
+      return ToolResult.err(
         "Failed to create environment",
         error instanceof Error ? error.message : undefined
       );
